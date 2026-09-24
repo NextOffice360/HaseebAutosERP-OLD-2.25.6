@@ -1238,6 +1238,7 @@ UI2.table = function (cfg) {
       .catch(e => { loading = false; loadErr = (e && e.message) || String(e); paint(); });
   }
   wrap.reload = reload;
+  wrap._ui2 = wrap;   /* v2.30.4 - host.querySelector('.st2')._ui2 se wrap milta hai */
   if (cfg.load) setTimeout(reload, 0);
   paint();
   return wrap;

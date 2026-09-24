@@ -52,33 +52,34 @@
     q.oninput = () => { clearTimeout(timer); timer = setTimeout(load, 220); };
     status.onchange = load;
 
+    /* v2.30.4 (W9/T7.2 carry-over) - orders list ab shared `load:` par:
+       hand-rolled skeleton + .then + .catch hata; empty/filter flow wahi. */
     function load() {
       host.innerHTML = '';
-      host.appendChild(UI2.skeleton ? UI2.skeleton(5) : h('div', null, '…'));
-      API.call('orders.list', { status: status.value, q: q.value.trim() }, { offlineFallback: () => [] })
-        .then(rows => {
-          host.innerHTML = '';
-          host.appendChild(UI2.table({
-            screen: 'orders_list', rows: rows || [], height: '52vh', exportName: 'orders',
-            columns: [
-              { key: 'orderNo', label: 'Order', render: r => h('b', null, r.orderNo) },
-              { key: 'date', label: 'Date', render: r => fmt.date(r.date) },
-              { key: 'expectedDate', label: 'Delivery', render: r => r.expectedDate ? fmt.date(r.expectedDate) : '—' },
-              { key: 'customerName', label: 'Customer' },
-              { key: 'phone', label: 'Phone', render: r => fmt.phone(r.phone) },
-              { key: 'total', label: 'Total', num: true, render: r => fmt.money(r.total) },
-              { key: 'advance', label: 'Advance', num: true, render: r => fmt.money(r.advance) },
-              { key: 'balance', label: 'Balance', num: true, render: r => h('b', {
-                style: { color: Number(r.balance) > 0 ? 'var(--err)' : 'var(--ok)' } }, fmt.money(r.balance)) },
-              { key: 'status', label: 'Status', render: r => statusBadge(r.status) }
-            ],
-            rowActions: r => [
-              { icon: '👁', label: 'Open', onClick: () => orderDetail(r.id, load) },
-              r.status !== 'INVOICED' ? { icon: '🧾', label: 'Invoice', onClick: () => convertOrder(r, load) } : null
-            ].filter(Boolean),
-            onRow: r => orderDetail(r.id, load)
-          }));
-        }).catch(e => { host.innerHTML = ''; host.appendChild(h('div', { class: 'empty' }, '⚠ ' + e.message)); });
+      const tbl = UI2.table({
+        screen: 'orders_list', height: '52vh', exportName: 'orders',
+        load: () => API.call('orders.list', { status: status.value, q: q.value.trim() },
+          { offlineFallback: () => [] }),
+        columns: [
+          { key: 'orderNo', label: 'Order', render: r => h('b', null, r.orderNo) },
+          { key: 'date', label: 'Date', render: r => fmt.date(r.date) },
+          { key: 'expectedDate', label: 'Delivery', render: r => r.expectedDate ? fmt.date(r.expectedDate) : '\u2014' },
+          { key: 'customerName', label: 'Customer' },
+          { key: 'phone', label: 'Phone', render: r => fmt.phone(r.phone) },
+          { key: 'total', label: 'Total', num: true, render: r => fmt.money(r.total) },
+          { key: 'advance', label: 'Advance', num: true, render: r => fmt.money(r.advance) },
+          { key: 'balance', label: 'Balance', num: true, render: r => h('b', {
+            style: { color: Number(r.balance) > 0 ? 'var(--err)' : 'var(--ok)' } }, fmt.money(r.balance)) },
+          { key: 'status', label: 'Status', render: r => statusBadge(r.status) }
+        ],
+        rowActions: r => [
+          { icon: '\ud83d\udc41', label: 'Open', onClick: () => orderDetail(r.id, () => tbl.reload()) },
+          r.status !== 'INVOICED' ? { icon: '\ud83e\ude9a', label: 'Invoice', onClick: () => convertOrder(r, () => tbl.reload()) } : ''
+        ].filter(Boolean),
+        onRow: r => orderDetail(r.id, () => tbl.reload()),
+        emptyAction: { label: 'Clear filters', onClick: () => { status.value = ''; q.value = ''; load(); } }
+      });
+      host.appendChild(tbl);
     }
     load();
   }

@@ -508,6 +508,13 @@ SONAME links gayab (`libatk-1.0.so.0`) aur har browser gate "Failed to launch th
       OWNER (*) sab ALLOW; MANAGER beech ka farq; SALESMAN users DENY; users.perms matrix;
       client nav App.can filter (source + owner DOM). A§7 backend-enforcement usool.
       TESTING-MATRIX roles row ab ✅ — **15/17 dimensions gated**.
+- [x] **W13-followup: App_Orders L186 adoption** ✔ (v2.30.5) — orders list ab shared
+      `load:` par (hand-rolled skeleton+.then+.catch hata); rowActions/onRow ab
+      `tbl.reload()` (naya table instance), emptyAction "Clear filters". **Aur sabak:**
+      UI2.table wrap RETURN karta hai — append zaroori (pehli koshish me render capture
+      without append → khaali screen; DOM probe se pakra, fix verify: 1 row + ORD- + zero
+      errors). `wrap._ui2` self-ref bhi add (UI2.table) discovery ke liye.
+      Regression: table_states 11/0 · e2e_critical 22/0 · modals_close 91/0.
 
 - [x] **T7.5 (W9) Help links + confirm sweep + tooltips** ✔ (v2.30.3) —
       **① PWA.confirm (shared):** Pwa_Shell me non-blocking promise dialog (`role=alertdialog`,

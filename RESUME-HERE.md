@@ -77,8 +77,13 @@ v2.30.5 (current) + archive v2.30.2/v2.30.3. **W8 ✔ (v2.30.4):** `audit_naming
 nav↔screens match, 273 routes domain.action + zero dup, zero .bak, 44 namespaces ek-ek,
 App_/Pwa_ split) + `docs/ARCHITECTURE.md` (conventions + data flow). Saare waves ab
 ✅ (W1–W13). Quota round 6: snapshot-effective 41MB (display 118.9 stale; 87MB khali).
-**Agla: live GAS deploy verify + scopes (carry-over gaps) → W4/W5 chhote polish slices →
-carry-overs (Zx10 drill, label read-back, POS→Pay→Esc mobile, App_Orders L186).** Carry-overs: live GAS deploy, Zx10 printer drill, label read-back, mobile
+**App_Orders L186 adoption ✔ (v2.30.5):** orders list shared `load:` par
+(tbl.reload() rowActions me, Clear filters emptyAction). **Sabak:** UI2.table wrap
+return karta hai — append lazmi (DOM-probe debugging se pakra). Chrome-libs restore:
+fetch_chrome_libs ke atspi/avahi gaps manually .deb se bhare (libnspr/nss/atk/atspi/
+avahi/cairo/pango). Quota: 41.3MB effective (stale display ignore). **Agla: Zx10 printer
+drill + label read-back + POS→Pay→Esc mobile walkthrough (user ke sath) → W4/W5 polish
+slices → live GAS deploy verify.** Carry-overs: live GAS deploy, Zx10 printer drill, label read-back, mobile
 POS cart→Pay→Esc, App_Orders L186 adoption.
 read-back, mobile POS cart→Pay→Esc, App_Orders L186 adoption.
 **PUSH HO CHUKA (2026-09-24):** GitHub `NextOffice360/HaseebAutosERP-OLD-2.25.6` (public) — remote `main` =
