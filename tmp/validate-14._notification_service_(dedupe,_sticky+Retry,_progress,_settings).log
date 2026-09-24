@@ -1,0 +1,14 @@
+[1mNOTIFICATION SERVICE — rendered DOM gate[0m
+  ✔ ① 5× same message → 1 toast + ×5 badge (spam nahi)
+  ✔ ② 3 mukhtalif messages → 3 toasts
+  ✔ ③ sticky error 1.3s baad bhi mojood, ✕ par gayab
+  ✔ ④ Retry button nazar aata hai aur callback chalta hai
+  ✔ ⑤a progress 1.2s baad bhi zinda (khud nahi jata), done() → ok + spinner gayab
+  ✔ ⑤b fail() → err toast + Retry
+  ✔ ⑥ 8 toasts par non-sticky cap (≤4)
+  ✔ ⑦ notif OFF → ok chhupa, err nazar (errors hamesha)
+  ✔ ⑧ duration setting scale karta hai (SHORT < NORMAL < LONG)
+  ✔ ⑨ UI.toast(msg, type, ms) back-compat chal raha hai
+  ✔ ⑩ zero page errors
+
+[1mSUMMARY:[0m 11 pass · 0 fail · [32mGREEN[0m

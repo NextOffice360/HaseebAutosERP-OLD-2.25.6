@@ -1,0 +1,37 @@
+PASS fresh setup completes only with physical seed verification
+PASS fresh result exposes phase and exact database URL
+PASS diagnostic bypasses warm cache and detects all empty seed tables
+PASS diagnostic returns linked spreadsheet, not active browser sheet
+PASS diagnostic never includes API key or hashes
+PASS completed-but-empty checkpoint is repaired rather than falsely accepted
+PASS recovery keeps exact same spreadsheet binding
+PASS all required tables now physically contain valid rows
+PASS groups/users (9 staff + demo)/branches recovered
+PASS initial owner password hash verifies after recovery
+PASS keys retained in Script Properties
+PASS live DB par demo seeding SKIP (zinda business ke data mein demo nahi ghusa)
+PASS explicit recovery restores empty translation/bin tables
+PASS existing user IDs, hashes, salts and roles unchanged
+PASS existing business setting preserved
+PASS existing sale untouched
+PASS repeated recovery creates no duplicate defaults
+PASS transactions and product rows are not fabricated
+PASS seed no-op is surfaced instead of reporting success
+PASS failed seed retains retry position
+PASS rerun after failure safely resumes
+PASS account-seeding exceptions no longer swallowed
+PASS account recovery succeeds after underlying issue resolved
+PASS resetConnection clears row and row-index memos
+PASS sheet caches namespaced by spreadsheet ID
+PASS old DB users not returned for a new DB
+PASS explicit recovery populates the linked headers-only second DB
+PASS switching back preserves original database
+PASS read-only diagnostic handles absent binding without creating DB
+PASS recovery refuses to silently create an unrelated spreadsheet
+PASS recovery yields honestly at cooperative deadline
+PASS repeat resumes from actual missing data and completes
+PASS concurrent recovery returns busy without releasing another lock
+PASS diagnostic reads physical sheets, returns AND logs report
+PASS schema auditor does not scan beyond variable/mapped batch argument
+PASS schema auditor still rejects real unknown literal fields
+SEED RECOVERY: 36 PASS, 0 FAIL

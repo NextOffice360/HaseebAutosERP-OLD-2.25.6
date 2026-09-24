@@ -1,0 +1,13 @@
+[1mPART 1 — backend: transfer rule + child category persist[0m
+  ✔ ① transfer from==to → backend reject (alag honay chahiye)
+  ✔ ② child category (parentId) save → list mein wapas (persist)
+[1mPART 2 — rendered DOM: depOn / showWhen engine[0m
+  ✔ ③ To-branch options mein From branch NAHI (initial data-aware)
+  ✔ ④ From badla → To ke options dobar; invalid To CLEAR + toast
+  ✔ ⑤ from==to → warn toast, API call NAHI (validate-before-save)
+  ✔ ⑥ bank fields: GENERAL par chhupe, BANK/isBank par nazar (irrelevant chhupe, feature salamat)
+  ✔ ⑦a subCategory suggestions = selected category ki children (asli data)
+  ✔ ⑦b free typing QAYAM (values() mein custom subCategory)
+  ✔ ⑧ zero page errors
+
+[1mSUMMARY:[0m 9 pass · 0 fail · [32mGREEN[0m

@@ -1,0 +1,34 @@
+
+[1mW13 · B§8 CONVERSION UNITS GATE (v2.30.4)[0m
+
+  [1mPART 1 — source contract[0m
+  ✔ ① GRN direct lines: grnMap + picker map dono par conv/mode
+  ✔ ② GRN render: BOX↔PCS switch + auto-calc; PO lines par switch NAHI (base aati hain)
+  ✔ ③ PO pack conversion (v2.9 §8) salamat
+  ✔ ④ Backend base-unit invariant: GRN total = Σ qty×cost (conv multiply backend me NAHI)
+
+  [1mPART 2 — rendered DOM (asli GRN, F100002 conv=12)[0m
+  ✔ ④ GRN form khula (screen header ke GRN button se)
+  ✔ ⑤ Scan/search se pack-item line add (F100002, conv=12)  → Formula1 Liquid Carnauba Polish Liquid Wax - U.S.A
+  ✔ ⑥ Pack switch nazar (auto ×12)  → ↔ Buying per pack (auto ×12)
+  ✔ ⑦ BOX mode: 1 pack + Rs 3,000/pack → amount Rs 3,000 (base 12×250 auto)  → {"q":"1","c":"3000","amt":"Rs 3,000","modeLbl":"↔ Switch to per-base"}
+  ✔ ⑧ Wapas base mode: qty 12 / cost 250 / amount Rs 3,000 qayam  → {"q":"12","c":"250","amt":"Rs 3,000"}
+  ✔ ⑨ Zero page errors  → clean
+
+  [1mPART 3 — T13.2 B§11 price signals (real GRN data)[0m
+  ✔ ⑩ Source: supplierPriceSignals route + Price signals tab (sirf SUPPLIER par)  → Purchase.gs + Code.gs + App_Masters
+  ✔ ⑩a Route truth: 100→120 GRN par signal (up +20%, prev 100 / last 120)  → {"itemId":"ITM1790286087864","code":"GSI-001","name":"Gate Signal Item","lastRate":120,"lastDate":"","prevRate":100,"prevDate":"","change":20,"changePct":20,"direction":"up"}
+  ✔ ⑩b Rendered DOM: Price signals tab me item + rates + up-badge  → row+badge OK
+  ✔ ⑩c Zero page errors (PART3 ke baad bhi)  → clean
+
+  [1mPART 4 — T13.3 B§6 quick view (POS2)[0m
+  ✔ ⑪ Source: quickViewItem + image lightbox (UI.zoomImage) + pc-qv + pc-fav badges  → App_POS2.html
+  ✔ ⑪ DOM: tile par ★ fav + ⓘ; click → quick view modal (img + Cart action)  → ⓘ FLAMINGO DASHBOARD POLISH 450ML img=true
+  ✔ ⑪ⵏ Zero page errors (PART4 ke baad bhi)  → clean
+
+  [1mPART 5 — T13.4 B§9 reorder + AI signals (real data)[0m
+  ✔ ⑫ Source: suggest REAL sheets se (Sales/SaleItems/Stock/GRN/PO) + createPOs + AI card live  → Reorder.gs + App_Reorder.html
+  ✔ ⑫ DOM: reorder screen — AI signals card (live data) + suggest table, bina error  → {"card":true,"table":true,"err":false,"askBtn":true}
+  ✔ ⑫ⵏ Zero page errors (PART5 ke baad bhi)  → clean
+
+[1mSUMMARY:[0m 20 pass · 0 fail · [32mGREEN[0m

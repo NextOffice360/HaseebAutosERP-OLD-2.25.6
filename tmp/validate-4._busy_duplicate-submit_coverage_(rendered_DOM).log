@@ -1,0 +1,21 @@
+✔ shared auto-busy engine maujood + ON (UI._features.autoBusy)
+✔ A. h() path: async handler par .is-busy-ab + aria-busy + disabled
+✔ B. property path (el.onclick = async): busy lagti hai
+✔ C. duplicate submit BLOCK: busy ke doran extra clicks se call 1 hi rahi
+✔ D. busy clear: kaam khatam hone par state wapas normal
+✔ E. real screens sweep: kaafi buttons daba kar dekhe
+✔ E. real screen button par engine ne busy lagayi (stats.attached barha)
+✔ E. jab bhi busy lagi, us waqt API call in-flight thi (3/3)
+✔ F. kill-switch: autoBusy=false par koi auto busy nahi
+✔ G. UI.run ke andar engine skip (double spinner nahi)
+✔ H. data-nobusy: opt-out kaam karta hai
+✔ N3a. row async action: busy + dup-block (1 call) + restore
+✔ N3b. header async action: busy + dup-block + restore
+✔ N3c. uncaught rejection → error toast + button restored (phansa nahi)
+✔ N3c-b. Retry se wahi action dobara chala
+✔ auto-busy stats: attach/done counters chal rahe hain
+✔ I. zero page errors
+
+═══════════════════════════════════════════════════════════
+  BUSY COVERAGE   PASS: 17   FAIL: 0
+═══════════════════════════════════════════════════════════

@@ -2759,7 +2759,7 @@ window.CONFIG_DEFS_DEMO = [{"id":"business","label":"Business Profile","icon":"�
 
 <script>
     /* Injected by server template */
-    window.APP_BUILD   = '2.30.3-static';
+    window.APP_BUILD   = '2.30.5-static';
     window.SERVE_MODE  = 'static';   // 'apps-script' | 'static'
     window.API_URL     = 'https://script.google.com/macros/s/AKfycb_DEMO_TEST_EXAMPLE/exec';      // filled only for static hosting
   </script>
@@ -16072,6 +16072,8 @@ function grnForm(po) {
     commitLabel: 'Add to GRN lines',
     sub: r => (r.code || '') + ' · stock ' + r.stock,
     map: (r, qty) => ({ itemId: r.id, code: r.code, name: r.name, unit: r.unit,
+      /* v2.30.4 (W13/T13.1 · B§8) — pack conversion scan/pehli-add lines par bhi */
+      conv: Math.max(1, Number(r.conversionFactor || 1)), mode: 'PCS',
       qty: Math.max(0, Number(qty) || 1), cost: Number(r.costPrice) || 0,
       retailPrice: Number(r.retailPrice) || 0, wholesalePrice: Number(r.wholesalePrice) || 0,
       prevPrice: 0, prevDate: '', prevSource: '' }),
@@ -16105,6 +16107,10 @@ function grnForm(po) {
   /* v2.25.0 (req 1) — POS wala hi dedicated Bulk Add modal (multi-select + Add All).
      Inline picker direct-scan mode mein hai (scan → line), bulk ke liye ye modal. */
   const grnMap = (r, qty) => ({ itemId: r.id, code: r.code, name: r.name, unit: r.unit,
+    /* v2.30.4 (W13/T13.1 · B§8) — pack conversion direct GRN lines par bhi (PO v2.9 §8 jaisa):
+       1 pack = N base units (1 BOX = 12 PCS). Line hamesha BASE units mein store hoti hai
+       taake stock/cost/ledger sab ek hi unit par rahen. */
+    conv: Math.max(1, Number(r.conversionFactor || 1)), mode: 'PCS',
     qty: Math.max(0, Number(qty) || 1), cost: Number(r.costPrice) || 0,
     retailPrice: Number(r.retailPrice) || 0, wholesalePrice: Number(r.wholesalePrice) || 0,
     prevPrice: 0, prevDate: '', prevSource: '' });
@@ -16261,14 +16267,24 @@ function grnForm(po) {
     }
 
     lines.forEach((l, i) => {
-      const q = h('input', { type: 'number', class: 'f-input gl-input', value: l.qty, min: 0, step: 1,
+      /* v2.30.4 (W13/T13.1 · B§8) — pack conversion (direct lines only; PO lines
+         base units mein aati hain is liye unhein switch ki zaroorat nahi):
+         BOX mode mein user pack-qty/pack-rate likhta hai → base qty (×conv) aur
+         per-base cost (÷conv) AUTO calculate — "1 BOX = 12 PCS, rate Rs 3,000"
+         → line base qty 12, cost 250, amount Rs 3,000. */
+      l.conv = Math.max(1, Number(l.conv || 1));
+      const canPack = !isPO() && l.conv > 1;
+      const isBox = canPack && l.mode === 'BOX';
+      const q = h('input', { type: 'number', class: 'f-input gl-input',
+        value: isBox ? Math.round((Number(l.qty || 0) / l.conv) * 1000) / 1000 : l.qty, min: 0, step: 1,
         inputmode: 'numeric', 'aria-label': 'Receive qty — ' + (l.name || l.code || 'item'),
-        title: 'Aaj kitni qty receive ho rahi hai' });
-      q.onchange = () => { l.qty = Math.max(0, Number(q.value) || 0); q.value = l.qty; paintLine(l); rt(); };
-      const c = h('input', { type: 'number', class: 'f-input gl-input', value: l.cost, min: 0, step: 0.01,
+        title: isBox ? 'Qty in packs (' + l.conv + ' base each)' : 'Aaj kitni qty receive ho rahi hai' });
+      q.onchange = () => { const v = Math.max(0, Number(q.value) || 0); l.qty = isBox ? Math.round(v * l.conv * 1000) / 1000 : v; q.value = isBox ? Math.round((l.qty / l.conv) * 1000) / 1000 : l.qty; paintLine(l); rt(); };
+      const c = h('input', { type: 'number', class: 'f-input gl-input',
+        value: isBox ? Math.round((Number(l.cost || 0) * l.conv) * 100) / 100 : l.cost, min: 0, step: 0.01,
         inputmode: 'decimal', 'aria-label': 'Unit cost — ' + (l.name || l.code || 'item'),
-        title: 'Unit cost (isi GRN ki rate)' });
-      c.onchange = () => { l.cost = Math.max(0, Number(c.value) || 0); c.value = l.cost; paintLine(l); repaint(l); rt(); };
+        title: isBox ? 'Rate per pack (per-base auto ÷' + l.conv + ')' : 'Unit cost (isi GRN ki rate)' });
+      c.onchange = () => { const v = Math.max(0, Number(c.value) || 0); l.cost = isBox ? Math.round((v / l.conv) * 100) / 100 : v; c.value = isBox ? Math.round((l.cost * l.conv) * 100) / 100 : l.cost; paintLine(l); repaint(l); rt(); };
 
       const shortBadge = shortBadgeFor(l);
       const shortCell = cell('Short', shortBadge);
@@ -16280,6 +16296,10 @@ function grnForm(po) {
       const nameCell = h('div', { class: 'pl-name' },
         h('b', null, l.name || l.code || 'Item'),
         h('span', { class: 'pl-sub' }, subBits.join(' · ')),
+        canPack ? h('button', { class: 'link-btn', type: 'button',
+          title: 'Qty aur rate ko pack units mein dein/base units mein',
+          onclick: () => { l.mode = l.mode === 'BOX' ? 'PCS' : 'BOX'; render(); } },
+          isBox ? '↔ Switch to per-base' : '↔ Buying per pack (auto ×' + l.conv + ')') : '',
         (function () {
           if (l.orderedQty === undefined) return '';
           const shortVal = Number(l.orderedQty || 0) - Number(l.receivedQty || 0) - Number(l.qty || 0);
@@ -20890,6 +20910,41 @@ function partyDetail(type, p) {
               }));
           }},
           { id: 'custom', label: 'Extra fields', icon: '🧩', render: c => renderCustom(c, p, type) },
+          /* v2.30.4 (W13/T13.2 · B§11) — supplier PRICE SIGNALS (real GRN rates only) */
+          ...(type === 'SUPPLIER' ? [{
+            id: 'prices', label: 'Price signals', icon: '📈', render: c => {
+              const host = h('div');
+              c.appendChild(h('div', { class: 'ui2-block', style: { padding: '10px 12px', marginBottom: '10px' } },
+                h('b', { style: { fontSize: '12.5px' } }, '📈 Rate variation — is supplier ki pichhli GRN rates (asli data)'),
+                h('div', { class: 'muted', style: { fontSize: '10.8px', marginTop: '3px' } },
+                  'Item ki aakhri 2 GRN rates ka muqabla · sab se zyada farq pehle')));
+              c.appendChild(host);
+              API.call('purchase.supplierPriceSignals', { supplierId: p.id }, { offlineFallback: () => ({ rows: [] }) })
+                .then(res => {
+                  host.innerHTML = '';
+                  const rows = (res && res.rows) || [];
+                  if (!rows.length) {
+                    host.appendChild(h('div', { class: 'empty' },
+                      'Koi rate-farq nahi mila — (2 GRN rates wale items hi signal dete hain)'));
+                    return;
+                  }
+                  host.appendChild(UI2.table({
+                    screen: 'supprices_' + p.id, rows: rows, height: '44vh', exportName: 'price-signals',
+                    columns: [
+                      { key: 'code', label: 'Code' },
+                      { key: 'name', label: 'Item' },
+                      { key: 'prevRate', label: 'Pichhli rate', num: true, render: r => fmt.money(r.prevRate) },
+                      { key: 'lastRate', label: 'Aakhri rate', num: true, render: r => fmt.money(r.lastRate) },
+                      { key: 'changePct', label: 'Farq', render: r => h('span', { class: 'badge ' + (r.direction === 'up' ? 'err' : 'ok') },
+                        (r.direction === 'up' ? '▲ +' : '▼ ') + r.changePct + '%') },
+                      { key: 'prevDate', label: 'Pehle', render: r => fmt.date(r.prevDate) },
+                      { key: 'lastDate', label: 'Aakhri', render: r => fmt.date(r.lastDate) }
+                    ]
+                  }));
+                })
+                .catch(e => { host.innerHTML = ''; host.appendChild(h('div', { class: 'empty' }, '⚠ ' + (e.message || 'load nahi hua'))); });
+            }
+          }] : []),
           { id: 'actions', label: 'Actions', icon: '⚡', render: c => {
             c.appendChild(h('div', { class: 'f-grid' },
               type === 'CUSTOMER'

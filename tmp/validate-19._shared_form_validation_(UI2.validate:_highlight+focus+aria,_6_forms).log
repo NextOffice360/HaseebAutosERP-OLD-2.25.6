@@ -1,0 +1,18 @@
+[1mPART 1 — source contract[0m
+  ✔ ① UI2.validate engine (highlight + aria-invalid + clear-on-change)
+  ✔ ①b .f-err-mark CSS (Styles.html — dono themes me var(--err))
+  ✔ ② transfer shared validate (msgs barqarar)
+  ✔ ②b GRN + PO + purchase-return shared validate
+  ✔ ②c item + customer/supplier forms shared validate
+  ✔ ②d fail toast UI.notify key se (dedupe — spam nahi)
+[1mPART 2 — rendered DOM[0m
+  ✔ ③ item form: khaali naam → highlight + aria-invalid + focus + NO save
+  ✔ ③b toast "Name zaroori hai"
+  ✔ ③c naam bhara → mark clear-on-change + save chala + drawer band
+  ✔ ④ customer form: khaali naam → highlight + focus + NO save
+  ✔ ④b toast "Name zaroori hai"
+  ✔ ⑤ transfer: khaali → dono-chunein + from highlighted + FOCUS + NO API
+  ✔ ⑤b from==to → engine "alag" error + NO API (N8 dedupe: same-key toast node merge hota hai)
+  ✔ ⑤c structural theek → content rule (Items add karein) + NO API (order qayam)
+
+[1mSUMMARY:[0m 14 pass · 0 fail · [32mGREEN[0m

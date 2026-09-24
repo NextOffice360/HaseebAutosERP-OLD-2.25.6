@@ -1,0 +1,25 @@
+
+[1mPART 1 — backend: supplierStatement poora master bhejta hai[0m
+  ✔ ① statement mein supplier master ke saare fields
+  ✔ ② fresh install ka demo supplier tax/limit/terms ke saath seed hota hai
+  ✔ ③ values supplier record se hi aati hain (guess nahi)
+
+[1mPART 2 — rendered DOM: GRN + PO supplier auto-populate[0m
+  ✔ ⑤ GRN form khula (screen header ke GRN button se)
+  ✔ ⑥ GRN: supplier select karne par info card dikhta hai
+  ✔ ⑦ GRN: contact + address auto-populate
+  ✔ ⑧ GRN: tax / NTN (configured ho to)
+  ✔ ⑨ GRN: payment terms
+  ✔ ⑩ GRN: credit limit + available credit
+  ✔ ⑪ GRN: purane balance rows barqarar (kuch hataya nahi)
+  ✔ ⑫ GRN: card usi supplier ka hai jo select hua
+  ✔ ⑫b GRN: card ka contact backend ke phone se match karta hai
+  ✔ ⑬ GRN: doosra supplier chunne par card TAZA (fresh) hota hai (stale info nahi)
+  ✔ ⑭ GRN: naye supplier ka naam aur purane ka nahi
+  ✔ ⑮ New PO form khula
+  ✔ ⑯ PO par bhi wahi card + wahi fields (GRN ↔ PO behaviour match)
+  ✔ ⑰ PO par bhi credit limit
+  ✔ ⑱ legacy form (GRN/PO) par dirty tracking kaam karta hai
+  ✔ ⑲ zero page errors
+
+[1mSUMMARY:[0m 19 pass · 0 fail · [32mGREEN[0m

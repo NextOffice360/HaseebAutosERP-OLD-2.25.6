@@ -1,0 +1,47 @@
+
+1) ITEMS/INVENTORY blank-page fix — error state
+✔ items: error state RENDER hui (blank nahi, ⚠ card mojood)
+✔ items: asli error message user ko dikhta hai (pehle nigal jata tha)
+✔ items: "Dobara koshish" (retry) button mojood
+✔ items: "Diagnostics copy" button mojood
+✔ items: retry button clickable
+✔ items: retry ke baad table wapas render (data mojood)
+✔ items: retry ke baad error card gaya
+
+2) ITEMS — empty state
+✔ items: 0 rows par empty state ("koi item nahi") render hui
+✔ items: empty state mein wazeh paighaam + action hint
+
+3) INVENTORY — loading / error / retry
+✔ inventory: stock error dikhta hai + retry
+✔ inventory: loading ya error state render hui (blank nahi)
+✔ inventory: retry/refresh ke baad stock table wapas
+
+4) SHOP RULES — band shop ka banner/prompt
+✔ shop band: banner RENDER hua (sticky, visible)
+✔ shop band: banner message Urdu/Roman mein saaf
+✔ shop band: banner se ek click "Open shop" button
+✔ login par shell BLOCK nahi hota — koi modal khud nahi khulta (sirf banner; mojooda screens safe)
+✔ banner par "Setup Wizard" button mojood (pehla din)
+
+5) SHOP_CLOSED server gate — user ko saaf message
+✔ SHOP_CLOSED error propagate hui (chhupi nahi)
+✔ SHOP_CLOSED| prefix hata kar saaf message mila
+✔ error par e.shopClosed flag set (screens isse pehchanti hain)
+✔ shop-closed event par banner khud zaahir hua (block ka paighaam)
+
+6) FIRST-RUN SETUP WIZARD
+✔ wizard modal render hua
+✔ wizard ka title "Setup Wizard"
+✔ wizard mein 4 qadam (business → password → shop open → demo data)
+✔ wizard ke actions: Mukammal karein + Baad mein
+✔ wizard ke inputs mojood (business name, shop, phone, address, password, cash)
+✔ wizard ka close (✕) kaam karta hai — modal band ho gaya
+
+7) DEMO VISIBILITY + page errors
+✔ settings mein data.showDemo + shop.requireOpen mojood (Settings UI se badle ja sakte hain)
+✔ zero page errors
+
+═══════════════════════════════════════════════════════════
+  RELEASE UI   PASS: 29   FAIL: 0
+═══════════════════════════════════════════════════════════

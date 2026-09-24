@@ -1,0 +1,29 @@
+
+[1mPART 1 — static + backend: naam aur sharafat[0m
+  ✔ ① adapter meta.label = "Local Data Assistant"
+  ✔ ①b caps.llm === false (koi LLM nahi — backend khud kehta hai)
+  ✔ ② can/cannot lists mojood (honest docs ka source)
+  ✔ ③ catalog entry ka naam "Mock" nahi, LLM ka dawa nahi karta
+  ✔ ④ provider dropdown ka label adapters se aata hai (optionsFrom)
+  ✔ ④b option VALUES waise hi (purani settings/behaviour safe)
+  ✔ ④c settings ka fallback label saaf hai (koi "MOCK mode" nahi)
+  ✔ ⑤ user-facing "Mock …" string kahin nahi bachi
+  ✔ ⑥ ai.agentConfig providers meta (label + can/cannot) bhejta hai — UI ka naam ek hi source se
+
+[1mPART 2 — rendered DOM: AI screen + settings dropdown[0m
+  ✔ ⑧ AI screen par capability card mojood
+  ✔ ⑧b "Local Data Assistant" naam UI par nazar aata hai
+  ✔ ⑨ user ko kahin "Mock" nazar nahi aata (LLM ka gumaan nahi)
+  ✔ ⑧c card mein dono lists (kar sakta / nahi ya dhyan) bhare hue
+  ✔ ⑧d LLM provider par card saaf LLM-warn karta hai (koi Mock lafz nahi)
+  ✔ ⑧h settings form mein provider select hua (MOCK)
+  ✔ ⑧i settings save ke baad runtime provider = MOCK
+  ✔ ⑧e LOCAL branch: card kehta hai "app ka apna LOCAL rules engine"
+  ✔ ⑧f LOCAL branch: "kar sakta hai / nahi kar sakta" dono lists bhare hue
+  ✔ ⑧g LOCAL branch: honestly "koi LLM nahi" (na Mock, na AI ka dawa)
+  ✔ ⑧j wapas GEMINI (demo default bahal)
+  ✔ ⑩ settings ke dropdown mein MOCK ka label "Local Data Assistant" hai
+  ✔ ⑩b dropdown mein kahin "Mock" nahi
+  ✔ ⑪ zero page errors
+
+[1mSUMMARY:[0m 23 pass · 0 fail · [32mGREEN[0m

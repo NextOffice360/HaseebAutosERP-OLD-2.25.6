@@ -1,0 +1,58 @@
+== Apps Script (.gs) ==
+  ✔ apps-script/AI.gs
+  ✔ apps-script/AI_Adapters.gs
+  ✔ apps-script/AI_ProviderHub.gs
+  ✔ apps-script/Accounting.gs
+  ✔ apps-script/Audit.gs
+  ✔ apps-script/Auth.gs
+  ✔ apps-script/Barcode.gs
+  ✔ apps-script/Bilingual.gs
+  ✔ apps-script/Code.gs
+  ✔ apps-script/Comms.gs
+  ✔ apps-script/Config.gs
+  ✔ apps-script/CustomerDemands.gs
+  ✔ apps-script/DB.gs
+  ✔ apps-script/Diagnose.gs
+  ✔ apps-script/Exports.gs
+  ✔ apps-script/Fields.gs
+  ✔ apps-script/Integration.gs
+  ✔ apps-script/Inventory.gs
+  ✔ apps-script/Items.gs
+  ✔ apps-script/Lang.gs
+  ✔ apps-script/Loyalty.gs
+  ✔ apps-script/Media.gs
+  ✔ apps-script/Migration.gs
+  ✔ apps-script/Notifications.gs
+  ✔ apps-script/OfflineSync.gs
+  ✔ apps-script/Orders.gs
+  ✔ apps-script/Parties.gs
+  ✔ apps-script/PayMethods.gs
+  ✔ apps-script/Payments.gs
+  ✔ apps-script/PriceImport.gs
+  ✔ apps-script/Print.gs
+  ✔ apps-script/Purchase.gs
+  ✔ apps-script/Pwa.gs
+  ✔ apps-script/Pwa_Icons.gs
+  ✔ apps-script/Reorder.gs
+  ✔ apps-script/Reports.gs
+  ✔ apps-script/Reports2.gs
+  ✔ apps-script/Sales.gs
+  ✔ apps-script/Salesman.gs
+  ✔ apps-script/Schema.gs
+  ✔ apps-script/Security.gs
+  ✔ apps-script/Seed_Products.gs
+  ✔ apps-script/Setup.gs
+  ✔ apps-script/Shop.gs
+  ✔ apps-script/Triggers.gs
+  ✔ apps-script/Utils.gs
+  ✔ apps-script/Wallet.gs
+  ✔ apps-script/Warehouse.gs
+== Frontend templates (.html) ==
+  ✔ 36 script blocks, 0 invalid
+
+== Partial files: <style>/<script> leak check ==
+  ✔ 30 partials — koi CSS/JS block ke bahar nahi
+
+== Test harness: login-race lint ==
+  checked 111 tools   (RULE 1 hits: 2, RULE 2 hits: 0)
+  ✔ koi login-race pattern nahi (sab shared harness par)
