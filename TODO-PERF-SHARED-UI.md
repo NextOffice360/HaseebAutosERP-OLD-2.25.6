@@ -172,7 +172,7 @@ audit: `parties.balance` / `parties.customerHistory` PWA ki **3 screens (POS/Fie
 | W4 datetime | pending | A§8 — ek global date/time system |
 | W6 sidebar | partial (v2.25.8 icon-only) | A§10 — partial-collapse + tablet/off-canvas verify |
 | **W9 UX/design-system + doc links** | **help links + confirm sweep + tooltips ✔ (v2.30.3)** — baqi design-system components (filter/pagination/button/dropdown) W13 me | A§11–13, B§3·4·14 |
-| **W10 testing matrix** | pending | A§17 — 17 scenarios (kuch gates mojood) |
+| **W10 testing matrix** | **T1 matrix ✔ (docs/TESTING-MATRIX.md)** — 14/17 gated, 3 gaps (roles/scopes/prod) | A§17 — T2 role×screen gate baqi |
 | **W8 naming/architecture audit** | pending | A§14 |
 | **W11 beginner docs pack** | pending | A§3 — per integration: setup → rollback |
 | **W12 deploy/config/rollback + secret scan** | pending | A§15, B§16 |

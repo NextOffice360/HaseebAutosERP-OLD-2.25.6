@@ -65,8 +65,11 @@ Quota round 2: chrome-libs → .cache/ (snapshot-excluded), zip tracking band �
 ~85MB. **W13 MUKAMMAL (v2.30.4):** T13.3 quick-view + T13.4 reorder/AI-signals verify-complete
 (pinned, gate **20/0**) · T13.5 B§7/B§10/B§12 verify (pos_multi/ai_naming gates) —
 audit-first: 2 asli fixes (T13.1/T13.2), baqi pehle se complete. Quota round 3: chrome-headless-shell
-(259M) + npm cache (22M) hataye — disk 561M, snapshot-effective **~86M**. **Agla: W10 testing
-matrix + evidence → W11/W12 docs parity + secret scan → W8 naming audit.** Carry-overs: live GAS deploy, Zx10 printer drill, label read-back, mobile
+(259M) + npm cache (22M) hataye — disk 561M, snapshot-effective **~86M**. **W10.T1 matrix ✔:** `docs/TESTING-MATRIX.md` — 17 A§17 dimensions → gates/evidence;
+14/17 gated, gaps: roles (W10.T2 gate), scopes (live-GAS carry-over), prod parity (W12).
+Quota round 4: shallow re-clone (.git 55M→4.9M) — snapshot-effective **37MB**; zips tree me
+mehfooz. **Agla: W10.T2 role×screen gate → W11/W12 docs parity + secret scan → W8 naming audit →
+v2.30.5 tag.** Carry-overs: live GAS deploy, Zx10 printer drill, label read-back, mobile
 POS cart→Pay→Esc, App_Orders L186 adoption.
 read-back, mobile POS cart→Pay→Esc, App_Orders L186 adoption.
 **PUSH HO CHUKA (2026-09-24):** GitHub `NextOffice360/HaseebAutosERP-OLD-2.25.6` (public) — remote `main` =
