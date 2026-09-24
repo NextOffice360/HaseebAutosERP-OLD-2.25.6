@@ -83,7 +83,7 @@ elif [ $CHECK -eq 1 ]; then
   say "  ✖ Chromium gayab — chalao: bash tools/bootstrap.sh"
 else
   say "  ▶ Chromium download (puppeteer) — ~150 MB, 1–4 min…"
-  npx --yes puppeteer browsers install chrome >/tmp/chrome-install.log 2>&1 \
+  PUPPETEER_SKIP_CHROME_HEADLESS_SHELL_DOWNLOAD=1 npx --yes puppeteer browsers install chrome >/tmp/chrome-install.log 2>&1 \
     && say "  ✔ download ho gaya" || say "  ⚠ download fail — dekhein /tmp/chrome-install.log (browser gates tab tak red rahenge)"
   CHROME_PATH=$(node -e "try{process.stdout.write(require('puppeteer').executablePath()||'')}catch(e){}" 2>/dev/null)
   [ -n "$CHROME_PATH" ] && [ -x "$CHROME_PATH" ] && say "  ✔ ab mojood: $CHROME_PATH"
