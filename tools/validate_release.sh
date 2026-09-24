@@ -117,6 +117,8 @@ else
   step "21. shared table states (load: skeleton+error+Retry, onLoad, reload)" node tools/test_table_states.js
   # W9 — Madad/help links + shared PWA.confirm + tooltip sweep
   step "22. W9 help links + confirm sweep + tooltips (UI2.help, PWA.confirm)" node tools/test_w9_help.js
+  # W13/T13.1 — B§8 conversion units: GRN direct lines BOX↔PCS auto-calc (PO v2.9 §8 parity)
+  step "23. W13 B§8 conversion units (GRN pack auto-calc, backend base invariant)" node tools/test_w13_modules.js
 fi
 
 echo

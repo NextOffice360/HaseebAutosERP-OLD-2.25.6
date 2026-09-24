@@ -176,7 +176,7 @@ audit: `parties.balance` / `parties.customerHistory` PWA ki **3 screens (POS/Fie
 | **W8 naming/architecture audit** | pending | A§14 |
 | **W11 beginner docs pack** | pending | A§3 — per integration: setup → rollback |
 | **W12 deploy/config/rollback + secret scan** | pending | A§15, B§16 |
-| **W13 module wave (B§5–13)** | pending | invoice/credit logic · quick view · multi-select · conversion units · auto-reorder · AI providers · histories · salesman · dashboards |
+| **W13 module wave (B§5–13)** | **T13.1 conversion units ✔ (v2.30.4)** · baqi slices todo (T13.2 quick-view/histories …) | invoice/credit logic ✔ audit (pehle se) · dashboards rename ✔ (pehle se) · quick view · multi-select polish · price-variation · reorder-real-data |
 | W4 datetime | pending | — |
 | W5 visibility + backend | pending | — |
 | W6 sidebar rail/off-canvas | **T6.1 ✔ T6.2 ✔ T6.3 ✔ T6.4 ✔** | gate `sidebar-states` **52/0 (37s)**
@@ -457,6 +457,25 @@ SONAME links gayab (`libatk-1.0.so.0`) aur har browser gate "Failed to launch th
       hour12 am/pm live · showTime date-only · zero errors). Regression: saveall_pages 16/0 ·
       notifications 11/0 · data_aware 9/0 · forms_shared 14/0 · settings_icons 55 tabs GREEN ·
       supplier_autofill 19/0 · modals_close GREEN · e2e_critical 22/0 · math_logic 21/0.
+### W13 — MODULE WAVE (B§5–13) — audit-first, chhote slices
+- [x] **T13.0 Audit** ✔ (2026-09-25) — B§5 sales/credit/invoice: **pehle se mukammal + gated**
+      (N11 ④: Paid Now=cash, credit-limit full-hisab block `Sales.gs` L235–252, POS2 labels
+      Previous/Closing/Current Due) — koi code change nahi (no false rework). B§13 rename
+      "Insights & Dashboards" **pehle se** (App_Core L2113 + App_Dashboards L545). B§8
+      conversion: PO me tha (v2.9 §8), **GRN direct lines me nahi tha** → T13.1. B§11
+      price-variation signals + B§6 quick-view polish + B§9 reorder-real-data = baqi slices.
+- [x] **T13.1 B§8 Conversion units (GRN)** ✔ (v2.30.4) — grnMap + itemPicker map par
+      `conv/mode` + direct GRN render par **BOX↔PCS switch** (wahi auto-calc jo PO me):
+      BOX mode me user pack-qty/pack-rate likhe → base qty (×conv) + per-base cost (÷conv)
+      AUTO; line hamesha BASE units (stock/cost/ledger ek unit). PO lines base aati hain
+      is liye switch sirf direct lines par (double-conversion guard `!isPO()`). Backend
+      invariant salamat (`saveGRN` Σ qty×cost, conv multiply backend me nahi).
+      **Gate:** `tools/test_w13_modules.js` **10/0** = validate **step 23** (source contract +
+      asli GRN DOM: F100002 conv=12 → 1 pack + Rs 3,000 → amount Rs 3,000 → wapas 12/250).
+      Regression: supplier_autofill 19/0 · w9_help 10/0 · **test_logic 816/0** (legacy gate
+      ab self-contained: requireOpen fix + stale catalogue-count assert — cleanup ke baad
+      fresh-DB par khula tha). ~50 min
+
 - [x] **T7.5 (W9) Help links + confirm sweep + tooltips** ✔ (v2.30.3) —
       **① PWA.confirm (shared):** Pwa_Shell me non-blocking promise dialog (`role=alertdialog`,
       danger variant, Esc/backdrop cancel, 44px taps) — native `confirm()` sandboxed WebView me

@@ -40,6 +40,7 @@ const prod = Setup.seedProducts({ stock: 20 });
 ok('real product catalogue seeds (CSV import)', (prod.created || 0) + (prod.updated || 0) >= 71,
   'created=' + prod.created + ' updated=' + prod.updated);
 
+
 /* ==========================================================================
    v2.5.2 — REAL PRODUCT MASTER (product list2.csv → tools/products.json
    → Seed_Products.gs).  Every assertion below is a loss-check: koi bhi CSV
@@ -69,8 +70,13 @@ itemsAll.forEach(i => { itemsByCode[UU.norm(i.code)] = i; });
 const missingCodes = CATALOG.filter(p => !itemsByCode[UU.norm(p.code)]).map(p => p.code);
 ok('all ' + CATALOG.length + ' CSV products exist as items', missingCodes.length === 0,
   'missing: ' + missingCodes.slice(0, 5).join(', '));
+/* v2.30.4 — count-assert ab catalogue-codes par (seedAll ke demo/sample items
+   bhi Items sheet me hote hain; raw length par purana assert stale ho chuka tha).
+   Intent wahi: har catalogue code EXACTLY ek dafa (duplicate import zero). */
+const _catCodes = new Set(CATALOG.map(p => UU.norm(p.code)));
 ok('item count equals catalogue count (no duplicates created)',
-  itemsAll.length === CATALOG.length, 'items=' + itemsAll.length);
+  itemsAll.filter(i => _catCodes.has(UU.norm(i.code))).length === CATALOG.length,
+  'catalogue-items=' + itemsAll.filter(i => _catCodes.has(UU.norm(i.code))).length + ' total=' + itemsAll.length);
 ok('no duplicate item rows by code',
   new Set(itemsAll.map(i => UU.norm(i.code))).size === itemsAll.length, 'dup rows');
 
@@ -304,6 +310,12 @@ function tryCall(action, payload) {
 
 const LOC = SESSION.defaultLocationId;
 const LOC2 = (sandbox.DB.all('Locations') || []).map(l => l.id).find(id => id !== LOC);
+
+/* v2.30.4 — gate self-contained: fresh DB par shop band hota hai (shop.requireOpen)
+   aur pehle ye gate purane tmp state par depend karta tha (cleanup ke baad jhoota
+   SHOP_CLOSED fail). Shop yahan open NAHI karte (cash math bigad jata) — sirf is
+   gate ke DB par requireOpen off (gate ka apna open/close section qayam rehta hai). */
+try { call('system.settings.save', { values: { 'shop.requireOpen': 'false' } }); } catch (e) { }
 
 /* ------------------------------ test items -------------------------------- */
 section('Item master');

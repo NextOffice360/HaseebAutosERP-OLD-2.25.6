@@ -54,8 +54,12 @@ gates GREEN. **T7.2 Table states ✅ (W9 slice):** `UI2.table` shared `load` →
 **W9 (T7.5)** — PWA.confirm shared (3 raw native confirm khatam), **📖 Madad modal** (sidebar ▸ ❓:
 repo docs/ + official links, `help.docsUrl` setting), tooltip sweep 9/9 icon-btns. Gates:
 `test_w9_help` **10/0** = step 22 · table_states 11/0 = step 21. VERSION = 2.30.3.
-**Agla: W13 module wave (B§5–13) → W10 testing matrix + evidence → W11/W12 docs parity +
-secret scan.** Carry-overs: live GAS deploy, Zx10 printer drill, label read-back, mobile
+**T13.1 B§8 conversion units ✔ (v2.30.4):** GRN direct lines par BOX↔PCS switch
+(wahi auto-calc jo PO me v2.9 §8 me tha) — 1 BOX=12 PCS, rate Rs 3,000 → base 12 × 250 auto;
+line hamesha BASE units. Gate `test_w13_modules.js` **10/0** = step 23. W13 audit: B§5 credit
+logic + B§13 rename pehle se ✔ (gated). Cleanup (2026-09-25): stale zips/shots ~67MB free;
+test_logic legacy gate ab self-contained **816/0**. **Agla: W13 baqi slices (T13.2 quick-view/
+histories/price-variation → reorder-real-data) → W10 testing matrix → W11/W12 docs + secret scan.** Carry-overs: live GAS deploy, Zx10 printer drill, label read-back, mobile
 POS cart→Pay→Esc, App_Orders L186 adoption.
 read-back, mobile POS cart→Pay→Esc, App_Orders L186 adoption.
 **PUSH HO CHUKA (2026-09-24):** GitHub `NextOffice360/HaseebAutosERP-OLD-2.25.6` (public) — remote `main` =
