@@ -70,6 +70,7 @@ if [ "$FAST" = "1" ]; then
   skip "11. partial-save deep audit (partial updates + refresh + DOM)" "--fast"
   skip "12. app-wide SAVE ALL (header button + Retry + nav guard)" "--fast"
   skip "13. AI naming honesty (Local Data Assistant, capability card, no Mock)" "--fast"
+  skip "14. notification service (dedupe, sticky+Retry, progress, settings)" "--fast"
 else
   export LD_LIBRARY_PATH="${LD_LIBRARY_PATH:-/home/user/.chrome-libs/usr/lib/x86_64-linux-gnu}"
   # blank-page error/empty states, shop banner, SHOP_CLOSED gate, setup wizard
@@ -91,6 +92,8 @@ else
   step "12. app-wide SAVE ALL (header button + Retry + nav guard)" node tools/test_saveall_pages.js
   # N7 — AI naming/honesty: "MOCK" ka asli naam Local Data Assistant, LLM ka dawa nahi
   step "13. AI naming honesty (Local Data Assistant, capability card, no Mock)" node tools/test_ai_naming.js
+  # N8 — notification service: dedupe/sticky/retry/progress/settings (rendered DOM)
+  step "14. notification service (dedupe, sticky+Retry, progress, settings)" node tools/test_notifications.js
 fi
 
 echo

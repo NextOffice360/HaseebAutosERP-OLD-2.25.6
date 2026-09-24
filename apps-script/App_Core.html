@@ -834,7 +834,8 @@ const API = {
     const entry = { clientId: uid('off'), action, payload, createdAt: new Date().toISOString() };
     App.state.queue.push(entry);
     Store.set('queue', App.state.queue);
-    UI.toast('Offline: kaam queue mein save ho gaya (' + App.state.queue.length + ')', 'warn');
+    /* v2.30.0 (N8) — key di: tez-tez queue hone par bhi EK hi toast (×N) */
+    UI.notify({ key: 'offline.queue', tone: 'warn', msg: 'Offline: kaam queue mein save ho gaya (' + App.state.queue.length + ')' });
     return Promise.resolve({ queued: true, clientId: entry.clientId });
   },
 
@@ -845,7 +846,10 @@ const API = {
     try {
       const res = await API.call('offline.sync', { queue }, { queueable: false });
       const n = res.succeeded || 0, f = res.failed || 0;
-      if (f) UI.toast(n + ' sync hue, ' + f + ' fail (data mismatch)', 'warn');
+      /* v2.30.0 (N8) — sync fail ab STICKY hai (auto-gayab nahi) + Retry action */
+      if (f) UI.notify({ key: 'sync.fail', tone: 'warn', sticky: true,
+        msg: n + ' sync hue, ' + f + ' fail (data mismatch)',
+        action: { label: 'Dobara sync karein', onClick: () => App.flushQueue() } });
       else if (n) UI.toast(n + ' queued kaam sync ho gaye ✅', 'ok');
       return n;
     } catch (e) {
@@ -1072,51 +1076,179 @@ const UI = {
     return null;
   },
 
-  toast(msg, type, ms) {
-    // Enhanced bilingual toast — English primary, Roman Urdu secondary where applicable, descriptive, GS1/WCAG friendly
-    // Types: ok (success), err (error), warn (warning), info — icons + color + auto-dismiss
-    const icons = {ok:'✅', err:'❌', warn:'⚠', info:'ℹ'};
-    const typeMap = {ok:'ok', err:'err', warn:'warn', info:'info'};
-    const t = typeMap[type]||'';
-    /* v2.25.11 (W2.T3) — error toasts khud-ba-khud classified hote hain:
-       150+ purane call-sites bina chhue behtar guidance dete hain. */
-    let display = (t === 'err' && UI._features && UI._features.err !== false)
-      ? UI.errText(msg) : String(msg||'');
-    const toastAct = (ms && typeof ms === 'object' && ms.action) ? ms.action : null;
-    const toastMs = (ms && typeof ms === 'object') ? ms.ms : ms;
-    // Add Roman Urdu hint for common messages if not already bilingual
+  /* ==========================================================================
+     v2.30.0 (N8) — NOTIFICATION SERVICE (ek shared jagah, duplicate spam nahi)
+     --------------------------------------------------------------------------
+     · UI.notify({key, tone, msg, ms, action, sticky}) → asli service; record
+       milta hai { el, count, close(), update(), done(), fail() }.
+     · tone: ok | err | warn | info | progress (progress = spinner, khud band
+       nahi hota — done()/fail()/close() se).
+     · DEDUPE: ek hi key (ya tone+msg) 1400ms ke andar dobara aaye to NAYA toast
+       stack nahi hota — purane par ×N count barhta hai (sync/scan loops ka spam
+       khatam). Timer reset ho jata hai.
+     · STICKY: persistent failures (koi auto-dismiss nahi) — ✕ ya action se band.
+     · CAP: non-sticky toasts zyada se zyada 4 — purana sab se pehle jata hai;
+       poori screen kabhi toasts se dhakti nahi.
+     · SETTINGS (Settings ▸ Automation & AI ▸ Alerts & notifications):
+         notif.enabled (OFF → sirf err/warn; errors HAMESHA dikhte hain)
+         notif.duration (SHORT/NORMAL/LONG — auto-dismiss ka scale)
+     · UI.toast(msg, type, ms) — 300+ purane call-sites ka back-compat wrapper
+       (ab sab ko dedupe + settings + cap milta hai; output waisa hi).
+     ========================================================================== */
+  _toasts: [],
+  _toastSetting(k, def) {
+    try {
+      const v = (App.state && App.state.settings || {})[k];
+      return (v === undefined || v === '') ? def : v;
+    } catch (e) { return def; }
+  },
+  _toastToneOf(t) { return ({ ok: 'ok', err: 'err', warn: 'warn', info: 'info', progress: 'progress' })[t] || 'info'; },
+  _toastBaseMs(tone, hasAction) {
+    return tone === 'err' ? (hasAction ? 9000 : 4200) : tone === 'warn' ? 3200 : 2800;
+  },
+  _toastMs(tone, msOpt, hasAction) {
+    const scale = { SHORT: 0.65, NORMAL: 1, LONG: 1.6 }[String(UI._toastSetting('notif.duration', 'NORMAL')).toUpperCase()] || 1;
+    const base = msOpt || UI._toastBaseMs(tone, hasAction);
+    return Math.max(600, Math.round(base * scale));
+  },
+  _toastDisplay(raw, tone) {
+    /* v2.25.11 — error toasts classified; aam messages ke Urdu hints */
+    let display = (tone === 'err' && UI._features && UI._features.err !== false)
+      ? UI.errText(raw) : String(raw || '');
     const hints = {
-      'Saved':'Ho gaya — Saved',
-      'Added':'Add ho gaya',
-      'Deleted':'Delete ho gaya',
-      'Updated':'Update ho gaya',
-      'Not found':'Nahi mila — Not found',
-      'Invalid':'Ghalat — Invalid',
-      'Required':'Zaroori — Required',
-      'Offline':'Offline — Internet nahi, queue mein save',
-      'Print':'Print — Printein',
-      'Scanned':'Scan ho gaya'
+      'Saved': 'Ho gaya — Saved', 'Added': 'Add ho gaya', 'Deleted': 'Delete ho gaya',
+      'Updated': 'Update ho gaya', 'Not found': 'Nahi mila — Not found',
+      'Invalid': 'Ghalat — Invalid', 'Required': 'Zaroori — Required',
+      'Offline': 'Offline — Internet nahi, queue mein save',
+      'Print': 'Print — Printein', 'Scanned': 'Scan ho gaya'
     };
-    for(let k in hints){ if(display===k) display = hints[k]+' — '+display; }
-    const el = h('div', { class: 'toast ' + t, role:'status', 'aria-live':'polite', style:'display:flex;gap:8px;align-items:center;max-width:92vw;word-break:break-word' },
-      h('span', {style:'font-size:16px;flex:0 0 auto'}, icons[t]||''),
-      h('span', {style:'flex:1'}, display),
-      toastAct ? h('button', {class:'btn sm ok', style:'flex:0 0 auto;min-height:32px', onclick:()=>{
-        el.remove();
-        try {
-          const rp = toastAct.onClick && toastAct.onClick();
-          if (rp && rp.catch) rp.catch(err => { try { console.warn('[UI.toast] action failed:', (err && err.message) || err); } catch (e) { } });
-        } catch (e) { try { console.warn('[UI.toast] action threw:', (e && e.message) || e); } catch (e2) { } }
-      }}, toastAct.label || 'Retry') : null,
-      h('button', {class:'btn sm ghost', style:'margin-left:auto;flex:0 0 auto;padding:2px 6px;min-height:24px', onclick:()=> el.remove(), 'aria-label':'Close'}, '✕')
+    for (let k in hints) { if (display === k) display = hints[k] + ' — ' + display; }
+    return display;
+  },
+  _toastClose(rec) {
+    if (!rec || rec.closed) return;
+    rec.closed = true;
+    if (rec.timer) { clearTimeout(rec.timer); rec.timer = null; }
+    try { rec.el.remove(); } catch (e) { }
+    const ix = UI._toasts.indexOf(rec); if (ix > -1) UI._toasts.splice(ix, 1);
+  },
+  _toastCap() {
+    const live = UI._toasts.filter(t => !t.closed && !t.sticky && t.tone !== 'progress');
+    while (live.length > 3) UI._toastClose(live.shift());   /* cap 4 */
+  },
+  notify(opts) {
+    opts = opts || {};
+    const tone = UI._toastToneOf(opts.tone);
+    const sticky = !!opts.sticky || tone === 'progress';
+    /* settings gate — errors/warnings HAMESHA (chhupana khatarnak hai) */
+    const enabled = String(UI._toastSetting('notif.enabled', 'true')) !== 'false';
+    if (!enabled && tone !== 'err' && tone !== 'warn') return null;
+    const msg = UI._toastDisplay(opts.msg, tone);
+    const key = opts.key || (tone + '|' + msg);
+    const now = Date.now();
+    /* dedupe — mojooda live toast hi update hota hai */
+    const prev = UI._toasts.filter(t => t.key === key && !t.closed)[0];
+    if (prev && (now - prev.at) < 1400) {
+      prev.count++; prev.at = now;
+      const badge = prev.el.querySelector('.t-count');
+      if (badge) { badge.textContent = '×' + prev.count; badge.style.display = ''; }
+      /* v2.30.0 (N8 fix) — dedupe ke waqt behtar toast JEETA hai: agar naye call
+         ke paas Retry action hai aur purane par nahi, to button purane par lagao
+         (SAVE ALL fail→Retry wale raste mein pehla classified err toast Retry
+         nikaal deta tha). Sticky bhi upgrade hota hai. */
+      if (opts.action && !prev.action) {
+        prev.action = opts.action;
+        const btn = h('button', { class: 'btn sm ok', style: 'flex:0 0 auto;min-height:32px', onclick: () => {
+          UI._toastClose(prev);
+          try {
+            const rp = opts.action.onClick && opts.action.onClick();
+            if (rp && rp.catch) rp.catch(() => { });
+          } catch (e) { }
+        } }, opts.action.label || 'Retry');
+        const closeBtn = prev.el.querySelector('button[aria-label="Close"]');
+        prev.el.insertBefore(btn, closeBtn || null);
+      }
+      if (sticky && !prev.sticky) {
+        prev.sticky = true;
+        prev.el.classList.add('sticky');
+        if (prev.timer) { clearTimeout(prev.timer); prev.timer = null; }
+      }
+      if (!sticky && !prev.sticky && prev.timer) {
+        clearTimeout(prev.timer);
+        prev.timer = setTimeout(() => UI._toastClose(prev), UI._toastMs(prev.tone, null, !!prev.action));
+      }
+      return prev;
+    }
+    const icons = { ok: '✅', err: '❌', warn: '⚠', info: 'ℹ', progress: '' };
+    const spin = tone === 'progress' ? h('span', { class: 't-spin', 'aria-hidden': 'true' }) : null;
+    const act = opts.action || null;
+    const el = h('div', { class: 'toast ' + tone + (sticky ? ' sticky' : ''), role: tone === 'err' ? 'alert' : 'status', 'aria-live': tone === 'err' ? 'assertive' : 'polite', style: 'display:flex;gap:8px;align-items:center;max-width:92vw;word-break:break-word' },
+      spin || h('span', { style: 'font-size:16px;flex:0 0 auto' }, icons[tone] || ''),
+      h('span', { style: 'flex:1' }, msg),
+      h('span', { class: 't-count', style: 'display:none;font-weight:700;font-size:var(--fs-xs);background:rgba(255,255,255,.22);border-radius:99px;padding:1px 7px;flex:0 0 auto' }, '×2'),
+      act ? h('button', {
+        class: 'btn sm ok', style: 'flex:0 0 auto;min-height:32px', onclick: () => {
+          UI._toastClose(rec);
+          try {
+            const rp = act.onClick && act.onClick();
+            if (rp && rp.catch) rp.catch(err => { try { console.warn('[UI.toast] action failed:', (err && err.message) || err); } catch (e) { } });
+          } catch (e) { try { console.warn('[UI.toast] action threw:', (e && e.message) || e); } catch (e2) { } }
+        }
+      }, act.label || 'Retry') : null,
+      h('button', { class: 'btn sm ghost', style: 'margin-left:auto;flex:0 0 auto;padding:2px 6px;min-height:24px', onclick: () => UI._toastClose(rec), 'aria-label': 'Close' }, '✕')
     );
-    el.style.opacity='0'; el.style.transform='translateY(8px)'; el.style.transition='all .25s cubic-bezier(.2,.9,.3,1.2)';
+    el.style.opacity = '0'; el.style.transform = 'translateY(8px)'; el.style.transition = 'all .25s cubic-bezier(.2,.9,.3,1.2)';
     $('#toastRoot').appendChild(el);
-    requestAnimationFrame(()=>{ el.style.opacity='1'; el.style.transform='translateY(0)'; });
-    const delay = toastMs || (t==='err' ? (toastAct ? 9000 : 4200) : t==='warn' ? 3200 : 2800);
-    setTimeout(() => { el.style.opacity = '0'; el.style.transform='translateY(8px)'; setTimeout(() => el.remove(), 320); }, delay);
-    // Also log for debugging
-    try{ console.log('[Toast:'+t+']', display); }catch(e){}
+    requestAnimationFrame(() => { el.style.opacity = '1'; el.style.transform = 'translateY(0)'; });
+    const rec = { el, key, tone, msg, sticky, action: act, count: 1, at: now, closed: false, timer: null };
+    if (!sticky) rec.timer = setTimeout(() => UI._toastClose(rec), UI._toastMs(tone, opts.ms, !!act));
+    UI._toasts.push(rec);
+    UI._toastCap();
+    try { console.log('[Toast:' + tone + ']' + (rec.count > 1 ? ' ×' + rec.count : ''), msg); } catch (e) { }
+    /* handle */
+    rec.close = () => UI._toastClose(rec);
+    rec.update = (o) => {
+      o = o || {};
+      if (o.msg) { rec.msg = UI._toastDisplay(o.msg, o.tone || rec.tone); rec.el.querySelector('span[style*="flex:1"]').textContent = rec.msg; }
+      if (o.tone) { rec.tone = UI._toastToneOf(o.tone); rec.el.className = 'toast ' + rec.tone; }
+      if (o.ms !== undefined) { if (rec.timer) clearTimeout(rec.timer); rec.timer = setTimeout(() => UI._toastClose(rec), UI._toastMs(rec.tone, o.ms, !!rec.action)); }
+      return rec;
+    };
+    rec.done = (okMsg) => {
+      rec.tone = 'ok'; rec.el.className = 'toast ok';
+      const sp = rec.el.querySelector('.t-spin'); if (sp) sp.remove();
+      const ic = rec.el.querySelector('span[style*="font-size:16px"]');
+      if (ic) ic.textContent = '✅'; else rec.el.insertBefore(h('span', { style: 'font-size:16px;flex:0 0 auto' }, '✅'), rec.el.firstChild.nextSibling);
+      if (okMsg) rec.el.querySelector('span[style*="flex:1"]').textContent = UI._toastDisplay(okMsg, 'ok');
+      rec.sticky = false;
+      rec.timer = setTimeout(() => UI._toastClose(rec), UI._toastMs('ok', null, false));
+      return rec;
+    };
+    rec.fail = (errMsg, retry) => {
+      rec.tone = 'err'; rec.el.className = 'toast err';
+      const sp = rec.el.querySelector('.t-spin'); if (sp) sp.remove();
+      const ic = rec.el.querySelector('span[style*="font-size:16px"]');
+      if (ic) ic.textContent = '❌';
+      if (errMsg) rec.el.querySelector('span[style*="flex:1"]').textContent = UI._toastDisplay(errMsg, 'err');
+      if (typeof retry === 'function' && !rec.el.querySelector('.btn.ok')) {
+        rec.el.insertBefore(h('button', { class: 'btn sm ok', style: 'flex:0 0 auto;min-height:32px', onclick: () => { UI._toastClose(rec); try { retry(); } catch (e) { } } }, 'Dobara koshish karein'),
+          rec.el.lastChild);
+      }
+      rec.sticky = false;
+      rec.timer = setTimeout(() => UI._toastClose(rec), UI._toastMs('err', null, true));
+      return rec;
+    };
+    return rec;
+  },
+
+  /* back-compat: purana signature toast(msg, type, ms | {action, ms}) */
+  toast(msg, type, ms) {
+    const o = (ms && typeof ms === 'object') ? ms : {};
+    return UI.notify({
+      tone: type || 'info', msg: msg,
+      ms: (o.ms !== undefined ? o.ms : (typeof ms === 'number' ? ms : undefined)),
+      action: o.action
+    });
   },
 
   /* ------------------------------------------------------------------------

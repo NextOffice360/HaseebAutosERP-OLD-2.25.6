@@ -186,9 +186,26 @@ Settings mein Notifications controls + sab action sites ki adoption **baqi hai**
 - [x] Regression (is build par): saveall_pages 16/0 · save_all 24/0 · partial_save 48/0 · release_flow 62/0 ·
       release_ui 29/0 · modals_close 91/0 · settings icons 23/23 + dup 0 · validate_release --fast GREEN.
 
-### N8 — Notifications / toasts system  🟠
-- [ ] Ek reusable notification service: success/error/warning/info/progress + persistent failures + Retry action.
-- [ ] Duplicate spam nahi; responsive; Settings mein controls.
+### N8 — Notifications / toasts system  ✅ DONE (2026-09-24)
+- [x] **`UI.notify({key, tone, msg, ms, action, sticky})`** — reusable service (App_Core):
+      ok/err/warn/info/**progress** tones; record handle `{close(), update(), done(), fail()}` —
+      progress spinner khud band nahi hota, `done()` → ok auto-dismiss, `fail()` → err + Retry.
+- [x] **Dedupe (spam khatam):** ek hi key/tone+msg 1400ms mein dobara → naya stack NAHI,
+      purane par **×N** count + timer reset. Merge par **behtar toast jeetta hai** — Retry
+      action/sticky purane par upgrade hote hain (SAVE ALL fail→Retry ka rasta isse hi bacha).
+- [x] **Persistent failures + Retry:** `sticky` toast auto-dismiss NAHI hota (offline sync fail ab
+      sticky + "Dobara sync karein" action ke saath); cap: non-sticky max 4 (purana pehle jata hai).
+- [x] **Settings controls:** Settings ▸ Automation & AI ▸ Alerts & notifications — `notif.enabled`
+      (OFF par bhi errors/warnings HAMESHA) + `notif.duration` (SHORT/NORMAL/LONG scale).
+- [x] **Responsive:** ≤600px toasts full-width bottom (92vw cap desktop); spinner/count/sticky styles.
+- [x] **Back-compat:** `UI.toast(msg, type, ms|{action})` + `UI2.notify` + `UI2.retryToast` sab isi
+      service par — 300+ purane call-sites bina chhue dedupe/cap/settings se mehfooz.
+- [x] **Gate `tools/test_notifications.js` — 11 PASS / 0 FAIL** (dedupe ×5 badge, alag messages,
+      sticky + ✕, Retry callback, progress done/fail, cap ≤4, notif OFF → err zinda, duration scale,
+      legacy signature, 0 errors). **Wired as step 14.**
+- [x] Regression: saveall_pages 16/0 · save_all 24/0 · partial_save 48/0 · release_flow 62/0 ·
+      release_ui 29/0 · modals_close 91/0 · pwa_overlays 124/0 · points_flow 40/0 · pos_multi 23/0 ·
+      busy_coverage 13/0 · icons 23/23 · validate_release --fast GREEN.
 
 ### N9 — Background sync / offline  🔴
 - [ ] Online/offline detect, queue, auto-sync on reconnect, backoff retry, duplicate-guard, conflict handling,

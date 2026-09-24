@@ -11,9 +11,15 @@ static+DOM gates wired into `validate_release.sh` steps 7/8; duplicate `icon:` k
 **N7 ✅ ("MOCK" → "Local Data Assistant": naam ek source se — adapter meta + `UI2.provLabel`; honest
 can/cannot capability card AI screen par; koi user-facing "Mock"/LLM-dawa nahi; saath mein UI2 select
 `optionLabels` bug + AI-screen stale-provider bug fix; gate `test_ai_naming.js` **23/0**, wired step 13) ·
+**N8 ✅ (notification service `UI.notify`: dedupe ×N badge, sticky+Retry, progress done/fail,
+cap 4, Settings controls notif.enabled/duration; UI.toast/UI2.notify back-compat; gate
+`test_notifications.js` **11/0**, wired step 14) ·
 **N1/N2-ext ✅** (partial-save backend round: 6 endpoints; gate `tools/test_partial_save.js` **48/0** (stale/concurrent writes samet), wired as step 11)
-Agla: **N3/N8** (action loading/retry + notification service adoption, shared `UI.run` par) → N9 (offline sync) → app-wide data-aware baqi → N11 (math audit) → N12 (final E2E) → T8 docs/ZIP → T10 release.
-**Agla kaam:** **W7** (shared systems app-wide apply: busy/table/forms/settings) → W9/W13 → W10 → W11/W12 · **push pending:** GitHub par bhejne ke liye `PUSH-NOW.html` / `tools/connect_dashboard.py` (port 8034) dekhein
+Agla: **N3** (action loading/retry adoption — shared `UI.run` par baqi pages) → N9 (offline sync) → app-wide data-aware baqi → N11 (math audit) → N12 (final E2E) → T8 docs/ZIP → T10 release.
+**PUSH HO CHUKA (2026-09-24):** GitHub `NextOffice360/HaseebAutosERP-OLD-2.25.6` (public) — remote `main` =
+**3b7b40e** (v2.30.0 commit c07e4fc + git_push.sh stale-info fix 3b7b40e) · 424 files · poora project.
+**Agla kaam:** **N3/N8** (action loading/retry + notification service) → N9 (offline sync) → app-wide data-aware baqi → N11 → N12 → T8 docs/ZIP → T10 release → W7.T2 → T7.3/T7.4 → W9/W13 → W10 → W11/W12
+(Naya session/token ka khaali hone par: user se naya PAT le kar `GITHUB_TOKEN=… bash tools/git_push.sh` — script ab fast-forward/diverged khud sambhalti hai; token KAHIN save nahi hota)
 
 ---
 

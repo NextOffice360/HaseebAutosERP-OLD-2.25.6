@@ -570,7 +570,13 @@ var CONFIG_DEFS = [
         { key: 'alert.receivables', label: 'Receivable over (days)', type: 'number', def: 30 },
         { key: 'alert.pendingPO', label: 'Pending PO over (days)', type: 'number', def: 7 },
         { key: 'alert.cashVariance', label: 'Cash variance alert', type: 'switch', def: true },
-        { key: 'alert.dailySummary', label: 'Daily summary to owner', type: 'switch', def: false }
+        { key: 'alert.dailySummary', label: 'Daily summary to owner', type: 'switch', def: false },
+        /* v2.30.0 (N8) — UI notification (toast) controls. OFF par bhi errors/
+           warnings HAMESHA nazar aate hain (chhupana khatarnak hai). */
+        { key: 'notif.enabled', label: 'UI notifications (toasts) ON', type: 'switch', def: true,
+          help: 'OFF par bhi errors/warnings nazar aate hain — sirf ok/info chhupte hain' },
+        { key: 'notif.duration', label: 'Toast duration', type: 'select', options: 'SHORT,NORMAL,LONG', def: 'NORMAL',
+          help: 'SHORT ~2s · NORMAL ~3s · LONG ~5s (errors zyada der rehte hain)' }
       ]},
       { id: 'reorder', label: 'Purchase reorder rules', icon: 'refresh', fields: [
         { key: 'autoReorderMethod', label: 'Suggestion method', type: 'select', options: 'VELOCITY,REORDER_POINT,MIN_MAX', def: 'VELOCITY' , sec: { title: '① Tareeqa (method)', tone: 'ok' }},
