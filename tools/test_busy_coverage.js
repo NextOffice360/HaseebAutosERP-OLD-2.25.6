@@ -167,6 +167,78 @@ function ok(cond, name, extra) {
   });
   ok(H.busy === false, 'H. data-nobusy: opt-out kaam karta hai', JSON.stringify(H));
 
+  /* ================= v2.30.0 (N3) — row/header actions + fail-retry ================= */
+  /* N3a: UI2.table rowActions — pehle sync wrapper async ko chhupa raha tha
+     (auto-busy lagta hi nahi tha). Ab promise wapas aata hai → busy + dup-block. */
+  const N3a = await page.evaluate(async () => {
+    const wait = ms => new Promise(r => setTimeout(r, ms));
+    let calls = 0;
+    const host = h('div'); document.body.appendChild(host);
+    const t = UI2.table({ screen: 'n3probe', rows: [{ id: 'n1', name: 'N3 probe' }], pageSize: 10,
+      columns: [{ key: 'name', label: 'Name' }],
+      rowActions: r => [{ icon: '⚡', label: 'Async action', onClick: async () => { calls++; await wait(400); } }] });
+    host.appendChild(t.el || t);
+    const btn = host.querySelector('td button');
+    if (!btn) { host.remove(); return { err: 'row action button nahi mila' }; }
+    btn.click();
+    await wait(80);
+    const busy = { cls: btn.classList.contains('is-busy-ab'), dis: btn.disabled };
+    btn.click();                                   /* dup click busy ke doran */
+    await wait(600);
+    const after = { cls: btn.classList.contains('is-busy-ab'), dis: btn.disabled };
+    host.remove();
+    return { busy: busy, after: after, calls: calls };
+  });
+  ok(!N3a.err && N3a.busy.cls && N3a.busy.dis && N3a.calls === 1 && !N3a.after.cls && !N3a.after.dis,
+    'N3a. row async action: busy + dup-block (1 call) + restore', JSON.stringify(N3a));
+
+  /* N3b: header (screen actions) async button — auto-busy wahan bhi */
+  const N3b = await page.evaluate(async () => {
+    const wait = ms => new Promise(r => setTimeout(r, ms));
+    let calls = 0;
+    const b = h('button', { class: 'btn actions-probe', onclick: async () => { calls++; await wait(350); } }, 'Hdr');
+    document.querySelector('.actions') ? document.querySelector('.actions').appendChild(b) : document.body.appendChild(b);
+    b.click();
+    await wait(70);
+    const busy = { cls: b.classList.contains('is-busy-ab'), dis: b.disabled };
+    b.click();
+    await wait(550);
+    const after = { cls: b.classList.contains('is-busy-ab'), dis: b.disabled };
+    b.remove();
+    return { busy: busy, after: after, calls: calls };
+  });
+  ok(N3b.busy.cls && N3b.busy.dis && N3b.calls === 1 && !N3b.after.dis,
+    'N3b. header async action: busy + dup-block + restore', JSON.stringify(N3b));
+
+  /* N3c: UNCAUGHT async rejection — pehle khamoosh tha, ab UI.fail (toast+Retry),
+     button phansa nahi (restore), aur Retry dobara chalata hai. */
+  const N3c = await page.evaluate(async () => {
+    const wait = ms => new Promise(r => setTimeout(r, ms));
+    let calls = 0, willFail = true;
+    window.__n3origFail = UI._features.err;
+    const b = h('button', { class: 'btn n3-fail', onclick: async () => {
+      calls++;
+      if (willFail) throw new Error('N3 gate: failed to fetch (test rejection)');
+      await wait(50);
+    } }, 'Fail probe');
+    document.body.appendChild(b);
+    b.click();
+    await wait(600);
+    const toast = Array.from(document.querySelectorAll('#toastRoot .toast')).find(x => (x.textContent || '').indexOf('failed to fetch') > -1 || (x.textContent || '').indexOf('Jawab nahi aaya') > -1);
+    const retryBtn = toast && Array.from(toast.querySelectorAll('button')).find(x => /koshish|retry/i.test(x.textContent || ''));
+    const restoredAfterFail = !b.disabled && !b.classList.contains('is-busy-ab');
+    willFail = false;
+    if (retryBtn) retryBtn.click();
+    await wait(500);
+    const callsAfterRetry = calls;
+    UI._toasts && UI._toasts.slice().forEach(t => t.close && t.close());
+    b.remove();
+    UI._features.err = window.__n3origFail;
+    return { toastThere: !!toast, retryBtn: !!retryBtn, restored: restoredAfterFail, calls: calls, callsAfterRetry: callsAfterRetry };
+  });
+  ok(N3c.toastThere && N3c.restored, 'N3c. uncaught rejection → error toast + button restored (phansa nahi)', JSON.stringify(N3c));
+  ok(N3c.retryBtn && N3c.callsAfterRetry === 2, 'N3c-b. Retry se wahi action dobara chala', JSON.stringify(N3c));
+
   /* ---------- I. stats + errors ---------- */
   const st = await page.evaluate(() => (window.UI && UI.autoBusyStats) ? UI.autoBusyStats() : null);
   ok(!!st && st.attached > 0 && st.done > 0, 'auto-busy stats: attach/done counters chal rahe hain', JSON.stringify(st));

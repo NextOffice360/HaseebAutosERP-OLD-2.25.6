@@ -1382,7 +1382,19 @@ const UI = {
         const tok = UI.autoBusyToken(el);
         if (tok) {
           const rel = () => UI.autoBusyRelease(tok);
-          out.then(rel, rel);
+          out.then(rel, (err) => {
+            rel();
+            /* v2.30.0 (N3) — uncaught async rejection ab KHAMOOSH nahi rehta:
+               error action ke paas (toast) + Retry (jab jaiz ho) — aur button
+               upar rel() se pehle hi wapas aa chuka hota hai (phansa nahi).
+               Jo handlers apni error khud sambhalte hain (try/catch + toast),
+               un se koi double toast nahi hota — sirf BE-CADE rejections yahan aate hain. */
+            try {
+              if (UI._features && UI._features.err !== false) {
+                UI.fail(err, { retry: () => { try { fn.call(el, ev); } catch (e2) { } } });
+              }
+            } catch (e) { }
+          });
         }
       }
       return out;

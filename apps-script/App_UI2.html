@@ -1159,7 +1159,10 @@ UI2.table = function (cfg) {
           class: 'btn sm ' + (a.cls || 'ghost'),
           // icon-only buttons ko hamesha tooltip mile (label na ho to icon se)
           title: actionTitle(a), 'aria-label': actionTitle(a),
-          onclick: e => { e.stopPropagation(); a.onClick(r); }
+          /* v2.30.0 (N3) — promise WAPAS karo: pehle sync wrapper async handler ko
+             chhupa leta tha, is liye row-actions par auto-busy + dup-block + fail
+             feedback lagta hi nahi tha. Ab engine promise dekh kar busy lagata hai. */
+          onclick: e => { e.stopPropagation(); return a.onClick(r); }
         }, a.icon || a.label || '·')));
         row.appendChild(td);
       }

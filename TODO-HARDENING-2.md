@@ -119,12 +119,23 @@ Settings mein Notifications controls + sab action sites ki adoption **baqi hai**
       Asli backend save · refresh = wahi value · do sub-tabs (stash) ek save mein · fail → dirty baqi + Retry ·
       retry se recover · read-only page par koi button nahi · nav guard + Cancel · 3 click = 1 request · 0 errors).
 
-### N3 — Action buttons: loader / retry / feedback  🟠
-- [ ] **Saath hi:** sab save/update/delete/submit/action logic ka audit — missing functions, ghalat state handling,
-      race conditions, defaults, data-mapping errors, duplicate requests, permanent-disable after failure.
-- [ ] Ek shared action-state utility (idle → loading → success/error → retry) jo sab buttons par lage
-      (maujooda `UI.run` + auto-busy isi ka base hai). Failure par button **phansa na rahe**, toast + Retry.
-- [ ] Gate: har action par progress, duplicate block, failure ke baad recoverable.
+### N3 — Action buttons: loader / retry / feedback  ✅ DONE (2026-09-24)
+- [x] **Shared action-state utility maujood tha (`UI.run` + W7.T1 auto-busy engine)** — N3 ne uski
+      **COVERAGE ke 2 asli holes** band kiye (page-specific patch nahi, engine-level):
+      ① **UI2.table rowActions**: sync wrapper (`e => { stopPropagation; a.onClick(r) }`) async
+      handler ko chhupa leta tha → row actions par busy/dup-block/fail-feedback lagta hi nahi tha.
+      Ab promise wapas aata hai → engine busy + dup-block + safety sab lagata hai.
+      ② **Uncaught async rejection khamoosh tha**: auto-busy wrapper ab rejection par `UI.fail`
+      (classified toast + jaiz ho to Retry) deta hai — jo handler apna error khud sambhalte,
+      unka double toast NAHI hota (sirf be-cade rejections).
+- [x] **Permanent-disable audit**: saare `disabled = true` sites checked — sab finally/catch/re-render
+      se restore karte hain (AI send ✔ AIConfig models/hub/chat ✔ login re-render ✔ wallet finally ✔);
+      engine safety 120s + UI.run settle(false) bhi phansne nahi dete.
+- [x] **Gate `test_busy_coverage.js` ab 17 PASS / 0 FAIL** — purane A–I + naya N3a (row async action:
+      busy + dup-block 1 call + restore) · N3b (header async action: wahi) · N3c (uncaught rejection →
+      error toast + button restored) · N3c-b (Retry se wahi action dobara — calls 2).
+- [x] Regression: release_flow 62/0 · release_ui 29/0 · saveall_pages 16/0 · report_actions 12/0 ·
+      notifications 11/0 · modals_close 91/0 · pwa_overlays 124/0 · pos_multi 23/0.
 
 ### N6 — Settings icons (23 groups, poora list)  ✅ DONE (2026-09-24)
 - [x] **Duplicate `icon:` keys tidy (2026-09-24):** `Config.gs` ki 13 lines par do-do `icon:` thay (emoji + naam) —

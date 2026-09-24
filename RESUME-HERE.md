@@ -15,7 +15,9 @@ can/cannot capability card AI screen par; koi user-facing "Mock"/LLM-dawa nahi; 
 cap 4, Settings controls notif.enabled/duration; UI.toast/UI2.notify back-compat; gate
 `test_notifications.js` **11/0**, wired step 14) ·
 **N1/N2-ext ✅** (partial-save backend round: 6 endpoints; gate `tools/test_partial_save.js` **48/0** (stale/concurrent writes samet), wired as step 11)
-Agla: **N3** (action loading/retry adoption — shared `UI.run` par baqi pages) → N9 (offline sync) → app-wide data-aware baqi → N11 (math audit) → N12 (final E2E) → T8 docs/ZIP → T10 release.
+**N3 ✅ (auto-busy engine ki 2 coverage holes band: rowActions promise passthrough + uncaught
+rejection → UI.fail+Retry; permanent-disable audit sab safe; gate `test_busy_coverage.js` **17/0**)**
+Agla: **N9** (offline/background sync + status + Settings controls) → app-wide data-aware baqi → N11 (math audit) → N12 (final E2E) → T8 docs/ZIP → T10 release.
 **PUSH HO CHUKA (2026-09-24):** GitHub `NextOffice360/HaseebAutosERP-OLD-2.25.6` (public) — remote `main` =
 **3b7b40e** (v2.30.0 commit c07e4fc + git_push.sh stale-info fix 3b7b40e) · 424 files · poora project.
 **Agla kaam:** **N3/N8** (action loading/retry + notification service) → N9 (offline sync) → app-wide data-aware baqi → N11 → N12 → T8 docs/ZIP → T10 release → W7.T2 → T7.3/T7.4 → W9/W13 → W10 → W11/W12
