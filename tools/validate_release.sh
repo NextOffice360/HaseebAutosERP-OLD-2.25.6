@@ -123,6 +123,8 @@ else
   step "24. W10 roles matrix (backend-enforced deny/allow + nav filter)" node tools/test_roles_matrix.js
   # W12 — secret scan (A§15): token patterns + literal assignments, git-tracked files
   step "25. W12 secret scan (no hardcoded secrets, PropertiesService usool)" node tools/audit_secrets.js
+  # W8 — naming/architecture consistency (A§14): screens/nav/routes/namespaces pins
+  step "26. W8 naming & architecture (screen ids, routes, namespaces, conventions)" node tools/audit_naming.js
 fi
 
 echo
