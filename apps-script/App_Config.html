@@ -1,0 +1,1178 @@
+<script>
+/* ==========================================================================
+   HASEEB AUTOS — SETTINGS & CONFIGURATION
+   Har label / module / field / tab / price-tier / workflow / permission /
+   print-template / number-format yahan se change hota hai — kuch bhi hardcoded
+   nahi. Tabs → sub-tabs → sub-sub-tabs (Config.defs() schema se auto-build).
+   ========================================================================== */
+(function () {
+'use strict';
+
+let DEFS = [];
+function loadDefs() {
+  return API.call('config.defs', {}, { offlineFallback: () => [] })
+    .then(d => { DEFS = d || []; window.DEFS = DEFS; return DEFS; })
+    .catch(() => (DEFS = [], window.DEFS = DEFS));
+}
+
+App.registerScreen('settings', {
+  title: 'Settings & Configuration', icon: '⚙', perm: 'settings.manage',
+  subtitle: 'App ka har feature yahan se control hota hai',
+  actions() {
+    return [
+      { label: 'Save all', icon: '💾', cls: 'ok', onClick: () => UI.toast('Har tab par apna Save button hai', 'warn') },
+      { label: 'Reload', icon: '↻', onClick: () => { loadDefs().then(() => App.refresh()); API.pullSettings(); } }
+    ];
+  },
+  render(body) {
+    const host = h('div'); body.appendChild(host);
+    loadDefs().then(() => {
+      const tabs = [
+        /* labels/icons Config.defs() se aate hain — yahan kuch hardcode nahi */
+        /* v2.6 §10/§11/§13 — 'pwa' group: mobile apps yahan se on/off */
+        ...['business', 'pos', 'pwa', 'inventory', 'trade', 'modules', 'automation', 'security', 'backend'].map(id =>
+          ({ id: id, label: defLabel(id), icon: defIcon(id), render: c => renderGroup(c, id) })),
+        { id: 'customFields', label: 'Custom fields', icon: '🧩', render: renderCustomFields },
+        { id: 'menu', label: 'Menu builder', icon: '🗂', render: renderMenu },
+        { id: 'templates', label: 'Print templates', icon: '🖨', render: renderTemplates },
+        { id: 'lists', label: 'Lists & catalogs', icon: '📋', render: renderLists },
+        { id: 'data', label: 'Data & tools', icon: '🛠', render: renderData }
+      ];
+      UI2.tabs(host, { level: 1, active: App.params && App.params.tab, tabs,
+        onChange: (id) => { if (id === 'business') setTimeout(businessLogoBar, 60); } });
+      /* v2.6 QA — Business Profile par logo upload ka block (pehle sirf URL paste tha) */
+      setTimeout(() => { if ((App.params && App.params.tab) === 'business') businessLogoBar(); }, 80);
+    });
+  }
+});
+
+/**
+ * Config.defs() se group label (settings-driven, fallback sirf defs na milne par).
+ *
+ * BUG (v2.6 QA): ye `window.DEFS` parh rahe thay, jabke `let DEFS = []` ek
+ * module-local variable hai — `window.DEFS` kabhi set hi nahi hota. Nateeja:
+ * Settings ke 8 tabs hamesha fallback dikhate thay  →  "⚙business" (lowercase,
+ * ghalat icon) "🏪 Business Profile" ki jagah. Ab dono jagah sync hain.
+ */
+function _defs() {
+  if (Array.isArray(window.DEFS) && window.DEFS.length) return window.DEFS;
+  if (typeof DEFS !== 'undefined' && Array.isArray(DEFS) && DEFS.length) return DEFS;
+  return [];
+}
+function defLabel(id, fallback) {
+  const g = _defs().find(x => x.id === id);
+  return (g && g.label) || fallback || _titleCase(id);
+}
+function defIcon(id, fallback) {
+  const g = _defs().find(x => x.id === id);
+  return (g && g.icon) || fallback || '⚙';
+}
+/** Fallback ke liye bhi kam se kam saaf-shuda label: 'customFields' → 'Custom Fields' */
+function _titleCase(id) {
+  return String(id || '').replace(/([A-Z])/g, ' $1')
+    .replace(/^./, c => c.toUpperCase()).trim();
+}
+
+
+/* ============================================================================
+   LOGO UPLOAD (v2.6 QA) — "shop ka Logo add karnay ki bhi option nahi hay"
+   ----------------------------------------------------------------------------
+   Pehle sirf `logoUrl` text field tha (URL paste karna parta tha).
+   Ab: 📁 File chunein ya 📷 Camera — Drive par save, URL setting mein.
+   ========================================================================== */
+function businessLogoBar() {
+  try {
+    const host = document.querySelector('#view .tabbody, #view');
+    if (!host || host.querySelector('[data-logo-bar]')) return;
+    const st = App.state.settings || {};
+    const cur = st.logoUrl || '';
+    const status = h('div', { class: 'hint', style: { minHeight: '18px' } }, '');
+    const pick = h('input', { type: 'file', accept: 'image/*', style: { display: 'none' } });
+    const cam = h('input', { type: 'file', accept: 'image/*', capture: 'environment', style: { display: 'none' } });
+
+    async function go(file) {
+      status.textContent = '⏳ Upload ho raha hai…';
+      try {
+        const dataUrl = await _shrinkImage(file, 512);      /* logo chhota hi kafi hai */
+        const r = await API.call('media.uploadLogo', { data: dataUrl, mime: 'image/jpeg' });
+        App.state.settings.logoUrl = r.url;
+        status.textContent = '✅ Logo lag gaya';
+        UI.toast('Logo upload ho gaya ✅', 'ok');
+        const img = host.querySelector('[data-logo-img]');
+        if (img) img.src = r.url;
+      } catch (e) {
+        status.textContent = '❌ ' + (e.message || 'Upload fail');
+        UI.toast(e.message || 'Upload fail', 'err');
+      }
+      pick.value = ''; cam.value = '';
+    }
+    pick.onchange = () => pick.files && pick.files[0] && go(pick.files[0]);
+    cam.onchange = () => cam.files && cam.files[0] && go(cam.files[0]);
+
+    const bar = h('div', { 'data-logo-bar': '1', class: 'ui2-block', style: { marginBottom: '12px' } },
+      UI2.section('🏪 Shop logo (receipt + login screen)', null, 'fin'),
+      h('div', { style: { display: 'flex', gap: '14px', alignItems: 'center', flexWrap: 'wrap' } },
+        cur
+          ? h('img', { 'data-logo-img': '1', src: cur, alt: 'Shop logo', loading: 'lazy', decoding: 'async',
+              style: { width: '76px', height: '76px', objectFit: 'contain', borderRadius: '12px',
+                       border: '1px solid var(--line)', background: 'var(--panel-2)', padding: '5px' } })
+          : h('div', { class: 'empty', style: { minWidth: '76px', textAlign: 'center' } }, '🖼 Koi logo nahi'),
+        h('div', { class: 'row', style: { gap: '8px', flexWrap: 'wrap' } },
+          h('button', { class: 'btn sm sec', onclick: () => pick.click() }, '📁 File se logo'),
+          h('button', { class: 'btn sm sec', onclick: () => cam.click() }, '📷 Camera se'),
+          pick, cam),
+        status));
+    host.insertBefore(bar, host.firstChild);
+  } catch (e) { /* Settings mein logo block na lag sake to baqi UI chalte rahe */ }
+}
+
+
+/* fields → aik ya zyada UI2.form, har "sec" ke liye colour-coded block.
+   `sec` na ho to bilkul purana (pehle jaisa) behaviour — koi farq nahi. */
+function buildSections(fields) {
+  if (!fields.some(x => x.sec)) return UI2.form({ fields: fields, values: {} });
+
+  /* lagataar ek hi section wali fields ko aik chunk me joro */
+  const chunks = [];
+  fields.forEach(x => {
+    const t = x.sec ? (x.sec.title || '') : '';
+    const tone = x.sec ? (x.sec.tone || 'info') : '';
+    let c = chunks[chunks.length - 1];
+    if (!c || c.title !== t) { c = { title: t, tone: tone, fields: [] }; chunks.push(c); }
+    c.fields.push(x);
+  });
+
+  const parts = chunks.map(ch => {
+    const form = UI2.form({ fields: ch.fields, values: {} });
+    const box = h('div', { class: 'ui2-block' });
+    /* v2.6 QA — section heading English + Urdu tooltip (Bilingual.gs) */
+    if (ch.title) box.appendChild(UI2.section(ch.title, null, ch.tone,
+      { urSec: (ch.fields[0] && ch.fields[0].sec && ch.fields[0].sec.urSec) || '' }));
+    box.appendChild(form.el);
+    return { box: box, form: form };
+  });
+
+  const el = h('div', { class: 'cfg-secs' });
+  parts.forEach(pn => el.appendChild(pn.box));
+  return {
+    el: el,
+    values: () => parts.reduce((acc, pn) => Object.assign(acc, pn.form.values()), {})
+  };
+}
+
+/* ============================ CONFIG GROUPS ================================ */
+function renderGroup(c, groupId) {
+  const g = DEFS.find(x => x.id === groupId);
+  if (!g) { c.appendChild(h('div', { class: 'empty' }, 'Schema load nahi hua — backend deploy check karein')); return; }
+  const host = h('div'); c.appendChild(host);
+  if (groupId === 'backend') {
+    // top diagnostics/status card for Backend & Integrations
+    try { c.insertBefore(backendDiagnosticsCard(), c.firstChild); } catch(e) {}
+  }
+  UI2.tabs(host, {
+    level: 2,
+    tabs: g.sub.map(s => ({
+      id: s.id, label: s.label, icon: s.icon || '▸',
+      render: cc => renderSub(cc, groupId, s)
+    }))
+  });
+  if (groupId === 'backend') {
+    // bottom helper for static/self-hosted local URL (not sheet-stored)
+    try {
+      const extra = backendLocalCard();
+      // after tabs have rendered, append after host
+      setTimeout(()=>{ if(extra && extra.parentNode!==c) c.appendChild(extra); }, 400);
+    } catch(e) {}
+  }
+}
+
+function renderSub(c, groupId, sub) {
+  const current = App.state.settings || {};
+  const fields = sub.fields.map(f => Object.assign({}, f, { value: current[f.key] !== undefined ? current[f.key] : f.def }));
+
+  /* ======================================================================
+     v2.6 QA — SETTINGS SECTIONS (structure / separator / colour-coded blocks)
+     ----------------------------------------------------------------------
+     Masla: bade sub-tabs (masalan "AI assistant") me 20+ fields aik flat
+     lambi list thi — koi heading, koi separator, koi rang nahi. User ne
+     kaha: "properly structured nahi".
+
+     Hal (generic, sab sub-tabs ke liye): field definition me `sec` do —
+       { key:'aiEnabled', sec:{title:'Agent', tone:'info'} }
+     Rendering khud unhen colour-coded section blocks me baant degi.
+     Jis field par `sec` nahi, woh pehle se mutabiq block me rahegi.
+     ====================================================================== */
+  const f = buildSections(fields);
+
+  const wrap = h('div', { class: 'cfg-sub' });
+  wrap.appendChild(f.el);
+
+  /* ---- as-you-type filter: bade settings tabs mein field dhoondhna ---- */
+  if (fields.length > 5) {
+    const search = h('input', { class: 'f-input', type: 'search',
+      placeholder: '🔍 ' + sub.label + ' mein setting dhoondhein…', 'aria-label': 'Search settings' });
+    const hitCount = h('span', { class: 'pm-count' }, '');
+    wrap.insertBefore(h('div', { class: 'cfg-search' }, search, hitCount), wrap.firstChild);
+    const rowOf = el => el.closest('.field, .f-row, .form-row') || el;
+    search.oninput = () => {
+      const q = search.value.trim().toLowerCase();
+      let n = 0;
+      /* v2.6: ab fields section blocks ke andar hain — poori gahrai se dhoondo */
+      Array.from(f.el.querySelectorAll('.field, .f-row, .form-row, .full')).forEach(child => {
+        const isField = child.classList && (child.classList.contains('field') || child.classList.contains('f-row') ||
+          child.classList.contains('form-row') || child.classList.contains('full'));
+        if (!isField) return;
+        const txt = (child.textContent || '').toLowerCase();
+        const on = !q || txt.indexOf(q) > -1;
+        child.style.display = on ? '' : 'none';
+        child.classList.toggle('cfg-hit', !!q && on);
+        if (on) n++;
+      });
+      hitCount.textContent = q ? n + ' / ' + fields.length + ' settings' : '';
+    };
+  }
+
+  /* ---- dirty tracking ---- */
+  const dirty = h('span', { class: 'cfg-dirty', style: { display: 'none' } }, 'Unsaved changes');
+  f.el.addEventListener('input', () => { dirty.style.display = ''; }, true);
+  f.el.addEventListener('change', () => { dirty.style.display = ''; }, true);
+
+  /* v2.25.9 W2.T2 — manual 'Saving…' + disabled hack hata diya: busy/dup-block
+     shared UI.run deta hai. */
+  const saveBtn = h('button', { class: 'btn ok', onclick: () => UI.run(saveBtn, async () => {
+      try { await API.call('config.save', { values: f.values() });
+        UI.toast('Saved ✅', 'ok'); dirty.style.display = 'none';
+        await Promise.all([API.pullSettings(), loadDefs()]);
+        applyTheme(); App.refresh();
+      } catch (e) { UI.toast(e.message, 'err'); }
+  }, { write: true, writeLabel: 'settings save' }) }, '💾 Save ' + sub.label);
+
+  c.appendChild(wrap);
+  c.appendChild(h('div', { class: 'cfg-bar' },
+    saveBtn,
+    h('button', { class: 'btn sec', onclick: () => UI2.confirm('Is tab ke defaults restore karein?', async () => {
+      await API.call('config.resetGroup', { group: groupId });
+      await API.pullSettings(); UI.toast('Defaults restored', 'ok'); App.refresh();
+    }, true) }, '↺ Reset tab'),
+    h('button', { class: 'btn ghost', onclick: () => {
+      const box = h('pre', { style: { fontSize: 'var(--fs-xs)', whiteSpace: 'pre-wrap' } },
+        JSON.stringify(sub.fields.map(x => ({ key: x.key, label: x.label, type: x.type })), null, 1));
+      UI2.modal({ title: 'Keys — ' + sub.label, size: 'sm', body: box, actions: [{ label: 'Close', onClick: cc => cc() }] });
+    /* "{ }" emoji nahi hai (ui-polish gate buttons mein emoji mana karta hai) */
+    } }, '{ } Keys'),
+    /* v2.8.5 — status + count ab aik .cfg-meta group mein: daayein taraf,
+       actions se alag. Pehle ye khule text ki tarah bikhre hue the
+       ("Save AI assistant↺ Reset tab{ } Keys 24 settings"). */
+    h('span', { class: 'cfg-meta' }, dirty,
+      h('span', { class: 'pm-count' }, fields.length + ' settings'))));
+
+
+  if (groupId === 'modules' && sub.id === 'modules') {
+    c.appendChild(UI2.section('Module enable/disable matrix'));
+    c.appendChild(modulesMatrix());
+  }
+  if (groupId === 'automation' && sub.id === 'jobs') {
+    c.appendChild(UI2.section('Scheduler — abhi kya installed hai'));
+    c.appendChild(jobsPanel());
+  }
+  /* v2.3: comms / import / migration quick actions */
+  if (groupId === 'automation' && sub.id === 'comms') {
+    c.appendChild(UI2.section('Comms quick actions',
+      [h('button', { class: 'btn sm', onclick: () => window.Share && Share.outbox() }, '📤 Outbox / bheje gaye messages'),
+       h('button', { class: 'btn sm sec', onclick: () => window.Migration2 && Migration2.open() }, '☁ Migration')]));
+    c.appendChild(commsStatusCard());
+  }
+  if (groupId === 'automation' && sub.id === 'priceimport') {
+    c.appendChild(UI2.section('Supplier price list',
+      [h('button', { class: 'btn sm', onclick: () => window.PriceList && PriceList.open() }, '📥 Import price list'),
+       h('button', { class: 'btn sm sec', onclick: () => priceImportHistory() }, '🗂 Import history')]));
+  }
+  if (groupId === 'automation' && sub.id === 'migration') {
+    c.appendChild(UI2.section('Sheets → Firebase',
+      [h('button', { class: 'btn sm', onclick: () => window.Migration2 && Migration2.open() }, '☁ Migration dashboard'),
+       h('button', { class: 'btn sm sec', onclick: async () => {
+         const p = await API.call('migration.plan');
+         const md = window.Migration2 ? Migration2.markdown(p) : JSON.stringify(p, null, 2);
+         navigator.clipboard && navigator.clipboard.writeText(md); UI.toast('Plan copy ho gaya', 'ok');
+       } }, '📋 Copy plan (MD)')]));
+    c.appendChild(migrationStatusCard());
+  }
+  if (groupId === 'automation' && sub.id === 'ai') {
+    /* v2.10 — AI ka apna tab; yahan sirf bridge (Test + link) */
+    c.appendChild(UI2.section('AI agent',
+      [h('button', { class: 'btn sm', onclick: () => window.AIConfig && AIConfig.openModal() }, 'Open AI Agent tab'),
+       h('button', { class: 'btn sm sec', onclick: async () => {
+         const r = await API.call('ai.test', {}, { offlineFallback: () => ({ ok: false, message: 'offline' }) });
+         UI.toast((r.ok ? '' : 'Warning: ') + (r.message || ''), r.ok ? 'ok' : 'warn', 3200);
+       } }, 'Test connection')]));
+    if (window.AIConfig) c.appendChild(AIConfig.panel(h('div')));
+  }
+  if (groupId === 'trade' && sub.id === 'loyalty') {
+    c.appendChild(UI2.section('Loyalty',
+      [h('button', { class: 'btn sm sec', onclick: () => loyaltyTopCustomers() }, '⭐ Top customers by points')]));
+  }
+}
+
+/* ==================== v2.3 helper cards (Comms / Migration) =============== */
+function commsStatusCard() {
+  const host = h('div', { class: 'card' }, h('div', { class: 'card-body tight' }, 'Load ho raha hai…'));
+  (async () => {
+    let p = {};
+    try { p = await API.call('comms.providers', {}, { offlineFallback: () => ({}) }) || {}; } catch (e) { }
+    const wa = p.whatsapp || {}, sms = p.sms || {}, em = p.email || {};
+    host.querySelector('.card-body').innerHTML = '';
+    host.querySelector('.card-body').append(
+      h('div', { class: 'list-item' }, h('div', { class: 'li-main' }, h('b', null, 'WhatsApp'),
+        h('span', null, (wa.provider || 'LINK') + ' · ' + (wa.ready ? 'ready' : 'config missing')))),
+      h('div', { class: 'list-item' }, h('div', { class: 'li-main' }, h('b', null, 'SMS'),
+        h('span', null, (sms.provider || 'NONE') + ' · ' + (sms.ready ? 'ready' : 'off')))),
+      h('div', { class: 'list-item' }, h('div', { class: 'li-main' }, h('b', null, 'Email'),
+        h('span', null, (em.provider || 'APPS_SCRIPT') + ' · ready'))),
+      h('div', { class: 'sub', style: { padding: '6px 8px', fontSize: 'var(--fs-xs)' } },
+        'Free mode (LINK): koi API key nahi — wa.me link se WhatsApp khul jata hai. ' +
+        'Automated sending chahiye to META Cloud API ya Twilio keys daalein.'));
+  })();
+  return host;
+}
+
+function migrationStatusCard() {
+  const host = h('div', { class: 'card' }, h('div', { class: 'card-body tight' }, 'Load ho raha hai…'));
+  (async () => {
+    let a = {};
+    try { a = await API.call('migration.assess', {}, { offlineFallback: () => ({}) }) || {}; } catch (e) { }
+    const t = a.totals || {};
+    host.querySelector('.card-body').innerHTML = '';
+    host.querySelector('.card-body').append(
+      h('div', { class: 'list-item' }, h('div', { class: 'li-main' }, h('b', null, 'Size: ' + (a.tier || 'SHEETS_OK').replace('_', ' ')),
+        h('span', null, (t.rows || 0).toLocaleString() + ' rows · ' + (t.cells || 0).toLocaleString() + ' cells · ' + (t.mb || 0) + ' MB'))),
+      h('div', { class: 'list-item' }, h('div', { class: 'li-main' }, h('b', null, 'Firebase'),
+        h('span', null, ((a.config || {}).mode || 'NONE') + ' · ' + ((a.config || {}).ready ? 'configured' : 'config missing')))));
+  })();
+  return host;
+}
+
+async function priceImportHistory() {
+  const rows = await API.call('priceimport.history', { limit: 30 }, { offlineFallback: () => [] }) || [];
+  UI2.modal({ title: 'Price import history', size: 'md',
+    body: h('div', null, ...(rows.length ? rows.map(r => h('div', { class: 'list-item' },
+      h('div', { class: 'li-main' }, h('b', null, r.fileName || r.supplierName || 'import'),
+        h('span', null, r.updated + ' updated · ' + r.created + ' new · ' + r.skipped + ' skipped · ' + fmt.date(r.date, true)))))
+      : [h('div', { class: 'empty' }, 'Abhi koi import nahi hua')])),
+    actions: [{ label: 'Close', onClick: c => c() }] });
+}
+
+async function loyaltyTopCustomers() {
+  const rows = ((App.state.customers || [])).map(c => ({ c, p: Number(c.points || 0) }))
+    .filter(x => x.p > 0).sort((a, b) => b.p - a.p).slice(0, 30);
+  UI2.modal({ title: '⭐ Top customers by points', size: 'md',
+    body: h('div', null, ...(rows.length ? rows.map(x => h('div', { class: 'list-item' },
+      h('div', { class: 'li-main' }, h('b', null, x.c.name), h('span', null, x.p + ' points ≈ ' + fmt.money(x.p))),
+      h('button', { class: 'btn sm sec', onclick: () => {
+        UI2.prompt('Points adjust (+/-)', '0', async v => {
+          const n = Number(v || 0);
+          if (!n) return;
+          await API.call('loyalty.adjust', { customerId: x.c.id, points: n, note: 'Manual adjustment' });
+          UI.toast('Adjusted', 'ok');
+        });
+      } }, 'Adjust')))
+      : [h('div', { class: 'empty' }, 'Koi points nahi mile')])),
+    actions: [{ label: 'Close', onClick: c => c() }] });
+}
+
+/* ===================== SCHEDULED JOBS (v2.1) ============================== */
+function jobsPanel() {
+  const host = h('div', { class: 'card' }, h('div', { class: 'card-body tight' }, 'Load ho raha hai…'));
+
+  async function paint() {
+    let st = {};
+    try { st = await API.call('system.triggers.status', {}, { offlineFallback: () => ({}) }) || {}; } catch (e) { st = {}; }
+    const cfg = st.config || {};
+    const list = st.installed || [];
+    host.innerHTML = '';
+    host.className = 'card';
+    const body = h('div', { class: 'card-body tight' });
+
+    body.appendChild(h('div', { class: 'kpi-row', style: { marginBottom: '10px' } },
+      kpiBox('Installed jobs', String(st.installedCount || 0)),
+      kpiBox('Reorder', cfg.reorder ? cfg.hour + ':00' : 'off'),
+      kpiBox('Alerts', cfg.alerts ? cfg.alertsHour + ':00' : 'off'),
+      kpiBox('Timezone', cfg.timezone || '—')));
+
+    if (!st.available) {
+      body.appendChild(h('div', { class: 'empty' },
+        h('span', { class: 'big' }, '🕒'),
+        h('div', null, 'Yeh preview/demo mode hai — asli time-driven triggers sirf deployed Apps Script project mein chalte hain.'),
+        h('div', { style: { fontSize: 'var(--fs-xs)', color: 'var(--muted-2)', marginTop: '6px' } },
+          'Deploy ke baad: Apps Script editor ▸ function installTriggers ▸ Run ▶')));
+    } else if (!list.length) {
+      body.appendChild(h('div', { class: 'empty' }, h('span', { class: 'big' }, '⏰'),
+        h('div', null, 'Koi job install nahi hai'),
+        h('div', { style: { fontSize: 'var(--fs-xs)', color: 'var(--muted-2)', marginTop: '6px' } },
+          '“Install jobs” dabayein — phir Google authorization allow karein.')));
+    } else {
+      body.appendChild(UI2.table({
+        screen: 'jobs', height: 'auto', exportName: 'scheduled-jobs',
+        columns: [
+          { key: 'handler', label: 'Job', render: r => r.handler === 'triggerDailyReorder' ? '🔁 Daily reorder (Reorder.run)' : '🔔 Daily alerts' },
+          { key: 'id', label: 'Trigger ID' }
+        ],
+        rows: list
+      }));
+    }
+
+    if (st.lastRun && (st.lastRun.REORDER || st.lastRun.ALERTS)) {
+      body.appendChild(h('div', { style: { fontSize: 'var(--fs-xs)', color: 'var(--muted-2)', marginTop: '8px' } },
+        'Last run — reorder: ' + (st.lastRun.REORDER ? fmt.date(st.lastRun.REORDER, true) : '—') +
+        ' · alerts: ' + (st.lastRun.ALERTS ? fmt.date(st.lastRun.ALERTS, true) : '—')));
+    }
+
+    body.appendChild(h('div', { style: { display: 'flex', gap: '8px', marginTop: '12px', flexWrap: 'wrap' } },
+      h('button', { class: 'btn ok', onclick: async () => {
+        try { const r = await API.call('system.triggers.install', {});
+          UI.toast((r.installed || []).length + ' job install ho gaye', 'ok'); paint();
+        } catch (e) { UI.toast(e.message, 'err'); }
+      } }, '⏰ Install jobs'),
+      h('button', { class: 'btn sec', onclick: async () => {
+        await API.call('system.triggers.remove', {}); UI.toast('Jobs hata diye', 'ok'); paint();
+      } }, '🗑 Remove jobs'),
+      h('button', { class: 'btn sec', onclick: async () => {
+        try { const r = await API.call('system.triggers.runNow', {});
+          UI.toast((r.items || 0) + ' items · ' + fmt.money(r.value || 0) +
+            ((r.created || 0) ? ' · ' + r.created + ' PO' : ''), 'ok', 3200);
+          paint();
+        } catch (e) { UI.toast(e.message, 'err'); }
+      } }, '▶ Run reorder now'),
+      h('button', { class: 'btn ghost', onclick: async () => {
+        const r = await API.call('system.jobs.runAlerts', {});
+        UI.toast((r.created || 0) + ' alerts generate hue', 'ok'); paint();
+      } }, '🔔 Run alerts now')));
+
+    host.appendChild(body);
+  }
+
+  function kpiBox(label, val) {
+    return h('div', { class: 'kpi' }, h('div', { class: 'kpi-l' }, label), h('div', { class: 'kpi-v' }, String(val)));
+  }
+
+  paint();
+  return host;
+}
+
+function modulesMatrix() {
+  const host = h('div');
+  API.call('config.all', {}, { offlineFallback: () => ({}) }).then(all => {
+    const keys = Object.keys(all).filter(k => k.indexOf('mod.') === 0);
+    const grid = h('div', { class: 'f-grid' });
+    keys.forEach(k => {
+      /* v2.6 §1 — UI2.toggle row (Settings jaisa professional switch) */
+      const tg = UI2.toggle({ label: k.replace('mod.', '').replace(/([A-Z])/g, ' $1'),
+        checked: all[k] === true || all[k] === 'true', row: true,
+        onChange: v => API.call('config.save', { values: { [k]: v } }) });
+      grid.appendChild(tg.el);
+    });
+    host.appendChild(grid);
+  }).catch(() => { });
+  return host;
+}
+
+/* =========================== CUSTOM FIELDS ================================ */
+function renderCustomFields(c) {
+  const host = h('div'); c.appendChild(host);
+  const reload = () => renderCustomFields(c2 => { c.innerHTML = ''; renderCustomFields(c); });
+  API.call('config.fields.list', {}, { offlineFallback: () => [] }).then(rows => {
+    host.innerHTML = '';
+    host.appendChild(UI2.section('Custom fields', [h('button', { class: 'btn sm', onclick: () => cfForm(null, () => App.refresh()) }, '＋ Add field')]));
+    host.appendChild(h('p', { style: { fontSize: 'var(--fs-sm)', color: 'var(--muted)', margin: '-4px 0 10px' } },
+      'Har entity (Item / Customer / Supplier / Sale / Purchase) ke liye apne fields banaayein. Ye forms, table columns aur POS me nazar aayenge.'));
+    host.appendChild(UI2.table({
+      screen: 'cfields', rows: rows || [], height: '50vh', exportName: 'custom-fields',
+      columns: [
+        { key: 'entity', label: 'Entity' },
+        { key: 'label', label: 'Label' },
+        { key: 'key', label: 'Key' },
+        { key: 'type', label: 'Type' },
+        { key: 'tab', label: 'Tab' },
+        { key: 'showInForm', label: 'Form', render: r => r.showInForm === 'true' || r.showInForm === true ? '✔' : '—' },
+        { key: 'showInTable', label: 'Table', render: r => r.showInTable === 'true' || r.showInTable === true ? '✔' : '—' },
+        { key: 'showInPos', label: 'POS', render: r => r.showInPos === 'true' || r.showInPos === true ? '✔' : '—' },
+        { key: 'required', label: 'Req', render: r => r.required === 'true' ? '✔' : '—' },
+        { key: 'active', label: 'Active', render: r => r.active === 'false' ? '—' : '✔' }
+      ],
+      rowActions: r => [
+        { icon: '✎', onClick: () => cfForm(r, () => App.refresh()) },
+        { icon: '🗑', cls: 'danger', onClick: () => UI2.confirm('Delete "' + r.label + '"?', async () => {
+          await API.call('config.fields.remove', { id: r.id }); UI.toast('Deleted', 'ok'); App.refresh();
+        }, true) }
+      ]
+    }));
+  }).catch(e => host.appendChild(h('div', { class: 'empty' }, e.message)));
+}
+
+function cfForm(cf, after) {
+  const f = UI2.form({
+    values: cf || { entity: 'ITEM', type: 'TEXT', active: 'true', showInForm: 'true' },
+    fields: [
+      { key: 'entity', label: 'Entity', type: 'select', options: ['ITEM', 'CUSTOMER', 'SUPPLIER', 'SALE', 'PURCHASE'] },
+      { key: 'label', label: 'Label (user ko nazar aayega)', required: true },
+      { key: 'key', label: 'Key (unique, no spaces)' },
+      { key: 'type', label: 'Type', type: 'select', options: ['TEXT', 'TEXTAREA', 'NUMBER', 'DATE', 'SWITCH', 'SELECT'] },
+      { key: 'options', label: 'Options (comma separated, SELECT type)', full: true },
+      { key: 'defaultValue', label: 'Default value' },
+      { key: 'tab', label: 'Form tab name' },
+      { key: 'sortOrder', label: 'Sort order', type: 'number' },
+      { key: 'required', label: 'Required', type: 'switch' },
+      { key: 'showInForm', label: 'Show in form', type: 'switch' },
+      { key: 'showInTable', label: 'Show as table column', type: 'switch' },
+      { key: 'showInPos', label: 'Show in POS', type: 'switch' },
+      { key: 'active', label: 'Active', type: 'switch' }
+    ]
+  });
+  UI2.modal({
+    title: cf ? '✏ Custom field' : '＋ Naya custom field', size: 'lg', body: f.el,
+    actions: [{ label: 'Save', cls: 'ok', onClick: async close => {
+      const v = f.values();
+      if (!v.label) return UI.toast('Label zaroori hai', 'err');
+      if (!v.key) v.key = 'cf_' + slugify(v.label);
+      if (cf) v.id = cf.id;
+      await API.call('config.fields.save', { field: v });
+      UI.toast('Saved ✅', 'ok'); close(); after && after();
+    } }]
+  });
+}
+
+function slugify(s) { return String(s).toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, ''); }
+
+/* ============================= MENU BUILDER =============================== */
+function renderMenu(c) {
+  const host = h('div'); c.appendChild(host);
+  API.call('config.menu', {}, { offlineFallback: () => [] }).then(rows => {
+    host.innerHTML = '';
+    host.appendChild(UI2.section('Sidebar menu builder', [
+      h('button', { class: 'btn sm', onclick: () => menuForm(null, () => App.refresh()) }, '＋ Add item'),
+      h('button', { class: 'btn sm sec', onclick: () => UI2.confirm('Default menu restore karein? Custom menu delete ho jayega.',
+        async () => { await API.call('config.menu.reset', {}); UI.toast('Menu reset', 'ok'); App.refresh(); }, true) }, '↺ Reset')
+    ]));
+    host.appendChild(h('p', { style: { fontSize: 'var(--fs-sm)', color: 'var(--muted)', margin: '-4px 0 10px' } },
+      'Screen id = App me register kisi bhi screen ka id (pos, items, sales, warehouse…). Parent id se sub-menu banta hai.'));
+    host.appendChild(UI2.table({
+      screen: 'menu', rows: rows || [], height: '50vh', exportName: 'menu',
+      columns: [
+        { key: 'sortOrder', label: '#' },
+        { key: 'icon', label: '' },
+        { key: 'id', label: 'Screen id' },
+        { key: 'label', label: 'Menu label' },
+        { key: 'parentId', label: 'Parent' },
+        { key: 'perm', label: 'Permission' },
+        { key: 'active', label: 'Active', render: r => r.active === 'false' ? '—' : '✔' }
+      ],
+      rowActions: (r, i) => [
+        { icon: '↑', onClick: async () => { await reorder(rows, i, -1); App.refresh(); } },
+        { icon: '↓', onClick: async () => { await reorder(rows, i, 1); App.refresh(); } },
+        { icon: '✎', onClick: () => menuForm(r, () => App.refresh()) },
+        { icon: '🗑', cls: 'danger', onClick: () => UI2.confirm('Delete menu item?', async () => {
+          await API.call('config.menu.remove', { id: r.id }); App.refresh();
+        }, true) }
+      ]
+    }));
+  }).catch(e => host.appendChild(h('div', { class: 'empty' }, e.message)));
+}
+
+async function reorder(rows, i, dir) {
+  const j = i + dir;
+  if (j < 0 || j >= rows.length) return;
+  const a = rows[i], b = rows[j];
+  const tmp = a.sortOrder; a.sortOrder = b.sortOrder; b.sortOrder = tmp;
+  await API.call('config.menu.save', { item: a });
+  await API.call('config.menu.save', { item: b });
+}
+
+function menuForm(mi, after) {
+  const f = UI2.form({
+    values: mi || { active: 'true', sortOrder: 99 },
+    fields: [
+      { key: 'id', label: 'Screen id (e.g. pos, items, warehouse)' },
+      { key: 'label', label: 'Menu label' },
+      { key: 'icon', label: 'Icon / emoji' },
+      { key: 'parentId', label: 'Parent id (sub-menu ke liye)' },
+      { key: 'perm', label: 'Required permission' },
+      { key: 'sortOrder', label: 'Sort order', type: 'number' },
+      { key: 'active', label: 'Active', type: 'switch' }
+    ]
+  });
+  UI2.modal({
+    title: mi ? '✏ Menu item' : '＋ Menu item', size: 'sm', body: f.el,
+    actions: [{ label: 'Save', cls: 'ok', onClick: async close => {
+      const v = f.values();
+      if (!v.id || !v.label) return UI.toast('Screen id aur label zaroori hain', 'err');
+      await API.call('config.menu.save', { item: v });
+      UI.toast('Saved ✅', 'ok'); close(); after && after();
+    } }]
+  });
+}
+
+/* =========================== PRINT TEMPLATES ============================== */
+function renderTemplates(c) {
+  const host = h('div'); c.appendChild(host);
+  load(host);
+
+  async function load(hostEl) {
+    hostEl.innerHTML = '';
+    let rows = [];
+    try { rows = await API.call('config.templates', {}, { offlineFallback: () => [] }) || []; } catch (e) { rows = []; }
+    if (!rows.length) {
+      try { rows = [await API.call('print.defaultTemplate', { type: 'RECEIPT' }),
+        await API.call('print.defaultTemplate', { type: 'LABEL' })]; } catch (e) { rows = []; }
+    }
+    hostEl.appendChild(UI2.section('Print templates — receipts, invoices, labels',
+      [h('button', { class: 'btn sm', onclick: () => window.Print2 && Print2.designer('RECEIPT', null, () => load(hostEl)) }, '🎨 New receipt template'),
+       h('button', { class: 'btn sm sec', onclick: () => window.Print2 && Print2.designer('LABEL', null, () => load(hostEl)) }, '🏷 New label template')]));
+    hostEl.appendChild(h('div', { class: 'card' }, h('div', { class: 'card-body tight' },
+      rows.length ? '' : h('div', { class: 'empty' }, 'Koi template nahi — upar button se banayein'))));
+    if (!rows.length) return;
+    const body = hostEl.querySelector('.card-body');
+    rows.forEach(r => {
+      let cfg = {}; try { cfg = JSON.parse(r.json || '{}'); } catch (e) { cfg = {}; }
+      body.appendChild(h('div', { class: 'list-item' },
+        h('div', { class: 'li-main' },
+          h('b', null, r.name || r.type),
+          h('span', null, (r.type || '') + ' · ' + (cfg.paper || '80mm') + ' · copies ' + (cfg.copies || 1))),
+        h('button', { class: 'btn sm', title: 'Visual designer', onclick: () => window.Print2 && Print2.designer(r.type || 'RECEIPT', r, () => load(hostEl)) }, '🎨 Design'),
+        h('button', { class: 'btn sm sec', title: 'JSON dekhein', onclick: () => UI2.modal({ title: r.name || 'Template', size: 'md',
+          body: h('pre', { style: { fontSize: 'var(--fs-xs)', whiteSpace: 'pre-wrap' } }, JSON.stringify(cfg, null, 2)),
+          actions: [{ label: 'Close', onClick: cc => cc() }] }) }, '{ }'),
+        h('button', { class: 'btn sm danger', title: 'Delete', onclick: () => UI2.confirm('Template delete karein?', async () => {
+          /* v2.7 — pehle `.catch(() => {})` error chhupa deta tha aur hamesha
+             "Deleted ✅" dikhta tha, chahe delete hua ho ya na ho. Ab asli
+             natija check hota hai. */
+          try {
+            await API.call('config.templates.remove', { id: r.id });
+            UI.toast('Template delete ho gaya', 'ok');
+          } catch (err) {
+            UI.toast('Delete fail: ' + (err && err.message ? err.message : 'dobara koshish karein'), 'err');
+          }
+          load(hostEl);
+        }, true) }, '🗑')));
+    });
+  }
+}
+
+function renderTemplatesOld(c) {
+  const host = h('div'); c.appendChild(host);
+  API.call('config.templates', {}, { offlineFallback: () => [] }).then(rows => {
+    host.innerHTML = '';
+    host.appendChild(UI2.section('Print / label templates', [
+      h('button', { class: 'btn sm', onclick: () => tplForm(null, () => App.refresh()) }, '＋ New template')]));
+    host.appendChild(UI2.table({
+      screen: 'templates', rows: rows || [], height: '44vh', exportName: 'templates',
+      columns: [
+        { key: 'type', label: 'Type' },
+        { key: 'name', label: 'Name' },
+        { key: 'active', label: 'Active', render: r => r.active === 'false' ? '—' : '✔' }
+      ],
+      rowActions: r => [
+        { icon: '✎', onClick: () => tplForm(r, () => App.refresh()) },
+        { icon: '👁', label: 'Preview', onClick: () => UI2.modal({ title: 'Preview — ' + r.name, size: 'lg',
+          body: h('iframe', { style: { width: '100%', height: '60vh', border: '0', background: '#fff' },
+            srcdoc: templateToHtml(r) }),
+          actions: [{ label: 'Print', cls: 'ok', onClick: () => Print.open(templateToHtml(r), r.name) }, { label: 'Close', onClick: cc => cc() }] }) }
+      ]
+    }));
+  }).catch(e => host.appendChild(h('div', { class: 'empty' }, e.message)));
+}
+
+function templateToHtml(r) {
+  let json = {};
+  try { json = JSON.parse(r.json || '{}'); } catch (e) { }
+  if (r.type === 'RECEIPT') {
+    return '<body style="font-family:monospace;width:80mm;padding:0">' +
+      '<div style="text-align:center"><b>' + (App.state.settings.bizName || 'Haseeb Autos') + '</b><br>' +
+      (App.state.settings.bizAddress || '') + '</div><hr>' +
+      'Item &nbsp; Qty &nbsp; Price &nbsp; Amount<hr>' +
+      '<div>Sample Item &nbsp; 2 &nbsp; 500 &nbsp; 1000</div><hr>' +
+      '<b>Total: ' + (App.state.settings.currency || 'Rs') + ' 1,000</b>' +
+      '<div style="text-align:center;margin-top:8px">' + (json.footer || 'Thank you!') + '</div>' +
+      (json.showBarcode ? '<div style="text-align:center">' + Barcode.svg('INV-000001', { height: 40 }) + '</div>' : '') +
+      '</body>';
+  }
+  const w = (json.width || 50) + 'mm', hgt = (json.height || 30) + 'mm';
+  return '<body style="margin:0"><div style="width:' + w + ';height:' + hgt + ';border:1px dashed #999;padding:4px;font-family:sans-serif">' +
+    '<div style="font-size:9px">' + (App.state.settings.bizName || 'Haseeb Autos') + '</div>' +
+    '<div style="font-size:11px;font-weight:700">Sample Item Name</div>' +
+    '<div style="text-align:center">' + Barcode.svg('FL00000', { height: 30, module: 1.4 }) + '</div>' +
+    '<div style="font-size:11px;font-weight:700">' + (App.state.settings.currency || 'Rs') + ' 1,000</div></div></body>';
+}
+
+function tplForm(t, after) {
+  const types = ['RECEIPT', 'LABEL'];
+  const f = UI2.form({
+    values: t || { type: 'RECEIPT', active: 'true' },
+    fields: [
+      { key: 'type', label: 'Type', type: 'select', options: types },
+      { key: 'name', label: 'Template name', required: true },
+      { key: 'active', label: 'Active', type: 'switch' }
+    ]
+  });
+  const json = h('textarea', { class: 'f-input', rows: 12, style: { fontFamily: 'monospace', fontSize: 'var(--fs-xs)' } },
+    (t && t.json) || JSON.stringify({ showLogo: true, showBarcode: true, footer: 'Thank you for shopping!', width: 50, height: 30 }, null, 2));
+  UI2.modal({
+    title: t ? '✏ Template' : '＋ Naya template', size: 'md',
+    body: h('div', null, f.el, h('div', { class: 'f-col' }, h('label', null, 'Template JSON'), json),
+      h('div', { class: 'f-hint' }, 'RECEIPT: showLogo, showBarcode, footer, showQr, paperWidth. LABEL: width(mm), height(mm), showPrice, showName, showBarcode, barcodeType')),
+    actions: [{ label: 'Save', cls: 'ok', onClick: async close => {
+      const v = f.values();
+      try { JSON.parse(json.value); } catch (e) { return UI.toast('JSON ghalat hai: ' + e.message, 'err'); }
+      if (t) v.id = t.id;
+      await API.call('config.templates.save', { template: Object.assign(v, { json: json.value }) });
+      UI.toast('Saved ✅', 'ok'); close(); after && after();
+    } }]
+  });
+}
+
+/* ========================== LISTS & CATALOGS ============================== */
+const LIST_ENTITIES = [
+  { entity: 'categories', label: 'Categories', cols: ['code', 'name', 'parentId', 'sortOrder', 'active'] },
+  { entity: 'brands', label: 'Brands', cols: ['code', 'name', 'active'] },
+  { entity: 'units', label: 'Units', cols: ['code', 'name', 'baseUnit', 'conversion', 'active'] },
+  { entity: 'taxes', label: 'Tax codes', cols: ['code', 'name', 'rate', 'type', 'active'] },
+  { entity: 'warehouses', label: 'Warehouses', cols: ['code', 'name', 'locationId', 'isDefault', 'active'] }
+];
+
+function renderLists(c) {
+  const host = h('div'); c.appendChild(host);
+  UI2.tabs(host, {
+    level: 2,
+    tabs: LIST_ENTITIES.map(e => ({
+      id: e.entity, label: e.label,
+      render: cc => {
+        const box = h('div'); cc.appendChild(box);
+        const load = () => API.call('config.list', { entity: e.entity }, { offlineFallback: () => [] }).then(rows => {
+          box.innerHTML = '';
+          box.appendChild(UI2.section(e.label, [h('button', { class: 'btn sm', onclick: () => listForm(e, null, load) }, '＋ Add')]));
+          box.appendChild(UI2.table({
+            screen: 'list_' + e.entity, rows: rows || [], height: '46vh', exportName: e.entity,
+            columns: e.cols.map(k => ({
+              key: k, label: k.replace(/([A-Z])/g, ' $1'),
+              render: k === 'active' || k === 'isDefault' ? (r => r[k] === 'false' ? '—' : '✔') : null
+            })),
+            rowActions: r => [
+              { icon: '✎', onClick: () => listForm(e, r, load) },
+              { icon: '🗑', cls: 'danger', onClick: () => UI2.confirm('Delete?', async () => {
+                await API.call('config.list.remove', { entity: e.entity, id: r.id }); load();
+              }, true) }
+            ]
+          }));
+        }).catch(err => box.appendChild(h('div', { class: 'empty' }, err.message)));
+        load();
+      }
+    }))
+  });
+}
+
+function listForm(e, row, after) {
+  const vals = row || {};
+  const extra = [];
+  if (e.entity === 'units') extra.push({ key: 'baseUnit', label: 'Base unit' }, { key: 'conversion', label: 'Conversion', type: 'number' });
+  if (e.entity === 'taxes') extra.push({ key: 'rate', label: 'Rate %', type: 'number' }, { key: 'type', label: 'Type', type: 'select', options: ['PCT', 'FLAT'] });
+  if (e.entity === 'warehouses') extra.push({ key: 'locationId', label: 'Branch', type: 'select', options: App.state.locations.map(l => ({ value: l.id, label: l.name })) }, { key: 'isDefault', label: 'Default', type: 'switch' });
+  if (e.entity === 'categories') extra.push({ key: 'parentId', label: 'Parent category code' }, { key: 'imageUrl', label: 'Image URL' });
+  const f = UI2.form({
+    values: Object.assign({ active: 'true' }, vals),
+    fields: [{ key: 'code', label: 'Code' }, { key: 'name', label: 'Name' }].concat(extra)
+      .concat([{ key: 'sortOrder', label: 'Sort order', type: 'number' }, { key: 'active', label: 'Active', type: 'switch' }])
+  });
+  UI2.modal({
+    title: row ? '✏ ' + (row.name || row.code) : '＋ ' + e.label, size: 'sm', body: f.el,
+    actions: [{ label: 'Save', cls: 'ok', onClick: async close => {
+      const v = f.values();
+      if (!v.name) return UI.toast('Name zaroori hai', 'err');
+      if (row) v.id = row.id;
+      await API.call('config.list.save', { entity: e.entity, record: v });
+      UI.toast('Saved ✅', 'ok'); close(); after && after();
+    } }]
+  });
+}
+
+/* ============================ DATA & TOOLS ================================ */
+function renderData(c) {
+  const host = h('div'); c.appendChild(host);
+  UI2.tabs(host, {
+    level: 2,
+    tabs: [
+      { id: 'seed', label: 'Real catalog', icon: '📦', render: cc => renderSeed(cc) },
+      { id: 'import', label: 'Import / export', icon: '⬆', render: cc => renderImport(cc) },
+      { id: 'backup', label: 'Backup / restore', icon: '💾', render: cc => renderBackupRestore(cc) },
+      { id: 'maintain', label: 'Maintenance', icon: '🧹', render: cc => renderMaintenance(cc) },
+      { id: 'about', label: 'About', icon: 'ℹ', render: cc => renderAbout(cc) }
+    ]
+  });
+}
+
+function renderSeed(c) {
+  const box = h('div', { class: 'card' }, h('div', { class: 'card-body' },
+    h('h4', { style: { margin: '0 0 8px' } }, '📦 Asli product master — CSV import'),
+    h('p', { style: { fontSize: 'var(--fs-sm)', color: 'var(--muted)', margin: '0 0 12px' } },
+      'Aapki apni export ("product list2.csv") — 422 products, 10 line items, 95 categories, ' +
+      '74 brands, 7 suppliers. Har CSV column map hota hai: Line Item → lineItem, Made in → origin, ' +
+      'Product Group / Color / Cost Type → custom fields, aur khali barcode ki jagah product code. ' +
+      'Yeh idempotent hai — dobara chalane se duplicate nahi banta, koi row delete nahi hoti.'),
+    h('div', { class: 'f-grid' },
+      h('div', { class: 'f-col' }, h('label', null, 'Opening stock per branch (naye items)'),
+        (function () { const i = h('input', { class: 'f-input', type: 'number', value: 20, id: 'seedStock' }); return i; })(),
+        h('div', { class: 'f-hint' }, 'Maujuda items ka stock chera nahi jata')),
+      h('div', { class: 'f-col' }, h('label', null, 'Action'),
+        h('div', { style: { display: 'flex', gap: '8px', flexWrap: 'wrap' } },
+          h('button', { class: 'btn', onclick: async () => {
+            const st = Number(document.getElementById('seedStock').value || 0);
+            try {
+              const r = await API.call('setup.seedProducts', { opts: { stock: st } });
+              UI.toast('Seeded: ' + (r.created || 0) + ' naye, ' + (r.updated || 0) + ' update, ' +
+                (r.stockRows || 0) + ' stock rows', 'ok');
+              API.pullCatalog(true);
+            } catch (e) { UI.toast(e.message, 'err'); }
+          } }, '⬇ Seed 422 products'),
+          h('button', { class: 'btn sec', onclick: async () => {
+            const r = await API.call('setup.seedProducts', { opts: { stock: 0, dryRun: true } });
+            UI2.modal({ title: 'Preview — ' + (r.created || 0) + ' naye / ' + (r.updated || 0) + ' update (koi write nahi hua)',
+              size: 'lg',
+              body: UI2.table({ screen: 'seedpreview', rows: (r.items || []), height: '50vh', exportName: 'seed-preview',
+                columns: [
+                  { key: 'code', label: 'Code' },
+                  { key: 'name', label: 'Name' },
+                  { key: 'lineItem', label: 'Line item' },
+                  { key: 'category', label: 'Category' },
+                  { key: 'brand', label: 'Brand' },
+                  { key: 'supplier', label: 'Supplier' },
+                  { key: 'size', label: 'Size' },
+                  { key: 'origin', label: 'Made in' },
+                  { key: 'costPrice', label: 'Cost', num: true },
+                  { key: 'wholesalePrice', label: 'Wholesale', num: true },
+                  { key: 'retailPrice', label: 'Retail', num: true },
+                  { key: 'barcode', label: 'Barcode' }] }),
+              actions: [{ label: 'Close', onClick: cc => cc() }] });
+          } }, '👁 Preview (safe)'),
+          h('button', { class: 'btn sec', onclick: async () => {
+            try {
+              const r = await API.call('setup.auditProducts', {});
+              UI2.modal({
+                title: 'CSV ↔ DB milan — ' + (r.missing || 0) + ' missing, ' + (r.priceDiff || 0) + ' price farq',
+                size: 'md',
+                body: h('div', { style: { fontSize: 'var(--fs-sm)', lineHeight: '1.6' } },
+                  h('div', null, h('b', null, 'CSV products: '), String(r.csv || 0)),
+                  h('div', null, h('b', null, 'DB mein ghaayab: '), String(r.missing || 0)),
+                  h('div', null, h('b', null, 'Rate farq: '), String(r.priceDiff || 0)),
+                  (r.missingCodes || []).length ? h('div', { style: { marginTop: '8px' } },
+                    h('b', null, 'Missing codes: '), (r.missingCodes || []).join(', ')) : null,
+                  (r.priceSamples || []).length ? h('div', { style: { marginTop: '8px' } },
+                    h('b', null, 'Samples: '), (r.priceSamples || []).slice(0, 10).join(' · ')) : null),
+                actions: [{ label: 'Close', onClick: cc => cc() }]
+              });
+            } catch (e) { UI.toast(e.message, 'err'); }
+          } }, '🔍 Audit CSV ↔ DB'))))));
+  c.appendChild(box);
+}
+
+function renderImport(c) {
+  c.appendChild(h('div', { class: 'card' }, h('div', { class: 'card-body' },
+    h('h4', { style: { margin: '0 0 8px' } }, '⬆ Bulk import'),
+    h('p', { style: { fontSize: 'var(--fs-sm)', color: 'var(--muted)' } }, 'Items, customers ya suppliers — Sheet/Excel se paste karein.'),
+    h('div', { class: 'row gap-8' },
+      h('button', { class: 'btn', onclick: () => App.go('items', { import: true }) }, '📦 Items'),
+      h('button', { class: 'btn sec', onclick: () => App.go('parties', { tab: 'customers' }) }, '👤 Customers')))));
+}
+
+function renderBackupRestore(c) {
+  c.appendChild(h('div', { class: 'card' }, h('div', { class: 'card-body' },
+    h('h4', { style: { margin: '0 0 8px' } }, '⬇⬆ Configuration backup / restore'),
+    h('p', { style: { fontSize: 'var(--fs-sm)', color: 'var(--muted)' } },
+      'Saari settings, lists, menu, custom fields aur print templates JSON mein export/import — ' +
+      'doosri branch ya naye account mein same setup 10 second mein.'),
+    h('div', { style: { display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '10px' } },
+      h('button', { class: 'btn', onclick: async () => {
+        const dump = {
+          exportedAt: new Date().toISOString(), version: '2.0',
+          settings: await API.call('config.all', {}),
+          customFields: await API.call('config.fields.list', {}),
+          menu: await API.call('config.menu', {}),
+          templates: await API.call('config.templates', {}),
+          lists: {}
+        };
+        /* W7 (v2.26.0) — 5 sequential calls ki jagah ek parallel batch (independent reads).
+           Naapa hua asar: export ka waqt ~5x round-trip se ~1x (demo mein bhi 5 calls -> 5 parallel). */
+        const _ents = ['categories', 'brands', 'units', 'taxes', 'warehouses'];
+        const _got = await API.parallel(_ents.map(e => ({ action: 'config.list', payload: { entity: e } })), 5);
+        _ents.forEach((e, i) => { if (_got[i] && !_got[i].__err) dump.lists[e] = _got[i]; });
+        downloadCsv(JSON.stringify(dump, null, 2), 'haseeb-autos-config-' +
+          new Date().toISOString().slice(0, 10) + '.json');
+        UI.toast('Config exported ⬇', 'ok');
+      } }, '⬇ Export JSON'),
+      h('button', { class: 'btn sec', onclick: () => {
+        const ta = h('textarea', { class: 'f-input', rows: 8, style: { fontFamily: 'monospace', fontSize: 'var(--fs-xs)' },
+          placeholder: 'Yahan config JSON paste karein' });
+        UI2.modal({
+          title: '⬆ Import configuration', size: 'md', body: ta,
+          actions: [{ label: 'Import', cls: 'ok', onClick: async close => {
+            let dump;
+            try { dump = JSON.parse(ta.value); } catch (e) { return UI.toast('JSON ghalat hai', 'err'); }
+            try {
+              if (dump.settings) await API.call('config.save', { values: dump.settings });
+              /* W7 (v2.26.0) — ASLI BUG + N+1: pehle `forEach(async …)` fire-and-forget tha, is liye
+                 import "mukammal" batata tha jab ke likhai abhi chal rahi hoti thi (aur fail bhi
+                 chup-chaap hoti thi). Ab: sab writes AWAIT hoti hain, 6 ke parallel batches mein,
+                 aur natija (kamyab/fail) gina kar user ko batate hain. */
+              const jobs = []
+                .concat((dump.customFields || []).map(f => ({ label: 'field ' + (f.key || f.label || ''), fn: () => API.call('config.fields.save', { field: f }) })))
+                .concat((dump.templates || []).map(t => ({ label: 'template ' + (t.name || ''), fn: () => API.call('config.templates.save', { template: t }) })))
+                .concat((dump.menu || []).map(i => ({ label: 'menu ' + (i.label || i.id || ''), fn: () => API.call('config.menu.save', { item: i }) })))
+                .concat(Object.keys(dump.lists || {}).reduce((acc, e) => acc.concat((dump.lists[e] || []).map(r =>
+                  ({ label: e + ' ' + (r.name || r.id || ''), fn: () => API.call('config.list.save', { entity: e, record: r }) }))), []));
+              let impOk = 0; const impErr = [];
+              for (let s0 = 0; s0 < jobs.length; s0 += 6) {
+                const slice = jobs.slice(s0, s0 + 6);
+                const res = await API.parallel(slice.map(j => j.fn), 6);
+                res.forEach((r, i2) => { if (r && r.__err) impErr.push(slice[i2].label + ' — ' + r.__err); else impOk++; });
+              }
+              if (impErr.length) UI.toast(impOk + ' cheezein import huin, ' + impErr.length + ' fail: ' + impErr.slice(0, 3).join(' · '), 'err');
+              else UI.toast(impOk + ' cheezein import ho gayeen ✅', 'ok');
+              await API.pullSettings(); close(); App.refresh();
+            } catch (e) { UI.toast(e.message, 'err'); }
+          } }]
+        });
+      } }, '⬆ Import JSON')))));
+}
+
+/* ---------- Sheets / DB schema health (v2.5.1) ----------
+   Naye columns code likhta hai; agar sheet mein wo column na ho to DB.insert use
+   chupke se drop kar deta hai. Yahan se ek click mein repair. */
+async function schemaHealthCard(c) {
+  const host = h('div', { class: 'card', style: { marginBottom: '12px' } },
+    h('div', { class: 'card-head' }, h('h4', null, '🗄 Sheets / DB schema')),
+    h('div', { class: 'card-body' }, h('div', { class: 'muted', style: { fontSize: 'var(--fs-sm)' } }, 'Checking…')));
+  c.appendChild(host);
+  const paint = async () => {
+    const body = host.querySelector('.card-body');
+    let r;
+    try { r = await API.call('setup.health', {}); }
+    catch (e) { body.innerHTML = ''; body.appendChild(h('div', { class: 'muted' }, '⚠ ' + e.message)); return; }
+    const bad = (r.missingSheets || []).length + (r.missingColumnCount || 0);
+    body.innerHTML = '';
+    body.appendChild(UI2.kpiGrid([
+      { icon: '🗄', label: 'Sheets', value: String(r.present || 0) + '/' + String(r.sheets || 0), cls: 'info' },
+      { icon: '🧩', label: 'Columns', value: String(r.columns || 0), cls: 'info' },
+      { icon: '📄', label: 'Rows', value: String(r.totalRows || 0), cls: 'info' },
+      { icon: bad ? '⚠' : '✅', label: 'Schema', value: bad ? bad + ' missing' : 'Up to date', cls: bad ? 'err' : 'ok' }
+    ], 4));
+    if (bad) {
+      const rows = [];
+      (r.missingSheets || []).forEach(n => rows.push({ sheet: n, issue: 'sheet missing', detail: '—' }));
+      Object.keys(r.missingColumns || {}).forEach(n =>
+        rows.push({ sheet: n, issue: 'columns missing', detail: (r.missingColumns[n] || []).join(', ') }));
+      body.appendChild(h('div', { class: 'hint', style: { marginBottom: '8px' } },
+        'Ye columns code likhta hai par sheet mein nahi — data silently drop ho sakta hai. Repair se data delete nahi hota, sirf columns judte hain.'));
+      body.appendChild(UI2.table({
+        screen: 'schema_health', rows, height: '22vh', exportName: 'schema-health',
+        columns: [{ key: 'sheet', label: 'Sheet' }, { key: 'issue', label: 'Issue' }, { key: 'detail', label: 'Missing columns' }]
+      }));
+    }
+    body.appendChild(h('div', { style: { display: 'flex', gap: '8px', marginTop: '10px', flexWrap: 'wrap' } },
+      h('button', { class: 'btn' + (bad ? '' : ' sec'), onclick: async () => {
+        try {
+          const x = await API.call('setup.repair', {});
+          UI.toast('Repair ho gaya: ' + (x.created || 0) + ' sheets, ' + (x.columnsAdded || 0) + ' columns add hue', 'ok');
+          paint();
+        } catch (e) { UI.toast(e.message, 'err'); }
+      } }, '🧰 Repair / upgrade sheets'),
+      h('button', { class: 'btn sec', onclick: () => paint() }, '↻ Recheck')));
+  };
+  paint();
+}
+
+function renderMaintenance(c) {
+  schemaHealthCard(c);
+  c.appendChild(h('div', { class: 'card' }, h('div', { class: 'card-body' },
+    h('h4', { style: { margin: '0 0 10px' } }, '🧹 Maintenance'),
+    h('div', { style: { display: 'flex', gap: '8px', flexWrap: 'wrap' } },
+      h('button', { class: 'btn sec', onclick: async () => {
+        const r = await API.call('utils.reindex'); UI.toast('Reindex: ' + (r.reindexed || r.fixed || 'done'), 'ok');
+      } }, '🔧 Reindex / repair'),
+      h('button', { class: 'btn sec', onclick: async () => {
+        const r = await API.call('utils.stats'); UI.toast('Rows: ' + JSON.stringify(r.rows || r).slice(0, 60), 'ok');
+      } }, '📊 Data stats'),
+      h('button', { class: 'btn sec', onclick: async () => {
+        const r = await API.call('notifications.generate'); UI.toast((r.added || 0) + ' alerts generated', 'ok');
+      } }, '🔔 Generate alerts'),
+      h('button', { class: 'btn sec', onclick: async () => {
+        const r = await API.call('utils.backup'); UI.toast('Backup ban gaya: ' + (r.files || 'zip'), 'ok');
+      } }, '💾 Backup now'),
+      h('button', { class: 'btn sec', onclick: () => {
+        ['catalog', 'settings', 'notif_cache', 'notif_ts'].forEach(k => Store.del(k));
+        App.state.catalog = null; App.refresh(); UI.toast('Cache cleared', 'ok');
+      } }, '🧼 Clear local cache')))));
+}
+
+function renderAbout(c) {
+  const box = h('div', { class: 'card' }, h('div', { class: 'card-body' },
+    h('h4', { style: { margin: '0 0 8px' } }, 'ℹ Haseeb Autos ERP/POS'),
+    h('div', { class: 'f-grid' },
+      kv2('Version', '…'),            /* asli value backend se aati hai — hardcode nahi */
+      kv2('Modules', Object.keys(App.screens).length + ' screens'),
+      kv2('Backend', '…'),
+      kv2('Database', 'Google Sheets (offline-first, queued sync)'),
+      kv2('AI agent', 'Pluggable — Gemini / OpenAI / OpenRouter (settings se)'),
+      kv2('PWA', 'Installable, works offline'))));
+  c.appendChild(box);
+  API.call('system.health', {}, { offlineFallback: () => null }).then(r => {
+    if (!r) return;
+    const cells = box.querySelectorAll('.f-col > div:last-child');
+    if (cells[0]) cells[0].textContent = r.version || '—';
+    if (cells[2]) cells[2].textContent = Object.keys(r.rows || {}).length + ' sheets · ' +
+      Object.keys(r.rows || {}).reduce((a, k) => a + (Number(r.rows[k]) || 0), 0) + ' rows';
+  }).catch(() => { });
+}
+
+function kv2(label, value) {
+  return h('div', { class: 'f-col' }, h('label', null, label),
+    h('div', { style: { fontWeight: '700', fontSize: 'var(--fs-md)' } }, value));
+}
+
+
+/* ====================== BACKEND & INTEGRATIONS (v2.24) ======================
+   Owner-configurable diagnostics: connection test, masked config view,
+   local/self-hosted backend URL (kept in localStorage, never Sheet ID).
+   Secrets always masked (••••••••). Test/diagnostics never leak IDs.
+   ========================================================================== */
+function backendDiagnosticsCard(){
+  const host = h('div', { class: 'card', style:{marginBottom:'14px', borderLeft:'4px solid #0ea5e9'} },
+    h('div', { class: 'card-head', style:{display:'flex', justifyContent:'space-between', alignItems:'center'} },
+      h('h4', { style:{margin:0} }, '🔗 Backend & Integrations — status'),
+      h('span', { class:'hint', style:{fontSize:'var(--fs-xs)'} }, 'Owner-only · secrets masked')
+    ),
+    h('div', { class: 'card-body', id:'bkDiagBody' }, h('div', {class:'muted', style:{fontSize:'var(--fs-sm)'}}, 'Loading…'))
+  );
+  const body = host.querySelector('#bkDiagBody');
+  async function paint(){
+    body.innerHTML='';
+    body.appendChild(h('div', {class:'muted', style:{fontSize:'var(--fs-sm)'}}, 'Checking backend linkage…'));
+    let cfg=null, test=null;
+    try { cfg = await API.call('integration.config.get', {}, { offlineFallback:()=>null }); } catch(e){ cfg={_err:e.message}; }
+    try { test = await API.call('integration.test', {}, { offlineFallback:()=>null }); } catch(e){ test={ok:false, checks:[{name:'test', ok:false, note:e.message}]}; }
+    body.innerHTML='';
+    if (cfg && !cfg._err) {
+      const rows = [
+        ['GAS URL (effective)', cfg.gasUrl ? cfg.gasUrl.slice(0,62) + (cfg.gasUrl.length>62?'…':'') : '— (auto)'],
+        ['Current exec URL', cfg.currentUrl ? cfg.currentUrl.slice(0,62) + (cfg.currentUrl.length>62?'…':'') : '—'],
+        ['Environment', cfg.env || 'prod'],
+        ['External frontends', cfg.enabled ? 'ENABLED ✅' : 'DISABLED ⛔'],
+        ['Allowed origins', cfg.allowedOrigins || '(any — auth still required)'],
+        ['Require API key', cfg.requireToken ? 'YES 🔒' : 'No'],
+        ['API key set', cfg.hasApiKey ? ('YES — ' + (cfg.apiKeyHint||'••••')) : 'No'],
+        ['Sheet linked', cfg.sheetIdMasked || '(not set)'],
+        ['Offline queue', cfg.offlineEnabled ? 'ON' : 'OFF'],
+        ['Version', cfg.version || '']
+      ];
+      const grid = h('div', { class:'f-grid', style:{marginBottom:'10px'} });
+      rows.forEach(([k,v])=> grid.appendChild(h('div', {class:'f-col'}, h('label', null, k), h('div', {style:{fontWeight:'700', fontSize:'var(--fs-sm)', wordBreak:'break-all'}}, String(v)))));
+      body.appendChild(grid);
+    } else {
+      body.appendChild(h('div', {class:'empty', style:{color:'var(--err)'}}, '⚠ Config load failed: ' + (cfg && cfg._err ? cfg._err : 'unknown')));
+    }
+    if (test && test.checks) {
+      const ok = test.ok ? '✅ All checks passed' : '⚠ Some checks failed';
+      body.appendChild(h('div', { class:'hint', style:{margin:'8px 0 6px', fontWeight:'700', color: test.ok ? 'var(--ok)' : 'var(--err)'}}, ok + (test.at ? ' · ' + fmt.date(test.at, true) : '')));
+      const list = h('div', { style:{display:'grid', gap:'6px'} });
+      (test.checks||[]).forEach(ch=> {
+        list.appendChild(h('div', { class:'list-item', style:{padding:'6px 8px', background: ch.ok ? 'var(--ok-bg, #f0fdf4)' : 'var(--err-bg, #fef2f2)', borderRadius:'8px'} },
+          h('span', { style:{fontWeight:'700', color: ch.ok ? '#15803d' : '#b91c1c', minWidth:'14px'}}, ch.ok?'✓':'✗'),
+          h('div', {class:'li-main'}, h('b', null, ch.name), h('span', {style:{fontSize:'var(--fs-xs)', color:'var(--muted)'}}, ch.note || '')),
+          h('span', {class:'hint', style:{fontSize:'10px'}}, (ch.ms||0)+'ms')
+        ));
+      });
+      body.appendChild(list);
+    }
+    const actions = h('div', { style:{display:'flex', gap:'8px', flexWrap:'wrap', marginTop:'12px'} },
+      h('button', {class:'btn sm', onclick: async()=>{
+        try { const r=await API.call('integration.test', {}); UI.toast(r.ok?'All checks passed ✅':'Checks failed — see card','' + (r.ok?'ok':'warn')); paint(); } catch(e){ UI.toast(e.message,'err'); }
+      }}, '↻ Re-test'),
+      h('button', {class:'btn sm sec', onclick: async()=>{
+        try {
+          const d=await API.call('integration.diag', {});
+          const txt = JSON.stringify(d, null, 2);
+          UI2.modal({title:'🔍 Detailed diagnostics (owner)', size:'lg', body: h('pre', {style:{fontSize:'11px', whiteSpace:'pre-wrap', maxHeight:'60vh', overflow:'auto'}}, txt), actions:[{label:'Close', onClick:c=>c()}, {label:'Copy JSON', onClick:()=>{ navigator.clipboard&&navigator.clipboard.writeText(txt); UI.toast('Copied','ok'); }}]});
+        } catch(e){ UI.toast(e.message,'err'); }
+      }}, '🔍 Detailed diag'),
+      h('button', {class:'btn sm ghost', onclick:()=>{
+        const u = (cfg && (cfg.gasUrl||cfg.currentUrl)) || '';
+        if (!u) return UI.toast('No GAS URL to copy','warn');
+        navigator.clipboard&&navigator.clipboard.writeText(u); UI.toast('GAS URL copied','ok');
+      }}, '📋 Copy GAS URL')
+    );
+    body.appendChild(actions);
+    if (cfg && cfg.sheetIdMasked) {
+      body.appendChild(h('div', {class:'hint', style:{marginTop:'10px', fontSize:'11px', background:'var(--panel-2)', padding:'8px', borderRadius:'8px'}}, 'Sheet ID is masked (' + cfg.sheetIdMasked + ') — full ID never leaves server. Change via Apps Script → Setup or Integration API.'));
+    }
+  }
+  paint();
+  return host;
+}
+function backendLocalCard(){
+  const isStatic = !(window.google && google.script && google.script.run);
+  const cur = (typeof Backend !== 'undefined' && Backend.getUrl) ? Backend.getUrl() : (window.API_URL||'');
+  const note = isStatic ? 'Static/self-hosted mode: backend URL is stored locally (localStorage), not in Sheet. Owner can change without code edit.' : 'GAS-hosted mode: window.API_URL is auto; local override below is optional for testing.';
+  const urlInput = h('input', { class:'f-input', type:'text', placeholder:'https://script.google.com/macros/s/.../exec', value: cur, style:{fontFamily:'monospace', fontSize:'12px'} });
+  const keyInput = h('input', { class:'f-input', type:'password', placeholder:'Integration API key (if required)', value: (function(){ try{return localStorage.getItem('ha_integrationKey')||Store.get('integrationKey','')||'';}catch(e){return ''}})(), style:{fontFamily:'monospace', fontSize:'12px'} });
+  const status = h('div', { class:'hint', style:{minHeight:'16px', fontSize:'var(--fs-xs)'}}, '');
+  const host = h('div', { class:'card', style:{marginTop:'14px'} },
+    h('div', {class:'card-head'}, h('h4', null, '💻 Local / Self-hosted backend (this browser)')),
+    h('div', {class:'card-body'},
+      h('div', {class:'muted', style:{fontSize:'var(--fs-xs)', marginBottom:'10px'}}, note),
+      h('div', {class:'f-col', style:{marginBottom:'10px'}}, h('label', null, 'Backend URL (GAS exec)'), urlInput, h('div', {class:'hint'}, 'Leave empty to use GAS auto URL. For Netlify/GitHub Pages/local PC, paste your deployed exec URL here.')),
+      h('div', {class:'f-col', style:{marginBottom:'10px'}}, h('label', null, 'Integration API key (this browser only)'), keyInput, h('div', {class:'hint'}, 'If Settings → External frontends requires API key, store it here (localStorage, not Sheet). Masked on save.')),
+      h('div', {style:{display:'flex', gap:'8px', flexWrap:'wrap'}},
+        h('button', {class:'btn sm', onclick: async()=>{
+          const u=urlInput.value.trim();
+          const k=keyInput.value.trim();
+          try {
+            if (u) { Backend.setUrl(u); } else { Backend.clearUrl(); }
+            if (k) { try{ localStorage.setItem('ha_integrationKey', k); Store.set('integrationKey', k);}catch(e){} } else { try{ localStorage.removeItem('ha_integrationKey'); Store.del('integrationKey'); }catch(e){} }
+            status.textContent='✅ Saved locally — testing…';
+            status.style.color='var(--ok, #15803d)';
+            try { const r=await Backend.test(u||Backend.getUrl()); status.textContent='✅ Connected: ' + (r.version||'pong'); UI.toast('Backend reachable ✅','ok'); } catch(e){ status.textContent='⚠ Saved but ping failed: ' + e.message; status.style.color='var(--err, #b91c1c)'; UI.toast(e.message,'warn'); }
+          } catch(e){ status.textContent='❌ ' + e.message; UI.toast(e.message,'err'); }
+        }}, '💾 Save locally'),
+        h('button', {class:'btn sm sec', onclick: async()=>{
+          const u=urlInput.value.trim() || Backend.getUrl();
+          if(!u) return UI.toast('No URL to test','warn');
+          status.textContent='⏳ Testing…';
+          try{ const r=await Backend.test(u); status.textContent='✅ Ping OK — ' + (r.version||'ok'); UI.toast('Ping OK','ok'); } catch(e){ status.textContent='❌ ' + e.message; UI.toast(e.message,'err'); }
+        }}, '↗ Test ping'),
+        h('button', {class:'btn sm ghost', onclick:()=>{
+          urlInput.value=''; keyInput.value=''; Backend.clearUrl(); try{ localStorage.removeItem('ha_integrationKey'); Store.del('integrationKey'); }catch(e){}
+          status.textContent='Cleared — will use GAS auto URL.';
+          UI.toast('Local backend cleared','ok');
+        }}, '🧹 Clear'),
+      ),
+      status,
+      h('div', {class:'hint', style:{marginTop:'10px', background:'var(--warn-bg, #fffbeb)', padding:'8px', borderRadius:'8px', fontSize:'11px'}},
+        'Offline vs remote: if backend unreachable, POS queues bills locally (📴) and syncs when net returns. Queue status shown in header. Self-hosted PC without internet: keep offline queue ON and sync later when online.')
+    )
+  );
+  return host;
+}
+
+/* ===================== THEME FROM SETTINGS/* ===================== THEME FROM SETTINGS (no hardcode) ================== */
+function applyTheme() {
+  const s = App.state.settings || {};
+  const root = document.documentElement.style;
+  if (s.themePrimary) root.setProperty('--brand', s.themePrimary);
+  if (s.themeAccent) root.setProperty('--accent', s.themeAccent);
+  if (s.themeRadius) root.setProperty('--r-l', s.themeRadius + 'px');
+  const size = s.fontSize || 'medium';
+  const map = { small: '13.5px', medium: '14.5px', large: '16px', xl: '17.5px' };
+  document.body.style.fontSize = map[size] || '14.5px';
+  if (s.themeMode === 'light') document.body.classList.remove('dark');
+  if (s.themeMode === 'dark') document.body.classList.add('dark');
+  if (s.density) document.body.classList.toggle('compact', s.density === 'compact');
+}
+
+window.__applyTheme = applyTheme;
+})();
+</script>

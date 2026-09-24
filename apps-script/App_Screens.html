@@ -1,0 +1,419 @@
+<script>
+/* ==========================================================================
+   HASEEB AUTOS — SCREENS (Part 1): Dashboard · Items · Inventory · Sales
+   ========================================================================== */
+(function () {
+'use strict';
+
+/* ============================ SHARED HELPERS ============================= */
+function rangeBar(onChange, defDays) {
+  const from = h('input', { type: 'date', value: fmt.date(Date.now() - (defDays || 29) * 864e5),
+    'aria-label': 'From date', title: 'From date' });
+  const to = h('input', { type: 'date', value: fmt.date(new Date()),
+    'aria-label': 'To date', title: 'To date' });
+  const presets = h('div', { class: 'seg' },
+    ...[['Today', 0], ['7 days', 6], ['30 days', 29], ['90 days', 89]].map(([lbl, d], i) =>
+      h('button', { class: i === 2 ? 'on' : '', onclick: e => {
+        $$('.seg button', presets).forEach(b => b.classList.remove('on')); e.target.classList.add('on');
+        from.value = fmt.date(Date.now() - d * 864e5); to.value = fmt.date(new Date());
+        onChange(values());
+      } }, lbl)));
+  function values() { return { from: from.value, to: to.value }; }
+  from.onchange = to.onchange = () => onChange(values());
+  return { el: h('div', { class: 'filters' }, h('label', { style: { fontSize: 'var(--fs-xs)', color: 'var(--muted)' } }, 'From'), from,
+    h('label', { style: { fontSize: 'var(--fs-xs)', color: 'var(--muted)' } }, 'To'), to, presets), values };
+}
+
+function searchBox(placeholder, onInput) {
+  const i = h('input', { class: 'grow', type: 'search', placeholder, autocomplete: 'off',
+    'aria-label': placeholder || 'Search', title: placeholder || 'Search' });
+  i.addEventListener('input', debounce(() => onInput(i.value.trim()), 220));
+  return i;
+}
+
+function branchSelect(onChange, includeAll) {
+  const s = h('select', { onchange: () => onChange(s.value),
+    'aria-label': 'Branch', title: 'Branch select karein' });
+  if (includeAll) s.appendChild(h('option', { value: '' }, 'All branches'));
+  (App.state.locations || []).forEach(l => s.appendChild(h('option', { value: l.id, selected: l.id === App.state.locationId }, l.name)));
+  s.value = App.state.locationId;
+  return s;
+}
+
+function exportBtn(type, params) {
+  return h('button', { class: 'btn sec sm', onclick: async () => {
+    try {
+      const r = await API.call('reports.export', { type, ...(params ? params() : {}) });
+      const blob = new Blob([r.csv], { type: 'text/csv' });
+      const a = h('a', { href: URL.createObjectURL(blob), download: r.filename });
+      document.body.appendChild(a); a.click(); a.remove();
+      UI.toast('CSV downloaded', 'ok');
+    } catch (e) { UI.toast(e.message, 'err'); }
+  } }, '⬇ CSV');
+}
+
+/* ============================== DASHBOARD ================================ */
+
+/* --------------------------------------------------------------------------
+ * v2.6 §18 — DUPLICATE SCREEN REMOVED: 'dashboard' do jagah register ho rahi thi.
+ * Live version baad wali file mein hai (load order: last one wins), to yahan
+ * purani dead copy hata di gayi — 0 ambiguity, 0 dead code.
+ * -------------------------------------------------------------------------- */
+
+/* ================================= ITEMS ================================= */
+
+/* --------------------------------------------------------------------------
+ * v2.6 §18 — DUPLICATE SCREEN REMOVED: 'items' do jagah register ho rahi thi.
+ * Live version baad wali file mein hai (load order: last one wins), to yahan
+ * purani dead copy hata di gayi — 0 ambiguity, 0 dead code.
+ * -------------------------------------------------------------------------- */
+
+function downloadCsv(csv, name) {
+  const a = h('a', { href: URL.createObjectURL(new Blob([csv], { type: 'text/csv' })), download: name || 'export.csv' });
+  document.body.appendChild(a); a.click(); a.remove();
+}
+
+/* --------------------------- item form (drawer) -------------------------- */
+function itemForm(item) {
+  const isNew = !item;
+  const types = App.state.customerTypes || [];
+  const f = UI.form([
+    { key: 'name', label: 'Item name', required: true, full: true },
+    { key: 'code', label: 'Code / Part no.', hint: 'Khali chhor dein to auto' },
+    { key: 'barcode', label: 'Barcode', hint: 'Scanner isi se pehchanay ga' },
+    { key: 'category', label: 'Category', type: 'select', options: ['Parts', 'Lights', 'Brakes', 'Engine', 'Filters', 'Oil & Lubricants', 'Electrical', 'Battery', 'Tyres', 'Decoration', 'Interior', 'Bike Accessories', 'Other'] },
+    { key: 'brand', label: 'Brand' },
+    { key: 'partType', label: 'Part type', type: 'select', options: ['', 'LIGHTING', 'BRAKES', 'ENGINE', 'FILTER', 'OIL', 'BATTERY', 'TYRE', 'DECOR', 'ELECTRICAL', 'BODY', 'OTHER'] },
+    { key: 'make', label: 'Vehicle make', type: 'select', options: ['', 'Universal', 'Toyota', 'Honda', 'Suzuki', 'Nissan', 'Hyundai', 'Kia', 'Mitsubishi', 'Daihatsu', 'Motorcycle', 'Other'] },
+    { key: 'model', label: 'Model' },
+    { key: 'yearFrom', label: 'Year from' },
+    { key: 'yearTo', label: 'Year to' },
+    { key: 'unit', label: 'Unit', type: 'select', options: ['PCS', 'SET', 'BOX', 'KG', 'LTR', 'PAIR', 'DOZEN'] },
+    { key: 'rack', label: 'Rack / Shelf' },
+    { key: 'costPrice', label: 'Cost price', type: 'number' },
+    { key: 'retailPrice', label: 'Retail price', type: 'number' },
+    { key: 'wholesalePrice', label: 'Wholesale price', type: 'number' },
+    { key: 'minPrice', label: 'Min price', type: 'number', hint: 'Is se neechay discount block' },
+    { key: 'taxRate', label: 'Tax %', type: 'number' },
+    { key: 'minStock', label: 'Min stock', type: 'number' },
+    { key: 'reorderLevel', label: 'Reorder level', type: 'number' },
+    { key: 'altBarcodes', label: 'Alt barcodes (comma separated)', full: true },
+    { key: 'notes', label: 'Notes', type: 'textarea', full: true }
+  ], item || {});
+
+  const d = UI.drawer({
+    title: isNew ? '➕ Naya item' : '✏ ' + item.name,
+    body: f.el,
+    actions: [
+      isNew ? null : { label: '🗑 Delete', cls: 'danger', onClick: async (c) => {
+        UI.confirm('Delete ' + item.name + '?', async () => {
+          await API.call('items.delete', { id: item.id }); UI.toast('Deleted', 'ok'); c(); App.refresh();
+        }, true);
+      } },
+      isNew ? null : { label: '🏷 Label', cls: 'sec', onClick: () => printLabels([item.id]) },
+      { label: 'Save', onClick: async (c) => {
+        const v = f.values();
+        if (!v.name) return UI.toast('Name zaroori hai', 'err');
+        try { await API.call('items.save', { item: v }); UI.toast('Saved ✅', 'ok'); c(); App.refresh(); API.pullCatalog(true); }
+        catch (e) { UI.toast(e.message, 'err'); }
+      } }
+    ].filter(Boolean)
+  });
+}
+
+async function printLabels(ids) {
+  /* v2.23.20 — delegates to the ONE shared label flow (Print.labelFlow).
+     Old inline copies-modal here was a second, inconsistent implementation. */
+  return Print.labelFlow(ids);
+}
+
+function importItems() {
+  const ta = h('textarea', { rows: 8, placeholder: 'Paste CSV here — header row: code,name,category,brand,costPrice,retailPrice,wholesalePrice,barcode' , style: { width: '100%' } });
+  UI.modal({
+    title: '⬆ Import items', width: 'wide',
+    body: h('div', null,
+      h('p', { style: { fontSize: 'var(--fs-sm)', color: 'var(--muted)' } },
+        'Google Sheet se copy kar ke paste karein (tab-separated bhi chalay ga). Existing codes update ho jayen ge, naye ban jayen ge.'),
+      ta),
+    actions: [{ label: 'Import', onClick: async (c) => {
+      const text = ta.value.trim(); if (!text) return;
+      const delim = text.indexOf('\t') > -1 ? '\t' : ',';
+      const lines = text.split(/\r?\n/).filter(Boolean);
+      const head = lines[0].split(delim).map(s => s.trim().replace(/^"|"$/g, ''));
+      const rows = lines.slice(1).map(l => {
+        const cells = l.split(delim).map(s => s.trim().replace(/^"|"$/g, ''));
+        const o = {}; head.forEach((k, i) => o[k] = cells[i]); return o;
+      });
+      try { const r = await API.call('items.bulkSave', { items: rows });
+        UI.toast('Created ' + r.created + ', updated ' + r.updated + (r.errors.length ? ', errors ' + r.errors.length : ''), 'ok');
+        c(); App.refresh(); API.pullCatalog(true);
+      } catch (e) { UI.toast(e.message, 'err'); }
+    } }]
+  });
+}
+
+/* =============================== INVENTORY =============================== */
+
+/* --------------------------------------------------------------------------
+ * v2.6 §18 — DUPLICATE SCREEN REMOVED: 'inventory' do jagah register ho rahi thi.
+ * Live version baad wali file mein hai (load order: last one wins), to yahan
+ * purani dead copy hata di gayi — 0 ambiguity, 0 dead code.
+ * -------------------------------------------------------------------------- */
+
+function locName(id) { const l = (App.state.locations || []).find(x => x.id === id); return l ? l.name : id; }
+
+function quickCount(row) {
+  if (!App.can('stock.adjust')) return;
+  const f = UI.form([
+    { key: 'name', label: 'Item', value: row.name + ' (' + row.code + ')', full: true },
+    { key: 'systemQty', label: 'System qty', type: 'number', value: row.qty },
+    { key: 'countedQty', label: 'Counted qty', type: 'number', value: row.qty }
+  ]);
+  UI.modal({
+    title: '⚖ Quick count', body: f.el,
+    actions: [{ label: 'Save count', onClick: async (c) => {
+      const v = f.values();
+      await API.call('stock.count', { itemId: row.itemId, locationId: row.locationId, countedQty: v.countedQty, cost: row.avgCost });
+      UI.toast('Stock updated ✅', 'ok'); c(); App.refresh(); API.pullCatalog(true);
+    } }]
+  });
+}
+
+function adjustmentForm() {
+  const items = [];
+  const listEl = h('div', { class: 'card', style: { marginTop: '10px' } }, h('div', { class: 'card-body tight' }));
+  const picker = UI2.itemPicker({ lines: items, after: render,
+    icon: '📦', title: 'Count lines — scan ya search', hint: 'Scan → seedha line mein add',
+    commitLabel: 'Add to count',
+    sub: r => (r.code || '') + ' · stock ' + r.stock,
+    map: r => ({ itemId: r.id, code: r.code, name: r.name, systemQty: r.stock, countedQty: r.stock }) });
+
+  function render() {
+    listEl.innerHTML = '';
+    listEl.appendChild(h('div', { class: 'card-head' }, h('h3', null, 'Lines (' + items.length + ')')));
+    const body = h('div', { class: 'card-body tight' });
+    items.forEach((l, i) => {
+      const qty = h('input', { type: 'number', value: l.countedQty, 'aria-label': 'Counted qty', title: 'Counted qty', style: { width: '90px', textAlign: 'right' } });
+      qty.onchange = () => { l.countedQty = Number(qty.value); };
+      body.appendChild(h('div', { class: 'list-item' },
+        h('div', { class: 'li-main' }, h('b', null, l.name), h('span', null, l.code + ' · system ' + l.systemQty)),
+        qty,
+        h('span', { class: 'badge ' + (l.countedQty - l.systemQty === 0 ? '' : (l.countedQty > l.systemQty ? 'ok' : 'err')) },
+          (l.countedQty - l.systemQty > 0 ? '+' : '') + (l.countedQty - l.systemQty)),
+        h('button', { class: 'icon-btn', style: { width: '30px', height: '30px', border: 0 }, onclick: () => { items.splice(i, 1); render(); } }, '✕')));
+    });
+    if (!items.length) body.appendChild(h('div', { class: 'tbl-empty' }, 'Koi line nahi'));
+    listEl.appendChild(body);
+  }
+  render();
+
+  const reason = h('select', { title: 'Adjustment reason', 'aria-label': 'Adjustment reason', style: { width: '100%', padding: '9px', border: '1.5px solid var(--line)', borderRadius: '10px' } },
+    ...['PHYSICAL_COUNT', 'DAMAGE', 'THEFT', 'EXPIRY', 'OPENING', 'CORRECTION', 'OTHER'].map(r => h('option', { value: r }, r)));
+  const notes = h('input', { type: 'text', placeholder: 'Notes', style: { width: '100%', padding: '9px', border: '1.5px solid var(--line)', borderRadius: '10px', marginTop: '8px' } });
+
+  UI.drawer({
+    title: '⚖ Stock adjustment',
+    body: h('div', null, h('div', { class: 'field' }, h('label', null, 'Reason'), reason),
+      h('div', { class: 'field' }, h('label', null, 'Add items'), picker),
+      listEl, notes),
+    actions: [
+      { label: 'Save draft', cls: 'sec', onClick: async (c) => {
+        try { await API.call('stock.adjust.save', { adjustment: { locationId: App.state.locationId, reason: reason.value, notes: notes.value, items } }); UI.toast('Draft saved', 'ok'); c(); App.refresh(); } catch (e) { UI.toast(e.message, 'err'); }
+      } },
+      App.can('stock.audit.post') ? { label: 'Save & Post', onClick: async (c) => {
+        try { await API.call('stock.adjust.save', { adjustment: { locationId: App.state.locationId, reason: reason.value, notes: notes.value, items, post: true } }); UI.toast('Posted ✅', 'ok'); c(); App.refresh(); API.pullCatalog(true); } catch (e) { UI.toast(e.message, 'err'); }
+      } } : null
+    ].filter(Boolean)
+  });
+}
+
+function transferForm() {
+  const items = [];
+  const listEl = h('div');
+  const picker = UI2.itemPicker({ lines: items, after: render,
+    icon: '📦', title: 'Count lines — scan ya search', hint: 'Scan → seedha line mein add',
+    commitLabel: 'Add to count',
+    sub: r => (r.code || '') + ' · stock ' + r.stock,
+    map: (r, qty) => ({ itemId: r.id, code: r.code, name: r.name, qty: Math.max(0, Number(qty) || 1), stock: r.stock }) });
+
+  function render() {
+    listEl.innerHTML = '';
+    items.forEach((l, i) => {
+      const q = h('input', { type: 'number', value: l.qty, 'aria-label': 'Quantity', title: 'Quantity', style: { width: '80px', textAlign: 'right' } });
+      q.onchange = () => { l.qty = Number(q.value); };
+      listEl.appendChild(h('div', { class: 'list-item' },
+        h('div', { class: 'li-main' }, h('b', null, l.name), h('span', null, l.code)),
+        q, h('button', { class: 'icon-btn', style: { width: '30px', height: '30px', border: 0 }, onclick: () => { items.splice(i, 1); render(); } }, '✕')));
+    });
+  }
+  render();
+
+  const f = UI.form([
+    { key: 'fromLocationId', label: 'From branch', type: 'select', options: App.state.locations.map(l => ({ value: l.id, label: l.name })), value: App.state.locationId },
+    { key: 'toLocationId', label: 'To branch', type: 'select', options: App.state.locations.map(l => ({ value: l.id, label: l.name })) }
+  ]);
+  UI.drawer({
+    title: '🔄 Branch transfer',
+    body: h('div', null, f.el, h('div', { class: 'field' }, h('label', null, 'Items'), picker), listEl),
+    actions: [{ label: 'Send', onClick: async (c) => {
+      const v = f.values();
+      if (!items.length) return UI.toast('Items add karein', 'warn');
+      try { await API.call('stock.transfer.save', { transfer: { ...v, items } }); UI.toast('Transfer created ✅', 'ok'); c(); App.refresh(); } catch (e) { UI.toast(e.message, 'err'); }
+    } }]
+  });
+}
+
+/* ================================= SALES ================================= */
+App.registerScreen('sales', {
+  title: 'Sales History', icon: '📁', perm: 'sales.view',
+  /* deep link: App.go('sales', { open:'SAL…' }) → invoice detail */
+  onParams(p) {
+    if (p.open) {
+      // list load async hai — opener milne tak thoda wait/retry
+      let tries = 0;
+      const timer = setInterval(() => {
+        tries++;
+        if (window.__openSale) { clearInterval(timer); window.__openSale(p.open); }
+        else if (tries > 12) clearInterval(timer);
+      }, 180);
+    }
+    if (p.customerId) setTimeout(() => { const q = document.querySelector('#view input[type=search]');
+      if (q) { q.value = ''; q.dispatchEvent(new Event('input', { bubbles: true })); } }, 300);
+  },
+  subtitle: () => 'Invoices, returns aur udhaar',
+  render(body) {
+    const params = { locationId: App.state.locationId, pageSize: 50, page: 1 };
+    const host = h('div');
+    const rb = rangeBar(() => { Object.assign(params, rb.values()); params.page = 1; load(); });
+    const search = searchBox('🔎 Invoice no / customer…', v => { params.q = v; load(); });
+    const status = h('select', { title: 'Status filter', 'aria-label': 'Filter by status', onchange: () => { params.status = status.value; load(); } },
+      h('option', { value: '' }, 'All status'), ...['PAID', 'PARTIAL', 'DUE', 'VOID'].map(s => h('option', { value: s }, s)));
+
+    body.appendChild(h('div', { class: 'card' },
+      h('div', { class: 'filters' }, search, status, branchSelect(v => { params.locationId = v; load(); }, true), rb.el),
+      host));
+
+    async function load() {
+      host.innerHTML = ''; host.appendChild(UI.skeleton(6));
+      try {
+        const res = await Shared.raw('sales.list', params);   /* v2.27.0 W3.T3 — envelope (rows/total/totals) */
+        host.innerHTML = '';
+        host.appendChild(UI.table({
+          columns: [
+            { key: 'invoiceNo', label: 'Invoice' },
+            { key: 'date', label: 'Date', render: r => fmt.date(r.date, true) },
+            { key: 'customerName', label: 'Customer' },
+            { key: 'items', label: 'Items', num: true, render: () => '—' },
+            { key: 'total', label: 'Total', num: true, render: r => fmt.money(r.total) },
+            { key: 'paid', label: 'Paid', num: true, render: r => fmt.money(r.paid) },
+            { key: 'due', label: 'Due', num: true, render: r => r.due > 0 ? h('b', { style: { color: 'var(--err)' } }, fmt.money(r.due)) : '—' },
+            { key: 'status', label: 'Status', render: r => h('span', { class: 'badge ' + (r.status === 'PAID' ? 'ok' : r.status === 'DUE' ? 'err' : r.status === 'VOID' ? '' : 'warn') }, r.status) },
+            { key: 'id', label: '', render: r => h('div', { style: { display: 'flex', gap: '4px' } },
+              h('button', { class: 'btn sm sec', onclick: e => { e.stopPropagation(); open(r.id); } }, 'View'),
+              r.status !== 'VOID' && App.can('pos.return') ? h('button', { class: 'btn sm sec', onclick: e => { e.stopPropagation(); returnForm(r); } }, 'Return') : '') }
+          ],
+          rows: res.rows, emptyText: 'Koi sale nahi mili',
+          onRow: r => open(r.id)
+        , _expose: (window.__openSale = open)
+        }));
+        host.appendChild(h('div', { class: 'pager' },
+          h('span', null, res.total + ' invoices · Total ' + fmt.money(res.totals.total) +
+            ' · Paid ' + fmt.money(res.totals.paid) + ' · Due ' + fmt.money(res.totals.due)),
+          h('div', { class: 'sp' }, exportBtn('sales', () => params))));
+      } catch (e) { host.innerHTML = ''; host.appendChild(h('div', { class: 'empty' }, '⚠ ' + e.message)); }
+    }
+
+    async function open(id) {
+      const sale = await API.call('sales.get', { id });
+      const el = h('div');
+      el.appendChild(h('div', { style: { textAlign: 'center', marginBottom: '10px' } },
+        h('div', { style: { fontSize: 'var(--fs-3xl)', fontWeight: '800' } }, sale.invoiceNo),
+        h('div', { style: { fontSize: 'var(--fs-xs)', color: 'var(--muted)' } }, fmt.date(sale.date, true) + ' · ' + sale.customerName)));
+      const rows = sale.items.map(i => h('div', { class: 'list-item' },
+        h('div', { class: 'li-main' }, h('b', null, i.name), h('span', null, i.code + ' · ' + i.qty + ' × ' + fmt.money(i.price))),
+        h('b', null, fmt.money(i.lineTotal))));
+      el.append(...rows);
+      el.appendChild(h('div', { style: { marginTop: '10px' } },
+        h('div', { class: 'tot-row' }, h('span', null, 'Subtotal'), h('span', null, fmt.money(sale.subtotal))),
+        h('div', { class: 'tot-row' }, h('span', null, 'Discount'), h('span', null, fmt.money(sale.discount))),
+        h('div', { class: 'tot-row grand' }, h('span', null, 'Total'), h('span', null, fmt.money(sale.total))),
+        h('div', { class: 'tot-row' }, h('span', null, 'Paid'), h('span', null, fmt.money(sale.paid))),
+        sale.due > 0 ? h('div', { class: 'tot-row' }, h('span', null, 'Due'), h('b', { style: { color: 'var(--err)' } }, fmt.money(sale.due))) : ''));
+      UI.drawer({
+        title: 'Invoice ' + sale.invoiceNo, body: el,
+        actions: [
+          { label: '📤 Share', cls: 'sec', onClick: () => window.Share && Share.invoice(sale) },
+          { label: '🖨 Print', cls: 'sec', onClick: async () => {
+            try { if (window.Print2) { await Print2.dialog(sale); return; } } catch (e) { }
+            Print.open(Print.receiptHtml(sale, App.state.settings, App.state.branchName), 'Receipt', (App.state.settings || {})['pos.receiptPaper'] || '80mm');
+          } },
+          sale.status !== 'VOID' && App.can('pos.return') ? { label: '↩ Return', cls: 'sec', onClick: c => { c(); returnForm(sale); } } : null,
+          sale.status !== 'VOID' && App.can('sales.void') ? { label: 'Void', cls: 'danger', onClick: c => {
+            UI.confirm('Invoice void karein? Stock wapas aa jaye ga.', async () => {
+              await API.call('sales.void', { id: sale.id, reason: 'Manual void' }); UI.toast('Voided', 'ok'); c(); load();
+            }, true);
+          } } : null
+        ].filter(Boolean)
+      });
+    }
+
+    function returnForm(sale) {
+      const lines = sale.items.map(i => ({ ...i, retQty: 0 }));
+      const body = h('div');
+      function render() {
+        body.innerHTML = '';
+        lines.forEach(l => {
+          const q = h('input', { type: 'number', min: '0', max: l.qty, value: l.retQty, 'aria-label': 'Return qty', title: 'Return qty', style: { width: '70px', textAlign: 'right' } });
+          q.onchange = () => { l.retQty = Math.min(l.qty, Math.max(0, Number(q.value))); q.value = l.retQty; };
+          const rowEl = h('div', { class: 'list-item' },
+            h('div', { class: 'li-main' }, h('b', null, l.name), h('span', null, 'Sold ' + l.qty + ' @ ' + fmt.money(l.price))), q);
+          rowEl.dataset.code = String(l.code || l.itemId || '');
+          body.appendChild(rowEl);
+        });
+      }
+      render();
+      /* v2.24.2 — scan-to-return: barcode scan karte hi us line ki return qty +1
+         (POS wali hi scan semantics: auto-clear, ready for next, invalid → warn) */
+      const scan = UI2.scanRow({
+        hint: 'Scan → us line ki return qty +1',
+        autofocus: false,
+        onScan: (code) => {
+          const lc = String(code).toLowerCase();
+          const hit = lines.find(l => [l.code, l.barcode, l.itemId, l.id, l.name]
+            .filter(Boolean).some(v => String(v).toLowerCase() === lc));
+          if (!hit) { scan.setLast('⚠ Is bill mein nahi: ' + code, 'warn'); UI.toast('Is bill mein nahi mila: ' + code, 'warn'); return; }
+          if (hit.retQty >= hit.qty) { scan.setLast('⚠ ' + hit.name + ' — poori qty pehle hi return ho chuki', 'warn'); return; }
+          hit.retQty = Math.min(hit.qty, hit.retQty + 1);
+          render();
+          scan.setLast('✅ ' + (hit.code || '') + ' → ' + hit.name + ' ×' + hit.retQty, 'ok');
+        }
+      });
+      const method = h('select', { title: 'Refund method', 'aria-label': 'Refund method', style: { width: '100%', padding: '9px', border: '1.5px solid var(--line)', borderRadius: '10px', marginTop: '10px' } },
+        h('option', { value: 'CASH' }, 'Cash refund'), h('option', { value: 'CREDIT' }, 'Credit to account'));
+      const reason = h('input', { type: 'text', placeholder: 'Reason', style: { width: '100%', padding: '9px', border: '1.5px solid var(--line)', borderRadius: '10px', marginTop: '8px' } });
+      UI.drawer({
+        title: '↩ Return — ' + sale.invoiceNo,
+        body: h('div', null, scan.el, body, method, reason),
+        actions: [{ label: 'Process return', cls: 'danger', onClick: async (c) => {
+          const items = lines.filter(l => l.retQty > 0).map(l => ({ itemId: l.itemId, qty: l.retQty, price: l.price, code: l.code, name: l.name }));
+          if (!items.length) return UI.toast('Qty daalein', 'warn');
+          try {
+            await API.call('sales.return', { return_: { saleId: sale.id, items, refundMethod: method.value, reason: reason.value, restock: true } });
+            UI.toast('Return processed ✅', 'ok'); c(); load(); API.pullCatalog(true);
+          } catch (e) { UI.toast(e.message, 'err'); }
+        } }]
+      });
+    }
+
+    load();
+  }
+});
+
+/* exports shared with Screens Part-2 */
+window.__itemForm = itemForm;
+window.__printLabels = printLabels;
+window.__ui = {
+  rangeBar, searchBox, branchSelect, exportBtn, downloadCsv, itemForm, printLabels
+};
+})();
+</script>

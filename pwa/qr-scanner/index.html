@@ -1,0 +1,379 @@
+<!doctype html>
+<!--
+  Haseeb Autos — LIVE CAMERA SCANNER (external, self-hostable)
+  ---------------------------------------------------------------------------
+  WHY THIS FILE EXISTS: Apps Script HTMLService runs your UI inside a
+  sandboxed iframe whose Permissions Policy does NOT allow the camera. Since
+  Feb-2026 browsers enforce "camera is not allowed in this document" for
+  getUserMedia() from that iframe — no JS library can work around it. Google's
+  own guidance: host camera features OUTSIDE Apps Script, open them in a new
+  tab/window and return results via postMessage. That is what this page does.
+
+  HOST: any static HTTPS host — GitHub Pages (free, easiest), your own
+  domain, Firebase Hosting, Netlify... Ship this folder as-is:
+      index.html  (this file — no build step, no npm)
+      vendor/html5-qrcode.min.js  (html5-qrcode v2.3.8, MIT, pinned)
+  The vendor file is a fallback decoder for browsers without the native
+  BarcodeDetector (iOS Safari etc.). Native detector is preferred when
+  present. Nothing is uploaded anywhere: camera frames stay in this page,
+  only the decoded string is posted back to the opener, once.
+
+  QUERY PARAMS (set by the ERP bridge, window.HaScan):
+      ret=<encoded return origin>  — ONLY https://script.google.com or
+                                     https://<hash>.googleusercontent.com
+      n=<nonce>                     — echoed back in the result message
+      fmt=all                       — also decode 1D barcodes (default: QR)
+      once=0                        — continuous mode (default once=1:
+                                      decode one code, then return & close)
+
+  Result message sent to window.opener:
+      { type:'HASEEB_QR_RESULT', value:'<decoded text>', nonce:'<n>' }
+  with targetOrigin pinned to `ret`. Full integration guide:
+  release/QR-LIVE-CAMERA-GUIDE.md in the project ZIP.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b1220">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'unsafe-inline'; img-src 'self' data: blob:; media-src blob:; connect-src 'none'; form-action 'none'">
+<title>Haseeb Autos — Scan</title>
+<style>
+  :root{color-scheme:dark;--bg:#0b1220;--panel:#142035;--line:#34445b;--ink:#e8edf5;--muted:#aebed4;
+    --brand:#ff6a00;--ok:#22c55e;--warn:#f59e0b;--err:#ef4444}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    min-height:100vh;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+  main{max-width:520px;margin:0 auto;padding:14px}
+  h1{font-size:19px;margin:2px 0 12px;display:flex;align-items:center;gap:8px}
+  h1 .x{margin-left:auto;background:var(--panel);border:1px solid var(--line);color:var(--ink);border-radius:10px;
+    min-width:44px;min-height:44px;font-size:18px;cursor:pointer}
+  #stage{position:relative;background:#000;border-radius:16px;overflow:hidden;aspect-ratio:3/4;max-height:56vh;margin:0 auto;border:1px solid var(--line)}
+  #v,#reader{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+  #reader{background:#000}
+  #reader video{width:100%!important;height:100%!important;object-fit:cover}
+  #reader img{display:none}
+  #reader #html5-qrcode-button-camera-permission,#reader #html5-qrcode-button-camera-start,#reader #html5-qrcode-button-camera-stop,
+  #reader #html5-qrcode-camera-switch,#reader #html5-qrcode-scan-toggle-btn,#reader .html5-qrcode-element{display:none!important}
+  #frame{position:absolute;inset:14% 10%;border-radius:14px;box-shadow:0 0 0 2000px rgba(4,8,16,.55);
+    border:2px solid rgba(255,255,255,.85);transition:border-color .2s}
+  #frame.hit{border-color:var(--ok)}
+  #status{margin:12px 2px;min-height:24px;color:var(--muted);font-size:15px;text-align:center}
+  .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+  button.act,select.cam{flex:1 1 auto;min-height:48px;border-radius:12px;border:1px solid var(--line);background:var(--panel);
+    color:var(--ink);font:600 15px system-ui;cursor:pointer;padding:0 12px}
+  button.act:active{transform:scale(.98)}
+  button.act.primary{background:var(--brand);border-color:var(--brand);color:#fff}
+  .manual{display:flex;gap:8px;margin-top:12px}
+  .manual input{flex:1;min-width:0;min-height:48px;padding:10px 12px;border-radius:12px;border:1px solid var(--line);
+    background:var(--panel);color:var(--ink);font:16px system-ui}
+  #result{display:none;margin-top:14px;padding:12px 14px;border:1px solid var(--ok);border-radius:12px;background:rgba(34,197,94,.08)}
+  #result b{font-size:18px;word-break:break-all}
+  #result .again{margin-top:8px}
+  .foot{color:var(--muted);font-size:12.5px;margin-top:16px;text-align:center}
+  @media (prefers-reduced-motion:reduce){#frame{transition:none}}
+</style>
+</head>
+<body>
+<main>
+  <h1>📷 <span id="ttl">Scan QR / barcode</span>
+    <button class="x" id="btnClose" type="button" title="Close" aria-label="Close">✕</button></h1>
+
+  <div id="stage" hidden>
+    <video id="v" playsinline muted autoplay aria-label="Camera preview"></video>
+    <div id="reader" hidden></div>
+    <div id="frame"></div>
+  </div>
+
+  <p id="status" role="status">Camera shuru kar rahe hain…</p>
+
+  <div class="row">
+    <button class="act" id="btnTorch" type="button" hidden>🔦 Torch</button>
+    <button class="act" id="btnFlip" type="button" hidden>🔄 Flip</button>
+    <select class="cam" id="selCam" hidden aria-label="Camera select"></select>
+  </div>
+  <div class="row">
+    <button class="act primary" id="btnStart" type="button">▶ Start camera</button>
+    <button class="act" id="btnShot" type="button" hidden>📸 Photo se scan</button>
+  </div>
+  <input type="file" id="file" accept="image/*" capture="environment" hidden>
+
+  <form class="manual" id="frmManual">
+    <input id="manual" type="text" inputmode="text" autocomplete="off" spellcheck="false" placeholder="Ya code yahan type karein…" aria-label="Manual code entry">
+    <button class="act" type="submit">Use</button>
+  </form>
+
+  <div id="result">
+    <div class="muted" style="font-size:13px">Scanned:</div>
+    <b id="resultValue"></b>
+    <button class="act again" id="btnCopy" type="button">📋 Copy</button>
+  </div>
+
+  <p class="foot">Sab kuch device par hi hota hai — koi image upload nahi, koi server nahi.<br>Haseeb Autos ERP · v2.14.0</p>
+</main>
+
+<script src="vendor/html5-qrcode.min.js"></script>
+<script>
+/* eslint-disable */
+'use strict';
+(function () {
+  var QS = new URLSearchParams(location.search);
+  var RET_RAW = QS.get('ret') || '';
+  var NONCE = String(QS.get('n') || '').slice(0, 64);
+  var FMT_ALL = (QS.get('fmt') || '') === 'all';
+  var CONTINUOUS = QS.get('once') === '0';
+  var COOLDOWN_MS = 1500;              /* duplicate-scan prevention */
+  var MSG_TYPE = 'HASEEB_QR_RESULT';
+  /* The opener is always the Apps Script panel — pinned to Google origins. */
+  function validRet(v) { return /^https:\/\/(script\.google\.com|[a-z0-9-]+\.googleusercontent\.com)$/i.test(v); }
+  var RET = validRet(RET_RAW) ? RET_RAW : '';
+
+  var $ = function (id) { return document.getElementById(id); };
+  var video = $('v'), stage = $('stage'), status = $('status'), frame = $('frame'),
+      torchBtn = $('btnTorch'), flipBtn = $('btnFlip'), selCam = $('selCam'),
+      startBtn = $('btnStart'), shotBtn = $('btnShot'), file = $('file'),
+      manual = $('manual'), resultBox = $('result'), resultValue = $('resultValue'),
+      readerBox = $('reader');
+
+  var stream = null, detector = null, busy = false, lastValue = '', lastAt = 0,
+      stopped = false, ticking = null, facing = 'environment', lib = null, libActive = false;
+  var nativeOk = ('BarcodeDetector' in window) && !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+  var libOk = typeof window.Html5Qrcode === 'function';
+
+  function say(msg, tone) {
+    status.textContent = msg;
+    status.style.color = tone === 'err' ? 'var(--err)' : tone === 'ok' ? 'var(--ok)' : 'var(--muted)';
+  }
+
+  function formats() {
+    if (!nativeOk) return null;
+    var want = FMT_ALL ? ['qr_code', 'code_128', 'code_39', 'ean_13', 'ean_8', 'upc_a', 'upc_e', 'data_matrix'] : ['qr_code'];
+    try { return new window.BarcodeDetector({ formats: want }); } catch (e) { }
+    try { return new window.BarcodeDetector(); } catch (e) { return null; }
+  }
+
+  function feedback() {
+    try { navigator.vibrate && navigator.vibrate(40); } catch (e) { }
+    try {
+      var actx = new (window.AudioContext || window.webkitAudioContext)();
+      var o = actx.createOscillator(), g = actx.createGain();
+      o.connect(g); g.connect(actx.destination); o.frequency.value = 1450;
+      g.gain.setValueAtTime(0.0001, actx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.12, actx.currentTime + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, actx.currentTime + 0.09);
+      o.start(); o.stop(actx.currentTime + 0.1);
+    } catch (e) { }
+  }
+
+  function stopCamera() {
+    stopped = true; libActive = false;
+    if (ticking) { clearTimeout(ticking); ticking = null; }
+    if (stream) { stream.getTracks().forEach(function (t) { t.stop(); }); stream = null; }
+    try { video.srcObject = null; } catch (e) { }
+    if (lib) { try { lib.clear(); } catch (e) { } }
+    torchBtn.hidden = true;
+  }
+
+  function send(value) {
+    var now = Date.now();
+    if (value === lastValue && now - lastAt < COOLDOWN_MS * 2) return;   /* same code twice — ignore */
+    if (!CONTINUOUS) {
+      lastValue = value; lastAt = now;
+      finish(value);
+      return;
+    }
+    if (now - lastAt < COOLDOWN_MS) return;
+    lastValue = value; lastAt = now;
+    deliver(value);
+    frame.classList.add('hit');
+    setTimeout(function () { frame.classList.remove('hit'); }, 350);
+  }
+  function deliver(value) {
+    if (RET && window.opener && !window.opener.closed) {
+      try { window.opener.postMessage({ type: MSG_TYPE, value: value, nonce: NONCE }, RET); return true; }
+      catch (e) { }
+    }
+    show(value);                       /* no opener / bad ret: manual hand-off */
+    return false;
+  }
+  function finish(value) {
+    feedback();
+    frame.classList.add('hit');
+    if (RET && window.opener && !window.opener.closed) {
+      try { window.opener.postMessage({ type: MSG_TYPE, value: value, nonce: NONCE }, RET); } catch (e) { show(value); return; }
+      say('Bhej diya: ' + value, 'ok');
+      setTimeout(function () { try { window.close(); } catch (e) { } }, 350);
+    } else show(value);
+  }
+  function show(value) {
+    resultValue.textContent = value;
+    resultBox.style.display = 'block';
+    say('Result copy kar ke app mein paste karein.', 'err');
+    startBtn.hidden = false; startBtn.textContent = '↻ Dobara scan';
+  }
+
+  /* ------------------------- NATIVE pipeline ----------------------------- */
+  function tick() {
+    if (stopped || busy || !detector || !video.videoWidth) { ticking = setTimeout(tick, 220); return; }
+    busy = true;
+    detector.detect(video).then(function (codes) {
+      busy = false;
+      if (codes && codes.length && codes[0].rawValue) send(String(codes[0].rawValue).trim());
+      else if (!CONTINUOUS) ticking = setTimeout(tick, 140);
+    }).catch(function () { busy = false; }).then(function () {
+      if (!stopped && !CONTINUOUS) { clearTimeout(ticking); ticking = setTimeout(tick, 140); }
+    });
+  }
+
+  function setTorchUI(track) {
+    try {
+      var caps = track.getCapabilities ? track.getCapabilities() : {};
+      if (caps.torch) {
+        torchBtn.hidden = false;
+        var on = false;
+        torchBtn.onclick = function () {
+          on = !on;
+          track.applyConstraints({ advanced: [{ torch: on }] }).catch(function () {
+            say('Is device par torch browser ke zariye nahi chalta.', 'err'); on = false;
+          });
+        };
+      }
+    } catch (e) { }
+  }
+
+  async function startNative() {
+    detector = formats();
+    if (!detector) { say('Native detector nahi bana — library mode try hoga.', 'err'); return false; }
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: facing === 'environment' ? { facingMode: { ideal: 'environment' } } : { deviceId: facing }
+      });
+    } catch (e) {
+      var name = (e && e.name) || '';
+      if (name === 'NotAllowedError') say('Camera permission deni hogi — browser ki site settings mein allow karein, phir ↻.', 'err');
+      else if (name === 'NotReadableError') say('Camera kisi aur app (WhatsApp/Zoom) mein busy hai — band karke ↻ dabayein.', 'err');
+      else say('Camera start nahi hua: ' + name + ' — photo ya manual use karein.', 'err');
+      return false;
+    }
+    stopped = false;
+    video.srcObject = stream;
+    await video.play();
+    var track = stream.getVideoTracks()[0];
+    setTorchUI(track);
+    shotBtn.hidden = false;
+    say(CONTINUOUS ? 'Laga rahe hain — ek-ek code scan hoga (continuous).' : 'Code camera ke samne layein…', 'ok');
+    clearTimeout(ticking); tick();
+    return true;
+  }
+
+  /* ---------------------- html5-qrcode fallback (iOS) -------------------- */
+  async function startLib() {
+    lib = new window.Html5Qrcode('reader', {
+      formatsToSupport: FMT_ALL ? undefined : [window.Html5QrcodeSupportedFormats.QR_CODE]
+    });
+    var cfg = {
+      fps: 10,
+      qrbox: function (vW, vH) { var s = Math.min(vW, vH) * 0.72; return { width: s, height: s }; },
+      aspectRatio: 1.333,
+      rememberLastUsedCamera: true,
+      experimentalFeatures: { useBarCodeDetectorIfSupported: nativeOk }
+    };
+    try {
+      await lib.start({ facingMode: facing }, cfg,
+        function (txt) { send(String(txt).trim()); },
+        function () { });
+      stopped = false; libActive = true;
+      video.hidden = true; readerBox.hidden = false;
+      shotBtn.hidden = false; flipBtn.hidden = false;
+      try { await lib.toggleTorch && (lib.currentTorchStatus ? null : null); } catch (e) { }
+      say('Code camera ke samne layein… (library mode)', 'ok');
+      return true;
+    } catch (e) {
+      say('Library se bhi camera na chala: ' + ((e && e.message) || e) + ' — photo/manual use karein.', 'err');
+      return false;
+    }
+  }
+
+  async function start() {
+    stage.hidden = false; startBtn.hidden = true;
+    if (nativeOk) { if (await startNative()) return; stopCamera(); }
+    if (libOk) { if (await startLib()) return; }
+    if (!nativeOk && !libOk) say('Is browser mein scanner nahi chal sakta — manual entry use karein.', 'err');
+    startBtn.hidden = false; startBtn.textContent = '↻ Dobara koshish';
+  }
+
+  /* -------- photo / file decode (works even when live camera blocked) ---- */
+  function decodeImageFile(f) {
+    var img = new Image();
+    img.onload = function () {
+      function go(det) {
+        det.detect(img).then(function (codes) {
+          if (codes && codes.length) { send(String(codes[0].rawValue).trim()); say('Photo se code mil gaya ✔', 'ok'); }
+          else say('Photo mein code nahi mila — behtar roshni mein dobara.', 'err');
+          URL.revokeObjectURL(img.src);
+        }).catch(function () { say('Decode fail — dobara try karein.', 'err'); });
+      }
+      var det = formats() || detector;
+      if (det) go(det);
+      else if (libOk) {
+        if (!lib) lib = new window.Html5Qrcode('reader', {});
+        lib.scanFile(f, true).then(function (txt) { send(String(txt).trim()); })
+          .catch(function () { say('Photo mein code nahi mila.', 'err'); });
+      } else say('Photo decode is browser mein nahi — manual type karein.', 'err');
+    };
+    img.onerror = function () { say('Photo load nahi hui.', 'err'); };
+    img.src = URL.createObjectURL(f);
+  }
+  function captureFrame() {
+    if (!stream && !libActive) { file.click(); return; }
+    var src = libActive ? readerBox.querySelector('video') : video;
+    if (!src || !src.videoWidth) { file.click(); return; }
+    var c = document.createElement('canvas');
+    c.width = src.videoWidth; c.height = src.videoHeight;
+    c.getContext('2d').drawImage(src, 0, 0);
+    c.toBlob(function (b) {
+      var img = new Image();
+      img.onload = function () {
+        var det = detector || formats();
+        if (!det) { say('Frame decode nahi ho saka.', 'err'); return; }
+        det.detect(img).then(function (codes) {
+          if (codes && codes.length) send(String(codes[0].rawValue).trim());
+        }).catch(function () { });
+      };
+      img.src = URL.createObjectURL(b);
+    }, 'image/jpeg', 0.9);
+  }
+
+  /* ------------------------------ wiring ---------------------------------- */
+  startBtn.onclick = start;
+  shotBtn.onclick = function () { file.click(); };
+  file.onchange = function () { if (file.files && file.files[0]) decodeImageFile(file.files[0]); file.value = ''; };
+  $('btnClose').onclick = function () { stopCamera(); setTimeout(function () { try { window.close(); } catch (e) { } }, 50); };
+  $('frmManual').onsubmit = function (ev) {
+    ev.preventDefault();
+    var v = manual.value.trim();
+    if (!v) { say('Pehle code type karein.', 'err'); return; }
+    send(v);
+    manual.value = '';
+  };
+  $('btnCopy').onclick = function () {
+    try { navigator.clipboard.writeText(resultValue.textContent); say('Copy ho gaya — paste karein.', 'ok'); }
+    catch (e) { say('Copy nahi hua — text select karke copy karein.', 'err'); }
+  };
+  flipBtn.onclick = async function () {
+    facing = facing === 'environment' ? 'user' : 'environment';
+    stopCamera(); video.hidden = false; readerBox.hidden = true;
+    start();
+  };
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) stopCamera();
+    else if (CONTINUOUS || resultBox.style.display !== 'block') { video.hidden = false; readerBox.hidden = true; start(); }
+  });
+
+  if (!RET_RAW) $('ttl').textContent = 'Scan (standalone)';
+  else if (!RET) say('⚠ ret parameter Google origin nahi — result sirf copy ho ga, postMessage band.', 'err');
+  if (nativeOk || libOk) start();
+})();
+</script>
+</body>
+</html>

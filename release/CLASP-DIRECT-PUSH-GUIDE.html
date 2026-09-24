@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Haseeb Autos — clasp se direct push (Windows, beginner)</title>
+<style>
+  body{margin:0;background:#0b1220;color:#c9d6ea;font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;line-height:1.65}
+  .wrap{max-width:940px;margin:0 auto;padding:26px 20px 70px}
+  h1{font-size:25px;color:#fff;margin:0 0 6px}
+  h2{font-size:19px;color:#fff;border-bottom:1px solid #22304a;padding-bottom:8px;margin-top:34px}
+  h3{font-size:15.5px;color:#8fb6ff;margin:22px 0 8px}
+  .lead{color:#8fa3c0;font-size:14.5px;margin:0 0 8px}
+  code{background:#08111f;padding:2px 6px;border-radius:5px;font-size:12.5px;color:#9fe3c0}
+  pre{background:#08111f;border:1px solid #1e2c46;border-radius:8px;padding:12px 14px;overflow-x:auto;
+      font-size:12.5px;line-height:1.6;color:#d6e6ff;margin:10px 0}
+  table{width:100%;border-collapse:collapse;font-size:14px;background:#0f1a2c;
+        border:1px solid #22304a;border-radius:8px;overflow:hidden;margin:10px 0}
+  td,th{padding:10px 12px;text-align:left;border-bottom:1px solid #1b2740;vertical-align:top}
+  tr:last-child td{border-bottom:none}
+  th{color:#8fb6ff;font-size:13px}
+  .box{background:#12233a;border-left:4px solid #38bdf8;border-radius:0 8px 8px 0;padding:12px 16px;margin:14px 0;font-size:13.5px}
+  .warn{background:#2a1f10;border-left:4px solid #f59e0b;color:#e8d9bf}
+  .good{background:#10281c;border-left:4px solid #22c55e;color:#d3ecdd}
+  ol,ul{padding-left:22px}
+  li{margin:7px 0}
+  .step{color:#8fb6ff;font-weight:700}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>clasp se direct push — copy-paste se chhutkara</h1>
+<p class="lead">
+  Windows 10 · bilkul shuru se · har click likha hua. Ek dafa setup ho jaye to har future fix
+  sirf <b>2 command</b> se live ho jayega.
+</p>
+
+<div class="box good">
+  <b>clasp kya hai?</b> Google ka apna command-line tool. Ye aap ke computer ki
+  <code>apps-script/</code> folder ki files seedha Google par upload kar deta hai —
+  file kholna, code paste karna, save dabana… kuch nahi karna parta.
+</div>
+
+<h2>Hissa 1 — Node.js install karein (ek dafa)</h2>
+<ol>
+  <li>Browser mein kholein: <code>https://nodejs.org</code></li>
+  <li><b>LTS</b> wala button dabayein (green) — file download hogi</li>
+  <li>Download hui file par <b>double click</b> → <b>Next → Next → Install</b> (sab default rakhein)</li>
+  <li>Install ke baad <b>Start menu</b> se <b>Command Prompt</b> kholein (search: <code>cmd</code>)</li>
+  <li>Check karein — ye likh kar Enter dabayein:
+    <pre>node -v</pre>
+    Agar <code>v20.x.x</code> jaisa number aaye to ✔ Node.js lag gaya.</li>
+</ol>
+
+<h2>Hissa 2 — clasp install karein (ek dafa)</h2>
+<p>Command Prompt mein ye line likh kar Enter dabayein:</p>
+<pre>npm install -g @google/clasp</pre>
+<p>Check:</p>
+<pre>clasp --version</pre>
+<p>Version number aaye to ✔ tayyar hai.</p>
+
+<h2>Hissa 3 — Google account se login (ek dafa)</h2>
+<pre>clasp login</pre>
+<ol>
+  <li>Browser khud khul jayega</li>
+  <li>Apna <b>wahi Google account</b> chunein jis mein Haseeb Autos ka Apps Script project hai</li>
+  <li><b>Allow</b> dabaayein</li>
+  <li>Command Prompt mein likha aayega: <code>Authorization successful.</code></li>
+</ol>
+<div class="box">
+  Agar browser na khule ya error aaye to ye command azmaayein — ye ek code deta hai jo aap
+  khud browser mein paste karte hain:
+  <pre>clasp login --no-localhost</pre>
+</div>
+
+<h2>Hissa 4 — apna Script ID nikalein (ek dafa)</h2>
+<ol>
+  <li>Browser mein <code>script.google.com</code> kholein → apna <b>Haseeb Autos</b> project kholein</li>
+  <li>Address bar ka URL kuch aisa hoga:
+    <pre>https://script.google.com/home/projects/<b style="color:#ffd9a0">1AbCdEf…lamba</b>/edit</pre></li>
+  <li><code>/projects/</code> aur <code>/edit</code> ke <b>darmiyani</b> lambe hisse ko copy karein — wahi <b>Script ID</b> hai</li>
+</ol>
+
+<h2>Hissa 5 — project ko jodna (ek dafa)</h2>
+<p>Command Prompt mein project folder mein jayein (jahan zip se files nikali thin):</p>
+<pre>cd C:\Users\AapKaNaam\Downloads\haseeb-autos</pre>
+<div class="box">
+  Asaan tareeqa: File Explorer mein us folder par jayein jahan <code>apps-script</code> folder hai,
+  address bar mein <code>cmd</code> likh kar Enter dabayein — Command Prompt usi folder mein khul jayega.
+</div>
+
+<p>Zip ke sath <b>clasp.template.json</b> file aati hai. Usay <b>.clasp.json</b> ke naam se copy karein
+(Windows Explorer mein file ka naam badal dein), phir Notepad se khol kar <code>scriptId</code> ki jagah
+apna Script ID paste karein:</p>
+<pre>{
+  "scriptId": "1AbCdEf…(aap ka script id)",
+  "rootDir": "apps-script",
+  "projectId": "haseeb-autos-erp"
+}</pre>
+<div class="box warn">
+  <b>rootDir zaroori hai.</b> Ye batata hai ke code <code>apps-script</code> folder mein hai —
+  warna clasp poori zip (tools, demo, reports) upload karne lagega.
+</div>
+
+<p>Check karein ke clasp project se baat kar pa raha hai:</p>
+<pre>clasp setting rootDir apps-script
+clasp list</pre>
+<p><code>clasp list</code> aap ke projects ki list dikhaye to ✔ jud gaya.</p>
+
+<h2>Hissa 6 — rozana ka kaam: sirf 2 command</h2>
+
+<h3>1. Code Google par bhejein</h3>
+<pre>clasp push</pre>
+<p>Poochay ga <code>Manifest file has been updated…</code> waghera — <b>y</b> dabaayein.
+Har file upload hote hue dikhegi:</p>
+<pre>└── Code.gs
+└── AI.gs
+└── App_Core.html
+…
+Pushed N files.</pre>
+
+<h3>2. Web app ko update karein</h3>
+<pre>clasp deploy</pre>
+<p>Ye <b>nayi version</b> banata hai aur deploy kar deta hai. Output mein <b>Web app URL</b> dikhega.</p>
+
+<div class="box good">
+  <b>Bas itna hi.</b> Ab koi copy-paste nahi: <code>clasp push</code> → <code>clasp deploy</code> → phone par refresh.
+</div>
+
+<h3>Purani deployment update karni ho (URL na badle)</h3>
+<p><code>clasp deploy</code> har dafa <b>naya</b> URL banata hai. Agar aap ko wahi purana URL rakhna hai
+(jo aap ne phone par save kiya hai) to pehle deployment ID nikalein:</p>
+<pre>clasp deployments</pre>
+<p>List mein se apni web app ka <b>Deployment ID</b> copy karein, phir:</p>
+<pre>clasp deploy -d "US-DEPLOYMENT-ID-YAHAN"</pre>
+<p>Is se <b>wahi URL</b> nayi version par chala jayega — dobara kisi ko link nahi bhejna parega.</p>
+
+<h2>Hissa 7 — kaam asaan karne wale commands</h2>
+<table>
+  <tr><th style="width:34%">Command</th><th>Kya karta hai</th></tr>
+  <tr><td><code>clasp push</code></td><td>Computer ka code Google par bhejta hai</td></tr>
+  <tr><td><code>clasp push -w</code></td><td><b>Watch mode</b> — file save karte hi khud push ho jati hai (Ctrl+C se band)</td></tr>
+  <tr><td><code>clasp deploy</code></td><td>Nayi version + nayi deployment (naya URL)</td></tr>
+  <tr><td><code>clasp deploy -d "ID"</code></td><td>Purani deployment update (URL wahi rehta hai)</td></tr>
+  <tr><td><code>clasp deployments</code></td><td>Sab deployments ki list + IDs</td></tr>
+  <tr><td><code>clasp pull</code></td><td>Google se code wapas computer par laata hai
+      <span style="color:#f59e0b">(⚠ apni local files overwrite ho jayengi)</span></td></tr>
+  <tr><td><code>clasp open</code></td><td>Project browser mein khol deta hai</td></tr>
+  <tr><td><code>clasp logs</code></td><td>Server ke logs Command Prompt mein — Execution log ka alternative</td></tr>
+  <tr><td><code>clasp logout</code></td><td>Account se sign out</td></tr>
+</table>
+
+<h2>Hissa 8 — Deploy ke baad access setting</h2>
+<div class="box warn">
+  <b>Zaroori:</b> clasp se deploy karne ke baad <b>Who has access</b> check karein.
+  <b>Anyone</b> na chunne par mobile par <i>"Sorry, unable to open the file at present"</i> aata hai
+  (Google ka sign-in redirect bug).
+  <br><br>
+  <b>Deploy ▸ Manage deployments ▸ ✏ Edit ▸ Who has access: <u>Anyone</u> ▸ Deploy</b>
+</div>
+
+<h2>Hissa 9 — Aam masle aur un ka hal</h2>
+<table>
+  <tr><th style="width:42%">Error / masla</th><th>Hal</th></tr>
+  <tr><td><code>clasp : The term 'clasp' is not recognized</code></td>
+      <td>Command Prompt <b>band kar ke dobara kholein</b> (install ke baad path update hota hai).
+      Phir bhi na ho to <code>npm install -g @google/clasp</code> dobara chalayein.</td></tr>
+  <tr><td><code>Script ID not found</code> / <code>Could not find .clasp.json</code></td>
+      <td>Aap sahi folder mein nahi hain. <code>dir</code> likh kar dekhein ke <code>.clasp.json</code>
+      aur <code>apps-script</code> folder nazar aa raha hai.</td></tr>
+  <tr><td><code>You are not logged in</code></td>
+      <td><code>clasp login</code> chalayein.</td></tr>
+  <tr><td>Push ho gaya magar app mein tabdeeli nahi aayi</td>
+      <td>Push sirf code bhejta hai — <b>deploy</b> zaroori hai: <code>clasp deploy -d "ID"</code>.
+      Phir browser mein <b>Ctrl+Shift+R</b> (hard refresh).</td></tr>
+  <tr><td><code>Manifest file has been updated. Do you want to continue?</code></td>
+      <td><b>y</b> dabaayein — ye normal hai.</td></tr>
+  <tr><td>clasp ne tools/ aur demo/ bhi upload kar diye</td>
+      <td><code>.claspignore</code> file maujood honi chahiye (zip mein aati hai), aur
+      <code>.clasp.json</code> mein <code>rootDir: "apps-script"</code> hona chahiye.</td></tr>
+  <tr><td><code>ECONNREFUSED</code> / network error</td>
+      <td>Internet ya proxy masla. Dobara chalayein; proxy ho to
+      <code>npm config set proxy http://…</code> set karein.</td></tr>
+</table>
+
+<h2>Hissa 10 — Ek nazar mein poora tareeqa</h2>
+<pre>cd C:\Users\AapKaNaam\Downloads\haseeb-autos
+clasp push
+clasp deploy -d "APNI-DEPLOYMENT-ID"
+:: bas — phone par app refresh karein</pre>
+
+<div class="box">
+  <b>Pehli dafa sirf:</b> Node.js install → <code>npm i -g @google/clasp</code> → <code>clasp login</code>
+  → Script ID → <code>.clasp.json</code>. Us ke baad hamesha sirf <code>push</code> + <code>deploy</code>.
+</div>
+
+<div style="margin-top:30px;padding-top:14px;border-top:1px solid #22304a;font-size:13px;color:#7d8da6;">
+  Haseeb Autos v2.8.3 · clasp direct-push guide · Zip mein <code>clasp.template.json</code> aur
+  <code>.claspignore</code> shamil hain.
+</div>
+
+</div>
+</body>
+</html>

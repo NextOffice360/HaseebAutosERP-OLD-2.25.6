@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>clasp se Deploy Karna — Windows 10 (Beginner Guide)</title>
+<style>
+  :root{
+    --ink:#12212e; --muted:#5b6b7a; --line:#d8e1e8;
+    --blue:#0b6bcb; --blue-bg:#eaf3fd;
+    --green:#137a3e; --green-bg:#e8f6ed;
+    --amber:#8a5a00; --amber-bg:#fff5e0;
+    --red:#b3261e;   --red-bg:#fdecea;
+    --code:#0f1b26;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; padding:0 16px 80px;
+    font-family:"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    font-size:18px; line-height:1.75; color:var(--ink);
+    background:#fff; max-width:900px; margin-left:auto; margin-right:auto;
+  }
+  h1{font-size:34px; line-height:1.25; margin:32px 0 6px; letter-spacing:-.3px}
+  h2{
+    font-size:26px; margin:52px 0 14px; padding-bottom:10px;
+    border-bottom:3px solid var(--blue); color:var(--blue);
+  }
+  h3{font-size:20px; margin:30px 0 8px; color:#0d3f6b}
+  p{margin:12px 0}
+  ul,ol{margin:12px 0 12px 0; padding-left:26px}
+  li{margin:8px 0}
+  code{
+    font-family:Consolas,"Courier New",monospace; font-size:15px;
+    background:#eef2f6; padding:2px 6px; border-radius:4px; color:#0a3d62;
+  }
+  /* ---- hero ---- */
+  .hero{
+    background:linear-gradient(135deg,#0b6bcb,#0a4f96); color:#fff;
+    border-radius:14px; padding:26px 28px; margin:26px 0 8px;
+  }
+  .hero h2{border:0;color:#fff;margin:0 0 10px;font-size:24px}
+  .hero p{margin:6px 0;color:#e6f0fb}
+  .hero code{background:rgba(255,255,255,.16);color:#fff}
+  /* ---- boxes ---- */
+  .box{border-radius:10px; padding:16px 20px; margin:20px 0; border-left:6px solid}
+  .box p:first-child{margin-top:0} .box p:last-child{margin-bottom:0}
+  .info{background:var(--blue-bg);  border-color:var(--blue)}
+  .ok  {background:var(--green-bg); border-color:var(--green)}
+  .warn{background:var(--amber-bg); border-color:var(--amber)}
+  .stop{background:var(--red-bg);   border-color:var(--red)}
+  .box .t{font-weight:700; display:block; margin-bottom:6px}
+  .info .t{color:var(--blue)} .ok .t{color:var(--green)}
+  .warn .t{color:var(--amber)} .stop .t{color:var(--red)}
+  /* ---- terminal ---- */
+  .term{
+    background:var(--code); color:#e8f0f7; border-radius:10px;
+    padding:16px 18px; margin:16px 0; overflow-x:auto;
+    font-family:Consolas,"Courier New",monospace; font-size:15px; line-height:1.7;
+  }
+  .term .c{color:#7fd1a0}      /* comment */
+  .term .o{color:#9ecbff}      /* output  */
+  .term b{color:#ffd479; font-weight:600}
+  .term::before{
+    content:"COMMAND PROMPT (kali screen)"; display:block;
+    font-family:"Segoe UI",sans-serif; font-size:12px; letter-spacing:1px;
+    color:#7d93a6; margin-bottom:8px;
+  }
+  /* ---- steps ---- */
+  .step{display:flex; gap:16px; margin:26px 0; align-items:flex-start}
+  .num{
+    flex:0 0 42px; height:42px; border-radius:50%;
+    background:var(--blue); color:#fff; font-weight:700; font-size:19px;
+    display:flex; align-items:center; justify-content:center; margin-top:2px;
+  }
+  .step .body{flex:1}
+  .step .body > :first-child{margin-top:0}
+  /* ---- tables ---- */
+  table{border-collapse:collapse; width:100%; margin:20px 0; font-size:16px}
+  th,td{border:1px solid var(--line); padding:11px 13px; text-align:left; vertical-align:top}
+  th{background:#f2f6f9; font-weight:700; color:#0d3f6b}
+  tr:nth-child(even) td{background:#fafcfd}
+  /* ---- misc ---- */
+  .kbd{
+    display:inline-block; background:#fff; border:1px solid #b9c6d1;
+    border-bottom-width:3px; border-radius:6px; padding:1px 8px;
+    font-size:14px; font-family:Consolas,monospace; font-weight:600; color:#12212e;
+  }
+  .big{font-size:20px}
+  .center{text-align:center}
+  .foot{margin-top:60px; padding-top:20px; border-top:2px solid var(--line);
+        color:var(--muted); font-size:15px}
+  @media print{ body{font-size:12pt} .hero{background:#0b6bcb!important;-webkit-print-color-adjust:exact} }
+</style>
+</head>
+<body>
+
+<h1>📘 clasp se Deploy Karna</h1>
+<p class="big"><b>Windows 10</b> ke liye — bilkul shuru se, har qadam ke sath.</p>
+
+<div class="hero">
+  <h2>👋 Pehle ye parh lein (2 minute)</h2>
+  <p>Ye guide us shakhs ke liye hai jis ne <b>kabhi clasp istemal nahi kiya</b> aur
+  command line (kali screen) se waaqif nahi. Sab kuch likha hai — andaza mat lagayein.</p>
+  <p><b>Waqt:</b> lagbhag 25–35 minute &nbsp;·&nbsp; <b>Mushkil:</b> bilkul aasan</p>
+  <p>Agar kahin atak jayein to aakhir mein <b>"Masle aur un ka hal"</b> dekhein —
+  99% masle wahan hal hain.</p>
+</div>
+
+<div class="box info">
+  <span class="t">🎯 Hum kar kya rahe hain?</span>
+  <p>Aap ke paas <b>ek dukaan ka software</b> hai (Haseeb Autos) jo files ki shakal mein
+  aap ke computer par pada hai. Ab wo <b>Google ke server</b> par chahni hain, taake
+  mobile aur computer dono se — internet par — khul sakein.</p>
+  <p><b>clasp</b> = wo <b>truck</b> jo aap ke computer se Google tak code le jata hai.</p>
+</div>
+
+<h2>🧰 Hisa 1 — Tayyari (3 cheezein)</h2>
+
+<h3>1.1 — Apna folder banayein</h3>
+<ol>
+  <li>Desktop par <b>Right click → New → Folder</b></li>
+  <li>Naam likhein: <code>HaseebAutos</code> <i>(bina space ke)</i></li>
+  <li>Is folder ko khol kar <b>rakh dein</b> — baar baar kaam aaye ga</li>
+</ol>
+
+<h3>1.2 — Zip file is folder mein khol dein</h3>
+<ol>
+  <li><code>haseeb-autos-v2.6.0.zip</code> ko is folder mein <b>copy</b> karein</li>
+  <li>Us par <b>Right click → Extract All… → Extract</b></li>
+  <li>Ab andar <code>apps-script</code> naam ka folder nazar aaye ga</li>
+</ol>
+
+<div class="box ok">
+  <span class="t">✔ Check karein</span>
+  <p><code>apps-script</code> folder kholein — andar bahut si <code>.gs</code> aur
+  <code>.html</code> files hon. Agar hain to theek hai.</p>
+</div>
+
+<div class="box warn">
+  <span class="t">💡 Ahem — apna raasta (path) yaad rakhein</span>
+  <p>Masalan: <code>C:\Users\Haseeb\Desktop\HaseebAutos\apps-script</code><br>
+  Aage har baar isi ki zaroorat padegi.</p>
+</div>
+
+<h3>1.3 — Google account</h3>
+<p>Jis Google account se aap Gmail / Drive chalate hain — wahi istemal hoga.
+<b>Email aur password</b> tayyar rakhein.</p>
+
+<h2>⬇ Hisa 2 — Node.js install karna</h2>
+
+<p>clasp ko chalane ke liye <b>Node.js</b> chahiye. Ye ek chota program hai jo
+computer par commands chalata hai.</p>
+
+<h3>2.1 — Download</h3>
+<ol>
+  <li>Browser (Chrome ya Edge) kholein</li>
+  <li>Jayein: <b>https://nodejs.org</b></li>
+  <li>Do sabz (green) buttons nazar aayenge — 👉 <b>LTS</b> wala dabayein<br>
+      <i>(jis par likha ho "Recommended For Most Users")</i></li>
+  <li>File download hogi: <code>node-v20.xx.x-x64.msi</code></li>
+</ol>
+
+<div class="box info">
+  <span class="t">LTS kyun?</span>
+  <p>LTS = <b>L</b>ong <b>T</b>erm <b>S</b>upport — sab se stable wala.
+  Hamesha LTS chunein, "Current" nahi.</p>
+</div>
+
+<h3>2.2 — Install</h3>
+<ol>
+  <li>Download hui file par <b>Double click</b></li>
+  <li>"Welcome" → <b>Next</b></li>
+  <li>License → <b>I accept</b> → <b>Next</b></li>
+  <li>"Destination Folder" → kuch na badlein → <b>Next</b></li>
+  <li>"Custom Setup" → kuch na badlein → <b>Next</b></li>
+  <li>"Tools for Native Modules" → box ko <b>UN-CHECK</b> rehne dein → <b>Next</b></li>
+  <li><b>Install</b> dabayein</li>
+  <li>Windows pooche "Allow this app to make changes?" → <b>Yes</b></li>
+  <li>Intezaar karein (1–2 minute) → <b>Finish</b></li>
+</ol>
+
+<div class="box stop">
+  <span class="t">🔴 Zaroori — computer Restart karein</span>
+  <p>Install ke baad computer ko <b>ek baar Restart</b> kar lein.
+  Is se aage ke aadhe masle khud hi khatam ho jate hain.</p>
+</div>
+
+<h3>2.3 — Check karein ke Node theek laga</h3>
+
+<p>Keyboard par <span class="kbd">Windows</span> dabayein, type karein <code>cmd</code>,
+phir <b>Command Prompt</b> kholein.</p>
+
+<div class="term">
+<span class="c">:: ye likhein aur Enter dabayein</span><br>
+node --version<br>
+<br>
+<span class="c">:: jawab aisa aana chahiye:</span><br>
+<span class="o">v20.11.0</span>
+</div>
+
+<p>Phir ye likhein:</p>
+
+<div class="term">
+npm --version<br>
+<br>
+<span class="c">:: jawab:</span><br>
+<span class="o">10.2.4</span>
+</div>
+
+<div class="box ok">
+  <span class="t">✔ Agar <code>v</code> se shuru number aaye</span>
+  <p>To Node theek install ho gaya. Agla qadam.</p>
+</div>
+
+<div class="box stop">
+  <span class="t">❌ Agar "node is not recognized" aaye</span>
+  <p>Command Prompt <b>band</b> kar ke dobara kholein. Phir bhi na chalay to
+  computer <b>Restart</b> karein.</p>
+</div>
+
+<h2>📦 Hisa 3 — clasp install karna</h2>
+
+<p>Ab hum <b>truck</b> (clasp) install karen ge.</p>
+
+<div class="term">
+npm install -g @google/clasp
+</div>
+
+<div class="box warn">
+  <span class="t">⏳ Kya hoga?</span>
+  <p>Screen par kuch lines tezi se chalengi. <b>30 second se 2 minute</b> lag sakte hain.<br>
+  <b>Kuch mat dabayein — bas intezaar karein.</b><br>
+  Jab wapas <code>C:\Users\...&gt;</code> nazar aaye, to ho gaya.</p>
+</div>
+
+<div class="box info">
+  <span class="t">Lal (red) likhayi de to ghabrayein nahi</span>
+  <p>Aksar sirf "warning" hoti hai — masla nahi. Neeche check karein:</p>
+</div>
+
+<div class="term">
+clasp --version<br>
+<br>
+<span class="c">:: jawab:</span><br>
+<span class="o">2.4.2</span>
+</div>
+
+<div class="box ok">
+  <span class="t">🎉 Agar number aaye</span>
+  <p>clasp tayyar hai!</p>
+</div>
+
+<div class="box stop">
+  <span class="t">❌ "clasp is not recognized"?</span>
+  <div class="term" style="margin-bottom:0">
+npm install -g @google/clasp --force
+  </div>
+  <p style="margin-top:10px">Phir Command Prompt <b>band kar ke dobara kholein</b>.</p>
+</div>
+
+<h2>🔑 Hisa 4 — Google ko ijazat dena (sab se ahem)</h2>
+
+<p>Ye <b>2 kaam</b> hain. Bina in ke aage kuch nahi chalega.</p>
+
+<h3>4.1 — Apps Script API ON karein ⚡</h3>
+
+<ol>
+  <li>Browser mein jayein: <b>https://script.google.com/home/usersettings</b></li>
+  <li>Login karein (apna Google account)</li>
+  <li>Neeche <b>"Google Apps Script API"</b> likha hoga</li>
+  <li>Us ke aage wala <b>switch ON</b> kar dein (neela ho jaye)</li>
+</ol>
+
+<div class="box stop">
+  <span class="t">🔴 Ye sab se badi wajah hai</span>
+  <p>Jab log kehte hain <i>"clasp login kaam nahi kar raha"</i> — to 9 mein se 10 baar
+  yahi wajah hoti hai. <b>Bina is ke aage kuch nahi chalega.</b></p>
+</div>
+
+<h3>4.2 — clasp ko login karayein</h3>
+
+<div class="term">
+clasp login
+</div>
+
+<p><b>Kya hoga:</b></p>
+<ol>
+  <li>Browser khul jaye ga</li>
+  <li>Google pooche ga: <i>"clasp wants to access your account"</i></li>
+  <li><b>Allow / Continue</b> dabayein</li>
+  <li>Ek lamba code aa sakta hai — usay <b>copy</b> karein</li>
+  <li>Wapas Command Prompt mein <b>paste</b> kar ke <b>Enter</b> dabayein</li>
+</ol>
+
+<div class="box warn">
+  <span class="t">⌨ Paste kaise karein</span>
+  <p>Command Prompt mein <b>Ctrl+V kaam nahi karta!</b><br>
+  <b>Right-click</b> karein → paste ho jaye ga.</p>
+</div>
+
+<div class="term">
+<span class="c">:: aakhir mein ye nazar aaye:</span><br>
+<span class="o">Logged in! You may close this page.</span>
+</div>
+
+<div class="box ok">
+  <span class="t">🎉 Login ho gaya</span>
+  <p>Ab se dobara login karne ki zaroorat nahi.</p>
+</div>
+
+<h2>🆕 Hisa 5 — Google par naya project banana</h2>
+
+<h3>5.1 — Naya project</h3>
+<ol>
+  <li>Browser mein jayein: <b>https://script.google.com</b></li>
+  <li>Upar baen taraf <b>＋ New project</b> dabayein</li>
+  <li>Project khul jaye ga</li>
+  <li>Upar <b>"Untitled project"</b> par click karein</li>
+  <li>Naam likhein <code>Haseeb Autos</code> → <b>Rename</b></li>
+</ol>
+
+<h3>5.2 — Script ID copy karein 🔑</h3>
+<ol>
+  <li>Baen taraf neeche <b>⚙ (gear icon — "Project Settings")</b> par click karein</li>
+  <li><b>"Script ID"</b> likha hoga, us ke neeche lamba code</li>
+  <li>Us ke daen taraf <b>copy wala button</b> dabayein</li>
+</ol>
+
+<div class="term">
+<span class="c">:: kuch aisa lagega:</span><br>
+<span class="o">1a2B3c4D5e6F7g8H9i0JkLmNoPqRsTuVwXyZ_abc123xyz</span>
+</div>
+
+<div class="box warn">
+  <span class="t">💡 Isay mehfooz kar lein</span>
+  <p>Notepad mein paste kar ke save kar lein. Baar baar kaam aaye ga.<br>
+  <b>Ye aap ki dukaan ki chaabi hai.</b></p>
+</div>
+
+<h2>🔗 Hisa 6 — Folder ko project se jodna</h2>
+
+<h3>6.1 — Command Prompt ko sahi jagah le jayein</h3>
+
+<p>Pehle apna raasta (path) copy karein:</p>
+<ul>
+  <li>File Explorer mein <code>apps-script</code> folder <b>kholein</b></li>
+  <li>Upar address bar par <b>click</b> karein (raasta neela ho jaye)</li>
+  <li><span class="kbd">Ctrl</span> + <span class="kbd">C</span> dabayein</li>
+</ul>
+
+<p>Ab Command Prompt mein likhein <code>cd</code> aur <b>ek space</b>, phir
+<b>Right-click</b> (paste):</p>
+
+<div class="term">
+cd C:\Users\Haseeb\Desktop\HaseebAutos\apps-script
+</div>
+
+<p><b>Check karein</b> — <code>dir</code> likhein:</p>
+
+<div class="term">
+dir<br>
+<br>
+<span class="c">:: in files ka nazar aana zaroori hai:</span><br>
+<span class="o">Code.gs&nbsp;&nbsp;&nbsp;Sales.gs&nbsp;&nbsp;&nbsp;Index.html&nbsp;&nbsp;&nbsp;appsscript.json …</span>
+</div>
+
+<div class="box ok">
+  <span class="t">✔ Agar upar wali files nazar aayein</span>
+  <p>To aap sahi jagah hain.</p>
+</div>
+
+<h3>6.2 — <code>.clasp.json</code> file banayein</h3>
+
+<p>Command Prompt mein <b>bilkul waise hi</b> likhein:</p>
+
+<div class="term">
+notepad .clasp.json
+</div>
+
+<p>Notepad khul jaye ga. Poochay <i>"Do you want to create a new file?"</i> → <b>Yes</b>.</p>
+
+<p>Ab <b>bilkul ye</b> likhein <i>(apna Script ID lagayein)</i>:</p>
+
+<div class="term">
+{<br>
+&nbsp;&nbsp;"scriptId": "<b>YAHA_APNA_SCRIPT_ID</b>",<br>
+&nbsp;&nbsp;"rootDir": ""<br>
+}
+</div>
+
+<p><b>Misaal (example):</b></p>
+
+<div class="term">
+{<br>
+&nbsp;&nbsp;"scriptId": "1a2B3c4D5e6F7g8H9i0JkLmNoPqRsTuVwXyZ_abc123xyz",<br>
+&nbsp;&nbsp;"rootDir": ""<br>
+}
+</div>
+
+<div class="box stop">
+  <span class="t">🔴 Gaur karein</span>
+  <p><code>rootDir</code> ko <b>khali</b> rehne dein (<code>""</code>),
+  kyun ke hum pehle hi <code>apps-script</code> folder ke <b>andar</b> hain.</p>
+</div>
+
+<p><b>Save:</b> <span class="kbd">Ctrl</span> + <span class="kbd">S</span> → Notepad band kar dein.</p>
+
+<div class="term">
+type .clasp.json<br>
+<br>
+<span class="c">:: jo abhi likha tha wo nazar aaye to ✔ jod lag gaya</span>
+</div>
+
+<h2>🚀 Hisa 7 — Code bhejna (clasp push)</h2>
+
+<div class="term">
+clasp push
+</div>
+
+<div class="term">
+<span class="o">└─ appsscript.json<br>
+Pushed 81 files.</span>
+</div>
+
+<div class="box ok">
+  <span class="t">🎉 Mubarak ho!</span>
+  <p>Code Google par pahunch gaya.</p>
+</div>
+
+<div class="box warn">
+  <span class="t">⚠ Agar ye poochay</span>
+  <div class="term" style="margin-bottom:0">
+? Manifest file has been updated. Do you want to push and overwrite? (y/N)
+  </div>
+  <p style="margin-top:10px"><code>y</code> likh kar <b>Enter</b> dabayein.</p>
+</div>
+
+<p><b>Check:</b> browser mein script.google.com kholein — baen taraf apni sari
+files nazar aayengi.</p>
+
+<h2>🏗 Hisa 8 — Pehli dafa Setup (database banana)</h2>
+
+<p>Ab Excel jaisi <b>sheets</b> banani hain. Ye <b>sirf ek dafa</b> hota hai.</p>
+
+<h3>8.1 — Spreadsheet jodna</h3>
+<ol>
+  <li>script.google.com par apna project kholein</li>
+  <li>Upar function ke dropdown mein <b><code>attachSpreadsheet</code></b> chunein</li>
+  <li><b>Run</b> (▶) dabayein</li>
+  <li><i>"Authorization required"</i> → <b>Review Permissions</b></li>
+  <li>Apna <b>Google account</b> chunein</li>
+  <li><i>"Google hasn't verified this app"</i> aaye ga — neeche dekhein 👇</li>
+</ol>
+
+<div class="box stop">
+  <span class="t">😰 "Google hasn't verified this app" — ghabrayein mat!</span>
+  <p>Ye <b>aap ka apna</b> code hai jo aap ne abhi upload kiya — koi bahar wala nahi.</p>
+  <ol style="margin-bottom:0">
+    <li><b>Advanced</b> par click karein (chhota, neeche baen taraf)</li>
+    <li><b>"Go to Haseeb Autos (unsafe)"</b> par click karein</li>
+    <li><b>Allow</b> dabayein</li>
+  </ol>
+</div>
+
+<h3>8.2 — Sari sheets banayein</h3>
+<ol>
+  <li>Function dropdown mein <b><code>setupAll</code></b> chunein</li>
+  <li><b>Run</b> dabayein</li>
+  <li><b>10–30 second</b> intezaar karein</li>
+  <li>Neeche "Execution log" mein lambi list aaye gi (sab sheets ke naam)</li>
+</ol>
+
+<div class="box ok">
+  <span class="t">🎉 Database ban gaya!</span>
+</div>
+
+<h3>8.3 — Demo data (ikhtiyari)</h3>
+<p>Test ke liye <code>seedDemo</code> chala sakte hain.</p>
+
+<div class="box warn">
+  <span class="t">⚠ Asli kaam ke liye</span>
+  <p><b>seedDemo mat chalayein.</b> Ye sirf test data hai. Asli products aap ERP
+  ke andar <b>CSV se import</b> karen ge.</p>
+</div>
+
+<h2>🚪 Hisa 9 — Deploy (dukaan ka darwaza kholna)</h2>
+
+<h3>9.1 — Naya deployment</h3>
+<ol>
+  <li>Upar daen taraf <b>"Deploy"</b> (neela button) dabayein</li>
+  <li><b>"New deployment"</b> chunein</li>
+  <li>Gear ⚙ ke aage <b>"Select type"</b> → <b>Web app</b></li>
+  <li>Neeche settings bharein:</li>
+</ol>
+
+<table>
+  <tr><th>Setting</th><th>Kya chunein</th></tr>
+  <tr><td><b>Description</b></td><td><code>Haseeb Autos v2.6</code> (jo marzi)</td></tr>
+  <tr><td><b>Execute as</b></td><td><b>Me</b> (apna email)</td></tr>
+  <tr><td><b>Who has access</b></td><td>neeche dekhein 👇</td></tr>
+</table>
+
+<div class="box warn">
+  <span class="t">🔐 "Who has access" — kaunsa chunein?</span>
+  <ul style="margin-bottom:0">
+    <li><b>Anyone with Google account</b> → sirf aap aur aap ka staff
+        (har kisi ko Gmail chahiye) — <b>behtar aur mehfooz</b> ✅</li>
+    <li><b>Anyone</b> → koi bhi, bina login (sab se khula, kam mehfooz)</li>
+  </ul>
+</div>
+
+<ol start="5">
+  <li><b>Deploy</b> dabayein</li>
+  <li>Authorization poochay to <b>Allow</b> (Hisa 8.1 ki tarah)</li>
+</ol>
+
+<h3>9.2 — URL copy karein 🔗 (sab se qeemti cheez)</h3>
+
+<div class="term">
+<span class="o">https://script.google.com/macros/s/AKfycb……………/exec</span>
+</div>
+
+<div class="box ok">
+  <span class="t">🎉🎉 Ye aap ki poori ERP app ka pata hai!</span>
+  <p><b>Isay copy kar ke Notepad mein save kar lein.</b></p>
+</div>
+
+<h2>📱 Hisa 10 — Teen mobile apps</h2>
+
+<p>Ek hi deployment se <b>3 alag mobile apps</b> milte hain. Bas aakhir mein
+<code>?app=...</code> lagana hai:</p>
+
+<table>
+  <tr><th>App</th><th>URL</th></tr>
+  <tr><td>🏬 <b>Warehouse</b></td><td><code>APKA_LINK?app=wh</code></td></tr>
+  <tr><td>🧾 <b>Field Orders</b></td><td><code>APKA_LINK?app=fo</code></td></tr>
+  <tr><td>🚚 <b>Salesman</b></td><td><code>APKA_LINK?app=sm</code></td></tr>
+  <tr><td>💻 <b>Poori ERP</b></td><td><code>APKA_LINK</code></td></tr>
+</table>
+
+<p><b>Misaal:</b></p>
+
+<div class="term">
+https://script.google.com/macros/s/AKfycb………/exec<b>?app=wh</b><br>
+https://script.google.com/macros/s/AKfycb………/exec<b>?app=fo</b><br>
+https://script.google.com/macros/s/AKfycb………/exec<b>?app=sm</b>
+</div>
+
+<h3>Phone par install kaise karein</h3>
+<table>
+  <tr><th>Phone</th><th>Tareeqa</th></tr>
+  <tr><td><b>Android</b></td><td>Chrome mein link kholein → ⋮ (upar daen) → <b>"Install app"</b></td></tr>
+  <tr><td><b>iPhone</b></td><td>Safari mein link kholein → Share ↗ → <b>"Add to Home Screen"</b></td></tr>
+</table>
+
+<p><i>Har app alag icon aur alag naam ke sath nazar aaye gi.</i></p>
+
+<h2>🔄 Hisa 11 — Rozana update kaise karein</h2>
+
+<p>Jab bhi code badle (naya version aaye), sirf:</p>
+
+<div class="term">
+cd C:\Users\Haseeb\Desktop\HaseebAutos\apps-script<br>
+clasp push
+</div>
+
+<p>Phir: <b>Deploy → Manage deployments → Edit (pencil) → Version: New version → Deploy</b></p>
+
+<div class="box info">
+  <span class="t">💡 Shortcut</span>
+  <p><code>clasp push</code> ke baad <code>clasp deploy</code> likhein — naya version
+  ban jaye ga. <i>(Magar pehli dafa UI se karein taake samajh aaye.)</i></p>
+</div>
+
+<h2>🆘 Hisa 12 — Masle aur un ka hal</h2>
+
+<table>
+  <tr><th>Error / Masla</th><th>Wajah</th><th>Hal</th></tr>
+  <tr>
+    <td><code>node is not recognized</code></td>
+    <td>Node install nahi hua ya PATH nahi laga</td>
+    <td>Computer <b>Restart</b> karein. Phir bhi na chalay to Node dobara install karein</td>
+  </tr>
+  <tr>
+    <td><code>npm is not recognized</code></td>
+    <td>Wahi</td>
+    <td>Computer <b>Restart</b> karein</td>
+  </tr>
+  <tr>
+    <td><code>clasp is not recognized</code></td>
+    <td>clasp install nahi hua</td>
+    <td><code>npm install -g @google/clasp --force</code> → CMD dobara kholein</td>
+  </tr>
+  <tr>
+    <td><b>User has not enabled the Apps Script API</b></td>
+    <td>API ON nahi</td>
+    <td><b>script.google.com/home/usersettings</b> → API <b>ON</b></td>
+  </tr>
+  <tr>
+    <td><code>Could not find script</code></td>
+    <td>Script ID ghalat</td>
+    <td>Hisa 5.2 dobara karein, <code>.clasp.json</code> check karein</td>
+  </tr>
+  <tr>
+    <td><code>Unable to read manifest</code></td>
+    <td><code>.clasp.json</code> ghalat jagah</td>
+    <td><code>apps-script</code> folder ke <b>andar</b> hona chahiye — <code>dir</code> se check karein</td>
+  </tr>
+  <tr>
+    <td><code>Syntax error</code> push ke waqt</td>
+    <td>File kharaab</td>
+    <td>Poora error text mujhe bhej dein — main theek kar doon ga</td>
+  </tr>
+  <tr>
+    <td>App khule to <b>safed screen</b></td>
+    <td>Deploy purana</td>
+    <td>Deploy → Manage → <b>New version</b></td>
+  </tr>
+  <tr>
+    <td>"Authorization required" baar baar</td>
+    <td>Normal hai</td>
+    <td>Har dafa <b>Advanced → Go to … (unsafe) → Allow</b></td>
+  </tr>
+  <tr>
+    <td>Sheets khali ya columns missing</td>
+    <td>Schema update nahi hua</td>
+    <td>ERP mein <b>Settings → Data &amp; tools → 🧰 Repair/upgrade sheets</b></td>
+  </tr>
+  <tr>
+    <td><code>Pushed 0 files</code></td>
+    <td>Ghalat folder</td>
+    <td><code>dir</code> karein — <code>.gs</code> files nazar aani chahiye</td>
+  </tr>
+</table>
+
+<h2>📋 Hisa 13 — Cheat-sheet (print kar lein)</h2>
+
+<div class="term">
+<span class="c">:: 1. Folder mein jayein</span><br>
+cd C:\Users\Haseeb\Desktop\HaseebAutos\apps-script<br>
+<br>
+<span class="c">:: 2. Check — sahi jagah?</span><br>
+dir<br>
+<br>
+<span class="c">:: 3. Login (sirf pehli dafa)</span><br>
+clasp login<br>
+<br>
+<span class="c">:: 4. Code bhejein</span><br>
+clasp push<br>
+<br>
+<span class="c">:: 5. (ikhtiyari) naya version</span><br>
+clasp deploy
+</div>
+
+<h3>Zaroori links</h3>
+<ul>
+  <li>Apps Script: <b>https://script.google.com</b></li>
+  <li>API ON karne ke liye: <b>https://script.google.com/home/usersettings</b></li>
+  <li>Node.js: <b>https://nodejs.org</b></li>
+</ul>
+
+<h3>Editor mein Run karne wale functions</h3>
+<table>
+  <tr><th>Function</th><th>Kab</th></tr>
+  <tr><td><code>attachSpreadsheet</code></td><td>Sab se pehle — spreadsheet jodna</td></tr>
+  <tr><td><code>setupAll</code></td><td>Sab se pehle — sari sheets banana</td></tr>
+  <tr><td><code>repairSchema</code></td><td>Update ke baad — columns theek karna</td></tr>
+</table>
+
+<h2>🎯 Ek nazar mein poora safar</h2>
+
+<ol>
+  <li>Node.js install + <b>Restart</b></li>
+  <li><code>npm install -g @google/clasp</code></li>
+  <li><b>script.google.com/home/usersettings</b> → API <b>ON</b></li>
+  <li><code>clasp login</code> → browser mein <b>Allow</b></li>
+  <li><b>script.google.com</b> → New project → <b>Script ID</b> copy</li>
+  <li><code>notepad .clasp.json</code> → Script ID paste</li>
+  <li><code>clasp push</code> → "Pushed 81 files"</li>
+  <li>Editor: <code>attachSpreadsheet</code> → Run</li>
+  <li>Editor: <code>setupAll</code> → Run</li>
+  <li><b>Deploy → New deployment → Web app → Deploy</b></li>
+  <li>URL copy → <b>App khul gayi!</b> 🎉</li>
+  <li>Mobile: <code>URL?app=wh</code> · <code>URL?app=fo</code> · <code>URL?app=sm</code></li>
+</ol>
+
+<div class="foot">
+  <p><b>Koi masla aaye to:</b> error ka <b>poora text</b> copy kar ke bhej dein —
+  main theek kar ke bata doon ga.</p>
+  <p>Haseeb Autos ERP · v2.6.0 · Windows 10 beginner guide</p>
+</div>
+
+</body>
+</html>

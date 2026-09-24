@@ -1,0 +1,447 @@
+<script>
+/* ==========================================================================
+   HASEEB AUTOS — SHARE & EXPORT (WhatsApp · SMS · Email · PDF · Excel · Print)
+   • Invoice share: Cloud API / Twilio / free wa.me link (koi key nahi)
+   • Reports: print → PDF, CSV, Excel (xlsx), Web Share, copy
+   • Outbox: bheje gaye messages ka log + retry
+   ========================================================================== */
+(function () {
+'use strict';
+
+const Share = {
+
+  /* ============================ INVOICE SHARE ============================= */
+  async invoice(sale) {
+    let prep = null;
+    try { prep = await API.call('comms.prepare', { id: sale.id, template: 'invoice' },
+      { offlineFallback: () => null }); } catch (e) { prep = null; }
+    if (!prep) prep = { ctx: {}, message: 'Invoice ' + (sale.invoiceNo || ''),
+      sale: sale, to: '', subject: 'Invoice ' + (sale.invoiceNo || ''), link: '' };
+
+    const toInput = h('input', { class: 'f-input', value: prep.to || '', placeholder: '0300-1234567 ya email', title: 'Recipient' });
+    const msgBox = h('textarea', { rows: 6, class: 'f-input', style: { width: '100%' } });
+    msgBox.value = prep.message || '';
+    const statusEl = h('div', { class: 'share-status' });
+
+    const prov = await API.call('comms.providers', {}, { offlineFallback: () => ({ whatsapp: { provider: 'LINK' } }) }) || {};
+    const waProv = ((prov.whatsapp || {}).provider || 'LINK').toUpperCase();
+    const freeMode = waProv === 'LINK';
+
+    async function send(channel) {
+      const to = toInput.value.trim();
+      if (!to) return UI.toast('Phone/email daalein', 'err');
+      statusEl.textContent = 'Bheja ja raha hai…';
+      try {
+        const r = await API.call('comms.send', { channel, to, message: msgBox.value,
+          subject: prep.subject, refType: 'SALE', refId: sale.id, ctx: prep.ctx });
+        if (r && r.link) { window.open(r.link, '_blank'); statusEl.textContent = 'WhatsApp/Web khul gaya ✅'; }
+        else statusEl.textContent = (channel) + ' bhej diya ✅ (' + (r && r.provider || '') + ')';
+        UI.toast(channel + ' sent ✅', 'ok');
+      } catch (e) { statusEl.textContent = 'Fail: ' + e.message; UI.toast(e.message, 'err'); }
+    }
+
+    const body = h('div', { class: 'share-box' },
+      h('label', { class: 'f-col' }, h('span', null, 'Bhejein (phone ya email)'), toInput),
+      h('label', { class: 'f-col' }, h('span', null, 'Message'), msgBox),
+      h('div', { class: 'share-btns' },
+        h('button', { class: 'btn ok', onclick: () => send('WHATSAPP') },
+          freeMode ? '💬 WhatsApp (free link)' : '💬 WhatsApp'),
+        h('button', { class: 'btn sec', onclick: () => send('SMS') }, '📱 SMS'),
+        h('button', { class: 'btn sec', onclick: () => send('EMAIL') }, '✉ Email'),
+        h('button', { class: 'btn ghost', onclick: () => { navigator.clipboard && navigator.clipboard.writeText(msgBox.value); UI.toast('Message copy ho gaya', 'ok'); } }, '⧉ Copy'),
+        h('button', { class: 'btn ghost', onclick: async () => {
+          try {
+            if (window.Print2) { await Print2.dialog(sale); return; }
+          } catch (e) { }
+          Print.open(Print.receiptHtml(sale, App.state.settings, App.state.branchName), 'Receipt', (App.state.settings || {})['pos.receiptPaper'] || '80mm');
+        } }, '🖨 Print / PDF'),
+        h('button', { class: 'btn ghost', onclick: async () => {
+          try { const r = await API.call('exports.invoicePdf', { id: sale.id });
+            if (r && r.url && r.url !== '#') window.open(r.url, '_blank');
+            else UI.toast('PDF ban gaya (Drive me save)', 'ok');
+          } catch (e) { UI.toast(e.message, 'err'); }
+        } }, '📄 PDF')),
+      statusEl,
+      h('div', { class: 'share-note' },
+        freeMode ? 'Free mode: wa.me link khulta hai — WhatsApp app/web me message tayar mil jata hai. API key chahiye to Settings ▸ Automation ▸ WhatsApp & SMS me META ya TWILIO chunein.'
+                 : 'Provider: ' + waProv + ' — Settings ▸ Automation ▸ WhatsApp & SMS se badla ja sakta hai.'));
+
+    UI2.modal({ title: 'Share invoice — ' + (sale.invoiceNo || ''), size: 'md', body,
+      actions: [{ label: 'Outbox', cls: 'sec', onClick: () => Share.outbox() },
+        { label: 'Close', onClick: c => c() }] });
+  },
+
+  /* ============================ REPORT EXPORT ============================= */
+  /**
+   * opts = { rows, headers, title, kind, params }
+   * Buttons: Print/PDF · CSV · Excel (xlsx) · Web Share · Email
+   */
+  report(opts) {
+    const rows = opts.rows || [];
+    const headers = opts.headers || (rows[0] ? Object.keys(rows[0]) : []);
+    const title = opts.title || 'Report';
+    const filename = (opts.kind || 'report') + '-' + fmt.date(new Date(), false) || 'report';
+
+    const statusEl = h('div', { class: 'share-status' });
+
+    function styledHtml() {
+      const th = headers.map(x => '<th>' + esc(String(x).replace(/[_-]/g, ' ')) + '</th>').join('');
+      const tb = rows.map(r => '<tr>' + headers.map(x => '<td>' + esc(r[x] === null || r[x] === undefined ? '' : String(r[x])) + '</td>').join('') + '</tr>').join('');
+      return '<!DOCTYPE html><html><head><meta charset="utf-8"><title>' + esc(title) + '</title><style>' +
+        '@page{size:A4 landscape;margin:8mm}' +
+        'body{font:12px "Segoe UI",Arial;color:#111}' +
+        'h2{margin:0 0 8px;font-size:16px}' +
+        'table{width:100%;border-collapse:collapse;font-size:11px}' +
+        'th{background:#0b5cff;color:#fff;text-align:left;padding:5px 6px;position:sticky;top:0}' +
+        'td{padding:4px 6px;border-bottom:1px solid #e3e7ef}' +
+        '.foot{margin-top:10px;font-size:10px;color:#888;text-align:center}' +
+        '</style></head><body><h2>' + esc(title) + '</h2><table><thead><tr>' + th +
+        '</tr></thead><tbody>' + tb + '</tbody></table><div class="foot">' + rows.length +
+        ' rows · ' + esc(App.state.settings.businessName || 'Haseeb Autos') + '</div></body></html>';
+    }
+
+    function printPdf() {
+      const w = window.open('', '_blank', 'width=1100,height=800');
+      if (!w) return UI.toast('Popup block hai', 'warn');
+      w.document.write(styledHtml()); w.document.close();
+      setTimeout(() => { try { w.focus(); w.print(); } catch (e) { } }, 400);
+    }
+
+    function csvDownload() {
+      const esc2 = v => {
+        const s = String(v === null || v === undefined ? '' : v);
+        return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+      };
+      const csv = '\uFEFF' + headers.map(esc2).join(',') + '\n' +
+        rows.map(r => headers.map(x => esc2(r[x])).join(',')).join('\n');
+      Share._download(new Blob([csv], { type: 'text/csv;charset=utf-8' }), filename + '.csv');
+      UI.toast('CSV download ho gaya (' + rows.length + ' rows)', 'ok');
+    }
+
+    function xlsDownload() {                       /* Excel-compatible (no library) */
+      const th = headers.map(x => '<th>' + esc(x) + '</th>').join('');
+      const tb = rows.map(r => '<tr>' + headers.map(x => {
+        const v = r[x]; const isNum = v !== '' && v !== null && v !== undefined && !isNaN(Number(v));
+        return '<td' + (isNum ? ' x:num' : '') + '>' + esc(v === null || v === undefined ? '' : String(v)) + '</td>';
+      }).join('') + '</tr>').join('');
+      const html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel">' +
+        '<head><meta charset="utf-8"><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet>' +
+        '<x:Name>' + esc(title.slice(0, 28)) + '</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions>' +
+        '</x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--></head><body>' +
+        '<table border="1"><thead><tr>' + th + '</tr></thead><tbody>' + tb + '</tbody></table></body></html>';
+      Share._download(new Blob(['\uFEFF' + html], { type: 'application/vnd.ms-excel' }), filename + '.xls');
+      UI.toast('Excel file download ho gayi', 'ok');
+    }
+
+    async function serverExcel() {
+      statusEl.textContent = 'Drive spreadsheet ban rahi hai…';
+      try {
+        const r = await API.call('exports.report', { kind: opts.kind, params: opts.params,
+          format: 'XLSX', title: title, rows: rows, headers: headers, from: (opts.params || {}).from, to: (opts.params || {}).to });
+        statusEl.textContent = 'Excel ready ✅';
+        if (r && r.xlsx && r.xlsx !== '#') window.open(r.xlsx, '_blank');
+        else if (r && r.url) window.open(r.url, '_blank');
+      } catch (e) { statusEl.textContent = 'Excel fail: ' + e.message; UI.toast(e.message, 'err'); }
+    }
+
+    async function serverPdf() {
+      statusEl.textContent = 'PDF ban rahi hai…';
+      try {
+        const r = await API.call('exports.report', { kind: opts.kind, params: opts.params,
+          format: 'PDF', title: title, rows: rows, headers: headers, from: (opts.params || {}).from, to: (opts.params || {}).to });
+        statusEl.textContent = 'PDF ready ✅';
+        if (r && r.url) window.open(r.url, '_blank');
+      } catch (e) { statusEl.textContent = 'PDF fail: ' + e.message; UI.toast(e.message, 'err'); }
+    }
+
+    async function nativeShare() {
+      if (!navigator.share) return UI.toast('Is browser me Web Share nahi hai', 'warn');
+      try {
+        await navigator.share({ title: title, text: rows.length + ' rows · ' + title });
+      } catch (e) { }
+    }
+
+    const body = h('div', { class: 'share-box' },
+      h('div', { class: 'share-summary' }, rows.length + ' rows · ' + headers.length + ' columns'),
+      h('div', { class: 'share-btns' },
+        h('button', { class: 'btn ok', onclick: printPdf }, '🖨 Print / Save PDF'),
+        h('button', { class: 'btn sec', onclick: csvDownload }, '⬇ CSV'),
+        h('button', { class: 'btn sec', onclick: xlsDownload }, '📊 Excel (.xls)'),
+        h('button', { class: 'btn ghost', onclick: serverExcel }, '☁ Excel (Drive .xlsx)'),
+        h('button', { class: 'btn ghost', onclick: serverPdf }, '☁ PDF (Drive)'),
+        h('button', { class: 'btn ghost', onclick: nativeShare }, '↗ Share…')),
+      statusEl);
+
+    UI2.modal({ title: 'Export — ' + title, size: 'sm', body,
+      actions: [{ label: 'Close', onClick: c => c() }] });
+  },
+
+  _download(blob, name) {
+    const url = URL.createObjectURL(blob);
+    const a = h('a', { href: url, download: name });
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+  },
+
+  /* =============================== OUTBOX ================================= */
+  async outbox() {
+    const host = h('div', { class: 'outbox' });
+    async function load() {
+      let d = { rows: [], counts: { sent: 0, failed: 0 } };
+      try { d = await API.call('comms.outbox', { limit: 100 }, { offlineFallback: () => d }) || d; } catch (e) { }
+      host.innerHTML = '';
+      host.appendChild(h('div', { class: 'chips' },
+        h('span', { class: 'chip2' }, 'Sent: ' + (d.counts ? d.counts.sent : 0)),
+        h('span', { class: 'chip2' }, 'Failed: ' + (d.counts ? d.counts.failed : 0))));
+      const rows = d.rows || [];
+      if (!rows.length) {
+        host.appendChild(h('div', { class: 'empty' }, 'Abhi koi message nahi bheja gaya'));
+        return;
+      }
+      rows.forEach(r => {
+        host.appendChild(h('div', { class: 'list-item' },
+          h('div', { class: 'li-main' },
+            h('b', null, (r.channel || '') + ' → ' + (r.to || '')),
+            h('span', null, (r.status || '') + ' · ' + (r.provider || '') + ' · ' + fmt.date(r.date, true)),
+            h('div', { class: 'sub', style: { fontSize: 'var(--fs-xs)', color: 'var(--muted-2)' } },
+              String(r.body || '').slice(0, 120))),
+          r.status === 'FAILED' ? h('button', { class: 'btn sm', onclick: async () => {
+            try { await API.call('comms.retry', { id: r.id }); UI.toast('Dobara bheja', 'ok'); load(); }
+            catch (e) { UI.toast(e.message, 'err'); }
+          } }, '↻ Retry') : ''));
+      });
+    }
+    UI2.modal({ title: 'Outbox — bheje gaye messages', size: 'lg', body: host,
+      actions: [{ label: 'Refresh', cls: 'sec', onClick: () => load() },
+        { label: 'Close', onClick: c => c() }] });
+    load();
+  }
+};
+
+/* ============================ PRICE LIST IMPORT =========================== */
+const PriceList = {
+  async open() {
+    const host = h('div', { class: 'import-box' });
+    let preview = null;
+    let supplier = '';
+
+    async function loadSample() {
+      try { const s = await API.call('priceimport.sample', {}); return s; } catch (e) { return ''; }
+    }
+
+    const supplierSel = h('select', { class: 'f-input', onchange: () => { supplier = supplierSel.value; } },
+      h('option', { value: '' }, '— Supplier (optional) —'),
+      ...(App.state.suppliers || []).map(s => h('option', { value: s.id }, s.name)));
+
+    const ta = h('textarea', { rows: 8, class: 'f-input', style: { width: '100%' },
+      placeholder: 'CSV paste karein — header: code,name,brand,cost,retail,wholesale,barcode' });
+
+    const opts = h('div', { class: 'chips' },
+      check('Update cost', true, v => optState.updateCost = v),
+      check('Update retail', false, v => optState.updateRetail = v),
+      check('Update wholesale', false, v => optState.updateWholesale = v),
+      check('Create new items', false, v => optState.createNew = v));
+    const optState = { updateCost: true, updateRetail: false, updateWholesale: false, createNew: false };
+
+    const statsEl = h('div', { class: 'import-stats' });
+    const tableHost = h('div', { class: 'import-table' });
+
+    async function doPreview(text) {
+      if (!String(text || '').trim()) return UI.toast('CSV text daalein', 'warn');
+      try {
+        preview = await API.call('priceimport.preview', { text, supplierId: supplier, fileName: 'pasted.csv' });
+        paintPreview();
+        UI.toast('Parsed: ' + preview.rows.length + ' rows', 'ok');
+      } catch (e) { UI.toast(e.message, 'err'); }
+    }
+
+    function paintPreview() {
+      if (!preview) return;
+      const s = preview.stats;
+      statsEl.innerHTML = '';
+      [['Rows', s.total], ['Update', s.update], ['New', s.create], ['Skip', s.skip],
+       ['Cost ↑', s.costIncrease], ['Cost ↓', s.costDecrease], ['Avg change', s.avgChangePct + '%']]
+        .forEach(([k, v]) => statsEl.appendChild(h('span', { class: 'chip2' }, k + ': ' + v)));
+
+      tableHost.innerHTML = '';
+      const head = ['', 'Code', 'Name', 'Old cost', 'New cost', 'Δ%', 'Retail', 'Status'];
+      const table = h('table', { class: 'tbl' },
+        h('thead', null, h('tr', null, ...head.map(x => h('th', null, x)))),
+        h('tbody', null, ...preview.rows.slice(0, 200).map(r => {
+          const cb = h('input', { type: 'checkbox', title: 'Select row' });
+          cb.checked = r.action !== 'SKIP';
+          cb.onchange = () => { r.action = cb.checked ? (r.matchId ? 'UPDATE' : 'CREATE') : 'SKIP'; };
+          const cls = r.deltaCost > 0 ? 'neg' : (r.deltaCost < 0 ? 'pos' : '');
+          return h('tr', null,
+            h('td', null, cb),
+            h('td', null, r.code || '—'),
+            h('td', null, (r.name || r.matchName || '—').slice(0, 34)),
+            h('td', { class: 'r' }, r.oldCost !== undefined ? fmt.money(r.oldCost) : '—'),
+            h('td', { class: 'r' }, fmt.money(r.cost)),
+            h('td', { class: 'r ' + cls }, r.deltaPct !== undefined ? r.deltaPct + '%' : '—'),
+            h('td', { class: 'r' }, r.retail ? fmt.money(r.retail) : '—'),
+            h('td', null, h('span', { class: 'badge ' + (r.action === 'SKIP' ? 'warn' : (r.action === 'CREATE' ? 'info' : 'ok')) },
+              (r.action === 'SKIP' ? (r.reason || 'skip') : r.action))));
+        })));
+      tableHost.appendChild(table);
+    }
+
+    async function doApply() {
+      if (!preview) return UI.toast('Pehle preview banayein', 'warn');
+      const rows = preview.rows.filter(r => r.action !== 'SKIP');
+      if (!rows.length) return UI.toast('Koi row select nahi', 'warn');
+      const okBtn = await UI2.confirm(rows.length + ' rows apply karein? (cost/price update hoga)');
+      if (!okBtn) return;
+      try {
+        const r = await API.call('priceimport.apply', Object.assign({ rows, supplierId: supplier, fileName: 'pasted.csv' }, optState));
+        UI.toast('Import: ' + r.updated + ' updated · ' + r.created + ' new · ' + r.skipped + ' skipped', 'ok');
+        host.remove();
+      } catch (e) { UI.toast(e.message, 'err'); }
+    }
+
+    host.appendChild(h('div', { class: 'f-grid' },
+      h('label', { class: 'f-col' }, h('span', null, 'Supplier'), supplierSel)));
+    host.appendChild(ta);
+    host.appendChild(h('div', { class: 'share-btns' },
+      h('button', { class: 'btn', onclick: () => doPreview(ta.value) }, '🔍 Parse & preview'),
+      h('button', { class: 'btn sec', onclick: async () => { ta.value = await loadSample(); } }, '📋 Sample CSV'),
+      h('button', { class: 'btn sec', onclick: async () => {
+        try {
+          const r = await API.call('priceimport.gmail', { max: 5 });
+          if (!r.count) return UI.toast('Koi attachment nahi mila (Gmail search query Settings me badlein)', 'warn');
+          ta.value = r.attachments[0].text;
+          UI.toast(r.count + ' attachment mile — pehla load kiya', 'ok');
+        } catch (e) { UI.toast(e.message, 'err'); }
+      } }, '📥 Gmail se layen'),
+      h('button', { class: 'btn ghost', onclick: () => filePick(text => { ta.value = text; }) }, '📁 File chunein (CSV)')));
+    host.appendChild(opts);
+    host.appendChild(statsEl);
+    host.appendChild(tableHost);
+
+    UI2.modal({ title: '📥 Supplier price list import', size: 'xl', body: host,
+      actions: [{ label: 'Apply selected', cls: 'ok', onClick: doApply },
+        { label: 'Close', onClick: c => c() }] });
+
+    function check(label, val, onChange) {
+      const c = h('input', { type: 'checkbox', title: label }); c.checked = !!val;
+      c.onchange = () => onChange(c.checked);
+      return h('label', { class: 'chk' }, c, h('span', null, label));
+    }
+    function filePick(cb) {
+      const inp = h('input', { type: 'file', accept: '.csv,.txt,.tsv', style: { display: 'none' } });
+      inp.onchange = () => {
+        const f = inp.files && inp.files[0];
+        if (!f) return;
+        const fr = new FileReader();
+        fr.onload = () => cb(String(fr.result || ''));
+        fr.readAsText(f);
+      };
+      document.body.appendChild(inp); inp.click(); inp.remove();
+    }
+  }
+};
+
+/* ============================ MIGRATION PANEL ============================= */
+const Migration2 = {
+  async open() {
+    const host = h('div', { class: 'mig-box' });
+    async function load() {
+      host.innerHTML = '';
+      let a = {};
+      try { a = await API.call('migration.assess', {}, { offlineFallback: () => ({}) }) || {}; } catch (e) { }
+      const st = (a.config || {});
+      const tier = a.tier || 'SHEETS_OK';
+      const pct = Math.min(100, Number(a.usedPct || 0) * 10);
+
+      host.appendChild(h('div', { class: 'mig-head' },
+        h('div', { class: 'mig-tier ' + tier.toLowerCase() }, tier.replace('_', ' ')),
+        h('div', { class: 'mig-gauge' },
+          h('div', { class: 'bar' }, h('span', { style: { width: Math.max(2, pct) + '%' } })),
+          h('div', { class: 'sub' }, (a.totals ? a.totals.rows.toLocaleString() : '0') + ' rows · ' +
+            (a.totals ? a.totals.cells.toLocaleString() : '0') + ' cells · ' + (a.totals ? a.totals.mb : 0) + ' MB · ' +
+            (a.usedPct || 0) + '% of Sheets limit'))));
+
+      const advice = h('div', { class: 'mig-advice' });
+      (a.advice || []).forEach(t => advice.appendChild(h('div', { class: 'mi' }, '• ' + t)));
+      host.appendChild(advice);
+
+      // tables
+      host.appendChild(h('div', { class: 'sec-title' }, 'Table breakdown'));
+      const tb = h('div', { class: 'mig-tables' });
+      (a.tables || []).forEach(t => {
+        tb.appendChild(h('div', { class: 'mt-row' },
+          h('span', { class: 'mt-name' }, t.table),
+          h('span', { class: 'mt-bar' }, h('span', { style: { width: Math.min(100, (t.rows / Math.max(1, (a.totals || {}).rows || 1)) * 100) + '%' } })),
+          h('span', { class: 'mt-num' }, (t.rows || 0).toLocaleString()),
+          h('span', { class: 'badge ' + (t.risk === 'HIGH' ? 'bad' : t.risk === 'MEDIUM' ? 'warn' : 'ok') }, t.risk)));
+      });
+      host.appendChild(tb);
+
+      // firebase status
+      host.appendChild(h('div', { class: 'sec-title' }, 'Firebase status'));
+      host.appendChild(h('div', { class: 'mig-status' },
+        h('span', { class: 'badge ' + (st.ready ? 'ok' : 'warn') }, 'Mode: ' + (st.mode || 'NONE')),
+        h('span', null, st.projectId ? 'Project: ' + st.projectId : (st.dbUrl ? 'DB URL set' : 'Config missing')),
+        h('span', null, 'Auto-sync: ' + (st.autoSync ? 'on' : 'off'))));
+      host.appendChild(h('div', { class: 'sub' },
+        'Script Properties me FIREBASE_DB_URL + FIREBASE_DB_SECRET (Realtime DB) ya FIREBASE_PROJECT_ID + FIREBASE_ID_TOKEN (Firestore) set karein.'));
+
+      // actions
+      host.appendChild(h('div', { class: 'share-btns', style: { marginTop: '10px' } },
+        h('button', { class: 'btn', onclick: async () => {
+          try { const r = await API.call('migration.export', {});
+            UI.toast('Export ready — ' + (r.files || []).length + ' files', 'ok');
+            if (r.folderUrl) window.open(r.folderUrl, '_blank');
+          } catch (e) { UI.toast(e.message, 'err'); }
+        } }, '⬆ Export JSON (Drive)'),
+        h('button', { class: 'btn sec', onclick: async () => {
+          try { const r = await API.call('migration.sync', { limit: 500 });
+            UI.toast('Sync: ' + r.pushed + ' docs pushed', 'ok'); load();
+          } catch (e) { UI.toast(e.message, 'err'); }
+        } }, '🔄 Sync now'),
+        h('button', { class: 'btn ghost', onclick: async () => {
+          const p = await API.call('migration.plan', {});
+          const md = Migration2.markdown(p);
+          navigator.clipboard && navigator.clipboard.writeText(md);
+          UI2.modal({ title: 'Firebase migration plan', size: 'lg',
+            body: h('pre', { style: { fontSize: 'var(--fs-xs)', whiteSpace: 'pre-wrap' } }, md),
+            actions: [{ label: 'Copy', cls: 'sec', onClick: () => { navigator.clipboard && navigator.clipboard.writeText(md); UI.toast('Copied', 'ok'); } },
+              { label: 'Close', onClick: c => c() }] });
+        } }, '📋 Migration plan'),
+        h('button', { class: 'btn ghost', onclick: async () => {
+          const rows = await API.call('migration.log', { limit: 50 }) || [];
+          UI2.modal({ title: 'Migration log', size: 'md',
+            body: h('div', null, ...rows.map(r => h('div', { class: 'list-item' },
+              h('div', { class: 'li-main' }, h('b', null, r.action + ' · ' + r.status),
+                h('span', null, r.tables + ' · ' + fmt.date(r.date, true)),
+                h('div', { class: 'sub' }, r.notes || ''))))),
+            actions: [{ label: 'Close', onClick: c => c() }] });
+        } }, '🗂 Log')));
+    }
+
+    UI2.modal({ title: '☁ Migration — Sheets → Firebase', size: 'xl', body: host,
+      actions: [{ label: 'Refresh', cls: 'sec', onClick: load }, { label: 'Close', onClick: c => c() }] });
+    load();
+  },
+
+  markdown(p) {
+    let md = '# Firebase migration plan — Haseeb Autos\n\n';
+    md += '**Target:** ' + p.target + '  \n**Region:** ' + p.region + '\n\n';
+    md += '## Collections\n\n| Sheet | Collection | Rows |\n|---|---|---|\n';
+    (p.collections || []).forEach(c => { md += '| ' + c.source + ' | ' + c.collection + ' | ' + c.rows + ' |\n'; });
+    md += '\n## Composite indexes\n\n';
+    (p.indexes || []).forEach(i => { md += '- ' + i.collection + ': ' + i.fields.join(', ') + '\n'; });
+    md += '\n## Steps\n\n';
+    (p.steps || []).forEach(s => { md += s.n + '. **' + s.title + '** — ' + s.detail + '\n'; });
+    md += '\n## Code notes\n\n';
+    (p.codeNotes || []).forEach(c => { md += '- ' + c + '\n'; });
+    md += '\n## Security rules\n\n```\n' + (p.rules || '') + '\n```\n';
+    return md;
+  }
+};
+
+window.Share = Share;
+window.PriceList = PriceList;
+window.Migration2 = Migration2;
+})();
+</script>

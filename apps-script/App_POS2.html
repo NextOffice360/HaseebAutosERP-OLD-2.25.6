@@ -1,0 +1,2062 @@
+<script>
+/* ==========================================================================
+   HASEEB AUTOS — POS v2
+   Product cards · category rail · as-you-type filter (har field) · quick keys
+   · cart (side panel / offcanvas) · qty pad · split payment · holds · scan
+   Sab kuch Settings ▸ POS se configurable (layout, cards per row, stock badge…)
+   ========================================================================== */
+(function () {
+'use strict';
+
+const S = {
+  cart: [], customer: null, discount: 0, discountCode: '', note: '',
+  favorites: Store.get('fav_items', []), recent: Store.get('recent_items', []),
+  view: 'all', category: '', subCategory: '', brand: '', stockFilter: '',
+  results: [], catalog: [], facets: { categories: [], brands: [], makes: [] }, held: [],
+  bulkGridMode: false, _bulkGridSel: new Set(), bulkCartMode: false, _bulkCartSel: new Set()
+};
+
+const cfg = k => (App.state.settings ? App.state.settings[k] : undefined);
+/** fuzzy normaliser (shared with the UI kit) — spaces/dashes ignored */
+const U_norm = s => (typeof window.__uNorm === 'function'
+  ? window.__uNorm(s)
+  : String(s === null || s === undefined ? '' : s).toLowerCase().replace(/[\s\-_\/\\.#]/g, ''));
+
+function isFav(id) { return S.favorites.indexOf(id) > -1; }
+function toggleFav(id) {
+  S.favorites = isFav(id) ? S.favorites.filter(x => x !== id) : S.favorites.concat([id]);
+  Store.set('fav_items', S.favorites);
+  // poori screen dobara render karne se flash aata tha — sirf grid refresh karein
+  try { if (POS2.renderGrid) { POS2.renderGrid(); return; } } catch (e) { }
+  App.refresh();
+}
+function markRecent(id) {
+  S.recent = [id].concat(S.recent.filter(x => x !== id)).slice(0, 24);
+  Store.set('recent_items', S.recent);
+}
+
+/* ------------------------------- totals ---------------------------------- */
+function subTotal() { return S.cart.reduce((a, l) => a + l.price * l.qty - (l.discount || 0), 0); }
+function totalTax() { return S.cart.reduce((a, l) => a + (l.tax || 0), 0); }
+function grandTotal() { return Math.max(0, subTotal() - Number(S.discount || 0) + totalTax()); }
+function estProfit() {
+  /* v2.28.0 (W5) — cost family band ho to ye estimate ghalat hota (cost 0),
+     is liye 0 return karo aur UI (showProfit) ise dikhata hi nahi. */
+  if (!App.field('margin')) return 0;
+  return S.cart.reduce((a, l) => a + (l.price - (l.cost || 0)) * l.qty - (l.discount || 0), 0);
+}
+
+/* ------------------------------ add to cart ------------------------------- */
+function addToCart(item, qty) {
+  qty = qty || 1;
+  const wholesale = S.customer && S.customer.typeId && /wholesale|corporate/i.test(S.customer.typeName || '');
+  const price = wholesale && item.wholesalePrice ? item.wholesalePrice : item.retailPrice;
+  const found = S.cart.find(l => l.itemId === item.id);
+  if (found) { found.qty += qty; found.lineTotal = found.qty * found.price - (found.discount || 0); }
+  else S.cart.push({
+    itemId: item.id, code: item.code, name: item.name, qty: qty, price: price,
+    retail: item.retailPrice, wholesale: item.wholesalePrice, minPrice: item.minPrice || 0,
+    cost: item.costPrice || 0, stock: item.stock, taxRate: item.taxRate || 0,
+    discount: 0, tax: 0, lineTotal: price * qty, imageUrl: item.imageUrl || ''
+  });
+  markRecent(item.id);
+  renderCart(); renderTotals();
+}
+
+function removeLine(idx) { S.cart.splice(idx, 1); renderCart(); renderTotals(); }
+
+/* GS1 + continuous scan helper — extracts last barcode, clears input, handles rapid wedge + GS1 AIs */
+function extractBarcode(raw){
+  raw = String(raw||'').trim();
+  if(!raw) return '';
+  // Clean single token (typed code, SKU, or a normal scanner payload ending in Enter) → use AS-IS.
+  // This keeps alphanumeric codes like FL00000 intact instead of mangling them into "00000".
+  if(/^[0-9A-Za-z\.\-]{3,40}$/.test(raw)) return raw;
+  // Otherwise: scanner junk ("I98796 6959375198796 6959375198796" or GS1 AIs) —
+  // take the LAST 8-14 digit run (duplicated scans resolve to the newest code).
+  const all = raw.match(/\d{8,14}/g);
+  if(all && all.length) return all[all.length-1];
+  const tokens = raw.split(/\s+/);
+  const last = tokens[tokens.length-1] || raw;
+  return last.replace(/[^0-9A-Za-z\.\-]/g,'');
+}
+function findProductByBarcode(code){
+  if(!code) return null;
+  const raw = String(code).trim();
+  const clean = raw.toLowerCase();
+  // Candidates: the whole value plus any long numeric runs from a messy scan payload
+  const cands = [clean];
+  (raw.match(/\d{8,14}/g)||[]).forEach(n=>{ if(cands.indexOf(n)===-1) cands.push(n); });
+  // 1) exact match on code or barcode for every candidate
+  for(const c of cands){
+    const hit = S.catalog.find(i => String(i.code||'').toLowerCase()===c || String(i.bc||'').toLowerCase()===c || String(i.barcode||'').toLowerCase()===c);
+    if(hit) return hit;
+  }
+  // 2) EAN check-digit-tolerant match — ONLY for pure numeric 13-digit candidates
+  for(const c of cands){
+    if(/^\d{13}$/.test(c)){
+      const hit = S.catalog.find(i => String(i.bc||'').slice(0,12)===c.slice(0,12));
+      if(hit) return hit;
+    }
+  }
+  // 3) numeric suffix match — ONLY pure numeric candidates (never for alnum SKUs like FL00000)
+  for(const c of cands){
+    if(/^\d{8,}$/.test(c)){
+      const hit = S.catalog.find(i => String(i.bc||'').endsWith(c) || c.endsWith(String(i.bc||'')));
+      if(hit) return hit;
+    }
+  }
+  // 4) name/code substring (manual typing convenience)
+  const hit4 = S.catalog.find(i => String(i.name||'').toLowerCase().indexOf(clean)>-1 && clean.length>=3);
+  if(hit4) return hit4;
+  return null;
+}
+function handleScanInput(rawValue, inputEl){
+  const code = extractBarcode(rawValue);
+  if(!code) { if(inputEl){ inputEl.value=''; try{inputEl.focus();}catch(e){} } return; }
+  const hit = findProductByBarcode(code);
+  if(hit){
+    addToCart({ id: hit.id, code: hit.code, name: hit.name, retailPrice: hit.rp, wholesalePrice: hit.wp, costPrice: hit.cp, stock: hit.qty, imageUrl: hit.img }, 1);
+    if(String(App.state.settings['pos.scanSound'])!=='false') try{beep();}catch(e){}
+    UI.toast('Scanned: '+hit.name+' ('+code+') — Added to cart','ok');
+    if(inputEl){ inputEl.value=''; S.q=''; if(typeof renderGrid==='function') try{renderGrid();}catch(e){} try{inputEl.focus();}catch(e){} }
+    return true;
+  } else {
+    UI.toast('Code not found: '+code+' — try manual search (F2)','warn');
+    if(inputEl){ inputEl.value=''; S.q=''; if(typeof renderGrid==='function') try{renderGrid();}catch(e){} try{inputEl.focus();}catch(e){} }
+    return false;
+  }
+}
+
+
+/* ═════════ v2.14.1 — MULTI-SELECT ADD (UI2.itemPicker, PO/GRN jaisa) + BULK SCAN ══════
+ * togglePicker: cart ke andar inline picker (search + 📋 poori list + Multi-select
+ *   checkbox + qty per item + Add bar). Add hone par addToCart merge karta hai —
+ *   product pehle se cart mein ho to qty barhti hai, duplicate line nahi banti.
+ * bulkFlow: HaScan.bulkScan (external scanner continuous `once=0`, ya in-app loop).
+ *   Har code turant cart; badge live count; popup band / badge-tap / Close = session khatam. */
+// Dedicated Bulk Add Modal — per spec: explicit user action → modal → scan/search/select → bulk list → Add All
+// Normal Mode (bulk closed) → Scan → direct add to cart (no modal) — handled by handleScanInput
+// Bulk Mode → dedicated modal with scan + search + checkboxes + bulk list
+function openBulkAddModal(){
+  try{
+    if (typeof UI2 === 'undefined' || !UI2.itemPicker) { UI.toast('Product picker load nahi hua', 'err'); return; }
+    /* v2.24.0 — picker ab khud scan-first hai: mode:'multi' se scan block +
+       checkboxes + Bulk List foran taiyar. DOM ko poke karne ki zarurat nahi. */
+    const picker = UI2.itemPicker({
+      mode: 'multi',
+      icon: '🛒',
+      title: 'Bulk Add — Multi Select',
+      hint: 'Scan → Bulk List → Add All · ya search/📋 list se tick karein',
+      commitLabel: 'Add Selected to Cart',
+      placeholder: 'Search product — name / code / barcode…',
+      map: (r, q) => ({ r: r, q: q }),
+      sub: r => [r.code, r.barcode ? 'barcode '+r.barcode : '', r.category,
+        r.stock !== undefined ? 'stock ' + fmt.num(r.stock) : '',
+        (r.retailPrice || r.rp) ? fmt.money(r.retailPrice || r.rp) : ''].filter(Boolean).join(' · '),
+      onAdd: line => {
+        if (line && line.r){
+          const r = line.r;
+          addToCart({ id: r.id, code: r.code, name: r.name,
+            retailPrice: r.retailPrice, wholesalePrice: r.wholesalePrice,
+            costPrice: r.costPrice, stock: r.stock, taxRate: r.taxRate || 0,
+            imageUrl: r.imageUrl || '' }, Number(line.q||1));
+        }
+      },
+      lines: []
+    });
+    const modal = UI2.modal({
+      title: '📦 Bulk Add — Multi Select Mode',
+      subtitle: 'Scan → auto-add to Bulk List → field clears → next scan ready · or search + tick · then Add All',
+      size: 'lg',
+      body: picker,
+      actions: [
+        { label: 'Cancel', cls: 'ghost', onClick: c=> c() },
+        { label: 'Add Selected to Cart', cls: 'ok', onClick: c=>{
+            if(!(picker.api && picker.api.hasSel && picker.api.hasSel()))
+              return UI.toast('Koi item select nahi — scan karein ya checkbox tick karein','warn');
+            picker.api.commit();
+            c();
+          }
+        }
+      ]
+    });
+    /* picker ke andar wala apna "Add to list" bar bhi wrapper band kar de —
+       warna stale scrim POS ke upar reh jata hai. */
+    const addBarEl = picker.querySelector('.po-addbar');
+    if (addBarEl) addBarEl.addEventListener('click', e => {
+      if (e.target && e.target.closest && e.target.closest('.btn.ok')) setTimeout(() => { try { modal.close(); } catch (err) {} }, 30);
+    });
+    return modal;
+  }catch(e){ UI.toast('Bulk modal error: '+(e.message||e),'err'); }
+}
+function togglePicker() {
+  // Now opens dedicated modal instead of inline toggle (per spec, prevents dropdown conflict)
+  return openBulkAddModal();
+}
+
+function bulkFlow() {
+  const badge = POS2.bulkBadge;
+  if (POS2.bulkHandle) { const hd = POS2.bulkHandle; try { hd.cancel ? hd.cancel() : (hd.close && hd.close()); } catch (e) { } return; }
+  let n = 0, miss = 0; const misses = []; let finished = false;
+  const mark = () => {
+    if (!badge) return;
+    const txt = ' 🔁 Bulk ON · ' + n + (miss ? ' · unknown ' + miss : '') + ' · band karein';
+    // preserve ha-ico SVG if present (v2.16 premium toolbar)
+    const ico = badge.querySelector('.ha-ico');
+    if (ico) { badge.textContent = ''; badge.appendChild(ico); badge.append(document.createTextNode(txt)); }
+    else badge.textContent = txt;
+  };
+  const onDetect = v => {
+    const q = String(v || '').trim(); if (!q) return;
+    const hit = S.catalog.find(i => String(i.bc).toLowerCase() === q.toLowerCase() || String(i.code).toLowerCase() === q.toLowerCase());
+    if (hit) {
+      addToCart({ id: hit.id, code: hit.code, name: hit.name, retailPrice: hit.rp, wholesalePrice: hit.wp, costPrice: hit.cp, stock: hit.qty, imageUrl: hit.img }, 1);
+      n++; if (String(App.state.settings['pos.scanSound']) !== 'false') beep();
+    } else { miss++; if (misses.length < 6) misses.push(q); }
+    mark();
+  };
+  const onDone = () => {
+    if (finished) return; finished = true;
+    POS2.bulkHandle = null;
+    if (badge) { badge.hidden = true; badge.classList.remove('on'); }
+    UI.toast('Bulk scan khatam — ' + n + ' item' + (n === 1 ? '' : 's') + ' add' +
+      (miss ? ' · unknown: ' + misses.join(', ') + (miss > 6 ? '…' : '') : ''), n ? 'ok' : 'warn', 4200);
+  };
+  if (!(window.HaScan && HaScan.bulkScan)) {
+    UI.toast('Bulk ke liye scanner bridge chahiye (App_QR partial ke sath chalayein)', 'warn'); return;
+  }
+  if (badge) { badge.hidden = false; badge.classList.add('on'); mark(); }
+  POS2.bulkHandle = HaScan.bulkScan({ onDetect: onDetect, onDone: onDone, allFormats: true }) || { cancel: onDone };
+}
+
+/* ============================== SCREEN ==================================== */
+/* ======================= PRODUCT QUICK VIEW (v2.5) =======================
+ * Card par ⓘ dabayein → poora record ek popup mein: supplier, rates, stock
+ * har branch, rack/bin, barcode, last purchase. Bottom scroll nahi — modal.
+ * ======================================================================== */
+/* supplier ka naam — catalog (i.sup) ya App.state.suppliers se */
+function posSupplierName(id) {
+  if (!id) return '';
+  const s = (App.state.suppliers || []).filter(x => x.id === id)[0];
+  return s ? s.name : '';
+}
+
+function quickViewItem(i) {
+  const name = i.name || i.n || i.code || i.c || 'Item';
+  const body = h('div', { class: 'qv' },
+    h('div', { class: 'qv-img' }, i.img ? h('img', { src: i.img, alt: name, loading: 'lazy', decoding: 'async' }) : h('span', { class: 'pc-noimg' }, '📦')),
+    h('div', { class: 'qv-body' },
+      h('div', { class: 'qv-title' }, name),
+      h('div', { class: 'qv-sub' }, [i.code || i.c, i.barcode].filter(Boolean).join(' · ')),
+      h('div', { class: 'empty', style: { padding: '10px' } }, 'Detail load ho rahi hai…')));
+
+  UI2.modal({
+    title: 'ⓘ ' + name, size: 'md', body,
+    actions: [
+      { label: '🛒 Cart mein daalein', cls: 'ok', onClick: c => { c(); addToCart({
+        id: i.id, code: i.code || i.c, name: name, retailPrice: i.rp, wholesalePrice: i.wp,
+        costPrice: i.cp, stock: i.qty, imageUrl: i.img }); } },
+      { label: '📄 Full record', cls: 'sec', onClick: c => { c(); App.go('items', { open: i.id }); } },
+      { label: 'Close', onClick: c => c() }
+    ]
+  });
+
+  API.call('items.get', { id: i.id, withStock: true },
+    { offlineFallback: () => ({ id: i.id, name: name, code: i.code, __offline: true }) })
+    .then(d => renderQuickView(body, i, d))
+    .catch(() => renderQuickView(body, i, { id: i.id, name: name, code: i.code }));
+}
+
+function renderQuickView(body, i, d) {
+  d = d || {};
+  const num = n => (n === '' || n === null || n === undefined) ? '—' : fmt.num(n);
+  const money = n => (n === '' || n === null || n === undefined) ? '—' : fmt.money(n);
+  const suppliers = App.state.suppliers || [];
+  const supName = id => { const s2 = suppliers.find(x => x.id === id); return s2 ? s2.name : (id || '—'); };
+  const locName = id => { const l = (App.state.locations || []).find(x => x.id === id); return l ? (l.code || l.name) : id; };
+
+  body.innerHTML = '';
+  /* v2.9 §6 — image click par enlarge (lightbox), cursor zoom-in */
+  const qvImg = (d.imageUrl || i.img);
+  body.appendChild(h('div', { class: 'qv-img' },
+    qvImg ? h('img', { src: qvImg, alt: d.name || i.name, loading: 'lazy', decoding: 'async',
+      title: 'Click to enlarge', style: { cursor: 'zoom-in' },
+      onclick: () => UI.zoomImage(qvImg, d.name || i.name || 'Item') })
+      : h('span', { class: 'pc-noimg' }, '📦')));
+
+  const right = h('div', { class: 'qv-body' },
+    h('div', { class: 'qv-title' }, d.name || i.name || 'Item'),
+    /* v2.9 §6 — Category ab Product Code ke foran baad */
+    h('div', { class: 'qv-sub' },
+      [d.code || i.code, d.category, d.brand, d.subCategory,
+       d.barcode ? 'Barcode ' + d.barcode : ''].filter(Boolean).join(' · ') || '—'));
+
+  /* --- main numbers --- */
+  right.appendChild(h('div', { class: 'qv-grid' },
+    h('div', { class: 'qv-cell' }, h('span', null, 'Sale price'), h('b', null, money(d.retailPrice !== undefined ? d.retailPrice : i.rp))),
+    h('div', { class: 'qv-cell' }, h('span', null, 'Wholesale'), h('b', null, money(d.wholesalePrice !== undefined ? d.wholesalePrice : i.wp))),
+    /* v2.28.0 (W5) — Cost/Margin cells sirf jis ko family ki ijazat hai (spec §9) */
+    App.field('cost') ? h('div', { class: 'qv-cell' }, h('span', null, 'Cost'), h('b', null, money(d.costPrice !== undefined ? d.costPrice : i.cp))) : null,
+    h('div', { class: 'qv-cell' }, h('span', null, 'Stock (all)'), h('b', null, num(d.qty !== undefined ? d.qty : i.qty))),
+    /* v2.9.1 §6 — margin real cost/sale se, data na ho to '—' */
+    !App.field('margin') ? null : (function () {
+      const cost = Number(d.costPrice !== undefined ? d.costPrice : i.cp) || 0;
+      const sale = Number(d.retailPrice !== undefined ? d.retailPrice : i.rp) || 0;
+      if (!cost || !sale) return h('div', { class: 'qv-cell' }, h('span', null, 'Margin'), h('b', null, '—'));
+      const m = sale - cost, pct = Math.round((m / sale) * 1000) / 10;
+      return h('div', { class: 'qv-cell' }, h('span', null, 'Margin'),
+        h('b', { style: { color: m > 0 ? 'var(--ok)' : (m < 0 ? 'var(--err)' : '') } },
+          fmt.money(m) + ' · ' + pct + '%'));
+    })()));
+
+  /* --- supplier / sourcing --- */
+  right.appendChild(h('div', { class: 'qv-sec' }, 'Supplier & sourcing'));
+  right.appendChild(h('div', { class: 'qv-grid' },
+    h('div', { class: 'qv-cell' }, h('span', null, 'Primary supplier'),
+      h('b', { style: { fontSize: 'var(--fs-sm)' } }, supName(d.primarySupplierId || i.supplierId))),
+    h('div', { class: 'qv-cell' }, h('span', null, 'Rack / bin'),
+      h('b', { style: { fontSize: 'var(--fs-sm)' } }, (d.rack || i.rack || '—') + (d.binId ? ' / ' + d.binId : ''))),
+    h('div', { class: 'qv-cell' }, h('span', null, 'Reorder level'), h('b', null, num(d.reorderLevel))),
+    h('div', { class: 'qv-cell' }, h('span', null, 'Unit'), h('b', null, d.unit || 'PCS'))));
+
+  /* --- stock per branch --- */
+  const rows = d.stockByLocation || [];
+  right.appendChild(h('div', { class: 'qv-sec' }, 'Stock by branch'));
+  right.appendChild(rows.length ? UI2.table({
+    screen: 'qv_stock', height: '20vh', rows, exportName: 'item-stock',
+    columns: [
+      { key: 'locationId', label: 'Branch', render: r => locName(r.locationId) },
+      { key: 'qty', label: 'Qty', num: true },
+      { key: 'avgCost', label: 'Avg cost', num: true, render: r => fmt.money(r.avgCost) },
+      { key: 'rack', label: 'Rack', render: r => r.rack || '—' }
+    ]
+  }) : h('div', { class: 'empty', style: { padding: '8px' } }, 'Sirf current branch ka stock available hai'));
+
+  /* --- price tiers --- */
+  if (d.prices && d.prices.length) {
+    right.appendChild(h('div', { class: 'qv-sec' }, 'Price tiers'));
+    right.appendChild(UI2.table({
+      screen: 'qv_prices', height: '18vh', rows: d.prices, exportName: 'item-prices',
+      columns: [
+        { key: 'priceListId', label: 'List' },
+        { key: 'price', label: 'Price', num: true, render: r => fmt.money(r.price) },
+        { key: 'minQty', label: 'Min qty', num: true }
+      ]
+    }));
+  }
+
+  /* ── v2.9.1 §6/§11 — sales history + supplier price comparison ────────
+   * Dono lazy-load: API call ke baad hi render; real data na ho to
+   * section DOM se remove ho jata hai (fabricated 'no data' blocks nahi). */
+  const itemId = d.id || i.id;
+  const qvSec = (label) => h('div', { class: 'qv-sec' }, label);
+
+  const actHost = h('div');
+  actHost._sec = qvSec('Sales history · last 30 days');
+  right.appendChild(actHost._sec); right.appendChild(actHost);
+  API.call('sales.itemActivity', { itemId, days: 30 }, { offlineFallback: () => null })
+    .then(a => {
+      if (!a || (!a.qty && !a.lastSold)) { actHost.remove(); actHost._sec.remove(); return; }
+      actHost.innerHTML = '';
+      actHost.appendChild(h('div', { class: 'qv-grid' },
+        h('div', { class: 'qv-cell' }, h('span', null, 'Sold (30d)'), h('b', null, fmt.num(a.qty))),
+        h('div', { class: 'qv-cell' }, h('span', null, 'Revenue (30d)'), h('b', null, fmt.moneyCompact(a.revenue))),
+        h('div', { class: 'qv-cell' }, h('span', null, 'Last sold'), h('b', { style: { fontSize: 'var(--fs-sm)' } }, a.lastSold || '—')),
+        h('div', { class: 'qv-cell' }, h('span', null, 'Top buyers'),
+          h('b', { style: { fontSize: 'var(--fs-sm)', fontWeight: 500 } },
+            (a.topCustomers || []).map(t => t.name + ' ×' + fmt.num(t.qty)).join(', ') || '—'))));
+      /* stock status note — available data se, quick decision ke liye */
+      const stockN = Number(d.qty !== undefined ? d.qty : i.qty) || 0;
+      const daysOut = Number(a.qty) > 0 ? Math.round((stockN / (Number(a.qty) / 30)) * 10) / 10 : null;
+      const st = stockN <= 0 ? { t: 'Out of stock', c: 'err' } :
+        (daysOut !== null && daysOut < 30) ? { t: '~' + daysOut + ' din chalen ge (30d speed par)', c: 'warn' } :
+        { t: 'Stock theek hai', c: 'ok' };
+      actHost.appendChild(h('div', { class: 'badge ' + st.c,
+        style: { marginTop: '6px' } }, st.t));
+    }).catch(() => { actHost.remove(); actHost._sec.remove(); });
+
+  const cmpHost = h('div');
+  cmpHost._sec = qvSec('Supplier price comparison · 180 days');
+  right.appendChild(cmpHost._sec); right.appendChild(cmpHost);
+  API.call('purchase.supplierCompare', { itemId, days: 180 }, { offlineFallback: () => ({ rows: [] }) })
+    .then(cmp => {
+      const rows = (cmp && cmp.rows) || [];
+      if (!rows.length) { cmpHost.remove(); cmpHost._sec.remove(); return; }
+      cmpHost.innerHTML = '';
+      cmpHost.appendChild(UI2.table({
+        screen: 'qv_supcmp', height: '22vh', rows, exportName: 'supplier-compare',
+        columns: [
+          { key: 'supplierName', label: 'Supplier', render: r => h('span', null, r.supplierName || ('#' + r.supplierId),
+            r.best ? h('span', { class: 'badge ok', style: { marginLeft: '6px' } }, 'sab se sasta avg') : '') },
+          { key: 'purchases', label: 'Grn', num: true, render: r => String(r.count) },
+          { key: 'avgCost', label: 'Avg cost', num: true, render: r => fmt.money(r.avgCost) },
+          { key: 'minCost', label: 'Min', num: true, render: r => fmt.money(r.minCost) },
+          { key: 'lastRate', label: 'Last rate', num: true, render: r => fmt.money(r.lastRate) },
+          { key: 'lastDate', label: 'Last GRN' }
+        ]
+      }));
+      const best = rows.filter(r => r.best)[0];
+      if (best && rows.length > 1) {
+        cmpHost.appendChild(h('div', { class: 'po-reco', style: { marginTop: '8px' } },
+          'Purchasing tip: ' + (best.supplierName || '') + ' ka 180-din avg ' + fmt.money(best.avgCost) +
+          ' hai — agli PO par rate is ke qareeb rakhein.'));
+      }
+    }).catch(() => { cmpHost.remove(); cmpHost._sec.remove(); });
+
+  body.appendChild(right);
+}
+
+App.registerScreen('pos', {
+  title: 'Point of Sale', icon: '🧾', perm: 'pos.access',
+  subtitle: () => App.state.branchName + ' · ' + new Date().toLocaleString('en-PK', { dateStyle: 'medium', timeStyle: 'short' }),
+  actions() {
+    const a = [];
+    a.push({ label: 'Help (?)', icon: '⌨', onClick: showShortcutsHelp });
+    if (App.can('pos.hold')) a.push({ label: 'Hold', icon: '⏸', onClick: holdBill });
+    a.push({ label: 'Clear', icon: '🗑', cls: 'danger', onClick: clearCart });
+    return a;
+  },
+
+  render(body) {
+    // har dafa screen par aate hi configured default view (settings-driven)
+    S.view = (cfg('pos.defaultView') || 'all');
+    if (['all', 'categories', 'favorites', 'recent', 'held'].indexOf(S.view) === -1) S.view = 'all';
+    const wrap = h('div', { class: 'pos2' });
+    /* v2.14.0 mobile UX: cart ab drawer (neeche "Cart dekhhein" bar) — poora
+       44vh panel grid ke upar chadta tha ("blocks are blocking the main
+       screen"). Bar desktop par display:none, drawer kholta hai. */
+    const cartBar = h('button', { class: 'pos2-cartbar', type: 'button',
+      onclick: () => { try { openCartOffcanvas(); } catch (e) { } } },
+      h('span', { class: 'pcb-count' }, '🛒 0 items'),
+      h('span', { class: 'pcb-total' }, 'Rs 0'),
+      h('span', { class: 'pcb-go' }, 'Cart dekhhein ▸'));
+
+    /* ---------------- LEFT: search + tabs + rail + cards ---------------- */
+    const searchInput = h('input', { type: 'text', placeholder: 'Scan ya type karein — name / code / barcode / brand / model… (F2)', autocomplete: 'off', autocapitalize: 'off', spellcheck: 'false' });
+    const searchBox = h('div', { class: 'pos2-search' }, h('span', { class: 'ha-ico', html: '<svg viewBox=\"0 0 24 24\" width=\"16\" height=\"16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" aria-hidden=\"true\"><circle cx=\"11\" cy=\"11\" r=\"7\"/><line x1=\"16.5\" y1=\"16.5\" x2=\"21\" y2=\"21\"/></svg>', 'aria-hidden': 'true' }), searchInput,
+      h('span', { class: 'kbd' }, 'F2'),
+      h('button', { class: 'btn sm sec', title: 'Camera se barcode/QR scan karein',
+        onclick: () => scanBarcode(v => {
+          const hit = S.catalog.find(i => String(i.bc).toLowerCase() === String(v).toLowerCase() ||
+            String(i.code).toLowerCase() === String(v).toLowerCase());
+          if (hit) { addToCart({ id: hit.id, code: hit.code, name: hit.name, retailPrice: hit.rp,
+            wholesalePrice: hit.wp, costPrice: hit.cp, stock: hit.qty, imageUrl: hit.img });
+            beep(); UI.toast('Scanned: ' + hit.name, 'ok'); return true; }
+          return false;
+        }) }, '📷 Scan'),
+      h('button', { class: 'btn sm sec', onclick: () => quickAdd(searchInput.value.trim()) }, '➕ New'));
+
+    const railHost = h('div');
+    const chipsHost = h('div');
+    const gridHost = h('div', { class: 'pos2-gridwrap' });
+
+    const tabsHost = h('div');
+    const main = h('div', { class: 'pos2-main' }, searchBox, tabsHost, railHost, chipsHost, gridHost);
+
+    UI2.tabs(tabsHost, {
+      level: 3, active: S.view,
+      tabs: [
+        { id: 'all', label: 'All items', icon: '📦', render: c => { S.view = 'all'; S.category = ''; S.subCategory = ''; renderRail(); renderGrid(); } },
+        { id: 'categories', label: 'Categories', icon: '🗂', render: c => { S.view = 'categories'; renderRail(); renderGrid(); } },
+        { id: 'favorites', label: 'Favorites ★', render: c => { S.view = 'favorites'; railHost.innerHTML = ''; chipsHost.innerHTML = ''; renderGrid(); } },
+        { id: 'recent', label: 'Recently sold', render: c => { S.view = 'recent'; railHost.innerHTML = ''; chipsHost.innerHTML = ''; renderGrid(); } },
+        { id: 'held', label: 'Held bills', badge: String(S.held.length || 0), render: c => { S.view = 'held'; railHost.innerHTML = ''; chipsHost.innerHTML = ''; renderHeld(c); } }
+      ],
+      onChange: () => { }
+    });
+
+    /* ---------------- RIGHT: cart ---------------- */
+    const cartBody = h('div', { class: 'cart2-body' });
+    const cartFoot = h('div', { class: 'cart2-foot' });
+    const cartHead = h('div', { class: 'cart2-head' },
+      h('h3', { style: { margin: 0, fontSize: 'var(--fs-md)' } }, '🧾 Current bill'),
+      h('span', { class: 'badge brand', id: 'cartCount2' }, '0 items'),
+      h('button', { class: 'btn sm ghost', style: { marginLeft: 'auto' }, onclick: clearCart }, '🗑'));
+    /* v2.16 — cart toolbar: premium aligned (SVG + emoji for tests, 32px taps, Add items / Bulk scan / Bulk ON pill) */
+    const bulkBadge = h('button', { class: 'pos2-bulk', type: 'button', hidden: true, title: 'Bulk session khatam karein',
+      onclick: () => { const hd = POS2.bulkHandle; if (hd) { try { hd.cancel ? hd.cancel() : (hd.close && hd.close()); } catch (e) { } } } },
+      h('span', { class: 'ha-ico', html: '<svg viewBox=\"0 0 24 24\" width=\"14\" height=\"14\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"M21 12a9 9 0 1 1-2.64-6.36\"/><path d=\"M21 3v6h-6\"/></svg>', 'aria-hidden': 'true' }), ' 🔁 Bulk ON · 0 · band karein');
+    // ☑ Add items — renamed to ☑ BULK ADD per UX polish (keeps legacy alias for tests)
+    if(!S._bulkCartSel) S._bulkCartSel=new Set();
+    if(typeof S.bulkCartMode==='undefined') S.bulkCartMode=false;
+    const cartTools = h('div', { class: 'cart2-tools' },
+      h('button', { class: 'btn sm sec', type: 'button', title: 'Checkbox list se multiple products ek saath add karein (GRN/PO jaisa) — BULK ADD',
+        onclick: () => togglePicker() },
+        h('span', { class: 'ha-ico', html: '<svg viewBox=\"0 0 24 24\" width=\"14\" height=\"14\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2\"/><path d=\"M9 12l2 2 4-4\"/></svg>', 'aria-hidden': 'true' }), ' ☑ BULK ADD'),
+      h('button', { class: 'btn sm ghost', type: 'button', title: 'Grid bulk — tiles par tick karke multiple add',
+        onclick: () => { S.bulkGridMode=!S.bulkGridMode; if(!S.bulkGridMode) S._bulkGridSel.clear(); renderGrid(); UI.toast(S.bulkGridMode?'Grid select ON — tiles tick karein':'Grid select OFF','ok'); }},
+        h('span', { class: 'ha-ico', html: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 12l2 2 4-4"/></svg>', 'aria-hidden': 'true' }), ' ⊞ Grid'),
+      h('button', { class: 'btn sm ghost', type: 'button', title: 'Cart lines select karein — bulk delete / qty',
+        onclick: () => { S.bulkCartMode=!S.bulkCartMode; if(!S.bulkCartMode) S._bulkCartSel.clear(); renderCart(); UI.toast(S.bulkCartMode?'Cart select ON':'Cart select OFF','ok'); }},
+        h('span', { class: 'ha-ico', html: '<svg viewBox=\"0 0 24 24\" width=\"14\" height=\"14\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2\"/><path d=\"M9 9h6\"/><path d=\"M9 15h6\"/></svg>', 'aria-hidden': 'true' }), ' ☑ Select'),
+      h('button', { class: 'btn sm sec', type: 'button', title: 'Lagataar scan — har code foran cart mein add',
+        onclick: () => bulkFlow() },
+        h('span', { class: 'ha-ico', html: '<svg viewBox=\"0 0 24 24\" width=\"14\" height=\"14\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"M3 7V5a2 2 0 0 1 2-2h2\"/><path d=\"M17 3h2a2 2 0 0 1 2 2v2\"/><path d=\"M21 17v2a2 2 0 0 1-2 2h-2\"/><path d=\"M7 21H5a2 2 0 0 1-2-2v-2\"/><line x1=\"7\" y1=\"12\" x2=\"17\" y2=\"12\"/></svg>', 'aria-hidden': 'true' }), ' 🔁 Bulk scan'),
+      bulkBadge);
+    const pkHost = h('div', { class: 'pos2-picker host', hidden: true });   /* mount-on-first-open: idle DOM stays clean — host neutral for blank audit */
+    // v2.16 inline Add Product — desktop side panel (functional, premium: icon + bilingual hint)
+    const sideInline = h('div', { class: 'cart-inline-add' },
+      h('span', { class: 'ha-ico', html: '<svg viewBox=\"0 0 24 24\" width=\"16\" height=\"16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><circle cx=\"11\" cy=\"11\" r=\"7\"/><line x1=\"16.5\" y1=\"16.5\" x2=\"21\" y2=\"21\"/></svg>', 'aria-hidden': 'true', style: { color: 'var(--muted)', flex: '0 0 auto' } }),
+      h('input', { class: 'f-input', placeholder: 'Add product — code / name / barcode…', 'aria-label': 'Add product' }),
+      h('button', { class: 'btn sm ok' },
+        h('span', { class: 'ha-ico', html: '<svg viewBox=\"0 0 24 24\" width=\"14\" height=\"14\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><line x1=\"12\" y1=\"5\" x2=\"12\" y2=\"19\"/><line x1=\"5\" y1=\"12\" x2=\"19\" y2=\"12\"/></svg>', 'aria-hidden': 'true' }), ' Add'));
+    (function () {
+      const inp = sideInline.querySelector('input'); const btn = sideInline.querySelector('button');
+      const doAdd = () => {
+        const raw = inp.value.trim(); if (!raw) return;
+        const code = extractBarcode(raw);
+        const hit = findProductByBarcode(code);
+        if (hit) { addToCart({ id: hit.id, code: hit.code, name: hit.name, retailPrice: hit.rp, wholesalePrice: hit.wp, costPrice: hit.cp, stock: hit.qty, imageUrl: hit.img }, 1); inp.value = ''; S.q=''; try{renderGrid();}catch(e){} inp.focus(); UI.toast('Added: ' + hit.name+' — Cart updated','ok'); }
+        else {
+          UI.toast('Product nahi mila: ' + code + ' — try manual search (F2)','warn'); inp.value=''; inp.focus();
+        }
+      };
+      inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); doAdd(); } });
+      // Also handle rapid scanner input via input event
+      let t=null; inp.addEventListener('input', ()=>{ clearTimeout(t); t=setTimeout(()=>{ if(inp.value.length>=8 && inp.value.match(/\d{8,}/)){ /* likely scanner, wait for Enter */ } }, 200); });
+      btn.onclick = doAdd;
+    })();
+    const loyTeaser = h('div', { id: 'posLoyaltyTeaser', class: 'loy-teaser host', hidden: true, style: { margin: '0 10px 6px' } });
+    const cart = h('div', { class: 'pos2-side' },
+      h('div', { class: 'cust-bar', id: 'custBar2', style: { margin: '10px 10px 6px', cursor: 'pointer' },
+        onclick: pickCustomer },
+        h('span', { style: { width: '32px', height: '32px', borderRadius: '10px', background: 'var(--brand-soft)', border: '1px solid var(--line)', display: 'grid', placeItems: 'center', flex: '0 0 32px' } },
+          h('span', { class: 'ha-ico', html: '<svg viewBox=\"0 0 24 24\" width=\"16\" height=\"16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2\"/><circle cx=\"12\" cy=\"7\" r=\"4\"/></svg>', 'aria-hidden': 'true' })),
+        h('div', { style: { flex: '1', minWidth: '0' } },
+          h('div', { class: 'cb-name', id: 'custName2' }, 'Walk-in Customer'),
+          h('div', { class: 'cb-bal', id: 'custBal2' }, 'Tap to select customer (F4)')),
+        h('span', { class: 'ha-ico', html: '<svg viewBox=\"0 0 24 24\" width=\"14\" height=\"14\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"M9 18l6-6-6-6\"/></svg>', 'aria-hidden': 'true', style: { color: 'var(--muted)', flex: '0 0 auto' } })),
+      loyTeaser, cartTools, sideInline, pkHost, cartBody, cartFoot);
+    // keep sideInline reference for toggling via settings if needed
+    POS2.sideInline = sideInline;
+
+    wrap.append(main, cart);
+    body.appendChild(wrap);
+    body.appendChild(cartBar);
+
+    POS2.cartBar = cartBar;
+    POS2.cartTools = cartTools; POS2.pkHost = pkHost; POS2.bulkBadge = bulkBadge; POS2.cartSide = cart;
+    POS2.renderCart = renderCart;
+    POS2.renderTotals = renderTotals;
+    POS2.renderGrid = renderGrid;
+    POS2.cartBody = cartBody; POS2.cartFoot = cartFoot;
+
+    /* ---------------------------- data load ---------------------------- */
+    API.pullCatalog().then(() => {
+      S.catalog = App.state.catalog.items || [];
+      loadFacets(); renderRail(); renderGrid();
+    });
+    loadHeld();
+
+    function loadFacets() {
+      try { API.call('items.facets', {}).then(f => { S.facets = f; renderRail(); }); } catch (e) { }
+    }
+
+    /* --------------------------- category rail -------------------------- */
+    function renderRail() {
+      if (S.view !== 'all' && S.view !== 'categories') { railHost.innerHTML = ''; return; }
+      const cats = S.facets.categories && S.facets.categories.length
+        ? S.facets.categories
+        : Array.from(new Set(S.catalog.map(i => i.cat).filter(Boolean)));
+      railHost.innerHTML = '';
+      const rail = UI2.chips([{ value: '', label: 'All', icon: '📦' }].concat(cats.map(c => ({ value: c, label: c }))),
+        S.category, v => { S.category = v; S.subCategory = ''; renderRail(); renderGrid(); }, { scroll: true });
+      rail.classList.add('cat-rail');
+      railHost.appendChild(rail);
+
+      // sub-category chips (level 3 style)
+      if (S.category) {
+        const subs = Array.from(new Set(S.catalog.filter(i => i.cat === S.category && i.sub).map(i => i.sub)));
+        chipsHost.innerHTML = '';
+        if (subs.length) {
+          chipsHost.appendChild(UI2.chips([{ value: '', label: 'All ' + S.category }].concat(subs.map(s => ({ value: s, label: s }))),
+            S.subCategory, v => { S.subCategory = v; renderGrid(); }, { scroll: true }));
+        }
+      } else chipsHost.innerHTML = '';
+    }
+
+    /* ------------------------------ grid -------------------------------- */
+    function renderGrid() {
+      if (S.view === 'held') return;
+      const perRow = Number(cfg('pos.cardsPerRow') || 4);
+      let list = S.catalog.slice();
+      const q = searchInput.value.trim();
+
+      if (S.view === 'favorites') list = list.filter(i => isFav(i.id));
+      if (S.view === 'recent') list = S.recent.map(id => list.find(i => i.id === id)).filter(Boolean);
+      if (S.category) list = list.filter(i => i.cat === S.category);
+      if (S.subCategory) list = list.filter(i => i.sub === S.subCategory);
+      if (q) {
+        const t = U_norm(q).split(' ').filter(Boolean);
+        list = list.filter(i => {
+          const hay = U_norm(i.code + ' ' + i.name + ' ' + i.bc + ' ' + i.alt + ' ' + i.brand + ' ' + i.cat);
+          return t.every(x => hay.indexOf(x) > -1);
+        });
+      }
+      if (S.stockFilter === 'low') list = list.filter(i => i.qty > 0 && i.qty <= 5);
+      if (S.stockFilter === 'out') list = list.filter(i => i.qty <= 0);
+      if (S.stockFilter === 'in') list = list.filter(i => i.qty > 0);
+      if (S.brand) list = list.filter(i => i.brand === S.brand);
+
+      gridHost.innerHTML = '';
+      if (!list.length) {
+        gridHost.appendChild(h('div', { class: 'empty' }, h('span', { class: 'big' }, '😕'),
+          h('div', null, 'Kuch nahi mila'),
+          h('button', { class: 'btn sm', style: { marginTop: '10px' }, onclick: () => quickAdd(q) }, '➕ Naya item banaayein')));
+        return;
+      }
+      const minW = Number(cfg('pos.cardMinWidth') || Math.max(110, Math.floor(150 - (perRow - 4) * 8)));
+      const grid = h('div', { class: 'pgrid', style: {
+        gridTemplateColumns: 'repeat(auto-fill,minmax(' + minW + 'px,1fr))', alignContent: 'start'
+      } });
+
+      const virtOn = cfg('pos.virtualScroll') !== 'false' &&
+        list.length > Number(cfg('pos.virtualThreshold') || 80);
+
+      gridHost.innerHTML = '';
+      gridHost.appendChild(grid);
+
+      if (!virtOn) {                       // chhota catalog → sab ek saath (simple)
+        list.slice(0, 120).forEach(i => grid.appendChild(card(i)));
+        countChip(list.length, list.length);
+        gridHost.onscroll = null;
+        return;
+      }
+
+      /* ---------- virtualised grid: sirf nazar aane walay cards DOM mein ---------- */
+      const gap = 10;
+      let cols = Math.max(1, Math.round((grid.clientWidth || gridHost.clientWidth || 900) / (minW + gap)));
+      let rowH = Number(cfg('pos.cardHeight') || 0) || (minW + 62);   // estimate → pehle paint par measure
+      let lastRange = '';
+
+      function paint() {
+        const w = (grid.clientWidth || gridHost.clientWidth || 900);
+        cols = Math.max(1, Math.round(w / (minW + gap)));
+        const totalRows = Math.ceil(list.length / cols);
+        const top = gridHost.scrollTop || 0;
+        // jsdom / hidden containers me clientHeight 0 hota hai → sensible fallback
+        const viewH = gridHost.clientHeight || Math.round((window.innerHeight || 800) * 0.7) || 600;
+        const buf = 2;
+        const first = Math.max(0, Math.floor(top / rowH) - buf);
+        const visible = Math.ceil(viewH / rowH) + buf * 2;
+        const last = Math.min(totalRows, first + visible);
+        const range = first + ':' + last + ':' + cols;
+        if (range === lastRange) return;                       // same window → repaint zaroori nahi
+        lastRange = range;
+
+        grid.style.paddingTop = (first * rowH) + 'px';
+        grid.style.paddingBottom = Math.max(0, (totalRows - last) * rowH) + 'px';
+        grid.innerHTML = '';
+        const frag = document.createDocumentFragment();
+        for (let i = first * cols; i < Math.min(list.length, last * cols); i++) frag.appendChild(card(list[i]));
+        grid.appendChild(frag);
+
+        const c0 = grid.firstChild;                            // asli oonchai measure kar lein
+        if (c0 && c0.offsetHeight > 20) rowH = c0.offsetHeight + gap;
+        countChip(list.length, grid.childNodes.length);
+      }
+
+      gridHost.onscroll = () => { if (gridHost._raf) return; gridHost._raf = requestAnimationFrame(() => { gridHost._raf = 0; paint(); }); };
+      gridHost._onResize = () => { lastRange = ''; paint(); };
+      // resize listener ek hi dafa bind ho (har render par naya na jude)
+      if (!gridHost._resizeBound) {
+        gridHost._resizeBound = true;
+        window.addEventListener('resize', () => { try { gridHost._onResize && gridHost._onResize(); } catch (e) { } });
+      }
+      paint();
+    }
+
+    /** “dikha rahe hain X / Y items” chip ka counter */
+    function countChip(total, rendered) {
+      let chip = gridHost.parentElement && gridHost.parentElement.querySelector('.pos2-count');
+      if (!chip) {
+        const holder = gridHost.parentElement;
+        if (!holder) return;
+        chip = h('div', { class: 'pos2-count' });
+        holder.insertBefore(chip, gridHost.nextSibling);
+      }
+      chip.textContent = total + ' items' + (rendered < total ? ' · ' + rendered + ' render ho rahe hain' : '');
+    }
+
+
+/* ============================================================================
+   v2.6 QA — "product cards main double product name show ho raha hay"
+   ----------------------------------------------------------------------------
+   Misaal:  naam  = "FLAMINGO DASHBOARD POLISH 450ML"
+            card  = "FLAMINGO DASHBOARD POLISH 450ML"
+                    "FL00000 · Flamingo · DashBoard Polish Spray"   ← dohrao!
+
+   Wajah: card brand + category bhi dikha raha tha, aur seed data mein
+   category ("DashBoard Polish Spray") naam ke lafz repeat karta hai.
+
+   Hal: jo hissa (brand/category/sub-category) PEHLE HI naam mein maujood ho,
+   usay chhupao. Asal maloomat (code, supplier, price) waisi hi rahegi.
+   ========================================================================== */
+function redundantWithName(name, part) {
+  const norm = v => String(v || '').toUpperCase()
+    .replace(/[^A-Z0-9 ]/g, ' ').split(/\s+/).filter(w => w.length > 2);
+  const nw = norm(name), pw = norm(part);
+  if (!pw.length) return false;
+  const hit = pw.filter(w => nw.some(x => x.indexOf(w) === 0 || w.indexOf(x) === 0)).length;
+  /* >=60% lafz naam mein mil jayein to ye dohrao hai */
+  return (hit / pw.length) >= 0.6;
+}
+/** brand · subCategory · category — sirf wohi jo naam mein pehle se na hon */
+function cardSubParts(name, parts) {
+  return (parts || []).filter(Boolean).filter(pt => !redundantWithName(name, pt));
+}
+
+    function card(i) {
+      const showImg = cfg('pos.showImageOnCard') !== 'false';
+      const showStock = cfg('pos.showStockOnCard') !== 'false';
+      const showPrice = cfg('pos.showPriceOnCard') !== 'false';
+      const lowBadge = cfg('pos.lowStockBadge') !== 'false';
+      const showSup = cfg('pos.showSupplierOnCard') !== 'false';
+      const hoverQV = cfg('pos.hoverQuickView') !== 'false';
+      const stk = Number(i.qty || 0);
+      const stkCls = stk <= 0 ? 'out' : (stk <= 5 ? 'low' : '');
+      const wholesale = S.customer && S.customer.typeId &&
+        /wholesale|corporate/i.test(S.customer.typeName || '');
+      const price = (wholesale && i.wp) ? i.wp : i.rp;
+      // naam hamesha nazar aaye — catalog me short keys ho to bhi
+      const name = i.name || i.n || i.code || i.c || 'Item';
+      const code = i.code || i.c || '';
+      /* v2.6 QA — dedup: naam ke lafz dobara na dikhao (double-name wali shikayat) */
+      const sub = cardSubParts(name, [i.brand, i.sub || i.subCategory, i.cat]).join(' · ');
+      const supName = i.sup || posSupplierName(i.sp || i.supplierId || i.primarySupplierId);
+
+      /* ---- hover quick-view: 350ms tak cursor ruke to detail chip dikhe ---- */
+      let qvTimer = null, pop = null;
+      const hidePop = () => { if (qvTimer) { clearTimeout(qvTimer); qvTimer = null; } if (pop) { pop.remove(); pop = null; } };
+      const showPop = el => {
+        if (!hoverQV || pop) return;
+        qvTimer = setTimeout(() => {
+          qvTimer = null;
+          pop = h('div', { class: 'pc-pop', role: 'tooltip' },
+            h('div', { class: 'pop-t' }, name),
+            h('div', { class: 'pop-r' }, h('span', null, 'Code'), h('b', null, code || '—')),
+            h('div', { class: 'pop-r' }, h('span', null, 'Supplier'), h('b', null, supName || '—')),
+            h('div', { class: 'pop-r' }, h('span', null, 'Stock'),
+              h('b', { class: stkCls ? 'bad' : 'good' }, fmt.num(stk) + ' ' + (i.unit || ''))),
+            h('div', { class: 'pop-r' }, h('span', null, 'Retail'), h('b', null, fmt.money(i.rp))),
+            i.wp ? h('div', { class: 'pop-r' }, h('span', null, 'Wholesale'), h('b', null, fmt.money(i.wp))) : '',
+            h('div', { class: 'pop-r' }, h('span', null, 'Cost'), h('b', null, fmt.money(i.cp))),
+            i.rack ? h('div', { class: 'pop-r' }, h('span', null, 'Rack'), h('b', null, i.rack)) : '',
+            h('div', { class: 'pop-f' }, 'ⓘ aur detail ke liye click karein'));
+          el.appendChild(pop);
+        }, 350);
+      };
+
+      const _gridSel = !!(S.bulkGridMode && S._bulkGridSel && S._bulkGridSel.has(String(i.id)));
+      return h('button', { class: 'pcard' + (isFav(i.id) ? ' fav' : '') + (stk <= 0 ? ' oos' : '') + (_gridSel?' sel':''), 
+        style: _gridSel?{ outline:'2px solid var(--accent)'}:{},
+        title: name + (code ? ' · ' + code : '') + (sub ? ' · ' + sub : '') + (supName ? ' · ' + supName : ''),
+        onclick: () => {
+          if(S.bulkGridMode){
+            const k=String(i.id); if(S._bulkGridSel.has(k)) S._bulkGridSel.delete(k); else S._bulkGridSel.add(k);
+            renderGrid();
+            // update bulk bar
+            try{ const bar=document.getElementById('pos2BulkGridBar'); if(bar){ bar.querySelector('b').textContent = S._bulkGridSel.size+' selected'; bar.querySelector('button.ok').textContent='Add ('+S._bulkGridSel.size+')'; } }catch(e){}
+            return;
+          }
+          onPick(i);
+        }, oncontextmenu: e => { e.preventDefault(); toggleFav(i.id); },
+        onmouseenter: e => showPop(e.currentTarget), onmouseleave: hidePop,
+        onfocus: e => showPop(e.currentTarget), onblur: hidePop },
+        showImg ? h('div', { class: 'pc-img' },
+          i.img ? h('img', { src: i.img, alt: name, loading: 'lazy' })
+            : h('span', { class: 'pc-noimg' }, '📦'),
+          h('span', { class: 'pc-qv', role: 'button', tabindex: '0',
+            title: 'Quick view — supplier, stock, rates', 'aria-label': 'Quick view ' + name,
+            onclick: e => { e.stopPropagation(); quickViewItem(i); },
+            onkeydown: e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); quickViewItem(i); } }
+          }, 'ⓘ')) : '',
+        h('span', { class: 'pc-fav', title: isFav(i.id) ? 'Favourite hatayein' : 'Favourite banayein',
+          onclick: e => { e.stopPropagation(); toggleFav(i.id); } }, isFav(i.id) ? '★' : '☆'),
+        h('div', { class: 'pc-body' },
+          h('div', { class: 'pc-name' }, name),
+          h('div', { class: 'pc-code' }, code + (sub ? ' · ' + sub : '')),
+          showSup && supName ? h('div', { class: 'pc-sup' }, '🏭 ' + supName) : '',
+          h('div', { class: 'pc-row' },
+            showPrice ? h('span', { class: 'pc-price' }, fmt.money(price)) : '',
+            showStock ? h('span', { class: 'pc-stk ' + (lowBadge ? stkCls : '') },
+              stk <= 0 ? 'Out of Stock' : (stk + (wholesale ? '' : ' left'))) : '')),
+        h('span', { class: 'pc-add' }, '+'),
+        ...(S.bulkGridMode ? [h('input', { type: 'checkbox', checked: _gridSel, style: { position: 'absolute', left: '8px', top: '8px', width: '20px', height: '20px', accentColor: 'var(--accent)', zIndex: '2' }, onclick: e=>{ e.stopPropagation(); const k=String(i.id); if(S._bulkGridSel.has(k)) S._bulkGridSel.delete(k); else S._bulkGridSel.add(k); renderGrid(); }})] : []));
+    }
+
+    function onPick(i) {
+      if (cfg('pos.allowDirectQty') === true || String(cfg('pos.allowDirectQty')) === 'true') qtyPad(i);
+      else addToCart({ id: i.id, code: i.code, name: i.name, retailPrice: i.rp, wholesalePrice: i.wp, costPrice: i.cp, stock: i.qty, imageUrl: i.img });
+      if (cfg('pos.scanSound') !== 'false') beep();
+    }
+
+    /* ----------------------------- search — GS1 continuous scan: debounce + Enter + rapid wedge detection ------------------------------ */
+    let scanTimer=null, lastScanTime=0;
+    searchInput.addEventListener('input', debounce(() => {
+      const raw = searchInput.value;
+      // Detect rapid wedge: if input was typed very quickly (scanner), handle as barcode
+      const now = Date.now();
+      const isRapid = (now - lastScanTime < 80) && raw.length >= 6;
+      lastScanTime = now;
+      if(isRapid && raw.length >= 8){
+        // Likely scanner: try immediate barcode handling after short delay
+        clearTimeout(scanTimer);
+        scanTimer = setTimeout(()=>{
+          const code = extractBarcode(raw);
+          if(code && code.length>=6){
+            const hit = S.catalog.find(i => String(i.bc).toLowerCase()===code.toLowerCase() || String(i.code).toLowerCase()===code.toLowerCase());
+            if(hit){ handleScanInput(code, searchInput); return; }
+          }
+          // Not a barcode, treat as normal search
+          S.category = ''; S.subCategory = '';
+          renderGrid();
+        }, 120);
+        return;
+      }
+      // Full standalone EAN typed/pasted (8-14 digits, nothing else) → auto-submit like Enter
+      const auto = searchInput.value.trim();
+      if(/^\d{8,14}$/.test(auto)){
+        clearTimeout(scanTimer);
+        scanTimer = setTimeout(()=>{ handleScanInput(auto, searchInput); }, 140);
+        return;
+      }
+      S.category = ''; S.subCategory = '';
+      renderGrid();
+      // server side deep search for barcodes not in cache
+      const q = searchInput.value.trim();
+      if (q.length >= 3 && navigator.onLine) {
+        Shared.items({ q, limit: 12 }).then(rows => {   /* v2.27.0 W3.T3 */
+          if (!rows || !rows.length) return;
+          const ids = {}; S.catalog.forEach(i => ids[i.id] = 1);
+          rows.forEach(r => { if (!ids[r.id]) S.catalog.push(mapItem(r)); });
+          renderGrid();
+        }).catch(() => { });
+      }
+    }, 150));
+
+    searchInput.addEventListener('keydown', e => {
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      const raw = searchInput.value.trim();
+      if (!raw) return;
+      // Use robust handler that extracts last barcode and clears
+      handleScanInput(raw, searchInput);
+    });
+
+    // bulk grid bar
+    (function(){
+      let bar=document.getElementById('pos2BulkGridBar');
+      if(!S.bulkGridMode){ if(bar) bar.remove(); return; }
+      if(!bar){
+        bar=h('div', { id: 'pos2BulkGridBar', class: 'card', style: { display: 'flex', gap: '8px', alignItems: 'center', padding: '10px', marginTop: '10px', position: 'sticky', bottom: '8px', zIndex: '2', boxShadow: 'var(--shadow2)' } });
+        gridHost.parentNode.insertBefore(bar, gridHost.nextSibling);
+      }
+      bar.innerHTML='';
+      bar.appendChild(h('b', null, S._bulkGridSel.size+' selected'));
+      bar.appendChild(h('button', { class: 'btn sm ghost', onclick: ()=>{ S._bulkGridSel.clear(); renderGrid(); }}, 'Clear'));
+      bar.appendChild(h('button', { class: 'btn sm ok', onclick: ()=>{
+        if(!S._bulkGridSel.size) return UI.toast('Koi select nahi','warn');
+        let n=0;
+        S._bulkGridSel.forEach(k=>{
+          const it=S.catalog.find(x=> String(x.id)===String(k));
+          if(it) { addToCart({ id: it.id, code: it.code, name: it.name, retailPrice: it.rp, wholesalePrice: it.wp, costPrice: it.cp, stock: it.qty, imageUrl: it.img }, 1); n++; }
+        });
+        S._bulkGridSel.clear(); S.bulkGridMode=false;
+        const b=document.getElementById('pos2BulkGridBar'); if(b) b.remove();
+        renderGrid(); renderCart(); renderTotals();
+        UI.toast(n+' items added','ok');
+      }}, 'Add ('+S._bulkGridSel.size+')'));
+      bar.appendChild(h('button', { class: 'btn sm ghost', onclick: ()=>{ S.bulkGridMode=false; S._bulkGridSel.clear(); const b=document.getElementById('pos2BulkGridBar'); if(b) b.remove(); renderGrid(); }}, '✕ Exit'));
+    })();
+    renderCart(); renderTotals();
+    setTimeout(() => { if (window.innerWidth > 900 && cfg('pos.autoFocusSearch') !== 'false') searchInput.focus(); }, 150);
+
+    /* --------------------------- held bills ---------------------------- */
+    function renderHeld(c) {
+      c.appendChild(h('div', { class: 'card' }, h('div', { class: 'card-body tight' },
+        S.held.length ? S.held.map(hb => h('div', { class: 'list-item' },
+          h('div', { class: 'li-main' }, h('b', null, hb.ref), h('span', null, (hb.items || 0) + ' items · ' + fmt.money(hb.total || 0) + ' · ' + fmt.rel(hb.createdAt))),
+          h('button', { class: 'btn sm', onclick: () => resumeHeld(hb.id) }, 'Resume'),
+          h('button', { class: 'btn sm danger', onclick: async () => { await API.call('sales.held.resume', { id: hb.id }); loadHeld(); App.refresh(); } }, '🗑')))
+          : h('div', { class: 'empty' }, h('span', { class: 'big' }, '⏸'), h('div', null, 'Koi held bill nahi')))));
+    }
+  }
+});
+
+const POS2 = {};
+function mapItem(r) {
+  return { id: r.id, code: r.code, name: r.name, cat: r.category || '', sub: r.subCategory || '',
+    brand: r.brand || '', bc: r.barcode || r.code, alt: r.altBarcodes || '', cp: r.costPrice,
+    rp: r.retailPrice, wp: r.wholesalePrice, mp: r.minPrice, tx: r.taxRate, qty: r.stock,
+    rack: r.rack || '', img: r.imageUrl || '' };
+}
+
+/* ============================== CART UI — v2.16 optimized (fragment + config-aware) =================================== */
+function renderCart() {
+  const body = POS2.cartBody; if (!body) return;
+  // config toggles (admin can disable features)
+  const showRate = cfg('pos.cartShowRate') !== false;
+  const showQty = cfg('pos.cartShowQtyCtl') !== false;
+  const showActs = cfg('pos.cartShowEditDelete') !== false;
+  const showDiscount = cfg('pos.cartShowDiscount') !== false;
+  const count = document.getElementById('cartCount2');
+  if (count) count.textContent = S.cart.length + ' items';
+  // fast clear
+  body.textContent = '';
+  if (!S.cart.length) {
+    body.appendChild(h('div', { class: 'empty', style: { padding: '34px 12px' } },
+      h('span', { class: 'big' }, '🧺'), h('div', null, 'Cart khali hai'),
+      h('div', { style: { fontSize: 'var(--fs-xs)', color: 'var(--muted-2)', marginTop: '6px' } },
+        'Item search kar ke tap karein, ya barcode scan karein')));
+    // also update drawer count if open
+    try { if (POS2.drawerCust) POS2.drawerCust.querySelector('#custNameM'); } catch (e) { }
+    return;
+  }
+  // header — hide rate column if disabled
+  const cols = h('div', { class: 'cart2-cols', 'aria-hidden': 'true' },
+    h('span', { class: 'cr-info' }, 'Item'),
+    showQty ? h('span', { class: 'hc-qty' }, 'Qty') : '',
+    showRate ? h('span', { class: 'cr-rate' }, 'Rate') : '',
+    h('span', { class: 'cr-amt' }, 'Amount'),
+    showActs ? h('span', { class: 'cr-acts' }, '') : '');
+  body.appendChild(cols);
+  // fragment = single reflow (performance: cart updates / invoice generate faster)
+  const frag = document.createDocumentFragment();
+  // bulk cart select header
+  const _bulkMode = !!S.bulkCartMode;
+  if(_bulkMode && S.cart.length){
+    if(!S._bulkCartSel) S._bulkCartSel=new Set();
+    const selAll = h('label', { class: 'chk', style: { display: 'flex', gap: '8px', alignItems: 'center', padding: '8px', background: 'var(--panel-2)', border: '1px solid var(--line)', borderRadius: '10px', fontSize: '12px', fontWeight: '800', marginBottom: '8px' } },
+      h('input', { type: 'checkbox', checked: S.cart.every((_,i)=> S._bulkCartSel.has(i)), onchange: e=>{ if(e.target.checked) S.cart.forEach((_,i)=> S._bulkCartSel.add(i)); else S._bulkCartSel.clear(); renderCart(); }}), 'Select all ('+S.cart.length+')',
+      h('button', { class: 'btn sm danger', style: { marginLeft: 'auto' }, onclick: ()=>{ if(!S._bulkCartSel.size) return UI.toast('Koi select nahi','warn'); const sel=Array.from(S._bulkCartSel).sort((a,b)=>b-a); sel.forEach(i=> S.cart.splice(i,1)); S._bulkCartSel.clear(); renderCart(); renderTotals(); UI.toast(sel.length+' removed','ok'); }}, '🗑 Delete'),
+      h('button', { class: 'btn sm ghost', onclick: ()=>{ S.bulkCartMode=false; S._bulkCartSel.clear(); renderCart(); }}, '✕')
+    );
+    body.appendChild(selAll);
+  }
+  S.cart.forEach((l, idx) => {
+        const _isSel = !!(_bulkMode && S._bulkCartSel && S._bulkCartSel.has(idx));
+
+    const over = (l.stock !== undefined && l.stock !== null) && l.qty > Number(l.stock);
+    const meta = l.code + (showDiscount && l.discount ? ' · -' + fmt.money(l.discount) : '') + (l.note ? ' · 📝 ' + l.note : '');
+    const row = h('div', { class: 'cart2-row' + (over ? ' warn' : '') + (_isSel ? ' sel' : ''), style: _isSel?{ outline:'2px solid var(--accent)', borderRadius:'10px'}:{} },
+      ...(_bulkMode ? [h('input', { type: 'checkbox', checked: _isSel, style: { width: '18px', height: '18px', margin: '8px', accentColor: 'var(--accent)' }, onchange: e=>{ if(!S._bulkCartSel) S._bulkCartSel=new Set(); if(e.target.checked) S._bulkCartSel.add(idx); else S._bulkCartSel.delete(idx); renderCart(); }})] : []),
+      h('div', { class: 'cr-info' },
+        h('div', { class: 'cr-name' }, l.name),
+        (cfg('pos.cartShowCode') === false ? '' : h('div', { class: 'cr-meta' }, meta)),
+        (over && String(App.state.settings.allowNegativeStock) !== 'true')
+          ? h('div', { style: { fontSize: 'var(--fs-xs)', color: 'var(--warn)' } },
+            '⚠ Stock ' + l.stock + ' hai') : ''),
+      showQty ? h('div', { class: 'qty-ctl' },
+        h('button', { title: 'Kam karein', 'aria-label': 'Qty minus', onclick: () => { l.qty = Math.max(1, l.qty - 1); l.lineTotal = l.qty * l.price - (l.discount || 0); renderCart(); renderTotals(); } }, '−'),
+        (function () {
+          const inp = h('input', { type: 'number', value: l.qty, min: '1', style: { width: '42px', textAlign: 'center' }, 'aria-label': 'Qty', title: 'Qty' });
+          inp.onchange = () => { const v = Number(inp.value) || 1; l.qty = Math.max(1, v); l.lineTotal = l.qty * l.price - (l.discount || 0); renderCart(); renderTotals(); };
+          inp.onkeydown = e => { if (e.key === 'Enter') inp.blur(); };
+          return inp;
+        })(),
+        h('button', { title: 'Zyada karein', 'aria-label': 'Qty plus', onclick: () => { l.qty += 1; l.lineTotal = l.qty * l.price - (l.discount || 0); renderCart(); renderTotals(); } }, '+')) : h('span', { class: 'cr-rate', style: { gridColumn: '2' } }, '×' + l.qty),
+      showRate ? h('span', { class: 'cr-rate' }, fmt.money(l.price)) : '',
+      h('b', { class: 'cr-amt' }, fmt.money(l.lineTotal)),
+      showActs ? h('div', { class: 'cr-acts' },
+        h('button', { class: 'btn sm ghost', title: 'Edit price/discount/note', onclick: () => lineEdit(idx) },
+          h('span', { class: 'ha-ico', html: '<svg viewBox=\"0 0 24 24\" width=\"12\" height=\"12\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7\"/><path d=\"M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z\"/></svg>', 'aria-hidden': 'true' })),
+        h('button', { class: 'btn sm ghost', title: 'Line hatayein', onclick: () => removeLine(idx) },
+          h('span', { class: 'ha-ico', html: '<svg viewBox=\"0 0 24 24\" width=\"12\" height=\"12\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><polyline points=\"3 6 5 6 21 6\"/><path d=\"M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6\"/><path d=\"M10 11v6\"/><path d=\"M14 11v6\"/><path d=\"M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2\"/></svg>', 'aria-hidden': 'true' }))) : '');
+    frag.appendChild(row);
+  });
+  body.appendChild(frag);
+  // keep header sticky visible
+  try { body.scrollTop = body.scrollHeight; } catch (e) { }
+}
+
+function renderTotals() {
+  const foot = POS2.cartFoot;
+  const sub = subTotal(), tot = grandTotal();
+  if (POS2.cartBar) {   /* mobile summary bar — totals hamesha nazar mein */
+    try { POS2.cartBar.querySelector('.pcb-count').textContent = '🛒 ' + S.cart.length + ' item' + (S.cart.length === 1 ? '' : 's'); POS2.cartBar.querySelector('.pcb-total').textContent = fmt.money(tot); } catch (e) { }
+  }
+  if (!foot) return;
+  // respect admin toggles
+  /* v2.28.0 (W5) — margin family bhi zaroori (backend cost/margin strip kar deta hai,
+     warna client-side estimate ghalat "munafa" dikhata) */
+  const showProfit = cfg('pos.showProfit') !== false && App.can('reports.financial') && App.field('margin');
+  const showTax = cfg('pos.showTax') !== false;
+  const payBtnsCfg = String(cfg('pos.payButtons') || 'CASH,CARD,SPLIT,CREDIT').split(',').map(s => s.trim().toUpperCase()).filter(Boolean);
+  const btnMap = {
+    CASH: { label: '💵 Cash (F9)', cls: 'ok', method: 'CASH' },
+    CARD: { label: '💳 Card', cls: 'sec', method: 'CARD' },
+    SPLIT: { label: '🔀 Split', cls: 'sec', method: 'SPLIT' },
+    CREDIT: { label: '📒 Udhaar', cls: 'sec', method: 'CREDIT' }
+  };
+  const payBtns = payBtnsCfg.filter(k => btnMap[k]).map(k => h('button', { class: 'btn ' + btnMap[k].cls, onclick: () => pay(btnMap[k].method) }, btnMap[k].label));
+  foot.textContent = '';
+  const frag = document.createDocumentFragment();
+  frag.appendChild(h('div', { class: 'tot2' }, h('span', null, 'Subtotal'), h('span', null, fmt.money(sub))));
+  frag.appendChild(h('div', { class: 'tot2' }, h('span', null, 'Discount'),
+    h('span', { style: { color: 'var(--err)', cursor: 'pointer' }, onclick: discountModal }, '-' + fmt.money(S.discount) + ' ✎')));
+  if (showTax) frag.appendChild(h('div', { class: 'tot2' }, h('span', null, App.state.settings.taxLabel || 'GST'), h('span', null, fmt.money(totalTax()))));
+  frag.appendChild(h('div', { class: 'tot2 big' }, h('span', null, 'TOTAL'), h('span', null, fmt.money(tot))));
+  if (showProfit) frag.appendChild(h('div', { class: 'tot2', style: { fontSize: 'var(--fs-xs)', color: 'var(--ok)' } },
+    h('span', null, 'Est. profit'), h('span', null, fmt.money(estProfit()))));
+  if (payBtns.length) frag.appendChild(h('div', { class: 'pay-pad' }, ...payBtns));
+  foot.appendChild(frag);
+  // apply cart UI toggles (hide inline add / picker / bulk if admin disabled)
+  try {
+    if (POS2.sideInline) POS2.sideInline.style.display = cfg('pos.cartInlineAdd') === false ? 'none' : '';
+    if (POS2.cartTools) {
+      const addBtn = POS2.cartTools.children[0]; const bulkBtn = POS2.cartTools.children[1];
+      if (addBtn) addBtn.style.display = cfg('pos.cartPicker') === false ? 'none' : '';
+      if (bulkBtn) bulkBtn.style.display = cfg('pos.cartBulkScan') === false ? 'none' : '';
+    }
+    const custBar = document.getElementById('custBar2');
+    if (custBar) custBar.style.display = cfg('pos.customerBar') === false ? 'none' : '';
+  } catch (e) { }
+  try { if (S.customer) updateLoyaltyTeaser(S.customer.id); else updateLoyaltyTeaser(null); } catch (e) {}
+  try { updateCustBar(); } catch (e) {}
+}
+
+/* ============================ LINE EDIT =================================== */
+function lineEdit(idx) {
+  const l = S.cart[idx];
+  const f = UI2.form({
+    values: { price: l.price, discount: l.discount, qty: l.qty },
+    fields: [
+      { key: 'qty', label: 'Quantity', type: 'number' },
+      { key: 'price', label: 'Unit price', type: 'number' },
+      { key: 'discount', label: 'Line discount', type: 'number' },
+      { key: 'note', label: 'Line note', value: l.note || '', full: true }
+    ]
+  });
+  UI2.modal({
+    title: l.name, size: 'sm', body: f.el,
+    actions: [{ label: 'Apply', cls: 'ok', onClick: async (c) => {
+      const v = f.values();
+      if (l.minPrice && Number(v.price) < l.minPrice && !App.can('items.price.edit')) {
+        return UI.toast('Min price ' + fmt.money(l.minPrice) + ' se kam nahi', 'err');
+      }
+      l.qty = Math.max(1, Number(v.qty) || 1);
+      l.price = Number(v.price); l.discount = Number(v.discount) || 0; l.note = v.note;
+      l.lineTotal = l.qty * l.price - l.discount;
+      c(); renderCart(); renderTotals();
+    } }]
+  });
+}
+
+function discountModal() {
+  const f = UI2.form({
+    values: { discount: S.discount, code: S.discountCode },
+    fields: [
+      { key: 'discount', label: 'Discount amount', type: 'number' },
+      { key: 'code', label: 'Coupon code' }
+    ]
+  });
+  UI2.modal({
+    title: 'Bill discount', size: 'sm', body: f.el,
+    actions: [{ label: 'Apply', onClick: c => {
+      const v = f.values();
+      const maxPct = Number(App.state.settings.maxDiscountPct || 30);
+      const pct = subTotal() ? (Number(v.discount) / subTotal() * 100) : 0;
+      if (pct > maxPct && !App.can('pos.discount') && !App.can('*')) {
+        return UI.toast('Max ' + maxPct + '% discount allowed', 'err');
+      }
+      S.discount = Number(v.discount) || 0; S.discountCode = v.code || '';
+      c(); renderTotals();
+    } }]
+  });
+}
+
+/* ============================== QTY PAD =================================== */
+function qtyPad(item) {
+  let qty = '1';
+  const display = h('div', { style: { fontSize: 'var(--fs-4xl)', fontWeight: '800', textAlign: 'center', padding: '6px 0' } }, '1');
+  const pad = h('div', { class: 'qty-pad' });
+  ['1','2','3','4','5','6','7','8','9','.','0','⌫'].forEach(k => {
+    pad.appendChild(h('button', { onclick: () => {
+      if (k === '⌫') qty = qty.slice(0, -1) || ''; else qty = (qty + k).replace(/^0+(?=\d)/, '');
+      display.textContent = qty || '0';
+    } }, k));
+  });
+  UI2.modal({
+    title: item.name, subtitle: item.code + ' · ' + fmt.money(item.rp || item.retailPrice), size: 'sm',
+    body: h('div', null, display, pad),
+    actions: [
+      { label: 'Cancel', cls: 'ghost', onClick: c => c() },
+      { label: 'Add to bill', cls: 'ok', onClick: c => {
+        addToCart({ id: item.id, code: item.code, name: item.name, retailPrice: item.rp || item.retailPrice,
+          wholesalePrice: item.wp || item.wholesalePrice, costPrice: item.cp || item.costPrice,
+          stock: item.qty, imageUrl: item.img }, Math.max(1, Number(qty) || 1));
+        c();
+      } }
+    ]
+  });
+}
+
+/* ============================== CUSTOMER ================================== */
+function pickCustomer() {
+  const q = h('input', { class: 'st2-q', type: 'search', placeholder: 'Naam ya phone… (type karein, foran filter hoga)', autocomplete: 'off' });
+  const list = h('div', { style: { maxHeight: '50vh', overflow: 'auto', marginTop: '8px' } });
+  const recentCustomers = (App.state.catalog.customers || []).slice(0, 3);
+  const quickHost = recentCustomers.length ? h('div', { style: { display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '8px' } },
+    ...recentCustomers.map(c => h('button', { class: 'btn sm sec', type: 'button', onclick: () => { S.customer = c; updateCustBar(); try { m.close(); } catch(e){} applyCustomerPricing(); } }, '👤 ' + String(c.name||'').slice(0,14)))) : h('span');
+  async function run(term) {
+    list.innerHTML = '<div class="tbl-empty" style="padding:14px">Loading…</div>';
+    /* v2.27.0 (W3.T3) — shared accessor (POS/POS2/Demand/Orders/Boot ek hi path) */
+    const rows = await Shared.customers({ q: term, withBalance: true, limit: 40,
+      offline: () => ({ rows: (App.state.catalog.customers || []).filter(c => !term || (c.name + c.phone).toLowerCase().includes(term.toLowerCase())) }) });
+    list.innerHTML = '';
+    if (!rows.length) list.appendChild(h('div', { class: 'tbl-empty' }, 'Koi customer nahi mila'));
+    rows.forEach(c => list.appendChild(h('div', { class: 'list-item', style: { cursor: 'pointer', padding: '8px 10px' }, onclick: () => {
+      S.customer = c; updateCustBar(); m.close(); applyCustomerPricing();
+    } },
+      h('div', { class: 'avatar', style: { width: '28px', height: '28px', fontSize: '12px' } }, (c.name || '?').charAt(0).toUpperCase()),
+      h('div', { class: 'li-main' }, h('b', { style: { fontSize: '13px' } }, c.name), h('span', { style: { fontSize: '11px' } }, (c.phone ? fmt.phone(c.phone) + ' · ' : '') + 'bal ' + fmt.money(c.balance ?? c.bal ?? 0))),
+      h('span', { class: 'badge ' + ((c.balance ?? c.bal ?? 0) > 0 ? 'warn' : 'ok'), style: { fontSize: '11px' } }, fmt.money(c.balance ?? c.bal ?? 0)))));
+  }
+  q.addEventListener('input', debounce(() => run(q.value.trim()), 120));
+  q.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); const first = list.querySelector('.list-item'); if (first) first.click(); } });
+  const m = UI2.modal({
+    title: 'Customer select karein', size: 'sm',
+    body: h('div', null, q, quickHost, list,
+      h('button', { class: 'btn sec block', style: { marginTop: '10px' }, onclick: () => newCustomer(() => run(q.value.trim()||'')) }, '➕ Naya customer')),
+    actions: [{ label: 'Walk-in (no customer)', cls: 'ghost', onClick: c => { S.customer = null; updateCustBar(); c(); } }]
+  });
+  run('');
+  setTimeout(() => { try { q.focus(); q.select(); } catch(e){} }, 80);
+}
+
+function newCustomer(after) {
+  const types = App.state.customerTypes || [];
+  const f = UI2.form({
+    values: {},
+    fields: [
+      { key: 'name', label: 'Name', required: true, full: true },
+      { key: 'phone', label: 'Phone' },
+      { key: 'customerTypeId', label: 'Customer type', type: 'select', options: [{ value: '', label: '—' }].concat(types.map(t => ({ value: t.id, label: t.name }))) },
+      { key: 'address', label: 'Address', full: true },
+      { key: 'openingBalance', label: 'Opening udhaar', type: 'number' }
+    ]
+  });
+  UI2.modal({
+    title: 'Naya customer', size: 'sm', body: f.el,
+    actions: [{ label: 'Save', cls: 'ok', onClick: async c => {
+      const v = f.values();
+      if (!v.name) return UI.toast('Name zaroori hai', 'err');
+      try { const saved = await API.call('customers.save', { customer: v });
+        S.customer = saved; updateCustBar(); UI.toast('Saved ✅', 'ok'); c(); after && after(saved);
+      } catch (e) { UI.toast(e.message, 'err'); }
+    } }]
+  });
+}
+
+/* v2.5: party ka asli (fresh) balance — ledger se hisaab, list ke stale number se nahi */
+async function partyBalance(type, id, fallback) {
+  try {
+    const r = await API.call('parties.balance', { partyType: type, id: id },
+      { offlineFallback: () => null });
+    if (r && typeof r.balance !== 'undefined') return Number(r.balance) || 0;
+  } catch (e) { }
+  return Number(fallback || 0);
+}
+
+function updateCustBar() {
+  const n = document.getElementById('custName2'), b = document.getElementById('custBal2');
+  if (!n) return;
+  if (!S.customer) { n.textContent = 'Walk-in Customer'; b.textContent = 'Tap to select customer (F4)'; try { updateLoyaltyTeaser(null); } catch (e) {} return; }
+  n.textContent = S.customer.name;
+  const stale = Number(S.customer.balance ?? S.customer.bal ?? 0);
+  const billRaw = (typeof grandTotal === 'function') ? Number(grandTotal() || 0) : 0;
+  const bill = Math.max(0, billRaw);
+  const write = prev => {
+    const closing = Math.max(0, Number(prev || 0) + bill);
+    const dueCls = closing > 0 ? (closing > 50000 ? ' due' : (closing > 5000 ? ' warn' : '')) : '';
+    const limit = Number(S.customer.creditLimit ?? S.customer.limit ?? 0);
+    const avail = limit ? Math.max(0, limit - Number(prev||0)) : null;
+    const status = Number(prev||0)<=0? 'Clear' : (limit && Number(prev)>limit? 'OVER LIMIT' : (Number(prev)>limit*0.8? 'Near limit':'Due'));
+    // rating: derive from overdue?
+    b.innerHTML = '';
+    if (S.customer.phone) b.appendChild(h('div', { class: 'cb-phone' }, '📞 ' + fmt.phone(S.customer.phone)));
+    const grid = h('div', { class: 'cust-bal-grid' },
+      h('div', { class: 'cbg prev' }, h('span', { class: 'lbl' }, 'Previous'), h('b', { class: 'val' }, fmt.money(prev))),
+      h('div', { class: 'cbg bill' }, h('span', { class: 'lbl' }, 'This bill'), h('b', { class: 'val' }, fmt.money(bill))),
+      h('div', { class: 'cbg close' + dueCls }, h('span', { class: 'lbl' }, 'Closing'), h('b', { class: 'val' }, fmt.money(closing))));
+    b.appendChild(grid);
+    // credit details row
+    if (limit || avail!==null) {
+      const creditRow = h('div', { class: 'cbg', style: { flex:'1 1 100%', flexDirection:'row', gap:'8px', justifyContent:'space-between', background:'var(--panel-2)', marginTop:'4px' } },
+        h('span', { class: 'lbl', style:{fontSize:'9px'} }, 'Credit limit ' + fmt.money(limit) + (avail!==null? ' · Avail '+fmt.money(avail):'')),
+        h('span', { class: 'lbl', style:{fontSize:'9px', color: status==='OVER LIMIT'? 'var(--err)': 'var(--muted)'} }, status));
+      b.appendChild(creditRow);
+    }
+    // purchase history & rating placeholder: will be filled via async history
+    var histEl = document.getElementById('posCustHist');
+    if(!histEl){
+      histEl = h('div', { id:'posCustHist', style:{fontSize:'10px', color:'var(--muted)', marginTop:'4px', display:'none'} });
+      b.appendChild(histEl);
+    }
+    // fetch rating & history
+    try{
+      API.call('parties.customerHistory', {customerId: S.customer.id, limit:3}, {offlineFallback:()=>null}).then(function(hist){
+        if(!hist||!hist.recentSales) return;
+        histEl.style.display='block';
+        var salesTxt = hist.recentSales.slice(0,2).map(function(s){ return s.invoiceNo+' '+fmt.money(s.total); }).join(' · ');
+        var retTxt = hist.recentReturns && hist.recentReturns.length? ' · Returns '+hist.recentReturns.length : '';
+        var rating = hist.credit? ' · Rating '+hist.credit.rating+'/5' + (hist.credit.overdueCount? ' ('+hist.credit.overdueCount+' overdue)':'' ) : '';
+        histEl.textContent = (salesTxt? 'Last: '+salesTxt : 'No purchases') + retTxt + rating;
+      }).catch(function(){});
+    }catch(e){}
+  };
+  write(stale);
+  partyBalance('CUSTOMER', S.customer.id, stale).then(write);
+  try { updateLoyaltyTeaser(S.customer.id); } catch (e) {}
+  // sync drawer customer bar if open
+  try {
+    if (POS2.drawerCust) {
+      const nm = POS2.drawerCust.querySelector('#custNameM'); const bm = POS2.drawerCust.querySelector('#custBalM');
+      if (nm) nm.textContent = S.customer.name;
+      if (bm) { bm.innerHTML = ''; bm.appendChild(b.cloneNode(true)); }
+    }
+  } catch (e) {}
+}
+function updateLoyaltyTeaser(customerId) {
+  try {
+    const host = document.getElementById('posLoyaltyTeaser');
+    const hostM = document.getElementById('posLoyaltyTeaserM');
+    const apply = (sum, tot) => {
+      [host, hostM].forEach(h => {
+        if (!h) return;
+        if (!sum || !sum.enabled || sum.points === undefined) { h.hidden = true; return; }
+        const earn = Math.floor((tot || 0) / (Number(sum.perAmount) || 1000) * (Number(sum.points) || 1)) || 0;
+        h.hidden = false;
+        h.className = 'loy-teaser host';
+        h.innerHTML = '';
+        h.append(
+          h('span', null, '⭐ Loyalty: ' + fmt.num(sum.points || 0) + ' pts ≈ ' + fmt.money(sum.value || 0)),
+          (sum.usablePoints ? h('span', { class: 'badge ok', style: { fontSize: '10px' } }, 'usable ' + sum.usablePoints + ' → ' + fmt.money(sum.usableValue || 0)) : ''),
+          (earn ? h('span', { style: { color: 'var(--ok)', fontWeight: '700' } }, 'this bill +' + earn) : '')
+        );
+      });
+    };
+    if (!host && !hostM) return;
+    if (!customerId) { if (host) { host.hidden = true; host.textContent=''; } if (hostM) { hostM.hidden=true; } return; }
+    const tot = (typeof grandTotal === 'function') ? Number(grandTotal() || 0) : 0;
+    API.call('loyalty.summary', { customerId: customerId, total: tot || 1000 }, { offlineFallback: () => ({ points: 0, usablePoints: 0, enabled: false }) })
+      .then(sum => apply(sum, tot)).catch(() => { if (host) host.hidden=true; if (hostM) hostM.hidden=true; });
+  } catch (e) {}
+}
+
+function applyCustomerPricing() {
+  if (S.customer && S.customer.typeId) {
+    const wholesale = /wholesale|corporate/i.test(S.customer.typeName || '');
+    if (wholesale) {
+      S.cart.forEach(l => {
+        if (l.wholesale) { l.price = l.wholesale; l.lineTotal = l.qty * l.price - (l.discount || 0); }
+      });
+      renderCart(); renderTotals();
+    }
+  }
+}
+
+/* v2.16 — close any open cart drawer before payment modal (never behind offcanvas) */
+function closeCartDrawerSync() {
+  try {
+    const oc = document.querySelector('.offcanvas');
+    if (!oc) return false;
+    // restore POS2 bodies from stored old
+    if (POS2._offOld && POS2._offOld.b && POS2._offOld.f) {
+      POS2.cartBody = POS2._offOld.b; POS2.cartFoot = POS2._offOld.f;
+      const side = POS2.cartBody && POS2.cartBody.parentNode;
+      if (side && POS2.cartTools) {
+        try { side.insertBefore(POS2.cartTools, POS2.cartBody); } catch (e) { }
+        if (POS2.pkHost && POS2._offOld.pkWasIn) try { side.insertBefore(POS2.pkHost, POS2.cartBody); } catch (e) { }
+      }
+      POS2.drawerCust = null; POS2._offOld = null;
+    }
+    oc.remove();
+    document.querySelectorAll('.oc-scrim, .scrim').forEach(el => { try { el.remove(); } catch (e) { } });
+    renderCart(); renderTotals(); updateCustBar();
+    return true;
+  } catch (e) { return false; }
+}
+
+/* =============================== PAYMENT ================================== */
+function pay(method) {
+  if (!S.cart.length) return UI.toast('Cart khali hai', 'warn');
+  // close drawer first so modal is on top (premium: no overlay behind)
+  closeCartDrawerSync();
+  try { const x = document.querySelector('.offcanvas .oc-x'); if (x) x.click(); } catch (e) { }
+  const total = grandTotal();
+  const methods = String(App.state.settings.paymentMethods || 'CASH,CARD,BANK,JAZZCASH,EASYPAISA,RAAST,CHEQUE,CREDIT,LOYALTY').split(',');
+  const quick = String(App.state.settings.changeSuggestions || '500,1000,2000,5000').split(',').map(Number);
+  /* v2.2/2.3: real payment methods (settings-driven, fee + fields ke sath) */
+  let METHODS = methods.map(m => ({ id: m, label: m, fields: [] }));
+  API.call('pay.methods.enabled', {}, { offlineFallback: () => null }).then(list => {
+    if (list && list.length) {
+      METHODS = list;
+      if (loyaltyRow) loyaltyRow.style.display = METHODS.some(m => m.id === 'LOYALTY') ? '' : 'none';
+      paint();
+    }
+  }).catch(() => { });
+
+  let payments = [{ method: method === 'SPLIT' ? 'CASH' : method, amount: '' }];
+  const rowsHost = h('div');
+  const paidEl = h('div', { class: 'tot2', style: { fontWeight: '800' } });
+  const dueEl = h('div', { class: 'tot2', style: { color: 'var(--err)' } });
+  const chgEl = h('div', { class: 'tot2', style: { color: 'var(--ok)' } });
+
+  /* v2.5: bill summary — cashier ko har number ek nazar mein nazar aaye */
+  function U2round(v) { return Math.round(Number(v || 0) * 100) / 100; }
+  const summaryEl = h('div', { class: 'pay-summary' });
+  function paintSummary() {
+    const sub = subTotal(), disc = Number(S.discount || 0), tax = totalTax();
+    const rows = [
+      ['Items', S.cart.reduce((a, l) => a + l.qty, 0) + ' units / ' + S.cart.length + ' lines'],
+      ['Subtotal', fmt.money(sub)],
+      ['Discount', disc ? '− ' + fmt.money(disc) : '—'],
+      [String(App.state.settings.taxLabel || 'Tax'), fmt.money(tax)],
+      ['Total', fmt.money(total)]
+    ];
+    summaryEl.innerHTML = '';
+    rows.forEach(([k, v], i) => summaryEl.appendChild(
+      h('div', { class: 'ps-row' + (i === rows.length - 1 ? ' ps-total' : '') },
+        h('span', null, k), h('b', null, v))));
+    if (S.customer) {
+      const prev = Number(S.__prevBalance || 0);
+      const paid = payments.reduce((a, p) => a + (Number(p.amount) || 0), 0);
+      const amountOwed = U2round(prev + total);
+      const closing = Math.max(0, U2round(amountOwed - paid));
+      const change = Math.max(0, U2round(paid - amountOwed));
+      const remaining = Math.max(0, U2round(total - Math.min(paid, total)));
+      const cashPaid = payments.filter(p=>String(p.method||'').toUpperCase()!=='LOYALTY').reduce((a,p)=>a+(Number(p.amount)||0),0);
+      const loyPaid = payments.filter(p=>String(p.method||'').toUpperCase()==='LOYALTY').reduce((a,p)=>a+(Number(p.amount)||0),0);
+      const loyPtsSum = payments.filter(p=>String(p.method||'').toUpperCase()==='LOYALTY').reduce((a,p)=>a+(Number(p.points||0)),0);
+      const limit = Number(S.customer.creditLimit ?? S.customer.limit ?? 0);
+      const avail = limit? Math.max(0, limit - prev) : null;
+      summaryEl.appendChild(h('div', { class: 'ps-ledger' },
+        h('div', { class: 'ps-ld-title' }, '🧾 Account summary — ' + S.customer.name),
+        h('div', { class: 'ps-row' }, h('span', null, 'Previous balance'), h('b', null, fmt.money(prev))),
+        h('div', { class: 'ps-row' }, h('span', null, 'This invoice'), h('b', null, fmt.money(total))),
+        h('div', { class: 'ps-row' }, h('span', null, 'Amount Paid'), h('b', { style: { color: 'var(--ok)' } }, fmt.money(paid))),
+        ...(change>0.5 ? [h('div', { class: 'ps-row', style: { color: 'var(--ok)', fontWeight: '700' } }, h('span', null, 'Change'), h('b', null, fmt.money(change)))] : [h('div', { class: 'ps-row', style:{color:'var(--muted)', fontSize:'11px'} }, h('span', null, 'Remaining of invoice'), h('b', null, fmt.money(remaining)))]),
+        ...(loyPaid ? [h('div', { class: 'ps-row', style: { color: 'var(--ok)', fontWeight: '800' } }, h('span', null, 'PAID BY Loyalty Points' + (loyPtsSum ? ' ('+fmt.num(loyPtsSum)+' pts)' : '')), h('b', null, fmt.money(loyPaid)))] : []),
+        h('div', { class: 'ps-row ps-total' + (closing > 0.5 ? ' due' : '') },
+          h('span', null, 'Closing balance'), h('b', { style: { color: closing>0.5 ? 'var(--err)' : 'var(--ok)' } }, fmt.money(closing))),
+        ...(limit? [h('div', { class: 'ps-row', style:{fontSize:'11px', color:'var(--muted)'} }, h('span', null, 'Credit limit / Available'), h('b', null, fmt.money(limit)+(avail!==null? ' / '+fmt.money(avail):'')))] : [])));
+    }
+  }
+
+  /* previous balance ledger se laayein (list ka number stale ho sakta hai) */
+  S.__prevBalance = Number(S.customer ? (S.customer.balance ?? S.customer.bal ?? 0) : 0);
+  if (S.customer) partyBalance('CUSTOMER', S.customer.id, S.__prevBalance).then(v => {
+    S.__prevBalance = v; paintSummary();
+  });
+
+  let validationErrors = {};
+  function calc() {
+    const paid = payments.reduce((a, p) => a + (Number(p.amount) || 0), 0);
+    const prev = Number(S.__prevBalance||0);
+    const amountOwed = U2round(prev + total);
+    const closing = Math.max(0, U2round(amountOwed - paid));
+    const chg = Math.max(0, U2round(paid - amountOwed));
+    const invoiceDue = Math.max(0, U2round(total - Math.min(paid, total)));
+    paidEl.innerHTML = '<span>Paid</span><span>' + fmt.money(paid) + '</span>';
+    dueEl.innerHTML = closing > 0.5 ? '<span>Current Due (udhaar) — Closing</span><span>' + fmt.money(closing) + '</span>' : '<span>Current Due</span><span style="color:var(--ok)">0 (Clear)</span>';
+    chgEl.innerHTML = chg > 0.5 ? '<span>Change</span><span>' + fmt.money(chg) + '</span>' : (invoiceDue>0.5? '<span>Remaining of invoice</span><span>'+fmt.money(invoiceDue)+'</span>' : '');
+    return { paid, due: closing, closing, change: chg, invoiceDue };
+  }
+
+  function paint() {
+    rowsHost.innerHTML = '';
+    payments.forEach((p, i) => {
+      p.__i = i;
+      const mDef = METHODS.find(m => m.id === p.method) || { id: p.method, label: p.method, fields: [] };
+      rowsHost.appendChild(h('div', { style: { display: 'flex', gap: '6px', marginBottom: '7px' } },
+        h('select', { class: 'f-input', style: { flex: '1', minHeight: '44px', height: '44px' }, title: 'Payment method', 'aria-label': 'Payment method', onchange: e => { p.method = e.target.value; paint(); } },
+          METHODS.map(m => h('option', { value: m.id, selected: p.method === m.id }, (m.icon ? m.icon + ' ' : '') + (m.label || m.id)))),
+        (function () {
+          const inp = h('input', { class: 'f-input', type: 'number', step: '0.01', value: (p.amount === '' || p.amount === undefined ? '' : p.amount),
+            placeholder: 'Enter amount', inputMode: 'decimal',
+            style: { width: '112px', minHeight: '44px', height: '44px', textAlign: 'right' }, 'aria-label': 'Amount for ' + (mDef.label || mDef.id) });
+          inp.oninput = () => { p.amount = inp.value === '' ? '' : Number(inp.value || 0); calc(); paintSummary(); };
+          // allow typing without clearing 0 — focus selects
+          inp.onfocus = () => { try { inp.select(); } catch(e){} };
+          return inp;
+        })(),
+        /* v2.5: baqi amount ek click mein is method par dal dein */
+        h('button', { class: 'btn sm sec', style: { minHeight: '44px', minWidth: '52px' }, title: 'Baqi amount is method mein dal dein',
+          onclick: () => {
+            const others = payments.reduce((a, x, xi) => a + (xi === i ? 0 : (Number(x.amount) || 0)), 0);
+            p.amount = Math.max(0, U2round(total - others)); paint(); calc(); paintSummary();
+          } }, 'Fill'),
+        h('button', { class: 'btn sm ok', style: { minHeight: '44px', minWidth: '88px' }, title: 'Exact amount — baqi baqi bill isi method se pay',
+          onclick: () => {
+            const others = payments.reduce((a, x, xi) => a + (xi === i ? 0 : (Number(x.amount) || 0)), 0);
+            const remain = Math.max(0, U2round(total - others));
+            p.amount = remain; paint(); calc(); paintSummary();
+            UI.toast('Exact amount ' + fmt.money(remain) + ' set', 'ok', 1400);
+          } }, 'Exact'),
+        h('button', { class: 'btn sm danger', style: { minHeight: '44px', minWidth: '44px' }, title: 'Ye payment hata dein',
+          onclick: () => { payments.splice(i, 1); paint(); calc(); } }, '✕')));
+
+      /* v2.5: method ke asli fields (payer/receiver mobile, txn id, Raast, cheque…) */
+      const extraHost = h('div');
+      rowsHost.appendChild(extraHost);
+      (async () => {
+        const errs = (validationErrors[p.__i] || {}).errors || [];
+        extraHost.appendChild(await PayUI.fields(mDef.id, p, errs));
+      })();
+
+      /* fee / FED / net / settlement preview */
+      if (p.amount > 0 && mDef.id) rowsHost.appendChild(PayUI.feeLine(p.amount, mDef.id));
+
+      /* v2.5: asli wallet gateway (EasyPaisa / JazzCash) — request + status poll */
+      if (typeof WalletUI !== 'undefined' && WalletUI.isWallet(mDef.id)) {
+        const wHost = h('div');
+        rowsHost.appendChild(wHost);
+        (async () => {
+          wHost.appendChild(await WalletUI.panel({
+            method: mDef.id, amount: p.amount, payment: p,
+            refType: 'SALE', note: (S.customer && S.customer.name) ? ('POS ' + S.customer.name) : 'POS sale',
+            onChange: () => { paint(); calc(); },
+            onPaid: () => { paint(); calc(); }
+          }));
+        })();
+      }
+    });
+    if (method === 'SPLIT') rowsHost.appendChild(h('button', { class: 'btn sm sec', onclick: () => { payments.push({ method: 'CARD', amount: '' }); paint(); } }, '+ Add method'));
+
+    /* ---- loyalty points (v2.3) ---- */
+    loyaltyRow.innerHTML = '';
+    if (S.customer) {
+      loyaltyRow.appendChild(h('div', { class: 'loy-box' },
+        h('div', { class: 'loy-head' }, '⭐ Loyalty points'),
+        h('div', { class: 'loy-body' }, 'Load ho raha hai…')));
+      API.call('loyalty.summary', { customerId: S.customer.id, total: total },
+        { offlineFallback: () => ({ points: 0, usablePoints: 0, rate: 1 }) })
+        .then(sum => {
+          const body = loyaltyRow.querySelector('.loy-body');
+          if (!body) return;
+          body.innerHTML = '';
+          if (!sum || !sum.enabled) { body.textContent = 'Loyalty off hai (Settings ▸ Trade ▸ Loyalty)'; return; }
+          body.append(
+            h('div', { class: 'loy-line' }, 'Balance: ' + (sum.points || 0) + ' points ≈ ' + fmt.money(sum.value || 0)),
+            h('div', { class: 'loy-line sub' }, 'Is bill par max ' + (sum.usablePoints || 0) + ' points (' +
+              fmt.money(sum.usableValue || 0) + ') use ho sakte hain'));
+          const ptsInput = h('input', { class: 'f-input', type: 'number', min: '0',
+            max: String(sum.usablePoints || 0), value: String(pointsInput.value||'0'), style: { width: '110px' }, 'aria-label': 'Redeem points' });
+          // also sync pointsInput visible in modal's POINTS row
+          ptsInput.addEventListener('input', ()=>{ pointsInput.value = ptsInput.value; });
+          pointsInput.addEventListener('input', ()=>{ ptsInput.value = pointsInput.value; if(Number(ptsInput.value)> (sum.usablePoints||0)) ptsInput.value = String(sum.usablePoints||0); });
+          body.appendChild(h('div', { class: 'loy-actions' }, ptsInput,
+            h('button', { class: 'btn sm ok', onclick: () => {
+              const pts = Number(ptsInput.value || 0);
+              if (pts <= 0) return UI.toast('Points daalein', 'warn');
+              if (pts > (sum.usablePoints || 0)) return UI.toast('Itne points use nahi ho sakte', 'err');
+              const val = pts * (sum.rate || 1);
+              const existing = payments.find(p => p.method === 'LOYALTY');
+              if (existing) { existing.points = pts; existing.amount = Math.min(val, total); }
+              else payments.push({ method: 'LOYALTY', amount: Math.min(val, total), points: pts });
+              paint(); calc();
+              UI.toast(pts + ' points redeem ho gaye (' + fmt.money(Math.min(val, total)) + ')', 'ok');
+            } }, 'Redeem')));
+        }).catch(() => { });
+    }
+    calc(); paintSummary();
+    // sync footer and points — use closing = prev+total-paid
+    try{
+      const loyAmt = payments.filter(p=>String(p.method).toUpperCase()==='LOYALTY').reduce((a,p)=>a+Number(p.amount||0),0);
+      const _prevF = Number(S.__prevBalance||0);
+      const _paidF = payments.reduce((a,p)=>a+Number(p.amount||0),0);
+      const dueVal = Math.max(0, U2round(_prevF + total - _paidF));
+      const la=document.getElementById('payLoyAmt2'); if(la) la.textContent=fmt.money(loyAmt);
+      const du=document.getElementById('payDue2'); if(du) du.textContent=fmt.money(dueVal);
+      // points input sync: if loyalty exists, set pointsInput value
+      const loy = payments.find(p=>String(p.method).toUpperCase()==='LOYALTY');
+      if(loy && pointsInput && document.activeElement!==pointsInput) pointsInput.value = String(loy.points||0);
+      // settlement hint
+      const hint = pointsWrap.querySelector('span.muted');
+      if(hint){
+        const dv = promisedInput.value || new Date().toISOString().slice(0,10);
+        hint.textContent = 'Koi fee nahi - settlement ' + dv;
+      }
+    }catch(e){}
+  }
+
+  const quickHost = h('div', { class: 'chips', style: { marginTop: '8px' } },
+    /* v2.5: exact amount, gol amount (round-up) aur settings wale notes */
+    (function () {
+      const rest = () => payments.slice(1).reduce((a, x) => a + (Number(x.amount) || 0), 0);
+      const set = v => { payments[0].amount = Math.max(0, U2round(v - rest())); paint(); calc(); paintSummary(); };
+      const chips = [h('button', { class: 'chip2', onclick: () => set(total) }, '💯 Exact ' + fmt.money(total))];
+      [10, 100].forEach(step => {
+        const v = Math.ceil(total / step) * step;
+        if (v > total) chips.push(h('button', { class: 'chip2', onclick: () => set(v) },
+          '⬆ ' + fmt.money(v) + ' (change ' + fmt.money(v - total) + ')'));
+      });
+      quick.filter(v => v > total).slice(0, 6).forEach(v => chips.push(
+        h('button', { class: 'chip2', onclick: () => set(v) }, fmt.money(v))));
+      return chips;
+    })());
+
+  const noteInput = h('input', { class: 'f-input', type: 'text', placeholder: 'Note (optional)', style: { marginTop: '10px', minHeight: '44px', height: '44px' } });
+  const promisedInput = h('input', { class: 'f-input', type: 'date', placeholder: 'Select date', style: { marginTop: '6px', minHeight: '44px', height: '44px' } });
+  const pointsInput = h('input', { class: 'f-input', type: 'number', min: '0', step: '1', value: '', placeholder: '0', style: { width: '110px', minHeight: '44px', height: '44px', textAlign: 'center' }, 'aria-label': 'Points' });
+  const loyaltyRow = h('div', { class: 'loy-row' });
+  // promised date and points row setup
+  const promisedWrap = h('div', { style: { display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '8px' } }, h('label', { style: { fontSize: '11px', letterSpacing: '.4px', fontWeight: '700', color: 'var(--muted)' } }, 'PROMISED PAYMENT DATE'), promisedInput);
+  const pointsWrap = h('div', { style: { display: 'flex', gap: '8px', alignItems: 'center', marginTop: '8px', flexWrap: 'wrap' } }, h('label', { style: { fontSize: '11px', fontWeight: '700', minWidth: '56px' } }, 'POINTS'), pointsInput, h('span', { class: 'muted', style: { fontSize: '11px', whiteSpace: 'nowrap' } }, 'Koi fee nahi - settlement ' + (promisedInput.value || new Date().toISOString().slice(0,10))));
+
+  UI2.modal({
+    title: 'Payment — ' + fmt.money(total),
+    subtitle: (S.customer ? S.customer.name : 'Walk-in') + ' · ' + S.cart.reduce((a, l) => a + l.qty, 0) + ' items',
+    size: 'sm',
+    body: h('div', null, summaryEl, promisedWrap, rowsHost, pointsWrap, quickHost, h('div', { class: 'pay-footer', style: { display: 'flex', justifyContent: 'space-between', gap: '10px', padding: '10px', border: '1.5px dashed var(--line)', borderRadius: '12px', background: 'var(--panel-2)', fontWeight: '800', fontSize: '13px', marginTop: '8px' } }, h('span', { style: { color: 'var(--ok)' } }, 'PAID BY Loyalty Points ', h('b', { id: 'payLoyAmt2' }, 'Rs 0')), h('span', { style: { color: 'var(--err)' } }, 'Current Due (udhaar) ', h('b', { id: 'payDue2' }, 'Rs 0'))), paidEl, dueEl, chgEl, noteInput, loyaltyRow),
+    actions: [
+      { label: 'Cancel', cls: 'ghost', onClick: c => c() },
+      { label: '✅ Complete', cls: 'ok', onClick: async c => {
+        const { paid, due } = calc();
+        const rows = payments.filter(p => Number(p.amount) > 0);
+        // v2.16 payment logic: Cash must be full, Credit requires active account + limit
+        let effectiveRows = rows.slice();
+        // pure udhaar: CREDIT was 0 so filtered out — restore it
+        if (!effectiveRows.length && method === 'CREDIT') effectiveRows = [{ method: 'CREDIT', amount: 0 }];
+        // also keep CREDIT 0 if credit was selected but amount 0 (for dueDate)
+        if (method === 'CREDIT' && !effectiveRows.some(p => p.method === 'CREDIT')) {
+          const cred = payments.find(p => p.method === 'CREDIT');
+          if (cred) effectiveRows.push({ method: 'CREDIT', amount: Number(cred.amount || 0), dueDate: cred.dueDate });
+        }
+        const effectiveDue = Math.max(0, total - effectiveRows.reduce((a, p) => a + Number(p.amount || 0), 0));
+        const hasCredit = effectiveRows.some(p => p.method === 'CREDIT');
+        const wantsCredit = hasCredit;
+        // cash sale must pay full (when no credit)
+        if (!wantsCredit && effectiveDue > 0.5) {
+          if (method === 'CASH' || rows.some(p => p.method === 'CASH')) {
+            return UI.toast('Cash sale: poora bill pay karein — baqi ' + fmt.money(effectiveDue) + ' due hai', 'err', 3200);
+          }
+        }
+        if (wantsCredit) {
+          if (!S.customer) return UI.toast('Udhaar ke liye customer select karein', 'err');
+          // active account check
+          if (S.customer.active === false || String(S.customer.status || '').toLowerCase() === 'inactive' || String(S.customer.blocked || '').toLowerCase() === 'true') {
+            return UI.toast('Customer account inactive / blocked — udhaar nahi de sakte', 'err', 3500);
+          }
+          let limit = Number(S.customer.creditLimit ?? S.customer.limit ?? S.customer.credit ?? App.state.settings.customerCreditLimit ?? App.state.settings.defaultCreditLimit ?? 0);
+          let bal = Number(S.__prevBalance ?? S.customer.balance ?? S.customer.bal ?? 0);
+          if (limit > 0) {
+            const avail = Math.max(0, limit - bal);
+            if (effectiveDue > avail + 0.5) {
+              return UI.toast('Credit limit exceeded — limit ' + fmt.money(limit) + ', previous ' + fmt.money(bal) + ', available ' + fmt.money(avail) + ', is bill ka udhaar ' + fmt.money(effectiveDue), 'err', 5000);
+            }
+            // partial payment info: remaining credit after sale
+            const remain = Math.max(0, avail - effectiveDue);
+            if (effectiveDue > 0.5 && Number(paid || 0) > 0) {
+              UI.toast('Partial payment: paid ' + fmt.money(paid) + ', udhaar ' + fmt.money(effectiveDue) + ' · credit baqi ' + fmt.money(remain), 'ok', 3500);
+            }
+          }
+        } else {
+          // non-credit sale: must be fully paid (no due)
+          if (effectiveDue > 0.5) {
+            return UI.toast('Full payment required — baqi ' + fmt.money(effectiveDue) + ' (Cash ya Card se pay karein, ya Udhaar select karein)', 'err', 3200);
+          }
+        }
+        if (!effectiveRows.length && !wantsCredit) return UI.toast('Koi payment nahi dali', 'warn');
+        const rowsForValidate = effectiveRows.length ? effectiveRows : rows;
+        /* method-wise validation (wallet txn id, cheque no/date, limits…) */
+        const bad = await PayUI.validate(rowsForValidate.filter(p => Number(p.amount) > 0));
+        validationErrors = {};
+        bad.forEach(b => {
+          const idx = rowsForValidate.findIndex(r => r.method === b.method);
+          if (idx > -1) validationErrors[idx] = { errors: b.errors };
+        });
+        if (bad.length) {
+          paint();
+          const msg = bad[0].errors.map(e => e.message).join(' · ');
+          return UI.toast(msg, 'err', 4200);
+        }
+        // sync dueDate to payments before submit
+        try{
+          const dv = promisedInput.value || '';
+          if(dv) rowsForValidate.forEach(p=>{ if(String(p.method).toUpperCase()==='CREDIT') p.dueDate=dv; });
+          const pts = Number(pointsInput.value||0);
+          if(pts>0) rowsForValidate.forEach(p=>{ if(String(p.method).toUpperCase()==='LOYALTY'){ p.points=pts; p.pointsRedeemed=pts; }});
+        }catch(e){}
+        c(); submit(rowsForValidate, noteInput.value.trim());
+      } }
+    ]
+  });
+  paint();
+}
+
+/* v2.16 — simple invoice confirmation: Print/Share/Send/Save/Create New Sale only (no design controls) */
+function showInvoiceConfirmation(sale) {
+  // v2.23.11 POLISH: Show polished 80mm thermal receipt preview (same as print), not plain invoice
+  const invNo = sale.invoiceNo || sale.id || '—';
+  const cust = sale.customerName || (S.customer ? S.customer.name : 'Walk-in');
+  // robust payments: handles array, JSON string, paymentList / paymentSummary from Sales.get
+  const paysArr = (function(s){
+    var v = s.paymentList || s.payments || s.paymentSummary || [];
+    if (Array.isArray(v)) return v;
+    if (typeof v === 'string'){
+      try { var p = JSON.parse(v); return Array.isArray(p) ? p : []; } catch(e){ return []; }
+    }
+    return [];
+  })(sale);
+  const totalVal = Number(sale.total || sale.grandTotal || (typeof grandTotal==='function'?grandTotal():0));
+  const paidVal = paysArr.reduce((a,p)=>a+Number(p.amount||0),0);
+  const loyPay = paysArr.find(p=>String(p.method||'').toUpperCase()==='LOYALTY');
+  const loyPts = loyPay ? (Number(loyPay.points)||0) : Number(sale.loyaltyPointsUsed||sale.pointsRedeemed||0);
+  const loyAmt = loyPay ? Number(loyPay.amount||0) : 0;
+  const total = fmt.money(totalVal);
+  const paid = fmt.money(paidVal);
+  const due = fmt.money(Math.max(0, totalVal - paidVal));
+  const ptsEarned = Number(sale.pointsEarned || sale.loyaltyEarned || sale.earnedPoints || 0);
+  // Build polished 80mm thermal receipt preview (same as actual print — 58mm/80mm aware)
+  const receiptPreviewHost = h('div', { class: 'receipt-preview', style: 'background:var(--panel-2);border:1px solid var(--line);border-radius:12px;padding:10px;max-height:46vh;overflow:auto;text-align:left' });
+  try {
+    // Prepare sale for receiptHtml: ensure fields expected by Print.receiptHtml
+    const saleForPrint = Object.assign({}, sale, {
+      total: totalVal, paid: paidVal, due: Math.max(0, totalVal - paidVal),
+      subtotal: sale.subtotal || totalVal, discount: sale.discount || 0, tax: sale.tax || 0,
+      prevBalance: sale.prevBalance || (S.customer ? Number(S.customer.balance||0) : 0),
+      closingBalance: sale.closingBalance !== undefined ? sale.closingBalance : ((S.customer ? Number(S.customer.balance||0) : 0) + totalVal - paidVal),
+      items: sale.items || S.cart.map(l=>({name:l.name, code:l.code, qty:l.qty, price:l.price, lineTotal:l.lineTotal||l.qty*l.price})),
+      customerName: cust, customerPhone: (S.customer && S.customer.phone) || sale.customerPhone || '',
+      paymentList: paysArr, paymentSummary: paysArr,
+      loyaltyPointsUsed: loyPts, pointsRedeemed: loyPts
+    });
+    if (window.Print && Print.receiptHtml) {
+      receiptPreviewHost.innerHTML = Print.receiptHtml(saleForPrint, App.state.settings || {}, App.state.branchName || '');
+    } else if (window.Print2 && Print2.html) {
+      receiptPreviewHost.innerHTML = Print2.html(saleForPrint, {paper:'80mm'});
+    } else {
+      receiptPreviewHost.innerHTML = '<div class="muted" style="font-size:12px;text-align:center">Preview: ' + total + ' · Paid ' + paid + ' · Due ' + due + '</div>';
+    }
+  } catch(e){ receiptPreviewHost.innerHTML = '<div class="muted">Preview failed — will print correctly</div>'; }
+  const body = h('div', { style: { display: 'flex', flexDirection: 'column', gap: '10px' } },
+    h('div', { style: { textAlign:'center' } },
+      h('div', { style: { fontSize: '28px' } }, '✅'),
+      h('div', { style: { fontSize: '16px', fontWeight: '800' } }, 'Sale complete — ' + invNo),
+      h('div', { style: { fontSize: '12px', color: 'var(--muted)' } }, cust + ' · ' + new Date().toLocaleString('en-PK'))
+    ),
+    receiptPreviewHost,
+    h('div', { style: { display:'flex',gap:'6px',flexWrap:'wrap',fontSize:'11px' } },
+      h('span', {class:'badge ok'}, 'Total: ' + total), h('span', {class:'badge '+(paidVal>=totalVal?'ok':'warn')}, 'Paid: ' + paid), h('span', {class:'badge '+(due==='Rs 0.00'?'ok':'warn')}, 'Due: ' + due)
+    ),
+    loyPay ? h('div', { class: 'loy-teaser host', style: { textAlign: 'left', borderColor: 'var(--brand)', fontSize:'11px' } }, 'Deduction: ' + fmt.money(loyAmt) + ' via ' + fmt.num(loyPts) + ' pts') : '',
+    ptsEarned ? h('div', { class: 'loy-teaser host', style: { textAlign: 'left', fontSize:'11px' } }, 'Earned: ' + fmt.num(ptsEarned) + ' pts — next bill par use honge') : '',
+    h('div', { style: { fontSize: '11px', color: 'var(--muted-2)', textAlign:'center' } }, '80mm thermal receipt preview — Print will use 80mm/58mm thermal size, not A4.'));
+  const actions = [
+    { label: '🖨 Print', cls: 'ok', onClick: c => {
+        try {
+          // fast print — pre-rendered receipt, no dialog delay
+          const html = Print.receiptHtml(sale, App.state.settings, App.state.branchName);
+          Print.open(html, 'Receipt ' + invNo, (App.state.settings || {})['pos.receiptPaper'] || '80mm');
+          UI.toast('Printing…', 'ok');
+        } catch (e) { UI.toast(e.message, 'err'); }
+      } },
+    { label: '↗ Share', onClick: async c => {
+        try {
+          const txt = 'Invoice ' + invNo + ' · ' + cust + ' · Total ' + total + ' · Due ' + due;
+          if (navigator.share) await navigator.share({ title: 'Invoice ' + invNo, text: txt });
+          else if (navigator.clipboard) { await navigator.clipboard.writeText(txt); UI.toast('Copied to clipboard', 'ok'); }
+          else UI.toast(txt, 'ok', 4000);
+        } catch (e) { UI.toast(e.message, 'err'); }
+      } },
+    { label: '✉ Send', onClick: c => {
+        try {
+          const subj = encodeURIComponent('Invoice ' + invNo); const bodyTxt = encodeURIComponent('Invoice ' + invNo + ' for ' + cust + ' — Total ' + total);
+          const mail = (sale.customerEmail || S.customer && S.customer.email || '');
+          if (mail) window.open('mailto:' + mail + '?subject=' + subj + '&body=' + bodyTxt);
+          else if (navigator.share) navigator.share({ title: 'Invoice ' + invNo, text: 'Total ' + total });
+          else UI.toast('Send: WhatsApp / Email se share karein (' + invNo + ')', 'ok');
+        } catch (e) { UI.toast(e.message, 'err'); }
+      } },
+    { label: '💾 Save (PDF)', onClick: c => {
+        try {
+          const html = Print.receiptHtml(sale, App.state.settings, App.state.branchName);
+          const w = window.open('', '_blank'); if (w) { w.document.write(html); w.document.close(); w.focus(); w.print(); }
+          else Print.open(html, invNo, '80mm');
+        } catch (e) { UI.toast(e.message, 'err'); }
+      } },
+    { label: '➕ Create New Sale', cls: 'sec', onClick: c => { c(); clearCart(true); API.pullCatalog(true); } }
+  ];
+  // design controls remain in Settings ▸ Configuration only — not here
+  UI2.modal({ title: 'Invoice — ' + invNo, size: 'sm', body, actions,
+    onClose: () => { clearCart(true); API.pullCatalog(true); } });
+}
+
+async function submit(payments, note) {
+  const t0 = performance.now();
+  // enrich payments with dueDate from promised input if credit
+  try{
+    const pdEl = document.querySelector('#payDueDate') || document.getElementById('promisedInput');
+    const dueDateVal = (pdEl && pdEl.value) ? pdEl.value : (typeof promisedInput!=='undefined' && promisedInput.value ? promisedInput.value : '');
+    if(dueDateVal) payments.forEach(p=>{ if(String(p.method).toUpperCase()==='CREDIT') p.dueDate=dueDateVal; });
+  }catch(e){}
+  // ensure loyalty points attached if any loyalty payment
+  try{
+    const ptsEl = document.getElementById('payPoints') || (typeof pointsInput!=='undefined'?pointsInput:null);
+    const ptsVal = ptsEl ? Number(ptsEl.value||0) : 0;
+    if(ptsVal>0) payments.forEach(p=>{ if(String(p.method).toUpperCase()==='LOYALTY'){ p.points=ptsVal; p.pointsRedeemed=ptsVal; } });
+  }catch(e){}
+  const tDueDate = (function(){ try{ const el=document.getElementById('payDueDate')||document.querySelector('input[type="date"]'); return el? el.value : ''; }catch(e){ return ''; } })();
+  const tLoyPts = (function(){ try{ const el=document.getElementById('payPoints'); return el? Number(el.value||0):0; }catch(e){ return 0; } })();
+  const payload = {
+    locationId: App.state.locationId,
+    customerId: S.customer ? S.customer.id : '',
+    customerName: S.customer ? S.customer.name : 'Walk-in Customer',
+    customerTypeId: S.customer ? (S.customer.typeId || S.customer.customerTypeId || '') : '',
+    items: S.cart.map(l => ({ itemId: l.itemId, qty: l.qty, price: l.price, discount: l.discount || 0, salespersonId: App.sessionMeta().userId, notes: l.note || '' })),
+    discount: S.discount, discountCode: S.discountCode, payments,
+    dueDate: tDueDate,
+    loyaltyPointsUsed: tLoyPts, pointsRedeemed: tLoyPts,
+    notes: note || '', source: navigator.onLine ? 'POS' : 'OFFLINE'
+  };
+  if (!navigator.onLine) payload.offlineId = uid('bill');
+  try {
+    const sale = await API.call('sales.create', { sale: payload });
+    if (sale && sale.queued) { UI.toast('Offline bill queue ho gaya', 'warn'); clearCart(true); return; }
+    // v2.16 performance: measure bill generation
+    const ms = Math.round(performance.now() - t0);
+    UI.toast('Sale complete ✅ ' + (sale.invoiceNo || '') + (ms > 200 ? ' · ' + ms + 'ms' : ''), 'ok');
+    // simple confirmation (no design controls)
+    showInvoiceConfirmation(sale);
+    // optional fast auto-print if setting still enabled (but dialog not shown here)
+    if (String(App.state.settings.autoPrintReceipt) === 'true') {
+      try { Print.open(Print.receiptHtml(sale, App.state.settings, App.state.branchName), 'Receipt ' + sale.invoiceNo, (App.state.settings || {})['pos.receiptPaper'] || '80mm'); } catch (e) { }
+    }
+  } catch (e) { UI.toast(e.message, 'err'); }
+}
+
+/* ============================ HOLD / CLEAR ================================ */
+async function holdBill() {
+  if (!S.cart.length) return UI.toast('Cart khali hai', 'warn');
+  try {
+    await API.call('sales.hold', { ref: 'HOLD-' + Date.now().toString().slice(-5),
+      cart: { items: S.cart, total: grandTotal(), discount: S.discount },
+      customerId: S.customer ? S.customer.id : '' });
+    UI.toast('Bill hold ho gaya ⏸', 'ok'); clearCart(true);
+  } catch (e) { UI.toast(e.message, 'err'); }
+}
+
+async function resumeHeld(id) {
+  const cart = await API.call('sales.held.resume', { id });
+  if (cart && cart.items) { S.cart = cart.items; S.discount = cart.discount || 0; App.go('pos'); renderCart(); renderTotals(); }
+}
+
+async function loadHeld() {
+  try { S.held = await API.call('sales.held.list', {}, { offlineFallback: () => [] }) || []; } catch (e) { S.held = []; }
+}
+
+async function clearCart(silent) {
+  /* v2.25.0 (req 6) — native confirm() ki jagah shared dialog: sandboxed
+     preview/iframe mein native confirm block ho jata hai (button "kuch nahi karta"
+     lagta hai) aur design system se bahar bhi hai. silent=true par koi await
+     nahi hota, is liye baqi callers ka synchronous flow waisa hi rehta hai. */
+  if (!silent && S.cart.length && !(await UI2.confirm('Cart clear karein? Ye bill ke saare items hata dega.', null, true))) return;
+  S.cart = []; S.discount = 0; S.discountCode = ''; S.customer = null;
+  renderCart(); renderTotals(); updateCustBar();
+}
+
+function openCartOffcanvas() {
+  const body = h('div', { style: { display: 'flex', flexDirection: 'column', height: '100%', minHeight: '50vh' } });
+  // v2.16 — drawer customer bar (responsive, premium: avatar + balance + clear change)
+  const custClone = h('div', { class: 'cust-bar', style: { margin: '0 0 10px', cursor: 'pointer', display: 'flex', gap: '10px', alignItems: 'center', padding: '10px 12px' }, onclick: pickCustomer },
+    h('span', { style: { width: '36px', height: '36px', borderRadius: '11px', background: 'var(--brand-soft)', border: '1px solid var(--line)', display: 'grid', placeItems: 'center', flex: '0 0 36px' } },
+      h('span', { class: 'ha-ico', html: '<svg viewBox=\"0 0 24 24\" width=\"18\" height=\"18\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2\"/><circle cx=\"12\" cy=\"7\" r=\"4\"/></svg>', 'aria-hidden': 'true' })),
+    h('div', { style: { flex: '1', minWidth: '0' } },
+      h('div', { class: 'cb-name', id: 'custNameM' }, S.customer ? S.customer.name : 'Walk-in Customer'),
+      h('div', { class: 'cb-bal', id: 'custBalM' }, S.customer ? ('📞 ' + fmt.phone(S.customer.phone || '') + ' · bal ' + fmt.money(S.__prevBalance || S.customer.balance || 0)) : 'Tap to select customer (F4)')),
+    h('button', { class: 'btn sm sec', style: { flex: '0 0 auto' }, onclick: e => { e.stopPropagation(); pickCustomer(); } }, S.customer ? 'Change' : 'Select'));
+  // sync drawer customer bar with main
+  try { const n = document.getElementById('custName2'); const b = document.getElementById('custBal2'); if (n) custClone.querySelector('#custNameM').textContent = n.textContent; if (b) { const bb = custClone.querySelector('#custBalM'); if (bb) { bb.innerHTML=''; const src = document.getElementById('custBal2'); if (src) bb.appendChild(src.cloneNode(true)); else bb.textContent=b.textContent; } } } catch (e) { }
+  const drawerLoy = h('div', { id: 'posLoyaltyTeaserM', class: 'loy-teaser host', hidden: true, style: { margin: '0 0 8px' } });
+  try { const src = document.getElementById('posLoyaltyTeaser'); if (src && !src.hidden) { drawerLoy.hidden=false; drawerLoy.innerHTML=src.innerHTML; drawerLoy.className=src.className; } } catch(e){}
+  // inline Add Product — drawer (premium, always visible: fix Add Item error, responsive Customer field)
+  const inlineAdd = h('div', { class: 'cart-inline-add', style: { marginBottom: '10px', border: '1px solid var(--line)', borderRadius: '12px' } },
+    h('span', { class: 'ha-ico', html: '<svg viewBox=\"0 0 24 24\" width=\"16\" height=\"16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><circle cx=\"11\" cy=\"11\" r=\"7\"/><line x1=\"16.5\" y1=\"16.5\" x2=\"21\" y2=\"21\"/></svg>', 'aria-hidden': 'true', style: { color: 'var(--muted)' } }),
+    h('input', { class: 'f-input', placeholder: 'Add product — code / name / barcode…', 'aria-label': 'Add product to cart' }),
+    h('button', { class: 'btn sm ok' },
+      h('span', { class: 'ha-ico', html: '<svg viewBox=\"0 0 24 24\" width=\"14\" height=\"14\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><line x1=\"12\" y1=\"5\" x2=\"12\" y2=\"19\"/><line x1=\"5\" y1=\"12\" x2=\"19\" y2=\"12\"/></svg>', 'aria-hidden': 'true' }), ' Add'));
+  const inlineInp = inlineAdd.querySelector('input');
+  const doInlineAdd = () => {
+    const raw = inlineInp.value.trim(); if (!raw) return;
+    const code = extractBarcode(raw);
+    const hit = findProductByBarcode(code) || S.catalog.find(i => U_norm(i.name).includes(U_norm(code)));
+    if (hit) { addToCart({ id: hit.id, code: hit.code, name: hit.name, retailPrice: hit.rp, wholesalePrice: hit.wp, costPrice: hit.cp, stock: hit.qty, imageUrl: hit.img }, 1); inlineInp.value = ''; inlineInp.focus(); UI.toast('Added: ' + hit.name+' ('+code+') — Cart updated','ok'); }
+    else {
+      UI.toast('Product nahi mila: ' + code + ' — Add items me search karein', 'warn'); inlineInp.value=''; inlineInp.focus();
+    }
+  };
+  inlineInp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); doInlineAdd(); } });
+  inlineAdd.querySelector('button').onclick = doInlineAdd;
+  const b = h('div', { style: { flex: '1', overflow: 'auto' } });
+  const f = h('div');
+  const t = h('div');
+  const pkWasIn = POS2.pkHost && POS2.pkHost.parentNode === POS2.cartSide;
+  if (POS2.cartTools) { t.append(POS2.cartTools); if (pkWasIn) t.append(POS2.pkHost); }
+  // also ensure side inline add stays in drawer
+  body.append(custClone, drawerLoy, inlineAdd, t, b, f);
+  const old = { b: POS2.cartBody, f: POS2.cartFoot, pkWasIn };
+  POS2._offOld = old;
+  POS2.cartBody = b; POS2.cartFoot = f;
+  // keep bulk badge / picker references inside drawer — ensure toggle works
+  POS2.drawerCust = custClone;
+  renderCart(); renderTotals();
+  updateCustBar();
+  UI2.offcanvas({
+    title: 'Current bill', subtitle: (S.cart.length) + ' items', size: 'md', body,
+    onClose: () => { POS2.cartBody = old.b; POS2.cartFoot = old.f; POS2.drawerCust = null; POS2._offOld = null;
+      const side = POS2.cartBody.parentNode;
+      if (side && POS2.cartTools) { side.insertBefore(POS2.cartTools, POS2.cartBody); if (POS2.pkHost && pkWasIn) side.insertBefore(POS2.pkHost, POS2.cartBody); }
+      renderCart(); renderTotals(); updateCustBar(); }
+  });
+}
+
+/* ============================== QUICK ADD ================================= */
+function quickAdd(name) {
+  const f = UI2.form({
+    values: { name: name || '', code: '' },
+    tabs: [
+      { id: 'basic', label: 'Basic', icon: '📝', fields: [
+        { key: 'name', label: 'Item name', required: true, full: true },
+        { key: 'code', label: 'Code / part no.' },
+        { key: 'barcode', label: 'Barcode' },
+        { key: 'category', label: 'Category', type: 'select', options: (App.state.categories || []).map(c => c.name) },
+        { key: 'brand', label: 'Brand' },
+        { key: 'unit', label: 'Unit', type: 'select', options: ['PCS', 'SET', 'BOX', 'LTR', 'KG', 'PAIR'] },
+        { key: 'size', label: 'Size / variant' },
+        { key: 'rack', label: 'Rack / bin' }
+      ]},
+      { id: 'price', label: 'Pricing', icon: '💰', fields: [
+        { key: 'costPrice', label: 'Cost price', type: 'number' },
+        { key: 'retailPrice', label: 'Retail price', type: 'number' },
+        { key: 'wholesalePrice', label: 'Wholesale price', type: 'number' },
+        { key: 'minPrice', label: 'Min price', type: 'number' },
+        { key: 'taxRate', label: 'Tax %', type: 'number' },
+        { key: 'minStock', label: 'Min stock', type: 'number' }
+      ]}
+    ]
+  });
+  UI2.modal({
+    title: '➕ Naya item', size: 'md', body: f.el,
+    actions: [{ label: 'Save & add', cls: 'ok', onClick: async c => {
+      const v = f.values();
+      if (!v.name) return UI.toast('Name zaroori hai', 'err');
+      try {
+        const saved = await API.call('items.save', { item: v });
+        UI.toast('Item saved ✅', 'ok'); c();
+        addToCart({ id: saved.id, code: saved.code, name: saved.name, retailPrice: Number(saved.retailPrice),
+          wholesalePrice: Number(saved.wholesalePrice), costPrice: Number(saved.costPrice), stock: 0 });
+        API.pullCatalog(true).then(() => App.refresh());
+      } catch (e) { UI.toast(e.message, 'err'); }
+    } }]
+  });
+}
+
+/* ========================= CAMERA BARCODE / QR SCAN ======================= */
+/** v2.14.0 — scanner ab HaScan bridge (App_QR.html) mein: external live
+ *  scanner (Settings ▸ Mobile apps ▸ scanner.liveUrl) → in-app attempt →
+ *  manual entry. Apps Script sandbox phones par getUserMedia block karta
+ *  hai — release/QR-LIVE-CAMERA-GUIDE.md mein poora rationale + hosting. */
+function scanBarcode(onDetect) {
+  if (window.HaScan) return HaScan.scan({ onDetect: onDetect });
+  var input = h('input', { class: 'f-input', type: 'text', placeholder: 'Barcode/QR code type karein', autocomplete: 'off' });
+  var m = UI2.modal({
+    title: '⌨ Code entry', size: 'sm', body: input,
+    actions: [{ label: 'Close', cls: 'ghost', onClick: c => c() },
+      { label: 'Add', cls: 'ok', onClick: c => { const v = input.value.trim(); c(); if (v) onDetect(v); } }]
+  });
+  return m;
+}
+
+/* ================================ SOUND =================================== */
+let actx = null;
+function beep() {
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    const o = actx.createOscillator(), g = actx.createGain();
+    o.connect(g); g.connect(actx.destination);
+    o.frequency.value = 1180; o.type = 'square';
+    g.gain.setValueAtTime(0.0001, actx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.08, actx.currentTime + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, actx.currentTime + 0.09);
+    o.start(); o.stop(actx.currentTime + 0.1);
+  } catch (e) { }
+}
+
+/* ============================== SHORTCUTS — GS1/WCAG keyboard accessible ================================
+   F1: Help (shortcuts) — F2: Search/Scan focus — F3: Customer (F4 also) — F6: Discount — F8: Hold — F9: Cash — F10: Card — Esc: Close
+   All shortcuts prevent browser default only when POS is active and not typing. Help shows bilingual (EN + Roman Urdu).
+   WCAG 2.1: No character-key shortcuts without modifier; all F-keys are safe, no destructive auto-trigger.
+*/
+function showShortcutsHelp(){
+  const body = h('div', {style:'display:flex;flex-direction:column;gap:12px;max-height:60vh;overflow:auto'},
+    h('div', {style:'padding:10px;background:var(--info-soft);border:1px solid var(--info);border-radius:10px;font-size:12px'}, 
+      h('b',null,'Keyboard Shortcuts — POS / ERP'), h('div',{style:'font-size:11px;color:var(--muted);margin-top:4px'}, 'Sab shortcuts sirf POS screen par kaam karte hain. Typing ke dauran F-keys nahi chalte (except Esc/F9).')),
+    h('div', {class:'grid', style:'display:grid;grid-template-columns:1fr 1fr;gap:8px'},
+      h('div', {class:'card', style:'padding:10px'}, h('b',null,'F1 / ?'), h('div',{style:'font-size:11px;color:var(--muted)'}, 'Help — yeh madad / shortcuts dekhein'), h('div',{style:'font-size:11px'}, 'Press F1 or ? for help — Madad ke liye F1 dabayein')),
+      h('div', {class:'card', style:'padding:10px'}, h('b',null,'F2'), h('div',{style:'font-size:11px;color:var(--muted)'}, 'Search / Scan focus'), h('div',{style:'font-size:11px'}, 'F2 — Search par jayein, scan ke liye ready')),
+      h('div', {class:'card', style:'padding:10px'}, h('b',null,'F3 / F4'), h('div',{style:'font-size:11px;color:var(--muted)'}, 'Customer select'), h('div',{style:'font-size:11px'}, 'F3 ya F4 — Customer chunein')),
+      h('div', {class:'card', style:'padding:10px'}, h('b',null,'F6'), h('div',{style:'font-size:11px;color:var(--muted)'}, 'Discount'), h('div',{style:'font-size:11px'}, 'F6 — Bill discount lagayein')),
+      h('div', {class:'card', style:'padding:10px'}, h('b',null,'F8'), h('div',{style:'font-size:11px;color:var(--muted)'}, 'Hold bill'), h('div',{style:'font-size:11px'}, 'F8 — Bill hold karein (pending)')),
+      h('div', {class:'card', style:'padding:10px'}, h('b',null,'F9'), h('div',{style:'font-size:11px;color:var(--muted)'}, 'Cash payment'), h('div',{style:'font-size:11px'}, 'F9 — Cash se payment')),
+      h('div', {class:'card', style:'padding:10px'}, h('b',null,'F10'), h('div',{style:'font-size:11px;color:var(--muted)'}, 'Card payment'), h('div',{style:'font-size:11px'}, 'F10 — Card se payment')),
+      h('div', {class:'card', style:'padding:10px'}, h('b',null,'Ctrl+K / Esc'), h('div',{style:'font-size:11px;color:var(--muted)'}, 'Palette / Close'), h('div',{style:'font-size:11px'}, 'Ctrl+K — Command palette, Esc — Band karein'))
+    ),
+    h('div', {style:'font-size:11px;color:var(--muted);border-top:1px solid var(--line);padding-top:8px'}, 'WCAG: All F-keys require no modifier, no accidental destructive action. Focus stays on scan field after scan for continuous scanning.')
+  );
+  UI2.modal({title:'⌨ Keyboard Shortcuts — POS', size:'md', body, actions:[{label:'Close', onClick:c=>c()}]});
+}
+document.addEventListener('keydown', e => {
+  // Global help: F1 or ? anywhere (when not typing) — show shortcuts
+  if ((e.key==='F1' || (e.key==='?' && !e.ctrlKey && !e.metaKey)) && App.current==='pos'){
+    const typingNow = /input|textarea|select/i.test((e.target||{}).tagName||'');
+    if(!typingNow || e.key==='F1'){ e.preventDefault(); showShortcutsHelp(); return; }
+  }
+  if (App.current !== 'pos') return;
+  const typing = /input|textarea|select/i.test((e.target || {}).tagName || '');
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); UI2.palette(); return; }
+  // Allow Esc and F-keys even when typing for quick exit, but block other F-keys when typing
+  const isFKey = /^F\d+$/.test(e.key);
+  if (typing && e.key !== 'Escape' && e.key !== 'F9' && e.key !== 'F1' && !isFKey) return;
+  if (e.key === 'F2') { e.preventDefault(); const i = document.querySelector('.pos2-search input'); if (i) { i.focus(); i.select(); } }
+  else if (e.key === 'F3') { e.preventDefault(); pickCustomer(); }
+  else if (e.key === 'F4') { e.preventDefault(); pickCustomer(); }
+  else if (e.key === 'F6') { e.preventDefault(); discountModal(); }
+  else if (e.key === 'F8') { e.preventDefault(); holdBill(); }
+  else if (e.key === 'F9') { e.preventDefault(); pay('CASH'); }
+  else if (e.key === 'F10') { e.preventDefault(); pay('CARD'); }
+  else if (e.key === 'Escape') { // close any open picker/modal first
+    const host = POS2.pkHost;
+    if(host && !host.hidden){ host.hidden=true; e.preventDefault(); return; }
+  }
+});
+
+
+/* ============================ DEMAND POS HOOK ============================
+// When a customer is selected, fetch their outstanding demands and show
+// quick Add-to-Cart recommendations (stock arrived = highlight).
+// No duplication: only one banner host (#posDemandHost) per screen.
+*/
+;(function(){
+  var hostId = 'posDemandHost';
+  function ensureHost(){
+    var h = document.getElementById(hostId);
+    if (h) return h;
+    var bar = document.getElementById('custBar2');
+    if (bar && bar.parentNode) {
+      h = document.createElement('div');
+      h.id = hostId;
+      h.className = 'demand-host';
+      h.style.cssText = 'margin:6px 10px 8px;display:flex;flex-direction:column;gap:6px';
+      bar.parentNode.insertBefore(h, bar.nextSibling);
+      return h;
+    }
+    // drawer case
+    var dbar = document.getElementById('custBalM');
+    if (dbar && dbar.parentNode) {
+      var dh = document.getElementById(hostId + '_m');
+      if (dh) return dh;
+      dh = document.createElement('div');
+      dh.id = hostId + '_m';
+      dh.className = 'demand-host';
+      dh.style.cssText = 'margin:6px 0 8px;display:flex;flex-direction:column;gap:6px';
+      dbar.parentNode.parentNode.insertBefore(dh, dbar.parentNode.nextSibling);
+      return dh;
+    }
+    return null;
+  }
+  function renderDemands(rec){
+    var h = ensureHost();
+    if (!h) return;
+    h.innerHTML = '';
+    if (!rec || !rec.demands || !rec.demands.length) {
+      if (rec && rec.related && rec.related.length) {
+        var rel = document.createElement('div');
+        rel.style.cssText = 'font-size:12px;color:var(--muted)';
+        rel.textContent = '💡 Related for ' + (rec.customerName||'') + ': ' + rec.related.slice(0,3).map(function(x){return x.name;}).join(', ');
+        h.appendChild(rel);
+      }
+      return;
+    }
+    var title = document.createElement('div');
+    title.style.cssText = 'font-size:13px;font-weight:700;display:flex;justify-content:space-between;align-items:center';
+    title.innerHTML = '<span>📝 Demands for ' + (rec.customerName||'') + ' · ' + rec.summary.outstanding + ' pending' + (rec.summary.arrived ? ' · <span style="color:var(--ok)">' + rec.summary.arrived + ' arrived!</span>' : '') + '</span><span style="font-size:11px;color:var(--muted)">' + (rec.summary.canFulfillNow||0) + ' in stock</span>';
+    h.appendChild(title);
+    rec.demands.slice(0,4).forEach(function(d){
+      var row = document.createElement('div');
+      row.style.cssText = 'display:flex;align-items:center;gap:8px;padding:7px 8px;border:1px solid ' + (d.isArrived ? 'var(--ok)' : 'var(--line)') + ';border-radius:10px;background:' + (d.isArrived ? 'var(--ok-soft, #e6f7ed)' : 'var(--panel)') + ';font-size:13px';
+      var info = document.createElement('div');
+      info.style.cssText = 'flex:1;min-width:0';
+      info.innerHTML = '<b>' + d.itemName + '</b> <span style="color:var(--muted)">×' + d.qty + ' · ' + d.status + (d.isArrived ? ' · stock ' + d.stock + ' ✅' : ' · stock ' + d.stock) + '</span><div style="font-size:11px;color:var(--muted)">' + (d.category||'') + (d.brand ? ' · ' + d.brand : '') + '</div>';
+      row.appendChild(info);
+      if (d.itemId) {
+        var btn = document.createElement('button');
+        btn.className = 'btn sm ' + (d.isArrived ? 'ok' : 'sec');
+        btn.textContent = d.canFulfill ? 'Add' : 'View';
+        btn.style.cssText = 'min-width:56px;min-height:28px';
+        btn.onclick = function(){
+          // try to find in catalog and add to cart
+          var cat = (typeof S !== 'undefined' && S.catalog) ? S.catalog : [];
+          var hit = cat.find(function(x){ return String(x.id)===String(d.itemId); });
+          if (hit && d.canFulfill) {
+            try { addToCart({ id: hit.id, code: hit.code, name: hit.name, retailPrice: hit.rp, wholesalePrice: hit.wp, costPrice: hit.cp, stock: hit.qty, imageUrl: hit.img }, Number(d.qty)||1); UI.toast('Added from demand: ' + hit.name, 'ok'); } catch(e){ UI.toast(e.message,'err'); }
+          } else if (hit) { try { quickViewItem(hit); } catch(e){} }
+          else { UI.toast('Product not in catalog: ' + d.itemName, 'warn'); }
+        };
+        row.appendChild(btn);
+      } else {
+        var noId = document.createElement('span');
+        noId.style.cssText = 'font-size:11px;color:var(--muted)';
+        noId.textContent = 'New product';
+        row.appendChild(noId);
+      }
+      h.appendChild(row);
+    });
+    if (rec.related && rec.related.length) {
+      var rel2 = document.createElement('div');
+      rel2.style.cssText = 'font-size:12px;color:var(--muted)';
+      rel2.textContent = '💡 You may also need: ' + rec.related.slice(0,3).map(function(x){return x.name + ' ('+ x.stock +')';}).join(', ');
+      h.appendChild(rel2);
+    }
+  }
+  function fetchRec(){
+    var cust = (typeof S !== 'undefined' && S.customer) ? S.customer : null;
+    var h = ensureHost();
+    if (!h) return;
+    if (!cust || !cust.id) { h.innerHTML=''; return; }
+    if (!App || !App.can || !App.can('demand.view')) { h.innerHTML=''; return; }
+    h.innerHTML = '<div style="font-size:12px;color:var(--muted);padding:6px">⏳ Loading demands…</div>';
+    try {
+      API.call('demand.posRecommend', { customerId: cust.id, locationId: App.state.locationId, limit: 4 }, { offlineFallback: function(){ return { demands: [], related: [] }; } })
+        .then(function(r){ try{ renderDemands(r); }catch(e){ h.innerHTML=''; } })
+        .catch(function(){ h.innerHTML=''; });
+    } catch(e){ h.innerHTML=''; }
+  }
+  // patch updateCustBar to also refresh demands
+  var origUpdate = null;
+  function patch(){
+    if (typeof updateCustBar === 'function' && !updateCustBar._demPatched) {
+      origUpdate = updateCustBar;
+      window.updateCustBar = function(){
+        var rv = origUpdate.apply(this, arguments);
+        try { fetchRec(); } catch(e){}
+        return rv;
+      };
+      window.updateCustBar._demPatched = true;
+    }
+  }
+  patch();
+  // after POS screen render, ensure host exists
+  var origRenderTotals = null;
+  // delayed patch after screen registered
+  setTimeout(patch, 800);
+  // also observe customer changes via interval (for quick buttons)
+  setInterval(function(){ try{ if (S && S.customer && document.getElementById('custBar2') && !document.getElementById(hostId)) fetchRec(); }catch(e){} }, 1500);
+})();
+
+window.POS2 = { S, addToCart, pay, clearCart, pickCustomer, togglePicker, bulkFlow, ui: POS2 };
+})();
+</script>

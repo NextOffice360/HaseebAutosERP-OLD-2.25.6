@@ -1,0 +1,1550 @@
+<script>
+/* ==========================================================================
+   HASEEB AUTOS — CHARTS + AI DASHBOARDS
+   Pure-SVG chart engine (no CDN — offline PWA safe): donut, bars, area,
+   sparkline, progress, gauge, funnel, heat map — sab interactive (click,
+   hover tooltip, drill-down).
+   Screens: dashboard (main) · insights (customers / receivables / payables /
+   P&L / inventory) · shop (day open & close with cash count).
+   ========================================================================== */
+(function () {
+'use strict';
+
+/* =============================== CHART ENGINE ============================== */
+/* WCAG AA: safed label/fill ke sath bhi 4.5:1 cross karne wale tones */
+const PALETTE = ['#c2410c', '#1d63c9', '#0f7a3f', '#7e22ce', '#be123c', '#0369a1',
+  '#b45309', '#0f766e', '#a21caf', '#475569'];
+
+const Chart = {
+  palette: i => PALETTE[i % PALETTE.length],
+
+  /** Donut / pie: data = [{label, value, color?}] */
+  donut(data, opts) {
+    opts = opts || {};
+    try {
+      if (window.Chart && window.Chart !== Chart && typeof window.Chart.donut === 'function') {
+        return window.Chart.donut(data, opts);
+      }
+    } catch (e) { /* neeche wala fallback */ }
+    const size = Math.min(opts.size || 170, 170), thickness = opts.thickness || 22;
+    const total = data.reduce((a, d) => a + Math.max(0, Number(d.value) || 0), 0) || 1;
+    const r = (size - thickness) / 2, cx = size / 2, cy = size / 2;
+    const circ = 2 * Math.PI * r;
+    let offset = 0;
+    const arcs = data.map((d, i) => {
+      const v = Math.max(0, Number(d.value) || 0);
+      const len = (v / total) * circ;
+      const el = h('circle', {
+        class: 'donut-seg', cx, cy, r, fill: 'none',
+        stroke: d.color || Chart.palette(i), 'stroke-width': thickness,
+        'stroke-dasharray': len + ' ' + (circ - len),
+        'stroke-dashoffset': -offset,
+        style: { cursor: 'pointer', transition: 'stroke-width .15s' }
+      });
+      el.innerHTML = '<title>' + esc(d.label) + ': ' + fmt.money(v) + ' (' +
+        (v / total * 100).toFixed(1) + '%)</title>';
+      el.onmouseenter = () => el.setAttribute('stroke-width', thickness + 6);
+      el.onmouseleave = () => el.setAttribute('stroke-width', thickness);
+      el.onclick = () => opts.onClick && opts.onClick(d, i);
+      offset += len;
+      return el;
+    });
+    const centre = h('text', { x: cx, y: cy - 4, 'text-anchor': 'middle', class: 'donut-val' },
+      opts.centerValue !== undefined ? opts.centerValue : fmt.money(total));
+    const sub = h('text', { x: cx, y: cy + 14, 'text-anchor': 'middle', class: 'donut-lab' },
+      opts.centerLabel || 'Total');
+    const svg = svgEl('0 0 ' + size + ' ' + size, 'chart-donut');
+    svg.append(h('g', { transform: 'rotate(-90 ' + cx + ' ' + cy + ')' }, arcs), centre, sub);
+    const wrap = h('div', { class: 'chart-wrap' }, svg);
+    if (opts.legend !== false) wrap.appendChild(Chart.legend(data, total));
+    return wrap;
+  },
+
+  legend(data, total) {
+    const box = h('div', { class: 'legend' });
+    data.forEach((d, i) => {
+      const pct = total ? (Number(d.value) / total * 100) : 0;
+      box.appendChild(h('div', { class: 'legend-item', onclick: () => d.onClick && d.onClick() },
+        h('span', { class: 'dot', style: { background: d.color || Chart.palette(i) } }),
+        h('span', { class: 'lg-lab' }, d.label),
+        h('b', { class: 'lg-val' }, typeof d.display === 'string' ? d.display : fmt.money(d.value)),
+        h('span', { class: 'lg-pct' }, pct.toFixed(pct < 10 ? 1 : 0) + '%')));
+    });
+    return box;
+  },
+
+  /** Bars: data = [{label, value, color?, display?}] */
+  bars(data, opts) {
+    opts = opts || {};
+    /* v2.5: pro engine ho to wahi use karein (overlap-free HTML rows) */
+    try {
+      if (window.Chart && window.Chart !== Chart && typeof window.Chart.bars === 'function') {
+        return window.Chart.bars(data, opts);
+      }
+    } catch (e) { /* neeche wala fallback */ }
+    const height = opts.height || 220;
+    const max = Math.max(1, ...data.map(d => Math.abs(Number(d.value) || 0)));
+    const wrap = h('div', { class: 'bars' + (opts.horizontal ? ' horiz' : '') });
+    const svgH = opts.horizontal ? Math.max(80, data.length * 26 + 10) : height;
+    const svg = svgEl('0 0 100 ' + svgH, 'chart-bars');
+    if (opts.horizontal) {
+      data.forEach((d, i) => {
+        const w = (Math.abs(Number(d.value) || 0) / max) * 100;
+        const y = i * 26 + 4;
+        const rect = h('rect', { x: 0, y: y + 8, width: Math.max(0.5, w), height: 14, rx: 4,
+          fill: d.color || Chart.palette(i), style: { cursor: 'pointer' } });
+        rect.innerHTML = '<title>' + esc(d.label) + ': ' + (d.display || fmt.money(d.value)) + '</title>';
+        rect.onclick = () => opts.onClick && opts.onClick(d, i);
+        const lab = h('text', { x: 0, y: y + 5, class: 'bar-lab' }, short(d.label, 22));
+        const val = h('text', { x: 100, y: y + 5, class: 'bar-val', 'text-anchor': 'end' },
+          d.display || fmt.money(d.value));
+        svg.append(lab, rect, val);
+      });
+    } else {
+      const bw = 100 / Math.max(1, data.length);
+      data.forEach((d, i) => {
+        const bh = (Math.abs(Number(d.value) || 0) / max) * (svgH - 34);
+        const x = i * bw + bw * 0.15, w = bw * 0.7;
+        const rect = h('rect', { x, y: svgH - 20 - bh, width: w, height: Math.max(1, bh), rx: 3,
+          fill: d.color || Chart.palette(i), style: { cursor: 'pointer' } });
+        rect.innerHTML = '<title>' + esc(d.label) + ': ' + (d.display || fmt.money(d.value)) + '</title>';
+        rect.onclick = () => opts.onClick && opts.onClick(d, i);
+        svg.appendChild(rect);
+        if (!opts.hideLabels) {
+          svg.appendChild(h('text', { x: x + w / 2, y: svgH - 6, class: 'bar-lab', 'text-anchor': 'middle' },
+            short(d.label, 9)));
+        }
+      });
+      svg.appendChild(h('line', { x1: 0, y1: svgH - 20, x2: 100, y2: svgH - 20, stroke: 'currentColor',
+        'stroke-width': 0.3, opacity: 0.25 }));
+    }
+    wrap.appendChild(svg);
+    return wrap;
+  },
+
+  /** Area / line chart: points = [{label, value}] */
+  area(points, opts) {
+    opts = opts || {};
+    const W = 100, H = opts.height || 180;
+    const vals = points.map(p => Number(p.value) || 0);
+    const max = Math.max(1, ...vals), min = Math.min(0, ...vals);
+    const span = (max - min) || 1;
+    const x = i => points.length === 1 ? W / 2 : (i / (points.length - 1)) * W;
+    const y = v => H - 18 - ((v - min) / span) * (H - 40);
+    const line = points.map((p, i) => (i ? 'L' : 'M') + x(i).toFixed(2) + ' ' + y(p.value).toFixed(2)).join(' ');
+    const fillPts = line + ' L' + W + ' ' + (H - 18) + ' L0 ' + (H - 18) + ' Z';
+    const svg = svgEl('0 0 ' + W + ' ' + H, 'chart-area');
+    const gid = 'g' + Math.random().toString(36).slice(2, 8);
+    svg.innerHTML =
+      '<defs><linearGradient id="' + gid + '" x1="0" y1="0" x2="0" y2="1">' +
+      '<stop offset="0%" stop-color="' + (opts.color || '#c2410c') + '" stop-opacity=".38"/>' +
+      '<stop offset="100%" stop-color="' + (opts.color || '#c2410c') + '" stop-opacity="0"/>' +
+      '</linearGradient></defs>' +
+      '<path d="' + fillPts + '" fill="url(#' + gid + ')"/>' +
+      '<path d="' + line + '" fill="none" stroke="' + (opts.color || '#c2410c') +
+      '" stroke-width="1.2" stroke-linejoin="round"/>';
+    points.forEach((p, i) => {
+      const c = h('circle', { cx: x(i), cy: y(p.value), r: 1.6, fill: opts.color || '#c2410c' });
+      c.innerHTML = '<title>' + esc(p.label) + ': ' + fmt.money(p.value) + '</title>';
+      if (opts.onClick) { c.style.cursor = 'pointer'; c.onclick = () => opts.onClick(p, i); }
+      svg.appendChild(c);
+    });
+    // x labels (first / mid / last)
+    [0, Math.floor(points.length / 2), points.length - 1].filter((v, i, a) => a.indexOf(v) === i)
+      .forEach(i => {
+        if (!points[i]) return;
+        svg.appendChild(h('text', { x: x(i), y: H - 4, class: 'bar-lab', 'text-anchor': 'middle' },
+          short(String(points[i].label), 8)));
+      });
+    const wrap = h('div', { class: 'chart-wrap' }, svg);
+    if (opts.showMax) wrap.appendChild(h('div', { class: 'chart-cap' },
+      'Peak ' + fmt.money(max) + ' · Low ' + fmt.money(min)));
+    return wrap;
+  },
+
+  spark(values, opts) {
+    opts = opts || {};
+    const W = 100, H = opts.height || 34;
+    const max = Math.max(1, ...values.map(v => Number(v) || 0));
+    const d = values.map((v, i) => (i ? 'L' : 'M') +
+      (values.length === 1 ? 50 : (i / (values.length - 1)) * W).toFixed(2) + ' ' +
+      (H - 3 - (Number(v) / max) * (H - 6)).toFixed(2)).join(' ');
+    const svg = svgEl('0 0 ' + W + ' ' + H, 'spark', 'none');
+    svg.innerHTML = '<path d="' + d + '" fill="none" stroke="' + (opts.color || '#c2410c') +
+      '" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>';
+    return svg;
+  },
+
+  progress(value, max, opts) {
+    opts = opts || {};
+    const pct = max ? Math.min(100, (Number(value) / Number(max)) * 100) : 0;
+    const bar = h('div', { class: 'prog' },
+      h('div', { class: 'prog-fill', style: { width: pct.toFixed(1) + '%',
+        background: opts.color || (pct > 85 ? 'var(--err)' : pct > 60 ? 'var(--warn)' : 'var(--ok)') } }));
+    return h('div', { class: 'prog-row' },
+      h('div', { class: 'prog-head' },
+        h('span', null, opts.label || ''),
+        h('b', null, opts.display || (fmt.num(value) + ' / ' + fmt.num(max)))),
+      bar);
+  },
+
+  gauge(pct, label, sub) {
+    const p = Math.max(0, Math.min(100, Number(pct) || 0));
+    const size = 120, r = 46, cx = 60, cy = 60, circ = 2 * Math.PI * r;
+    const svg = svgEl('0 0 ' + size + ' ' + size, 'gauge');
+    svg.append(
+      h('circle', { cx, cy, r, fill: 'none', stroke: 'var(--line-2)', 'stroke-width': 10 }),
+      (function () {
+        const c = h('circle', { cx, cy, r, fill: 'none',
+          stroke: p > 80 ? 'var(--ok)' : p > 50 ? 'var(--warn)' : 'var(--err)', 'stroke-width': 10,
+          'stroke-linecap': 'round', 'stroke-dasharray': (p / 100 * circ) + ' ' + circ,
+          transform: 'rotate(-90 60 60)' });
+        return c;
+      })(),
+      h('text', { x: 60, y: 58, 'text-anchor': 'middle', class: 'donut-val' }, Math.round(p) + '%'),
+      h('text', { x: 60, y: 74, 'text-anchor': 'middle', class: 'donut-lab' }, label || ''));
+    return h('div', { class: 'gauge-wrap' }, svg, sub ? h('div', { class: 'gauge-sub' }, sub) : '');
+  },
+
+  /** Simple heat strip: values 0..1 */
+  heat(values, opts) {
+    opts = opts || {};
+    const box = h('div', { class: 'heat' });
+    values.forEach(v => {
+      const a = Math.max(0.08, Math.min(1, Number(v) || 0));
+      box.appendChild(h('span', { class: 'heat-cell', title: opts.title ? opts.title(v) : '',
+        style: { background: 'rgba(255,106,0,' + a.toFixed(2) + ')' } }));
+    });
+    return box;
+  }
+};
+
+/* v2.2: App_Charts.html ka professional engine (line / gauge / progress / kpiRing /
+   grouped / donut / bars) local Chart object me bhi merge kar dein — taake is file
+   ke andar ke call sites bhi pro version hi use karein (window.Chart ka getter
+   pehle se merged object deta hai). */
+try {
+  if (window.Chart && typeof window.Chart.line === 'function' && window.Chart.line !== Chart.line) {
+    Object.assign(Chart, window.Chart);
+  }
+} catch (e) { /* purane browser me chhor dein — tab basic charts hi kaam karenge */ }
+
+function svgEl(viewBox, cls, preserve) {
+  const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  s.setAttribute('viewBox', viewBox);
+  s.setAttribute('preserveAspectRatio', preserve || 'xMidYMid meet');
+  if (cls) s.setAttribute('class', cls);
+  s.style.width = '100%';
+  return s;
+}
+function short(s, n) { s = String(s === undefined || s === null ? '' : s); return s.length > n ? s.slice(0, n - 1) + '…' : s; }
+
+/* ============================== SHARED STATE =============================== */
+const Dash = {
+  range: Store.get('dash_range', 30),
+  loc: '',
+  timer: null,
+  ranges: [{ v: 7, l: '7d' }, { v: 14, l: '14d' }, { v: 30, l: '30d' }, { v: 90, l: '90d' }, { v: 365, l: '12m' }]
+};
+
+function rangeBar(onChange) {
+  return UI2.chips(Dash.ranges.map(r => ({ value: r.v, label: r.l })), Dash.range, v => {
+    Dash.range = v; Store.set('dash_range', v); onChange();
+  });
+}
+function dateRange() {
+  const to = new Date();
+  const from = new Date(to.getTime() - (Dash.range - 1) * 86400000);
+  return { from: from.toISOString().slice(0, 10), to: to.toISOString().slice(0, 10) };
+}
+
+/* =============================== MAIN DASHBOARD ============================ */
+App.registerScreen('dashboard', {
+  title: 'Dashboard', icon: '📊', perm: 'dashboard.view',
+  subtitle: () => App.state.branchName + ' · live',
+  actions() {
+    return [
+      { label: 'Refresh', icon: '↻', onClick: () => App.refresh() },
+      { label: 'Alerts', icon: '🔔', onClick: () => { try { openNotifPanel(); } catch (e) { App.go('insights', { tab: 'alerts' }); } } }
+    ];
+  },
+  render(body) {
+    const host = h('div'); body.appendChild(host);
+    host.appendChild(h('div', { class: 'row between wrap gap-8', style: { marginBottom: '10px' } },
+      rangeBar(() => App.refresh())));
+
+    const grid = h('div', { class: 'grid g4' });
+    const chartsRow = h('div', { class: 'grid g2-1', style: { marginTop: '12px' } });
+    const bottomRow = h('div', { class: 'grid g2', style: { marginTop: '12px' } });
+    const aiRow = h('div', { class: 'card', style: { marginTop: '12px' } });
+    host.append(grid, chartsRow, bottomRow, aiRow);
+
+    const ringRow = h('div', { class: 'grid g4', style: { marginTop: '12px' } });
+    const row3 = h('div', { class: 'grid g3', style: { marginTop: '12px' } });
+    host.append(ringRow, row3);
+
+    Promise.all([
+      API.call('reports.dashboard', { locationId: App.state.locationId }, { offlineFallback: () => ({ kpis: {}, trend: [], topItems: [], lowStock: [] }) }),
+      API.call('reports.salesByCategory', dateRange(), { offlineFallback: () => ({ rows: [] }) }),
+      API.call('notifications.summary', {}, { offlineFallback: () => ({ unread: 0, latest: [] }) }),
+      API.call('pay.reconcile', dateRange(), { offlineFallback: () => ({ rows: [], totals: {} }) }),
+      API.call('reports.receivables', {}, { offlineFallback: () => ({ rows: [] }) })
+    ]).then(([d, cat, notif, recon, recv]) => {
+      const k = d.kpis || {};
+      grid.innerHTML = '';
+      /* v2.28.0 (W5) — native append() null ko "null" text bana deta hai, is liye filter */
+      grid.append(...[
+        UI.kpi('💰', 'Aaj ki sale', fmt.moneyCompact(k.todaySales), (k.todayTxns || 0) + ' bills', 'brand'),
+        UI.kpi('📈', 'Mahana sale', fmt.moneyCompact(k.monthSales), '30 din', 'info'),
+        /* v2.28.0 (W5) — profit KPI sirf margin family wale ko (backend bhi strip karta hai) */
+        App.field('margin') ? UI.kpi('🏆', 'Munafa (30d)', fmt.moneyCompact(k.monthProfit), 'Gross profit', 'ok') : null,
+        UI.kpi('📒', 'Udhaar (receivable)', fmt.moneyCompact(k.receivables), (k.pendingDue ? 'Due ' + fmt.moneyCompact(k.pendingDue) : 'Sab clear'), 'warn'),
+        UI.kpi('🏬', 'Stock value', fmt.moneyCompact(k.inventoryValue), 'Retail ' + fmt.moneyCompact(k.inventoryRetail), ''),
+        UI.kpi('⚠', 'Low stock', fmt.num(k.lowStockCount), 'Items', k.lowStockCount > 0 ? 'err' : 'ok'),
+        UI.kpi('🧾', 'Avg bill', fmt.moneyCompact(k.avgTicket), 'Ticket size', ''),
+        UI.kpi('🏭', 'Payable', fmt.moneyCompact(k.payables), 'Suppliers', '')].filter(Boolean));
+
+      // ---- trend + category mix
+      const trendCard = h('div', { class: 'card' }, h('div', { class: 'card-head' },
+        h('h4', null, '📈 Sales trend (' + Dash.range + ' din)'),
+        h('div', { class: 'sp' },
+          h('div', { class: 'chart-seg' },
+            ...[['line', 'Line'], ['area', 'Area'], ['bars', 'Bars']].map(([m, lbl]) =>
+              h('button', { class: 'cseg' + (m === 'line' ? ' on' : ''), title: 'Chart style: ' + lbl,
+                'aria-label': 'Chart style ' + lbl,
+                onclick: e => {
+                  areaMode = m;
+                  Array.from(e.target.parentNode.children).forEach(b => b.classList.remove('on'));
+                  e.target.classList.add('on');
+                  paintTrend();
+                } }, lbl))))),
+        h('div', { class: 'card-body' }));
+      let areaMode = 'line';
+      const trendHost = h('div');
+      function paintTrend() {
+        trendHost.innerHTML = '';
+        const tr = d.trend || [];
+        const labels = tr.map(t => String(t.date || '').slice(5));
+        const series = [
+          { name: 'Sales', color: '#c2410c', values: tr.map(t => ({ y: Number(t.total) || 0 })) },
+          { name: 'Profit', color: '#0f7a3f', values: tr.map(t => ({ y: Number(t.profit) || 0 })) }
+        ];
+        if (areaMode === 'bars') {
+          trendHost.appendChild(Chart.bars(tr.map(t => ({ label: String(t.date || '').slice(5),
+            value: Number(t.total) || 0 })),
+            { height: 210, hideLabels: tr.length > 22,
+              color: '#c2410c', onClick: p => drillDay(p.label) }));
+        } else {
+          trendHost.appendChild(Chart.line(areaMode === 'area' ? [series[0]] : series, labels,
+            { height: 210, area: true, smooth: areaMode === 'line', maxLabels: 8,
+              colors: ['#c2410c', '#0f7a3f', '#1d63c9'] }));
+        }
+      }
+      function toggleArea() { areaMode = areaMode === 'area' ? 'bars' : 'area'; paintTrend(); }
+      function drillDay(day) {
+        Shared.sales({ payload: Object.assign({}, dateRange(), { pageSize: 50 }) })   /* v2.27.0 W3.T3 */
+          .then(all => {
+            const rows = (all || []).filter(r => String(r.date).indexOf(day) > -1);
+            UI2.modal({
+              title: 'Bills — ' + day, size: 'lg',
+              body: UI2.table({
+                screen: 'daybills', rows: rows, height: '50vh', exportName: 'bills-' + day,
+                columns: [
+                  { key: 'invoiceNo', label: 'Invoice' },
+                  { key: 'customerName', label: 'Customer' },
+                  { key: 'total', label: 'Total', num: true, render: r => fmt.money(r.total) },
+                  { key: 'paymentMethod', label: 'Method' },
+                  { key: 'status', label: 'Status', render: r => h('span', { class: 'badge ' + (r.status === 'PAID' ? 'ok' : 'warn') }, r.status) }
+                ],
+                onRow: r => App.go('sales', { open: r.id })
+              }),
+              actions: [{ label: 'Close', onClick: c => c() }]
+            });
+          });
+      }
+      paintTrend();
+      trendCard.lastChild.appendChild(trendHost);
+      // top items bars
+      const topCard = h('div', { class: 'card' }, h('div', { class: 'card-head' },
+        h('h4', null, '🏆 Top items (30d)')), h('div', { class: 'card-body' },
+        Chart.bars((d.topItems || []).slice(0, 8).map(i => ({ label: i.name, value: i.revenue, itemId: i.itemId })),
+          { horizontal: true, showValues: true,
+            color: '#1d63c9', onClick: it => App.go('items', { open: it.itemId }) })));
+      chartsRow.append(trendCard, topCard);
+
+      // ---- category donut + payment mix + low stock + alerts
+      const catRows = (cat.rows || []).slice(0, 8);
+      const catCard = h('div', { class: 'card' }, h('div', { class: 'card-head' },
+        h('h4', null, '🗂 Category mix')), h('div', { class: 'card-body' },
+        catRows.length
+          ? Chart.donut(catRows.map(r => ({ label: r.category || 'Other', value: r.revenue || r.total || 0 })),
+            { size: 168, centerLabel: 'Revenue' })
+          : h('div', { class: 'tbl-empty' }, 'Is range me koi sale nahi')));
+
+      const lowCard = h('div', { class: 'card' }, h('div', { class: 'card-head' },
+        h('h4', null, '⚠ Low stock'),
+        h('button', { class: 'btn sm sec', onclick: () => App.go('inventory') }, 'Manage')),
+        h('div', { class: 'card-body tight' },
+          (d.lowStock || []).length
+            ? (d.lowStock || []).slice(0, 6).map(it => h('div', { class: 'list-item' },
+              h('div', { class: 'li-main' }, h('b', null, it.name),
+                h('span', null, it.code + ' · reorder at ' + it.reorderLevel)),
+              h('span', { class: 'badge ' + (it.qty <= 0 ? 'err' : 'warn') }, it.qty)))
+            : h('div', { class: 'tbl-empty' }, 'Sab theek hai 🎉')));
+
+      bottomRow.append(catCard, lowCard);
+
+      /* ---------- v2.2: KPI rings (circular gauges) ---------- */
+      ringRow.innerHTML = '';
+      const sold = Number(k.monthSales || 0), profit = Number(k.monthProfit || 0);
+      const margin = sold ? (profit / sold) * 100 : 0;
+      const lowN = Number(k.lowStockCount || 0);
+      const stockHealth = Math.max(0, 100 - (lowN / Math.max(1, lowN + 40)) * 100);
+      const recvTotal = Number(k.receivables || 0);
+      const recvPaid = Math.max(0, recvTotal - Number(k.pendingDue || 0));
+      const recovery = recvTotal ? (recvPaid / recvTotal) * 100 : 100;
+      const target = Number((App.state.settings || {})['biz.monthTarget'] || 0);
+      const targetPct = target ? (sold / target) * 100 : 0;
+      App.fieldFilter([
+        { pct: margin, label: 'Gross margin', sub: fmt.money(profit), value: margin.toFixed(1) + '%', family: 'margin' },
+        { pct: stockHealth, label: 'Stock health', sub: lowN + ' low items', value: stockHealth.toFixed(0) + '%' },
+        { pct: recovery, label: 'Udhaar recovery', sub: fmt.money(recvPaid) + ' / ' + fmt.money(recvTotal), value: recovery.toFixed(0) + '%' },
+        target ? { pct: targetPct, label: 'Month target', sub: fmt.money(sold) + ' / ' + fmt.money(target), value: targetPct.toFixed(0) + '%' }
+               : { pct: 100, label: 'Aaj ki sale', sub: (k.todayTxns || 0) + ' bills', value: fmt.money(k.todaySales) }
+      ]).forEach(g => ringRow.appendChild(h('div', { class: 'card' },
+        h('div', { class: 'card-body' }, Chart.gauge(g.pct, g.label, g.sub, { size: 118, value: g.value })))));
+
+      /* ---------- v2.2: payment mix donut + receivables / margin progress ---------- */
+      row3.innerHTML = '';
+      const pmRows = ((recon && recon.rows) || []).filter(r => Number(r.gross) > 0);
+      row3.appendChild(h('div', { class: 'card' },
+        h('div', { class: 'card-head' }, h('h4', null, '💳 Payment mix'),
+          h('button', { class: 'btn sm sec', onclick: () => App.go('money') }, 'Detail')),
+        h('div', { class: 'card-body' },
+          pmRows.length
+            ? Chart.donut(pmRows.map(r => ({ label: r.label || r.method, value: Number(r.gross) })),
+              { size: 168, thickness: 22, centerLabel: 'Received' })
+            : Chart.empty('Is range me koi payment nahi'))));
+
+      const recvRows = ((recv && recv.rows) || []).slice(0, 6);
+      const recvMax = Math.max.apply(null, recvRows.map(x => Number(x.balance !== undefined ? x.balance : x.due) || 0).concat([1]));
+      row3.appendChild(h('div', { class: 'card' },
+        h('div', { class: 'card-head' }, h('h4', null, '📒 Udhaar (receivables)'),
+          h('button', { class: 'btn sm sec', onclick: () => App.go('parties', { tab: 'customers' }) }, 'Sab')),
+        h('div', { class: 'card-body' },
+          recvRows.length
+            ? Chart.progress(recvRows.map(r => ({
+                label: r.customerName || r.name || 'Customer',
+                value: Number(r.balance !== undefined ? r.balance : r.due) || 0,
+                max: recvMax, display: fmt.money(r.balance !== undefined ? r.balance : r.due) })), {})
+            : Chart.empty('Koi udhaar nahi 🎉'))));
+
+      const rTotals = (recon && recon.totals) || {};
+      row3.appendChild(h('div', { class: 'card' },
+        h('div', { class: 'card-head' }, h('h4', null, '🏆 Margin & fees')),
+        h('div', { class: 'card-body' },
+          Chart.progress([
+            { label: 'Gross margin (30d)', value: margin, max: 100, display: margin.toFixed(1) + '%', color: '#0f7a3f' },
+            { label: 'Payment fees (MDR)', value: Number(rTotals.fee || 0),
+              max: Math.max(1, Number(rTotals.gross || 0)), display: fmt.money(rTotals.fee || 0), color: '#b45309' },
+            { label: 'Pending cheques', value: Number(rTotals.pendingAmount || 0),
+              max: Math.max(1, Number(rTotals.gross || 0)), display: fmt.money(rTotals.pendingAmount || 0), color: '#7e22ce' }
+          ], {}))));
+
+      // ---- quick actions (POS feel)
+      const qa = h('div', { class: 'card', style: { marginTop: '12px' } },
+        h('div', { class: 'card-head' }, h('h4', null, '⚡ Quick actions')),
+        h('div', { class: 'card-body' },
+          h('div', { class: 'chips' },
+            h('button', { class: 'chip2', onclick: () => App.go('pos') }, '🧾 New sale'),
+            h('button', { class: 'chip2', onclick: () => App.go('items') }, '📦 Add item'),
+            h('button', { class: 'chip2', onclick: () => App.go('parties', { tab: 'customers' }) }, '💰 Receive udhaar'),
+            h('button', { class: 'chip2', onclick: () => App.go('shop') }, '🏪 Shop close'),
+            h('button', { class: 'chip2', onclick: () => App.go('purchase', { reorder: true }) }, '🚚 Reorder stock'),
+            h('button', { class: 'chip2', onclick: () => App.go('insights', { tab: 'pnl' }) }, '🏆 P&L'),
+            h('button', { class: 'chip2', onclick: () => App.go('warehouse') }, '🏗 Warehouse'),
+            h('button', { class: 'chip2', onclick: () => App.openAI() }, '✨ Ask AI'))));
+      host.appendChild(qa);
+
+      // ---- AI insights
+      aiRow.append(
+        h('div', { class: 'card-head' }, h('h4', null, '✨ AI insights & suggestions'),
+          h('div', { class: 'sp' },
+            h('button', { class: 'btn sm', onclick: () => App.openAI() }, '💬 AI se poochain'))),
+        h('div', { class: 'card-body' }, aiInsights(k, d, notif)));
+    }).catch(e => {
+      host.appendChild(h('div', { class: 'empty' }, '⚠ ' + e.message));
+    });
+  }
+});
+
+/** Rule-based + AI blended insight cards (works offline too) */
+function aiInsights(k, d, notif) {
+  const cards = [];
+  const add = (icon, title, body, tone, action) => cards.push(h('div', { class: 'insight ' + (tone || '') },
+    h('div', { class: 'ins-ico' }, icon),
+    h('div', { class: 'ins-body' }, h('b', null, title), h('p', null, body)),
+    action ? h('button', { class: 'btn sm sec', onclick: action.onClick }, action.label) : ''));
+
+  if ((k.lowStockCount || 0) > 0)
+    add('📦', k.lowStockCount + ' items reorder level par',
+      'Stock khatam honay se pehlay purchase order banaayein — sabse kam ' +
+      ((d.lowStock || [])[0] || {}).name + ' hai.', 'warn',
+      { label: 'Reorder', onClick: () => App.go('purchase', { reorder: true }) });
+
+  if ((k.receivables || 0) > 0)
+    add('📒', fmt.money(k.receivables) + ' udhaar baqaya',
+      'Customers se recovery ka plan banaayein; purani invoices pehle follow up karein.', 'warn',
+      { label: 'Receivables', onClick: () => App.go('insights', { tab: 'receivables' }) });
+
+  if ((k.payables || 0) > 0)
+    add('🏭', fmt.money(k.payables) + ' suppliers ko dena hai',
+      'Payment terms ke mutabiq clearing se relationship aur discount terms behtar hoti hain.', '',
+      { label: 'Payables', onClick: () => App.go('insights', { tab: 'payables' }) });
+
+  const trend = d.trend || [];
+  if (trend.length >= 7) {
+    const last7 = trend.slice(-7).reduce((a, t) => a + Number(t.total || 0), 0);
+    const prev7 = trend.slice(-14, -7).reduce((a, t) => a + Number(t.total || 0), 0);
+    const delta = prev7 ? ((last7 - prev7) / prev7 * 100) : 0;
+    add(delta >= 0 ? '📈' : '📉',
+      (delta >= 0 ? 'Growth ' : 'Kami ') + Math.abs(delta).toFixed(1) + '% (hafta vs pichla hafta)',
+      'Is haftay ' + fmt.money(last7) + ' vs pichlay haftay ' + fmt.money(prev7) + '.',
+      delta >= 0 ? 'ok' : 'warn');
+  }
+  if ((k.monthProfit || 0) && (k.monthSales || 0)) {
+    const margin = (k.monthProfit / k.monthSales * 100);
+    add('🏆', 'Gross margin ' + margin.toFixed(1) + '%',
+      'Munafa ' + fmt.money(k.monthProfit) + ' on ' + fmt.money(k.monthSales) +
+      ' sales · discount ' + fmt.money(k.monthDiscount) + '.', margin > 18 ? 'ok' : 'warn',
+      { label: 'P&L', onClick: () => App.go('insights', { tab: 'pnl' }) });
+  }
+  if ((notif.unread || 0) > 0)
+    add('🔔', notif.unread + ' alerts hain',
+      'Low stock, expiry aur udhaar ki alerts abhi check karein.', 'warn',
+      { label: 'Dekhein', onClick: () => { try { openNotifPanel(); } catch (e) { } } });
+
+  // live AI suggestions (server side) if available
+  const live = h('div', { class: 'insights-grid' }, cards);
+  if (navigator.onLine) {
+    API.call('ai.suggest', {}).then(s => {
+      const list = (s && (s.suggestions || s.rows || s.items)) || [];
+      if (!list.length) return;
+      list.slice(0, 3).forEach(x => cards.push(h('div', { class: 'insight ai' },
+        h('div', { class: 'ins-ico' }, '✨'),
+        h('div', { class: 'ins-body' }, h('b', null, x.title || 'AI suggestion'),
+          h('p', null, x.body || x.text || x.message || '')))));
+      live.innerHTML = ''; cards.forEach(c => live.appendChild(c));
+    }).catch(() => { });
+  }
+  return live;
+}
+
+/* ============================== INSIGHTS HUB =============================== */
+App.registerScreen('insights', {
+  title: 'Insights & Dashboards', icon: '📈', perm: 'reports.view',
+  subtitle: 'Customers · receivables · payables · P&L · inventory',
+  actions() {
+    return [{ label: 'Refresh', icon: '↻', onClick: () => App.refresh() },
+    { label: 'Export CSV', icon: '⬇', onClick: () => UI.toast('Har table par CSV button hai', 'warn') }];
+  },
+  render(body) {
+    const host = h('div'); body.appendChild(host);
+    host.appendChild(h('div', { class: 'row between wrap gap-8', style: { marginBottom: '10px' } },
+      rangeBar(() => App.refresh())));
+    UI2.tabs(host, {
+      level: 1, active: (App.params && App.params.tab) || 'customers',
+      tabs: [
+        { id: 'customers', label: 'Customers', icon: '👥', render: renderCustomersDash },
+        { id: 'receivables', label: 'Receivables', icon: '📒', render: renderReceivablesDash },
+        { id: 'payables', label: 'Payables', icon: '🏭', render: renderPayablesDash },
+        { id: 'pnl', label: 'Profit & Loss', icon: '🏆', render: renderPnlDash },
+        { id: 'inventory', label: 'Inventory', icon: '🏬', render: renderInventoryDash },
+        { id: 'alerts', label: 'Alerts', icon: '🔔', render: renderAlertsDash }
+      ]
+    });
+  }
+});
+
+function renderCustomersDash(c) {
+  const host = h('div'); c.appendChild(host);
+  Promise.all([
+    Shared.customers({ withBalance: true, limit: 500 }),   /* v2.27.0 W3.T3 */
+    API.call('reports.salesByItem', dateRange(), { offlineFallback: () => ({ rows: [] }) })
+  ]).then(([rows]) => {
+    const withBal = rows.filter(r => Number(r.balance ?? r.bal ?? 0) > 0);
+    const totalBal = withBal.reduce((a, r) => a + Number(r.balance ?? r.bal ?? 0), 0);
+    const top = withBal.slice().sort((a, b) => (b.balance ?? b.bal ?? 0) - (a.balance ?? a.bal ?? 0)).slice(0, 8);
+    host.appendChild(UI2.kpiGrid([
+      { icon: '👥', label: 'Customers', value: rows.length, cls: 'info' },
+      { icon: '📒', label: 'Udhaar customers', value: withBal.length, cls: 'warn' },
+      { icon: '💰', label: 'Total udhaar', value: fmt.money(totalBal), cls: 'err' },
+      { icon: '🎁', label: 'Loyalty points', value: fmt.num(rows.reduce((a, r) => a + Number(r.points || 0), 0)) }
+    ]));
+    host.appendChild(UI2.section('Sabse zyada udhaar'));
+    host.appendChild(h('div', { class: 'grid g2-1' },
+      h('div', { class: 'card' }, h('div', { class: 'card-body' },
+        top.length ? Chart.bars(top.map(r => ({ label: r.name, value: r.balance ?? r.bal ?? 0 })),
+          { horizontal: true, onClick: r => App.go('parties', { tab: 'customers', open: r.id }) })
+          : h('div', { class: 'tbl-empty' }, 'Koi udhaar nahi 🎉'))),
+      h('div', { class: 'card' }, h('div', { class: 'card-body' },
+        Chart.donut([
+          { label: 'With udhaar', value: withBal.length, color: '#be123c' },
+          { label: 'Clear', value: Math.max(0, rows.length - withBal.length), color: '#0f7a3f' }
+        ], { size: 160, centerLabel: 'Customers' })))));
+
+    host.appendChild(UI2.section('Customer list'));
+    host.appendChild(UI2.table({
+      screen: 'dash_customers', rows: rows, height: '46vh', exportName: 'customers-dashboard',
+      columns: [
+        { key: 'code', label: 'Code' },
+        { key: 'name', label: 'Customer', render: r => h('div', null, h('b', null, r.name),
+            h('div', { style: { fontSize: 'var(--fs-xs)', color: 'var(--muted)' } }, r.phone || '')) },
+        { key: 'customerTypeId', label: 'Type', render: r => ((App.state.customerTypes || []).find(t => t.id === r.customerTypeId) || {}).name || '—' },
+        { key: 'balance', label: 'Balance', num: true, render: r => h('b', { style: { color: Number(r.balance ?? r.bal ?? 0) > 0 ? 'var(--err)' : 'var(--ok)' } }, fmt.money(r.balance ?? r.bal ?? 0)) },
+        { key: 'creditLimit', label: 'Limit', num: true, render: r => fmt.money(r.creditLimit) },
+        { key: 'points', label: 'Points', num: true }
+      ],
+      rowActions: r => [
+        { icon: '📒', onClick: () => App.go('parties', { tab: 'customers', open: r.id }) },
+        { icon: '💰', onClick: () => App.go('parties', { tab: 'customers', open: r.id }) }
+      ],
+      onRow: r => App.go('parties', { tab: 'customers', open: r.id })
+    }));
+  }).catch(e => host.appendChild(h('div', { class: 'empty' }, e.message)));
+}
+
+function renderReceivablesDash(c) {
+  const host = h('div'); c.appendChild(host);
+  API.call('reports.receivables', {}, { offlineFallback: () => ({ rows: [], total: 0 }) }).then(res => {
+    const rows = (res.rows || []).filter(r => Number(r.balance) > 0);
+    const buckets = [
+      { label: '0-30 din', value: 0, color: '#0f7a3f' },
+      { label: '31-60 din', value: 0, color: '#b45309' },
+      { label: '61-90 din', value: 0, color: '#c2410c' },
+      { label: '90+ din', value: 0, color: '#be123c' }
+    ];
+    // ageing from latest unpaid invoices
+    const now = Date.now();
+    const sales = [];
+    try { } catch (e) { }
+    Shared.sales({ pageSize: 400 }).then(all => {   /* v2.27.0 W3.T3 */
+      (all || []).filter(s => Number(s.due) > 0.5).forEach(s => {
+        const age = Math.floor((now - new Date(s.date).getTime()) / 86400000);
+        const b = age <= 30 ? 0 : age <= 60 ? 1 : age <= 90 ? 2 : 3;
+        buckets[b].value += Number(s.due);
+      });
+      host.innerHTML = '';
+      host.appendChild(UI2.kpiGrid([
+        { icon: '📅', label: 'Pichhla udhaar (prev)', value: fmt.money(res.prevTotal || 0), cls: 'info' },
+        { icon: '➕', label: 'Naya udhaar', value: fmt.money(res.newTotal || 0), cls: 'warn' },
+        { icon: '📒', label: 'Total receivable (closing)', value: fmt.money(res.total || 0), cls: 'err' },
+        { icon: '👥', label: 'Customers', value: rows.length },
+        { icon: '✅', label: 'Wasooli', value: fmt.money(res.settledTotal || 0), cls: 'ok' },
+        { icon: '⚠', label: '90+ din', value: fmt.money(buckets[3].value), cls: 'err' }
+      ], 3));
+      host.appendChild(h('div', { class: 'grid g2-1' },
+        h('div', { class: 'card' }, h('div', { class: 'card-head' }, h('h4', null, '⏳ Ageing (bucket)')),
+          h('div', { class: 'card-body' }, Chart.bars(buckets.map(b => ({ label: b.label, value: b.value, color: b.color })), { height: 200 }))),
+        h('div', { class: 'card' }, h('div', { class: 'card-head' }, h('h4', null, 'Split')),
+          h('div', { class: 'card-body' }, Chart.donut(buckets, { size: 170, centerLabel: 'Receivable' })))));
+      host.appendChild(UI2.section('Customer-wise udhaar'));
+      host.appendChild(UI2.table({
+        screen: 'dash_recv', rows: rows, height: '44vh', exportName: 'receivables',
+        columns: [
+          { key: 'code', label: 'Code' }, { key: 'name', label: 'Customer' },
+          { key: 'phone', label: 'Phone', render: r => fmt.phone(r.phone) },
+          { key: 'prevBalance', label: 'Prev', num: true, render: r => h('span', { class: 'muted' }, fmt.money(r.prevBalance)) },
+          { key: 'newAmount', label: 'Naya', num: true, render: r => fmt.money(r.newAmount) },
+          { key: 'settled', label: 'Wasooli', num: true, render: r => fmt.money(r.settled) },
+          { key: 'balance', label: 'Closing', num: true, render: r => h('b', { style: { color: 'var(--err)' } }, fmt.money(r.balance)) }
+        ],
+        rowActions: r => [{ icon: '💰', label: 'Receive', onClick: () => App.go('parties', { tab: 'customers', open: r.id }) }],
+        onRow: r => App.go('parties', { tab: 'customers', open: r.id })
+      }));
+    }).catch(() => { });
+  }).catch(e => host.appendChild(h('div', { class: 'empty' }, e.message)));
+}
+
+function renderPayablesDash(c) {
+  const host = h('div'); c.appendChild(host);
+  API.call('reports.payables', {}, { offlineFallback: () => ({ rows: [], total: 0 }) }).then(res => {
+    const rows = res.rows || [];
+    host.appendChild(UI2.kpiGrid([
+      { icon: '📅', label: 'Pichhla baqaya (prev)', value: fmt.money(res.prevTotal || 0), cls: 'info' },
+      { icon: '➕', label: 'Naya purchase', value: fmt.money(res.newTotal || 0), cls: 'warn' },
+      { icon: '🏭', label: 'Total payable (closing)', value: fmt.money(res.total || 0), cls: 'err' },
+      { icon: '✅', label: 'Payment', value: fmt.money(res.settledTotal || 0), cls: 'ok' },
+      { icon: '🧾', label: 'Suppliers', value: rows.length },
+      { icon: '📦', label: 'Pending PO', value: '—' }
+    ], 3));
+    host.appendChild(UI2.section('Supplier-wise payable'));
+    host.appendChild(UI2.table({
+      screen: 'dash_pay', rows: rows, height: '46vh', exportName: 'payables',
+      columns: [
+        { key: 'code', label: 'Code' }, { key: 'name', label: 'Supplier' },
+        { key: 'phone', label: 'Phone', render: r => fmt.phone(r.phone) },
+        { key: 'prevBalance', label: 'Pichhla baqaya', num: true, render: r => h('span', { class: 'muted' }, fmt.money(r.prevBalance)) },
+        { key: 'newAmount', label: 'Purchase', num: true, render: r => fmt.money(r.newAmount) },
+        { key: 'settled', label: 'Paid', num: true, render: r => fmt.money(r.settled) },
+        { key: 'balance', label: 'Dena hai (closing)', num: true, render: r => h('b', { style: { color: 'var(--err)' } }, fmt.money(r.balance)) }
+      ],
+      rowActions: r => [{ icon: '💸', label: 'Pay', onClick: () => App.go('parties', { tab: 'suppliers', open: r.id }) }],
+      onRow: r => App.go('parties', { tab: 'suppliers', open: r.id })
+    }));
+  }).catch(e => host.appendChild(h('div', { class: 'empty' }, e.message)));
+}
+
+function renderPnlDash(c) {
+  const host = h('div'); c.appendChild(host);
+  const dr = dateRange();
+  Promise.all([
+    API.call('reports.profit', dr, { offlineFallback: () => ({}) }),
+    API.call('reports.salesByCategory', dr, { offlineFallback: () => ({ rows: [] }) }),
+    API.call('reports.salesByItem', dr, { offlineFallback: () => ({ rows: [] }) })
+  ]).then(([p, cat, items]) => {
+    const revenue = Number(p.revenue || 0), cogs = Number(p.cogs || 0);
+    const gross = Number(p.grossProfit ?? (revenue - cogs));
+    const exp = Number(p.expenses || 0);
+    const net = Number(p.net ?? (gross - exp));
+    host.appendChild(UI2.kpiGrid([
+      { icon: '💰', label: 'Revenue', value: fmt.money(revenue), cls: 'brand' },
+      { icon: '📥', label: 'COGS', value: fmt.money(cogs) },
+      { icon: '🏆', label: 'Gross profit', value: fmt.money(gross), cls: gross >= 0 ? 'ok' : 'err' },
+      { icon: '🧾', label: 'Expenses', value: fmt.money(exp), cls: 'warn' },
+      { icon: '✨', label: 'Net profit', value: fmt.money(net), cls: net >= 0 ? 'ok' : 'err' },
+      { icon: '📊', label: 'Margin', value: revenue ? (gross / revenue * 100).toFixed(1) + '%' : '0%' }
+    ], 3));
+
+    host.appendChild(h('div', { class: 'grid g2' },
+      h('div', { class: 'card' }, h('div', { class: 'card-head' }, h('h4', null, '💧 P&L waterfall')),
+        h('div', { class: 'card-body' },
+          Chart.bars([
+            { label: 'Revenue', value: revenue, color: '#1d63c9' },
+            { label: 'COGS', value: cogs, color: '#be123c' },
+            { label: 'Gross', value: gross, color: '#0f7a3f' },
+            { label: 'Expense', value: exp, color: '#b45309' },
+            { label: 'Net', value: net, color: '#7e22ce' }
+          ], { height: 200 }))),
+      h('div', { class: 'card' }, h('div', { class: 'card-head' }, h('h4', null, '🗂 Profit by category')),
+        h('div', { class: 'card-body' },
+          (cat.rows || []).length
+            ? Chart.donut((cat.rows || []).slice(0, 7).map(r => ({ label: r.category || 'Other', value: r.profit || r.revenue || 0 })),
+              { size: 180, centerLabel: 'Profit' })
+            : h('div', { class: 'tbl-empty' }, 'Data nahi')))));
+
+    host.appendChild(UI2.section('Item-wise profitability'));
+    host.appendChild(UI2.table({
+      screen: 'dash_pnl_items', rows: (items.rows || []).slice(0, 200), height: '44vh', exportName: 'pnl-items',
+      columns: [
+        { key: 'code', label: 'Code' }, { key: 'name', label: 'Item' },
+        { key: 'qty', label: 'Qty', num: true },
+        { key: 'revenue', label: 'Revenue', num: true, render: r => fmt.money(r.revenue) },
+        { key: 'cost', label: 'Cost', num: true, render: r => fmt.money(r.cost) },
+        { key: 'profit', label: 'Profit', num: true, render: r => h('b', { style: { color: r.profit >= 0 ? 'var(--ok)' : 'var(--err)' } }, fmt.money(r.profit)) },
+        { key: 'marginPct', label: 'Margin %', num: true, render: r => (r.revenue ? (r.profit / r.revenue * 100).toFixed(1) : '0') + '%' }
+      ]
+    }));
+  }).catch(e => host.appendChild(h('div', { class: 'empty' }, e.message)));
+}
+
+function renderInventoryDash(c) {
+  const host = h('div'); c.appendChild(host);
+  Promise.all([
+    API.call('reports.inventoryValuation', {}, { offlineFallback: () => ({ rows: [], summary: {} }) }),
+    API.call('warehouse.overview', { locationId: App.state.locationId }, { offlineFallback: () => ({}) })
+  ]).then(([val, wh]) => {
+    const rows = val.rows || [], sum = val.summary || {};
+    const byCat = {};
+    rows.forEach(r => { byCat[r.category || 'Other'] = (byCat[r.category || 'Other'] || 0) + Number(r.value || 0); });
+    const catData = Object.keys(byCat).map(k => ({ label: k, value: byCat[k] })).sort((a, b) => b.value - a.value).slice(0, 8);
+    host.appendChild(UI2.kpiGrid([
+      { icon: '🏬', label: 'Stock value (cost)', value: fmt.money(sum.costValue || 0), cls: 'brand' },
+      { icon: '🏷', label: 'Retail value', value: fmt.money(sum.retailValue || 0), cls: 'ok' },
+      { icon: '📦', label: 'SKUs', value: rows.length },
+      { icon: '🗄', label: 'Bins', value: wh.bins || 0, cls: 'info' },
+      { icon: '⚠', label: 'Low stock', value: wh.lowStock || 0, cls: 'warn' },
+      { icon: '🚫', label: 'Out of stock', value: wh.outOfStock || 0, cls: 'err' }
+    ]));
+    host.appendChild(h('div', { class: 'grid g2-1' },
+      h('div', { class: 'card' }, h('div', { class: 'card-head' }, h('h4', null, '📦 Value by category')),
+        h('div', { class: 'card-body' }, Chart.bars(catData, { horizontal: true, height: 220 }))),
+      h('div', { class: 'card' }, h('div', { class: 'card-head' }, h('h4', null, '🗂 Split')),
+        h('div', { class: 'card-body' }, Chart.donut(catData.slice(0, 6), { size: 170, centerLabel: 'Value' })))));
+    host.appendChild(UI2.section('Stock detail'));
+    host.appendChild(UI2.table({
+      screen: 'dash_inv', rows: rows, height: '42vh', exportName: 'inventory-valuation',
+      columns: [
+        { key: 'code', label: 'Code' }, { key: 'name', label: 'Item' },
+        { key: 'category', label: 'Category' },
+        { key: 'qty', label: 'Qty', num: true },
+        { key: 'avgCost', label: 'Avg cost', num: true, render: r => fmt.money(r.avgCost) },
+        { key: 'value', label: 'Value', num: true, render: r => fmt.money(r.value) }
+      ],
+      onRow: r => App.go('items', { open: r.itemId })
+    }));
+  }).catch(e => host.appendChild(h('div', { class: 'empty' }, e.message)));
+}
+
+function renderAlertsDash(c) {
+  const host = h('div'); c.appendChild(host);
+  API.call('notifications.list', { limit: 100 }, { offlineFallback: () => [] }).then(rows => {
+    host.appendChild(UI2.section('Alerts & notifications', [
+      h('button', { class: 'btn sm', onclick: async () => {
+        const r = await API.call('notifications.generate', {});
+        UI.toast((r.created || 0) + ' naye alerts', 'ok'); App.refresh();
+      } }, '⚡ Generate'),
+      h('button', { class: 'btn sm sec', onclick: async () => {
+        await API.call('notifications.readAll', {}); UI.toast('Sab read', 'ok'); App.refresh();
+      } }, '✓ Mark all read')
+    ]));
+    const sev = { ERR: 0, WARN: 0, INFO: 0 };
+    (rows || []).forEach(r => sev[r.severity] = (sev[r.severity] || 0) + 1);
+    host.appendChild(UI2.kpiGrid([
+      { icon: '⚠', label: 'Errors', value: sev.ERR || 0, cls: 'err' },
+      { icon: '!', label: 'Warnings', value: sev.WARN || 0, cls: 'warn' },
+      { icon: 'i', label: 'Info', value: sev.INFO || 0, cls: 'info' }
+    ], 3));
+    host.appendChild(UI2.table({
+      screen: 'dash_alerts', rows: rows || [], height: '44vh', exportName: 'alerts',
+      columns: [
+        { key: 'severity', label: '', render: r => r.severity === 'ERR' ? '⚠' : r.severity === 'WARN' ? '⚠' : 'ℹ' },
+        { key: 'title', label: 'Title' },
+        { key: 'body', label: 'Message' },
+        { key: 'createdAt', label: 'Time', render: r => fmt.rel(r.createdAt) },
+        { key: 'readAt', label: 'Read', render: r => r.readAt ? '✔' : h('span', { class: 'badge warn' }, 'new') }
+      ],
+      rowActions: r => [{ icon: '✓', onClick: async () => { await API.call('notifications.read', { id: r.id }); App.refresh(); } }]
+    }));
+  }).catch(e => host.appendChild(h('div', { class: 'empty' }, e.message)));
+}
+
+/* ============================ SHOP OPEN / CLOSE ============================ */
+App.registerScreen('shop', {
+  title: 'Shop Opening / Closing', icon: '🏪', perm: 'pos.access',
+  subtitle: () => App.state.branchName + ' · cash session',
+  actions() {
+    return [{ label: 'Refresh', icon: '↻', onClick: () => { loadShopState(); App.refresh(); } }];
+  },
+  render(body) {
+    const host = h('div', { class: 'shop-wrap' }); body.appendChild(host);
+    host.appendChild(UI2.skeleton ? UI2.skeleton(4) : h('div', { class: 'empty' }, 'Load ho raha hai…'));
+    renderShopScreen(host);
+  }
+});
+
+/* --------------------------- shop screen ------------------------------ */
+async function renderShopScreen(host) {
+  let ses = null, hist = [];
+  try {
+    [ses, hist] = await Promise.all([
+      API.call('cash.session.summary', {}, { offlineFallback: () => null }),
+      API.call('cash.session.history', { limit: 20 }, { offlineFallback: () => [] })
+    ]);
+  } catch (e) {
+    host.innerHTML = ''; host.appendChild(h('div', { class: 'empty' }, '⚠ ' + e.message)); return;
+  }
+  host.innerHTML = '';
+  if (!ses) { host.appendChild(shopClosedCard(() => renderShopScreen(host))); }
+  else { host.appendChild(shopOpenCard(ses, () => renderShopScreen(host))); }
+  host.appendChild(shopHistoryCard(hist || []));
+  host.appendChild(shopDayReportCard());
+}
+
+/* ==========================================================================
+   v2.6 §7 — AUTO DAY REPORTS: history + reprint / PDF / CSV / share
+   Shop khulte ya band hote hi report khud ban jati hai; yahan se baad mein
+   kabhi bhi print, PDF, Excel ya WhatsApp share kiya ja sakta hai.
+   ========================================================================== */
+function shopDayReportCard() {
+  const card = h('div', { class: 'card' });
+  const bodyEl = h('div', { class: 'card-body tight' });
+
+  card.appendChild(h('div', { class: 'card-head' },
+    h('h3', null, '📑 Day reports (auto)'),
+    h('div', { class: 'actions' },
+      h('button', {
+        class: 'btn sm sec', title: 'Abhi ke session ki report banaen',
+        onclick: async () => {
+          try {
+            await API.call('dayreport.generate', { kind: 'CLOSE' });
+            UI.toast('Report ban gayi ✅', 'ok');
+            shopDayReportRefresh(bodyEl);
+          } catch (e) { UI.toast(e.message || 'Report nahi ban saki', 'err'); }
+        }
+      }, '➕ Abhi banaen'),
+      h('button', { class: 'btn sm sec', title: 'Refresh', onclick: () => shopDayReportRefresh(bodyEl) }, '↻'))));
+  card.appendChild(bodyEl);
+  shopDayReportRefresh(bodyEl);
+  return card;
+}
+
+async function shopDayReportRefresh(bodyEl) {
+  bodyEl.innerHTML = '';
+  bodyEl.appendChild(UI2.skeleton ? UI2.skeleton(3) : h('div', { class: 'empty' }, 'Load ho raha hai…'));
+  let rows = [];
+  try {
+    rows = await API.call('dayreport.list', { limit: 30 }, { offlineFallback: () => [] }) || [];
+  } catch (e) { rows = []; }
+  bodyEl.innerHTML = '';
+  if (!rows.length) {
+    bodyEl.appendChild(h('div', { class: 'tbl-empty' },
+      'Abhi koi auto report nahi — shop open/close karte hi yahan aa jayegi'));
+    return;
+  }
+  rows.forEach(r => {
+    const kind = String(r.kind || '').toUpperCase();
+    const varAmt = Number(r.variance || 0);
+    bodyEl.appendChild(h('div', { class: 'po-line' },
+      h('div', { class: 'pl-name' },
+        h('b', null, (r.reportNo || r.id) + ' · ' + (kind === 'OPEN' ? '🌅 Opening' : '🌆 Closing')),
+        h('span', { class: 'pl-sub' },
+          (r.date || '') + ' · ' + (r.sessionNo || '') +
+          (r.method === 'AUTO' ? ' · auto' : ' · manual'))),
+      h('span', { class: 'pl-num' },
+        'Sales ' + fmt.money(r.netSales || 0)),
+      h('span', { class: 'pl-num' },
+        'Exp ' + fmt.money(r.expenseTotal || 0)),
+      h('span', { class: 'pl-num' + (varAmt !== 0 ? ' warn' : '') },
+        'Variance ' + fmt.money(varAmt)),
+      h('div', { class: 'actions' },
+        h('button', {
+          class: 'btn sm sec', title: 'Print / PDF',
+          onclick: () => openDayReportOutput(r.id, 'print')
+        }, '🖨'),
+        h('button', {
+          class: 'btn sm sec', title: 'PDF download',
+          onclick: () => openDayReportOutput(r.id, 'pdf')
+        }, '📄'),
+        h('button', {
+          class: 'btn sm sec', title: 'CSV / Excel',
+          onclick: async () => {
+            try {
+              const d = await API.call('dayreport.csv', { id: r.id });
+              downloadCsv(d.csv, d.filename);
+            } catch (e) { UI.toast(e.message || 'CSV nahi bana', 'err'); }
+          }
+        }, '⬇'),
+        h('button', {
+          class: 'btn sm', title: 'WhatsApp / share',
+          onclick: async () => {
+            try {
+              const d = await API.call('dayreport.html', { id: r.id });
+              const txt = (r.reportNo || 'Day report') + ' — ' + (r.date || '') +
+                '\nSales: ' + fmt.money(r.netSales || 0) +
+                '\nExpenses: ' + fmt.money(r.expenseTotal || 0) +
+                '\nClosing cash: ' + fmt.money(r.closingCash || 0) +
+                '\nVariance: ' + fmt.money(Number(r.variance || 0));
+              if (typeof Share !== 'undefined' && Share.text) Share.text(txt, r.reportNo || 'Day report');
+              else UI.toast('Share unavailable', 'warn');
+            } catch (e) { UI.toast(e.message || 'Share nahi ho saka', 'err'); }
+          }
+        }, '📤'))));
+  });
+}
+
+// Reserve the tab during the user click, before any asynchronous RPC.
+async function openDayReportOutput(id, mode) {
+  let tab;
+  try { tab=window.open('', '_blank'); } catch(e) { tab=null; }
+  if(!tab){UI.toast('Allow popups for this app, then click the report button again.', 'warn');return;}
+  try {
+    tab.opener=null;
+    tab.document.write('<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><title>Preparing report</title><p style="font:16px system-ui;padding:24px">Preparing your report…</p>');
+    tab.document.close();
+    const result=await API.call(mode==='pdf'?'dayreport.pdf':'dayreport.html',{id:id});
+    if(tab.closed)return;
+    if(mode==='pdf'){
+      if(!result || !result.url)throw new Error('PDF response has no file URL. Please retry.');
+      const url=new URL(result.url);
+      if(url.protocol!=='https:' || !['drive.google.com','docs.google.com'].includes(url.hostname))throw new Error('Unexpected PDF file URL.');
+      tab.location.replace(url.href);
+    } else {
+      if(!result || !result.html)throw new Error('Report response has no printable content.');
+      tab.document.open();tab.document.write(result.html);tab.document.close();
+      setTimeout(()=>{if(!tab.closed){try{tab.focus();tab.print();}catch(e){UI.toast('Print dialog unavailable. Use PDF download instead.','warn');}}},300);
+    }
+  } catch(e){try{if(!tab.closed)tab.close();}catch(ignored){}UI.toast(e.message||'Report could not be opened.','err');}
+}
+
+/* ------------------------- 1. shop CLOSED ----------------------------- */
+function shopClosedCard(onDone) {
+  const card = h('div', { class: 'card shop-hero closed' });
+  card.appendChild(h('div', { class: 'shop-hero-top' },
+    h('div', { class: 'shop-badge big' }, '🏪'),
+    h('div', { class: 'shop-hero-txt' },
+      h('h3', null, 'Shop band hai'),
+      h('p', null, 'Din shuru karte waqt drawer ki opening cash (float) darj karein. Day-end par expected vs counted ka farq khud nikal aayega.'))));
+
+  const f = UI2.form({
+    values: { openingCash: 0, notes: '' },
+    fields: [
+      { key: 'openingCash', label: 'Opening cash (float)', type: 'money', placeholder: '0' },
+      { key: 'openedAt', label: 'Opening time', type: 'time' },
+      { key: 'notes', label: 'Note (optional)', full: true }
+    ]
+  });
+  card.appendChild(h('div', { class: 'card-body' }, f.el,
+    h('div', { class: 'cfg-bar' },
+      h('button', { class: 'btn sec', onclick: () => dayReportModal('') }, '📄 Pichhli session ki report'),
+      h('button', { class: 'btn ok', onclick: async () => {
+        const v = f.values();
+        try {
+          await API.call('cash.session.open', { openingCash: Number(v.openingCash) || 0, notes: v.notes || '' });
+          UI.toast('Shop open ho gayi ✅', 'ok'); loadShopState(); onDone();
+        } catch (e) { UI.toast(e.message, 'err'); }
+      } }, '🔓 Open shop'),
+      h('span', { class: 'sp' }),
+      h('span', { class: 'pm-count' }, 'Sirf cash drawer ki rakam — bank/wallet alag'))));
+  return card;
+}
+
+/* -------------------------- 2. shop OPEN ------------------------------ */
+function shopOpenCard(ses, onDone) {
+  const wrap = h('div');
+  const t = ses.totals || {};
+  const mins = Math.max(0, Math.round((Date.now() - new Date(ses.openedAt).getTime()) / 60000));
+  const dur = mins >= 60 ? Math.floor(mins / 60) + 'h ' + (mins % 60) + 'm' : mins + 'm';
+
+  /* --- hero --- */
+  const hero = h('div', { class: 'card shop-hero open' },
+    h('div', { class: 'shop-hero-top' },
+      h('div', { class: 'shop-badge big live' }, '🏪'),
+      h('div', { class: 'shop-hero-txt' },
+        h('h3', null, 'Shop khuli hai', h('span', { class: 'live-dot' }, '')),
+        h('p', null, 'Session ' + (ses.sessionNo || ses.id) + ' · ' + fmt.date(ses.openedAt, true) +
+          ' · ' + dur + ' · ' + App.sessionMeta().name)),
+      h('div', { class: 'shop-hero-act' },
+        h('button', { class: 'btn sec', onclick: () => cashMoveModal('CASH_IN', ses, onDone) }, '⬇ Cash in'),
+        h('button', { class: 'btn sec', onclick: () => cashMoveModal('CASH_OUT', ses, onDone) }, '⬆ Cash out'),
+        h('button', { class: 'btn sec', onclick: () => dayReportModal(ses.id) }, '📄 Closing report'),
+        h('button', { class: 'btn danger', onclick: () => closeShopModal(ses, onDone) }, '🔒 Close shop'))));
+  wrap.appendChild(hero);
+
+  /* --- KPIs --- */
+  wrap.appendChild(UI2.kpiGrid([
+    { icon: '🔓', label: 'Opening cash', value: fmt.money(ses.openingCash), cls: 'info' },
+    { icon: '💵', label: 'Cash sales', value: fmt.money(t.cashIn), cls: 'ok' },
+    { icon: '💳', label: 'Card / wallet', value: fmt.money(t.card), cls: 'brand' },
+    { icon: '🧾', label: 'Expenses (cash)', value: fmt.money(t.expenses), cls: 'err' },
+    { icon: '↩', label: 'Refunds / payouts', value: fmt.money(t.cashOut), cls: 'warn' },
+    { icon: '🧮', label: 'Expected in drawer', value: fmt.money(ses.expectedCash), cls: 'brand' }
+  ]));
+
+  /* --- two columns: method breakdown + cash movements --- */
+  const grid = h('div', { class: 'grid g2', style: { marginTop: '12px' } });
+
+  grid.appendChild(h('div', { class: 'card' },
+    h('div', { class: 'card-head' }, h('h4', null, '💳 Payment method breakdown')),
+    h('div', { class: 'card-body tight' },
+      (ses.methods || []).length
+        ? UI2.table({
+            screen: 'shop_methods', height: '26vh', exportName: 'session-methods',
+            rows: ses.methods,
+            columns: [
+              { key: 'method', label: 'Method', render: r => h('span', { class: 'badge info' }, r.method) },
+              { key: 'count', label: 'Txns', num: true },
+              { key: 'amount', label: 'Amount', num: true, render: r => fmt.money(r.amount) }
+            ]
+          })
+        : h('div', { class: 'empty' }, 'Abhi koi payment nahi'))));
+
+  grid.appendChild(h('div', { class: 'card' },
+    h('div', { class: 'card-head' }, h('h4', null, '💸 Cash in / out log'),
+      h('button', { class: 'btn sm sec', onclick: () => cashMoveModal('CASH_IN', ses, onDone) }, '+ Add')),
+    h('div', { class: 'card-body tight' },
+      (ses.moves || []).length
+        ? UI2.table({
+            screen: 'shop_moves', height: '26vh', exportName: 'session-cash-moves',
+            rows: ses.moves,
+            columns: [
+              { key: 'date', label: 'Time', render: r => fmt.date(r.date, true) },
+              { key: 'type', label: 'Type', render: r => h('span',
+                { class: 'badge ' + (r.type === 'CASH_OUT' || r.type === 'DROP' ? 'err' : 'ok') },
+                (r.type || '').replace('CASH_', '')) },
+              { key: 'amount', label: 'Amount', num: true, render: r => fmt.money(r.amount) },
+              { key: 'reason', label: 'Reason' }
+            ]
+          })
+        : h('div', { class: 'empty' }, 'Koi cash movement nahi'))));
+
+  wrap.appendChild(grid);
+
+  /* --- expenses by category + day summary --- */
+  const sl = ses.sales || {};
+  wrap.appendChild(h('div', { class: 'card', style: { marginTop: '12px' } },
+    h('div', { class: 'card-head' }, h('h4', null, '📊 Day summary')),
+    h('div', { class: 'card-body tight' },
+      UI2.table({
+        screen: 'shop_day', height: '22vh', exportName: 'session-day-summary',
+        rows: [
+          { k: 'Bills', v: fmt.num(sl.count || 0) },
+          { k: 'Gross sales', v: fmt.money(sl.gross || 0) },
+          { k: 'Returns', v: fmt.money(sl.returns || 0) },
+          { k: 'Udhaar (credit given)', v: fmt.money(sl.udhaar || 0) },
+          { k: 'Card / wallet received', v: fmt.money(t.card || 0) },
+          { k: 'Cash expenses', v: fmt.money(t.expenses || 0) },
+          { k: 'Expected cash in drawer', v: fmt.money(ses.expectedCash || 0) }
+        ],
+        columns: [{ key: 'k', label: 'Head' }, { key: 'v', label: 'Amount', num: true }]
+      }))));
+
+  return wrap;
+}
+
+/* ---------------------- cash in / out modal --------------------------- */
+function cashMoveModal(type, ses, onDone) {
+  const isOut = type !== 'CASH_IN';
+  const reasons = isOut
+    ? ['Safe drop (bank deposit)', 'Petty cash expense', 'Supplier cash payment', 'Owner withdrawal', 'Other']
+    : ['Float top-up', 'Cash from owner', 'Change from bank', 'Other'];
+  const f = UI2.form({
+    values: { amount: '', reason: reasons[0], notes: '' },
+    fields: [
+      { key: 'amount', label: 'Amount', type: 'money', required: true },
+      { key: 'reason', label: 'Reason', type: 'select', options: reasons },
+      { key: 'notes', label: 'Detail', full: true }
+    ]
+  });
+  UI2.modal({
+    title: (isOut ? '⬆ Cash out' : '⬇ Cash in') + ' — session ' + (ses.sessionNo || ''),
+    size: 'sm', body: f.el,
+    actions: [{
+      label: isOut ? 'Cash out' : 'Cash in', cls: isOut ? 'danger' : 'ok', onClick: async c => {
+        const v = f.values();
+        if (!(Number(v.amount) > 0)) return UI.toast('Amount darj karein', 'err');
+        try {
+          await API.call('cash.move', {
+            type, amount: Number(v.amount), reason: v.reason,
+            notes: v.notes || v.reason, sessionId: ses.id
+          });
+          UI.toast((isOut ? 'Cash out' : 'Cash in') + ' recorded ✅', 'ok');
+          c(); onDone && onDone();
+        } catch (e) { UI.toast(e.message, 'err'); }
+      }
+    }, { label: 'Cancel', onClick: c => c() }]
+  });
+}
+
+/* ------------------------ close shop modal ---------------------------- */
+function closeShopModal(ses, onDone) {
+  const expected = Number(ses.expectedCash || 0);
+  const denoms = [5000, 1000, 500, 100, 50, 20, 10, 5, 2, 1];
+  const coins = [10, 5, 2, 1];
+  const state = {}; denoms.forEach(d => state[d] = 0);
+
+  const countGrid = h('div', { class: 'den-grid' });
+  const totalEl = h('div', { class: 'tot2 big' }, h('span', null, 'Counted'),
+    h('span', null, fmt.money(0)));
+  const diffEl = h('div', { class: 'tot2' });
+  const expEl = h('div', { class: 'tot2 muted' }, h('span', null, 'Expected'),
+    h('span', null, fmt.money(expected)));
+
+  function calc() {
+    const total = denoms.reduce((a, d) => a + d * (Number(state[d] || 0)), 0);
+    totalEl.innerHTML = '<span>Counted</span><span>' + fmt.money(total) + '</span>';
+    const diff = U_round(total - expected);
+    const cls = diff === 0 ? 'var(--ok)' : (diff > 0 ? 'var(--warn)' : 'var(--err)');
+    diffEl.innerHTML = '<span>Difference ' + (diff === 0 ? '' : diff > 0 ? '(extra)' : '(short)') +
+      '</span><span style="color:' + cls + '">' + fmt.money(diff) + '</span>';
+    return { total, diff };
+  }
+  function U_round(n) { return Math.round((Number(n) || 0) * 100) / 100; }
+
+  denoms.forEach(d => {
+    const inp = h('input', {
+      class: 'f-input den-in', type: 'number', min: '0', value: 0,
+      inputmode: 'numeric', 'aria-label': fmt.money(d) + ' notes'
+    });
+    const sub = h('span', { class: 'den-sub' }, '0');
+    inp.oninput = () => {
+      state[d] = Number(inp.value || 0);
+      sub.textContent = fmt.money(d * state[d]);
+      calc();
+    };
+    countGrid.appendChild(h('div', { class: 'den-row' + (coins.indexOf(d) > -1 ? ' coin' : '') },
+      h('span', { class: 'den-lab' }, fmt.money(d).replace(/\.00$/, '')), inp,
+      h('span', { class: 'den-x' }, '×'), h('span', { class: 'den-sub' }, sub)));
+  });
+
+  const notes = h('textarea', { class: 'f-input', rows: 2, placeholder: 'Difference ki wajah / note (optional)' });
+  const body = h('div', { class: 'close-shop' },
+    expEl,
+    h('div', { class: 'hint' }, 'Har note ke bundle gin kar count mein daalein — difference khud nikal aayega.'),
+    countGrid, totalEl, diffEl,
+    h('label', { class: 'pf-lab' }, 'Closing note'), notes);
+
+  UI2.modal({
+    title: '🔒 Close shop — session ' + (ses.sessionNo || ''), size: 'md', body,
+    actions: [{
+      label: '🔒 Close & post difference', cls: 'ok', onClick: async c => {
+        const { total, diff } = calc();
+        if (!(await UI2.confirm('Shop close karein? Counted ' + fmt.money(total) +
+          ' · difference ' + fmt.money(diff)))) return;
+        try {
+          await API.call('cash.session.close', {
+            sessionId: ses.id, closingCash: total, difference: diff, notes: notes.value.trim()
+          });
+          UI.toast('Shop closed ✅ · difference ' + fmt.money(diff), 'ok', 3600);
+          loadShopState(); c(); onDone && onDone();
+          /* v2.5.1: closing report foran pesh karein (print / PDF / WhatsApp) */
+          setTimeout(() => dayReportModal(ses.id), 350);
+        } catch (e) { UI.toast(e.message, 'err'); }
+      }
+    }, { label: 'Cancel', onClick: c => c() }]
+  });
+  calc();
+}
+
+/* --------------------------- history card ----------------------------- */
+
+/* ================== DAY / SHIFT CLOSING REPORT (v2.5.1) ==================
+ * Professional day-end report: sales, payment methods, cash movements,
+ * expenses by head, top items, expected vs counted + variance.
+ * Ek hi HTML client par banta hai → print, PDF (server), WhatsApp, CSV sab isi se.
+ * ======================================================================== */
+function dayReportHtml(r) {
+  const st = App.state.settings || {};
+  const cur = r.currency || st.currencySymbol || 'Rs';
+  const m = v => cur + ' ' + Number(v || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const n = v => Number(v || 0).toLocaleString('en-US');
+  const t = r.totals || {};
+  const dur = r.durationMins >= 60 ? Math.floor(r.durationMins / 60) + 'h ' + (r.durationMins % 60) + 'm' : (r.durationMins || 0) + 'm';
+  const rows = (arr, cell) => (arr || []).length
+    ? arr.map(cell).join('') : '<tr><td colspan="6" class="c muted">Koi entry nahi</td></tr>';
+
+  const methods = rows(r.methods, x => '<tr><td>' + esc(x.method) + '</td><td class="c">' + n(x.count) +
+    '</td><td class="r">' + m(x.amount) + '</td></tr>');
+  const moves = rows(r.moves, x => '<tr><td>' + fmt.date(x.date, true) + '</td><td>' + esc(x.type) +
+    '</td><td>' + esc(x.reason || '—') + '</td><td class="r">' + m(x.amount) + '</td></tr>');
+  const exps = rows(r.expenses, x => '<tr><td>' + esc(x.category) + '</td><td class="c">' + n(x.count) +
+    '</td><td class="r">' + m(x.amount) + '</td></tr>');
+  const top = rows(r.top, x => '<tr><td>' + esc(x.code || '') + '</td><td>' + esc(x.name) +
+    '</td><td class="c">' + n(x.qty) + '</td><td class="r">' + m(x.amount) + '</td></tr>');
+  const hours = rows(r.hours, x => '<tr><td class="c">' + esc(x.hour) + ':00</td><td class="c">' + n(x.bills) +
+    '</td><td class="r">' + m(x.amount) + '</td></tr>');
+
+  const variance = (r.variance === null || r.variance === undefined) ? null : Number(r.variance);
+  const vCls = variance === null ? '' : (variance === 0 ? 'ok' : 'bad');
+
+  return '<div class="doc dayrep">' +
+    '<header class="dr-head">' +
+      '<div class="dr-left">' +
+        '<div class="biz">' + esc(r.business ? r.business.name : (st.businessName || 'Haseeb Autos')) + '</div>' +
+        (r.business && r.business.ur ? '<div class="ur">' + esc(r.business.ur) + '</div>' : '') +
+        '<div class="sub">' + esc(r.locationName || App.state.branchName || '') +
+          (r.locationCode ? ' (' + esc(r.locationCode) + ')' : '') + '</div>' +
+        (r.business && r.business.phone ? '<div class="sub">' + esc(r.business.phone) + '</div>' : '') +
+        (r.business && r.business.ntn ? '<div class="sub">NTN: ' + esc(r.business.ntn) + '</div>' : '') +
+      '</div>' +
+      '<div class="dr-right">' +
+        '<div class="dtype">DAY CLOSING REPORT</div>' +
+        '<div class="kv"><span>Session</span><b>' + esc(r.sessionNo || '') + '</b></div>' +
+        '<div class="kv"><span>Cashier</span><b>' + esc(r.cashier || '') + '</b></div>' +
+        '<div class="kv"><span>Opened</span><b>' + fmt.date(r.openedAt, true) + '</b></div>' +
+        '<div class="kv"><span>Closed</span><b>' + (r.closedAt ? fmt.date(r.closedAt, true) : 'Abhi khuli hai') + '</b></div>' +
+        '<div class="kv"><span>Duration</span><b>' + dur + '</b></div>' +
+      '</div>' +
+    '</header>' +
+
+    '<section class="dr-kpis">' +
+      '<div class="kpi"><span>Bills</span><b>' + n(r.bills || 0) + '</b></div>' +
+      '<div class="kpi"><span>Gross sales</span><b>' + m((r.sales || {}).gross) + '</b></div>' +
+      '<div class="kpi"><span>Returns</span><b class="bad">-' + m((r.sales || {}).returns) + '</b></div>' +
+      '<div class="kpi"><span>Udhaar (credit)</span><b class="warn">' + m((r.sales || {}).udhaar) + '</b></div>' +
+      '<div class="kpi"><span>Card / wallet</span><b>' + m(t.card || 0) + '</b></div>' +
+      '<div class="kpi"><span>Cash sales</span><b class="ok">' + m(t.cashIn || 0) + '</b></div>' +
+    '</section>' +
+
+    '<section class="dr-cash">' +
+      '<div class="boxtitle">Cash drawer reconciliation</div>' +
+      '<div class="row"><span>Opening cash (float)</span><b>' + m(r.openingCash) + '</b></div>' +
+      '<div class="row"><span>+ Cash sales</span><b>' + m(t.cashIn || 0) + '</b></div>' +
+      '<div class="row"><span>− Cash paid out</span><b>-' + m(t.cashOut || 0) + '</b></div>' +
+      '<div class="row"><span>− Cash expenses</span><b>-' + m(t.expenses || 0) + '</b></div>' +
+      '<div class="row strong"><span>Expected in drawer</span><b>' + m(r.expectedCash) + '</b></div>' +
+      '<div class="row"><span>Counted (closing cash)</span><b>' +
+        (r.closingCash === null || r.closingCash === undefined ? '—' : m(r.closingCash)) + '</b></div>' +
+      '<div class="row grand ' + vCls + '"><span>Variance (counted − expected)</span><b>' +
+        (variance === null ? '—' : m(variance)) + '</b></div>' +
+    '</section>' +
+
+    '<section class="dr-grid">' +
+      '<div class="dr-col"><div class="boxtitle">Payments by method</div>' +
+        '<table class="dr-t"><thead><tr><th>Method</th><th class="c">Txns</th><th class="r">Amount</th></tr></thead><tbody>' +
+        methods + '</tbody></table></div>' +
+      '<div class="dr-col"><div class="boxtitle">Expenses by head</div>' +
+        '<table class="dr-t"><thead><tr><th>Head</th><th class="c">#</th><th class="r">Amount</th></tr></thead><tbody>' +
+        exps + '</tbody></table></div>' +
+    '</section>' +
+
+    '<section class="dr-grid">' +
+      '<div class="dr-col"><div class="boxtitle">Top items (is shift)</div>' +
+        '<table class="dr-t"><thead><tr><th>Code</th><th>Item</th><th class="c">Qty</th><th class="r">Amount</th></tr></thead><tbody>' +
+        top + '</tbody></table></div>' +
+      '<div class="dr-col"><div class="boxtitle">Hour-wise business</div>' +
+        '<table class="dr-t"><thead><tr><th class="c">Hour</th><th class="c">Bills</th><th class="r">Amount</th></tr></thead><tbody>' +
+        hours + '</tbody></table></div>' +
+    '</section>' +
+
+    '<section class="dr-moves"><div class="boxtitle">Cash movements (in / out / drops)</div>' +
+      '<table class="dr-t"><thead><tr><th>Time</th><th>Type</th><th>Reason</th><th class="r">Amount</th></tr></thead><tbody>' +
+      moves + '</tbody></table></section>' +
+
+    (r.notes ? '<div class="dr-notes"><b>Notes</b><div>' + esc(r.notes) + '</div></div>' : '') +
+
+    /* ─── v2.6 QA — "report main QR aur Barcode bhi hoona chahiye jis say
+       tracking aur searching main asani ho". Scan karte hi session mil jaye.
+       Dono OFFLINE engines hain (App_QR.html / App_Barcode.html) — koi CDN nahi. */
+    dayReportCodes(r) +
+    '<footer class="dr-foot">' +
+      '<div class="sig"><div class="sigline"></div><div>Cashier signature</div></div>' +
+      '<div class="sig"><div class="sigline"></div><div>Manager / Owner</div></div>' +
+    '</footer>' +
+    '<div class="power">' + esc(r.sessionNo || '') + ' · generated ' + fmt.date(r.generatedAt, true) +
+      ' · Powered by Haseeb Autos ERP</div></div>';
+}
+
+const DAY_REPORT_CSS = `
+*{box-sizing:border-box}
+body{margin:0;background:#eef1f6;font-family:"Segoe UI",Tahoma,Arial,sans-serif;color:#111}
+.doc.dayrep{width:190mm;margin:0 auto;background:#fff;padding:12mm 12mm 10mm;line-height:1.45;font-size:12px}
+.dr-head{display:flex;justify-content:space-between;gap:16px;border-bottom:3px solid #111;padding-bottom:9px}
+.biz{font-size:19px;font-weight:800;letter-spacing:.2px}
+.ur{direction:rtl;font-size:13px;color:#222}
+.sub{font-size:11px;color:#555}
+.dr-right{text-align:right}
+.dtype{font-weight:800;border:2px solid #111;border-radius:4px;padding:4px 10px;letter-spacing:1.2px;margin-bottom:6px;display:inline-block}
+.kv{display:flex;justify-content:flex-end;gap:8px;font-size:11px}
+.kv span{color:#666}
+.dr-kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin:12px 0}
+.dr-kpis .kpi{border:1px solid #dfe3ea;border-radius:9px;padding:7px 8px;background:#fbfcfe}
+.dr-kpis .kpi span{display:block;font-size:9.5px;text-transform:uppercase;letter-spacing:.6px;color:#6b7280;font-weight:700}
+.dr-kpis .kpi b{font-size:14px;font-variant-numeric:tabular-nums}
+.dr-kpis .kpi b.ok{color:#047857}.dr-kpis .kpi b.bad{color:#b91c1c}.dr-kpis .kpi b.warn{color:#b45309}
+.dr-cash{border:1px solid #c9d3e3;background:#fbfcfe;border-radius:9px;padding:9px 11px;margin-bottom:12px}
+.boxtitle{font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:#6b7280;font-weight:800;margin-bottom:6px}
+.row{display:flex;justify-content:space-between;gap:10px;font-size:12px;padding:2px 0}
+.row.strong{border-top:1px dashed #cbd5e1;margin-top:4px;padding-top:5px;font-weight:700}
+.row.grand{border-top:2px solid #111;margin-top:5px;padding-top:5px;font-size:14px;font-weight:800}
+.row.grand.ok b{color:#047857}.row.grand.bad b{color:#b91c1c}
+.dr-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.dr-col{border:1px solid #dfe3ea;border-radius:9px;padding:8px 10px}
+table.dr-t{width:100%;border-collapse:collapse;font-size:11px}
+table.dr-t thead{display:table-header-group}
+table.dr-t th{background:#111;color:#fff;text-align:left;padding:4px 6px;font-size:10px;letter-spacing:.4px}
+table.dr-t td{padding:3px 6px;border-bottom:1px solid #eef2f7}
+table.dr-t tr:nth-child(even) td{background:#f8fafc}
+table.dr-t .c{text-align:center}table.dr-t .r{text-align:right;font-variant-numeric:tabular-nums}
+.dr-moves{border:1px solid #dfe3ea;border-radius:9px;padding:8px 10px;margin-bottom:12px}
+.dr-notes{border:1px dashed #cbd5e1;border-radius:9px;padding:8px 10px;font-size:11px;margin-bottom:12px}
+.dr-notes b{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.6px;color:#6b7280;margin-bottom:3px}
+.dr-foot{display:flex;justify-content:space-between;gap:30px;margin-top:24px}
+/* v2.6 QA — report QR + barcode block (tracking / searching ke liye) */
+.dr-codes{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;
+  margin-top:22px;padding-top:16px;border-top:1px dashed #d6dbe4}
+.dr-code{display:flex;flex-direction:column;align-items:center;gap:5px}
+.dr-code-img{background:#fff;padding:5px;border-radius:5px;line-height:0}
+.dr-code-img svg{display:block;max-width:100%;height:auto}
+.dr-code-txt{font-size:9.5px;color:#6b7280;letter-spacing:.35px;text-align:center}
+.sig{flex:1;max-width:42%;text-align:center;font-size:10.5px;color:#4b5563}
+.sigline{border-top:1px solid #111;margin-bottom:4px}
+.power{text-align:center;font-size:9.5px;color:#9ca3af;margin-top:12px;letter-spacing:.4px}
+.muted{color:#9ca3af}
+@media print{
+  body{background:#fff}
+  .doc.dayrep{width:auto;padding:0;margin:0;box-shadow:none}
+  .dr-grid,.dr-cash,.dr-moves,table.dr-t tr{break-inside:avoid;page-break-inside:avoid}
+}
+@page{size:A4 portrait;margin:10mm}
+`;
+
+
+/* ----------------------------------------------------------------------------
+   Report QR + Barcode (v2.6 QA)
+   Barcode = session no (seedha type kar ke bhi dhoondh sakte hain)
+   QR      = JSON {doc, session, date, loc} — scan karte hi record khul jaye
+   Settings se band kiya ja sakta hai (reportShowCodes, default on).
+   -------------------------------------------------------------------------- */
+function dayReportCodes(r) {
+  try {
+    const st = App.state.settings || {};
+    if (String(st.reportShowCodes) === 'false') return '';
+    const no = String(r.sessionNo || r.sessionId || '').trim();
+    if (!no) return '';
+    let bc = '';
+    try { if (typeof Barcode !== 'undefined') bc = Barcode.svg(no, { height: 40, module: 1.2 }); } catch (e) { }
+    let qr = '';
+    try {
+      if (window.QR2) {
+        qr = window.QR2.svg(JSON.stringify({
+          doc: 'DAYREP', session: no, date: (r.date || '').slice(0, 10),
+          loc: r.locationId || '', cash: Number(r.expectedCash || 0)
+        }), { size: 92 });
+      }
+    } catch (e) { }
+    if (!bc && !qr) return '';
+    return '<div class="dr-codes">' +
+      (bc ? '<div class="dr-code"><div class="dr-code-img">' + bc +
+        '</div><div class="dr-code-txt">' + esc(no) + '</div></div>' : '') +
+      (qr ? '<div class="dr-code"><div class="dr-code-img">' + qr +
+        '</div><div class="dr-code-txt">Scan → is session ki report</div></div>' : '') +
+      '</div>';
+  } catch (e) { return ''; }
+}
+
+/** Day report actions: print / PDF / WhatsApp / CSV */
+async function dayReportActions(r, afterClose) {
+  const html = dayReportHtml(r);
+  const acts = [];
+
+  const openPrint = () => {
+    const w = window.open('', '_blank', 'width=900,height=1000');
+    if (!w) { UI.toast('Popup blocked — browser se allow karein', 'warn'); return; }
+    w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>' +
+      esc((r.sessionNo || 'day') + ' closing report') + '</title><style>' + DAY_REPORT_CSS + '</style></head><body>' +
+      html + '</body></html>');
+    w.document.close();
+    setTimeout(() => { try { w.focus(); w.print(); } catch (e) { } }, 500);
+  };
+
+  const makePdf = async () => {
+    try {
+      const f = await API.call('exports.pdf', { html: html, name: (r.sessionNo || 'day-report') + '-closing' });
+      if (f && f.url) {
+        UI.toast('PDF ban gayi ✅', 'ok');
+        return f;
+      }
+    } catch (e) {
+      /* offline / demo: browser print → "Save as PDF" */
+      UI.toast('Server PDF unavailable — print dialog se "Save as PDF" chunein', 'warn', 3200);
+    }
+    openPrint();
+    return null;
+  };
+
+  const shareWhatsApp = async () => {
+    const f = await makePdf();
+    const url = f ? f.url : '';
+    const msg = '*' + (App.state.settings.businessName || 'Haseeb Autos') + '*\n' +
+      'Day closing report — ' + (r.sessionNo || '') + '\n' +
+      'Branch: ' + (r.locationName || '') + ' · Cashier: ' + (r.cashier || '') + '\n' +
+      'Bills: ' + (r.bills || 0) + ' · Gross: ' + fmt.money((r.sales || {}).gross) + '\n' +
+      'Expected: ' + fmt.money(r.expectedCash) + ' · Counted: ' +
+      (r.closingCash === null || r.closingCash === undefined ? '—' : fmt.money(r.closingCash)) +
+      ' · Variance: ' + (r.variance === null ? '—' : fmt.money(r.variance)) +
+      (url ? '\n\nPDF: ' + url : '');
+    const num = await UI2.prompt ? UI2.prompt({ label: 'WhatsApp number (923001234567)', title: 'Report bhejein' }) : null;
+    const to = String((num && (num.value || num)) || '').replace(/\D/g, '');
+    if (!to) return UI.toast('Number nahi mila', 'warn');
+    window.open('https://wa.me/' + to + '?text=' + encodeURIComponent(msg), '_blank');
+  };
+
+  const downloadCsv = () => {
+    const lines = [];
+    lines.push(['Day closing report', r.sessionNo || '', r.locationName || '', r.cashier || '']);
+    lines.push(['Opened', r.openedAt || '', 'Closed', r.closedAt || '']);
+    lines.push([]);
+    lines.push(['Bills', r.bills || 0, 'Gross', (r.sales || {}).gross || 0, 'Returns', (r.sales || {}).returns || 0,
+      'Credit', (r.sales || {}).udhaar || 0]);
+    lines.push(['Opening cash', r.openingCash || 0, 'Cash in', (r.totals || {}).cashIn || 0,
+      'Cash out', (r.totals || {}).cashOut || 0, 'Expenses', (r.totals || {}).expenses || 0,
+      'Expected', r.expectedCash || 0, 'Counted', r.closingCash === null ? '' : r.closingCash,
+      'Variance', r.variance === null ? '' : r.variance]);
+    lines.push([]);
+    lines.push(['Payments by method']);
+    lines.push(['Method', 'Txns', 'Amount']);
+    (r.methods || []).forEach(x => lines.push([x.method, x.count, x.amount]));
+    lines.push([]);
+    lines.push(['Expenses by head']);
+    lines.push(['Head', 'Count', 'Amount']);
+    (r.expenses || []).forEach(x => lines.push([x.category, x.count, x.amount]));
+    lines.push([]);
+    lines.push(['Top items']);
+    lines.push(['Code', 'Item', 'Qty', 'Amount']);
+    (r.top || []).forEach(x => lines.push([x.code || '', x.name, x.qty, x.amount]));
+    const csv = lines.map(row => row.map(v => '"' + String(v === null || v === undefined ? '' : v).replace(/"/g, '""') + '"').join(',')).join('\n');
+    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' });
+    const a = h('a', { href: URL.createObjectURL(blob), download: (r.sessionNo || 'day-report') + '-closing.csv' });
+    document.body.appendChild(a); a.click(); a.remove();
+    UI.toast('CSV download ho gayi', 'ok');
+  };
+
+  return { openPrint, makePdf, shareWhatsApp, downloadCsv, html };
+}
+
+/** Full report modal (preview + actions) */
+async function dayReportModal(sessionId) {
+  let r = null;
+  try { r = await API.call('shop.dayReport', { sessionId: sessionId || '' }, { offlineFallback: () => null }); }
+  catch (e) { UI.toast(e.message, 'err'); return; }
+  if (!r) { UI.toast('Report load nahi hua', 'err'); return; }
+  const acts = await dayReportActions(r);
+  const body = h('div', { class: 'print-preview', style: { maxHeight: '62vh' } },
+    h('div', { class: 'pp-paper', style: { transform: 'scale(.62)' } }, rawHtmlModule(acts.html)));
+  UI2.modal({
+    title: '📄 Day closing report — ' + (r.sessionNo || ''), size: 'xl', body,
+    actions: [
+      { label: '🖨 Print', cls: 'sec', onClick: () => acts.openPrint() },
+      { label: '📑 PDF', cls: 'ok', onClick: async () => { await acts.makePdf(); } },
+      { label: '📲 WhatsApp', onClick: () => acts.shareWhatsApp() },
+      { label: '⬇ CSV', onClick: () => acts.downloadCsv() },
+      { label: 'Close', onClick: c => c() }
+    ]
+  });
+  /* v2.6 §7 point 4 — "automatically trigger printing where the device
+     configuration supports it". Settings-driven (dayReportAutoPrint, default on).
+     Modal pehle khul jata hai (user dekh sake), phir print window aati hai —
+     is liye dono: foran nateeja BHI nazar aaye aur print BHI ho jaye. */
+  try {
+    const st = App.state.settings || {};
+    const mode = window.SERVE_MODE || 'apps-script';
+    /* Demo / preview mein khud-ba-khud print window kholna be-maani hai
+       (aur jsdom jese test harness mein window.open() hi nahi hota).
+       Asli app (Apps Script ya static host) mein hi auto-print chalayein. */
+    const canAutoPrint = mode !== 'demo' && typeof window.open === 'function';
+    if (canAutoPrint && String(st.dayReportAutoPrint) !== 'false' && typeof acts.openPrint === 'function') {
+      setTimeout(() => { try { acts.openPrint(); } catch (e) { /* printer na ho to khamosh */ } }, 600);
+    }
+  } catch (e) { /* auto-print fail ho to modal waisa hi khula rahe */ }
+}
+
+function shopHistoryCard(rows) {
+  return h('div', { class: 'card', style: { marginTop: '12px' } },
+    h('div', { class: 'card-head' }, h('h4', null, '🗂 Pichhli sessions (' + (rows || []).length + ')')),
+    h('div', { class: 'card-body tight' },
+      (rows || []).length ? UI2.table({
+        screen: 'shop_history', height: '30vh', exportName: 'cash-sessions',
+        rows, columns: [
+          { key: 'sessionNo', label: 'Session' },
+          { key: 'openedAt', label: 'Opened', render: r => fmt.date(r.openedAt, true) },
+          { key: 'closedAt', label: 'Closed', render: r => r.closedAt ? fmt.date(r.closedAt, true) : '—' },
+          { key: 'openingCash', label: 'Opening', num: true, render: r => fmt.money(r.openingCash) },
+          { key: 'expectedCash', label: 'Expected', num: true, render: r => r.expectedCash === null ? '—' : fmt.money(r.expectedCash) },
+          { key: 'closingCash', label: 'Counted', num: true, render: r => r.closingCash === null ? '—' : fmt.money(r.closingCash) },
+          { key: 'variance', label: 'Diff', num: true, render: r => r.variance === null ? '—' :
+            h('span', { style: { color: r.variance === 0 ? 'var(--ok)' : 'var(--err)' } }, fmt.money(r.variance)) },
+          { key: 'status', label: 'Status', render: r => h('span', { class: 'badge ' + (r.status === 'OPEN' ? 'ok' : 'info') }, r.status) }
+        ],
+        rowActions: r => [
+          { icon: '📄', label: 'Closing report', onClick: () => dayReportModal(r.id) }
+        ],
+        onRow: r => dayReportModal(r.id)
+      }) : h('div', { class: 'empty' }, 'Koi purani session nahi')));
+}
+
+
+function rawHtmlModule(str) { const d = h('div'); d.innerHTML = str; return d; }
+
+try { window.Chart = Object.assign({}, Chart, window.Chart || {}); } catch (e) { window.Chart = Chart; }
+window.Dash = Dash;
+/* v2.6 QA — testability: ye functions IIFE ke andar hain, is liye QA harness
+   (tools/_probe / future tests) unhein call nahi kar sakte. Is codebase ka
+   apna pattern (window.UI2 = UI2) follow kar ke expose karte hain. */
+window.HA_DayReport = {
+  historyCard: function () { return shopDayReportCard(); },
+  html: function (r) { return dayReportHtml(r); },
+  codes: function (r) { return dayReportCodes(r); }
+};
+})();
+</script>

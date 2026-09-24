@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#0b1220">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Haseeb Autos">
+  <meta name="description" content="Haseeb Autos — ERP & POS for auto parts, car & bike decoration. Retail + wholesale, 3 branches.">
+  <script>
+    /* ==================================================================
+       v2.8.1 — META TAG FIX (production outage)
+       Apps Script HTML file ke andar likhe meta tags IGNORE karta hai aur
+       server par sirf 4 tags allow hain (viewport, apple/mobile-web-app-
+       capable, google-site-verification). Baqi (theme-color, status-bar-
+       style, apple-mobile-web-app-title, description) yahan browser se
+       lagate hain. Static hosting / demo mein upar wale tags pehle se
+       maujood hain, is liye ye UPDATE karta hai — duplicate nahi banate.
+       ================================================================== */
+    (function () {
+      try {
+        var ex = {
+          'theme-color': '#0b1220',
+          'apple-mobile-web-app-status-bar-style': 'black-translucent',
+          'apple-mobile-web-app-title': 'Haseeb Autos',
+          'description': 'Haseeb Autos — ERP & POS for auto parts, car & bike decoration. Retail + wholesale, 3 branches.'
+        };
+        Object.keys(ex).forEach(function (k) {
+          var m = document.querySelector('meta[name="' + k + '"]');
+          if (!m) {
+            m = document.createElement('meta');
+            m.setAttribute('name', k);
+            document.head.appendChild(m);
+          }
+          m.setAttribute('content', ex[k]);
+        });
+      } catch (e) { /* meta tag na bane to bhi app chalegi */ }
+    })();
+  </script>
+  <title><?= title ?></title>
+
+  <?!= include('Styles'); ?>
+</head>
+<body>
+
+  <!-- ========================= BOOT SPLASH ========================= -->
+  <div id="boot" class="boot">
+    <div class="boot-card">
+      <div class="boot-logo">HA</div>
+      <div class="boot-name">Haseeb Autos</div>
+      <div class="boot-sub" id="bootMsg">Loading workspace…</div>
+      <div class="boot-bar"><i></i></div>
+    </div>
+  </div>
+
+  <!-- ========================= LOGIN ========================= -->
+  <div id="loginRoot" class="login-root" hidden></div>
+
+  <!-- ========================= APP SHELL ========================= -->
+  <div id="shell" class="shell" hidden>
+
+    <!-- sidebar -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sb-brand">
+        <div class="sb-logo">HA</div>
+        <div class="sb-name">
+          <strong>Haseeb Autos</strong>
+          <span id="sbBranch">Main Branch</span>
+        </div>
+        <!-- v2.6 QA — desktop par sidebar collapse/expand (user ki farmaish) -->
+        <button class="sb-collapse" id="sbCollapse" type="button"
+                aria-label="Sidebar chhupao / dikhao" title="Sidebar collapse / expand (Ctrl+B)">«</button>
+      </div>
+      <nav class="sb-nav" id="sbNav"></nav>
+      <div class="sb-foot">
+        <button class="sb-user" id="sbUser" type="button">
+          <span class="avatar" id="sbAvatar">U</span>
+          <span class="sb-user-meta">
+            <strong id="sbUserName">User</strong>
+            <em id="sbUserRole">Role</em>
+          </span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- main -->
+    <div class="main">
+      <header class="topbar">
+        <button class="icon-btn sb-toggle" id="sbToggle" type="button" aria-label="Menu">☰</button>
+        <!-- v2.6 QA — desktop ke liye collapse toggle (sidebar hamesha nazar rahe) -->
+        <button class="icon-btn sb-rail" id="sbRail" type="button"
+                aria-label="Sidebar collapse / expand" title="Sidebar collapse / expand (Ctrl+B)">⇤</button>
+        <!-- v2.6 QA — full screen (desktop) -->
+        <button class="icon-btn fs-btn" id="fsBtn" type="button"
+                aria-label="Full screen" title="Full screen on / off (F11)">⛶</button>
+
+        <div class="branch-pick">
+          <select id="branchSelect" class="branch-select" aria-label="Branch"></select>
+        </div>
+
+        <div class="global-search">
+          <span class="gs-icon">🔎</span>
+          <input id="globalSearch" type="search" placeholder="Search items, invoices, customers… ( / )" autocomplete="off">
+          <div id="gsResults" class="gs-results" hidden></div>
+        </div>
+
+        <div class="top-actions">
+          <button class="shop-pill" id="btnShop" type="button" title="Shop Open / Close" aria-label="Shop open / close"><span class="shop-ic">🏪</span><span class="shop-txt" id="shopStateTxt">—</span><i class="shop-state"></i></button>
+          <button class="icon-btn" id="btnAssistant" type="button" title="AI Assistant (Ctrl+K)">✨<span class="dot">AI</span></button>
+          <button class="icon-btn" id="btnOffline" type="button" title="Offline status">📶</button>
+          <button class="icon-btn" id="btnTheme" type="button" title="Theme">🌙</button>
+          <button class="icon-btn" id="btnLang" type="button" title="Language">EN</button>
+          <button class="icon-btn" id="btnNotif" type="button" title="Alerts">🔔<span class="badge" id="notifBadge" hidden>0</span></button>
+        </div>
+      </header>
+
+      <main id="view" class="view" tabindex="-1"></main>
+
+      <!-- mobile bottom nav -->
+      <nav class="tabbar" id="tabbar"></nav>
+    </div>
+
+    <!-- AI assistant drawer -->
+    <aside class="ai-drawer" id="aiDrawer" hidden></aside>
+    <div class="scrim" id="scrim" hidden></div>
+  </div>
+
+  <!-- global overlays -->
+  <div id="modalRoot"></div>
+  <div id="drawerRoot"></div>
+  <div id="toastRoot" class="toast-root"></div>
+  <div id="printRoot" class="print-root"></div>
+
+  <script>
+    /* Injected by server template */
+    window.APP_BUILD   = '<?= appVersion ?>';
+    window.SERVE_MODE  = '<?= serveMode ?>';   // 'apps-script' | 'static'
+    window.API_URL     = '<?= apiUrl ?>';      // filled only for static hosting
+  </script>
+
+  <?!= include('App_Icons'); ?>
+  <?!= include('App_Core'); ?>
+  <?!= include('App_Barcode'); ?>
+  <?!= include('App_Print'); ?>
+  <?!= include('App_Comms'); ?>
+  <?!= include('App_Charts'); ?>
+  <?!= include('App_Accounting'); ?>
+  <?!= include('App_Wallet'); ?>
+  <?!= include('App_PayUI'); ?>
+  <?!= include('App_AIConfig'); ?>
+  <?!= include('App_QR'); ?>
+  <?!= include('App_UI2'); ?>
+  <?!= include('App_POS'); ?>
+  <?!= include('App_Screens'); ?>
+  <?!= include('App_Screens2'); ?>
+  <?!= include('App_POS2'); ?>
+  <?!= include('App_Orders'); ?>
+  <?!= include('App_Masters'); ?>
+  <?!= include('App_Inventory2'); ?>
+  <?!= include('App_Warehouse'); ?>
+  <?!= include('App_Config'); ?>
+  <?!= include('App_Dashboards'); ?>
+  <?!= include('App_Demand'); ?>
+  <?!= include('App_Lang'); ?>
+  <?!= include('App_Reorder'); ?>
+  <?!= include('App_Salesman'); ?>
+  <?!= include('App_PwaHub'); ?>
+  <?!= include('App_AI'); ?>
+  <?!= include('App_Boot'); ?>
+</body>
+</html>

@@ -1,0 +1,356 @@
+<script>
+/* ==========================================================================
+   HASEEB AUTOS — AUTO REORDER
+   Suggestions (velocity / reorder-point / min-max) → supplier-wise PO drafts.
+   Saare rules Settings ▸ Automation ▸ Purchase reorder rules se aate hain.
+   ========================================================================== */
+(function () {
+'use strict';
+
+const RO = { rows: [], rules: null, supplier: '', category: '', priority: '' };
+
+App.registerScreen('reorder', {
+  title: 'Auto Reorder', icon: '🔁', perm: 'purchase.view',
+  subtitle: () => App.state.branchName + ' · smart purchase suggestions',
+  actions() {
+    const a = [{ label: 'Refresh', icon: '↻', onClick: () => App.refresh() }];
+    if (App.can('purchase.po.create')) a.unshift({ label: 'Create POs', icon: '🚚', cls: 'ok', onClick: createPOs });
+    a.push({ label: 'Rules', icon: '⚙', onClick: () => App.go('settings', { tab: 'automation' }) });
+    return a;
+  },
+  render(body) {
+    const host = h('div'); body.appendChild(host);
+    UI2.tabs(host, {
+      level: 1, active: 'suggest',
+      tabs: [
+        { id: 'suggest', label: 'Suggestions', icon: '📋', render: renderSuggestions },
+        { id: 'rules', label: 'Rules & preview', icon: '⚙', render: renderRules },
+        { id: 'history', label: 'Generated POs', icon: '🧾', render: renderHistory }
+      ]
+    });
+  }
+});
+
+
+/* AI signals card — real counts from reorder.suggest summary + rows */
+function renderSignals(sum, rows) {
+  const by = sum.byPriority || {};
+  const sig = [];
+  if (by.OUT_OF_STOCK) sig.push({ t: 'out', txt: by.OUT_OF_STOCK + ' items aaj OUT OF STOCK hain — foran order' });
+  if (by.CRITICAL) sig.push({ t: 'warn', txt: by.CRITICAL + ' items lead time se kam cover par hain (critical)' });
+  const sups = Object.keys(sum.bySupplier || {}).map(k => ({ k, v: Number(sum.bySupplier[k] || 0) }))
+    .sort((a, b) => b.v - a.v);
+  if (sups.length) sig.push({ t: 'info', txt: 'Sab se bara supplier exposure: ' + sups[0].k + ' — ' + fmt.money(sups[0].v) });
+  if (sum.value) sig.push({ t: 'ok', txt: 'Total suggested purchase value: ' + fmt.moneyCompact(sum.value) });
+  const trend = (rows || []).filter(r => Number(r.dailyVelocity || r.velocity || 0) > 0).length;
+  if (trend) sig.push({ t: 'info', txt: trend + ' active items ki sales velocity par based suggestions' });
+  const card = h('div', { class: 'card', style: { marginTop: '10px' } },
+    h('div', { class: 'card-head' }, h('h4', null, 'AI signals (live data)'),
+      h('div', { class: 'actions' },
+        h('button', { class: 'btn sm', onclick: () => askAI(
+          'Auto-reorder review: ' + (sig.map(x => x.txt).join('; ') || 'koi signal nahi') +
+          ' — kya ye quantities theek hain? Kon se items pehle order karein aur kyun?'
+        ) }, 'Ask AI to explain'))),
+    h('div', { class: 'card-body' }, sig.length
+      ? h('ul', { class: 'ai-sigs' }, sig.map(x => h('li', { class: 'sig-' + x.t }, x.txt)))
+      : h('div', { class: 'tbl-empty' }, 'Abhi koi khaas signal nahi — stock theek chal raha hai ✅')));
+  return card;
+}
+function askAI(prompt) {
+  if (!App.openAI) { UI.toast('AI assistant mojood nahi', 'warn'); return; }
+  App.openAI();
+  setTimeout(() => {
+    const i = document.getElementById('aiInput');
+    if (i) { i.value = prompt; i.dispatchEvent(new Event('input', { bubbles: true })); i.focus();
+      UI.toast('Enter dabayein — AI live data par jawab dega', 'info'); }
+  }, 450);
+}
+
+/* ============================== SUGGESTIONS ================================ */
+function renderSuggestions(c) {
+  const host = h('div'); c.appendChild(host);
+  host.appendChild(UI.skeleton(5));
+
+  API.call('reorder.suggest', { locationId: App.state.locationId },
+    { offlineFallback: () => ({ rows: [], summary: {} }) }).then(res => {
+      RO.rows = res.rows || []; RO.rules = res.rules || {};
+      host.innerHTML = '';
+      const sum = res.summary || {};
+
+      host.appendChild(UI2.kpiGrid([
+        { icon: '📦', label: 'Items to order', value: sum.items || 0, cls: 'brand' },
+        { icon: '🔢', label: 'Total units', value: fmt.num(sum.units || 0) },
+        { icon: '💰', label: 'Est. purchase value', value: fmt.money(sum.value || 0), cls: 'ok' },
+        { icon: '⚠', label: 'Out of stock', value: (sum.byPriority || {}).OUT_OF_STOCK || 0, cls: 'err' },
+        { icon: '⏱', label: 'Critical (lead time)', value: (sum.byPriority || {}).CRITICAL || 0, cls: 'warn' },
+        { icon: '🏭', label: 'Suppliers', value: Object.keys(sum.bySupplier || {}).length }
+      ]));
+
+      /* v2.9 §9 — AI signals: live suggestion rows se sachey numbers, aur AI
+         assistant ko sawal bhejne ka button (agent apne tools se data check
+         karta hai — koi fabricated insight nahi). */
+      host.appendChild(renderSignals(sum, RO.rows));
+
+      // supplier-wise split
+      const bySup = Object.keys(sum.bySupplier || {}).map(k => ({ label: k, value: sum.bySupplier[k] }));
+      if (bySup.length) {
+        host.appendChild(h('div', { class: 'grid g2-1', style: { marginTop: '10px' } },
+          h('div', { class: 'card' }, h('div', { class: 'card-head' }, h('h4', null, '🏭 Supplier-wise value')),
+            h('div', { class: 'card-body' }, Chart.bars(bySup.slice(0, 8), { horizontal: true, height: 200 }))),
+          h('div', { class: 'card' }, h('div', { class: 'card-head' }, h('h4', null, '⚡ Priority mix')),
+            h('div', { class: 'card-body' }, Chart.donut(Object.keys(sum.byPriority || {}).map(k => ({
+              label: k.replace(/_/g, ' '), value: sum.byPriority[k]
+            })), { size: 170, centerLabel: 'Items' })))));
+      }
+
+      host.appendChild(UI2.section('Order lines', [
+        h('button', { class: 'btn sm sec', onclick: () => App.go('settings', { tab: 'automation' }) }, '⚙ Rules'),
+        App.can('purchase.po.create') ? h('button', { class: 'btn sm ok', onclick: createPOs }, '🚚 Create POs') : ''
+      ]));
+
+      host.appendChild(UI2.table({
+        screen: 'reorder', rows: RO.rows, height: '50vh', exportName: 'reorder-suggestions',
+        filters: [
+          { key: 'priority', label: 'Priority', type: 'select', options: ['OUT_OF_STOCK', 'CRITICAL', 'BELOW_REORDER', 'LOW_COVER', 'REPLENISH'] },
+          { key: 'category', label: 'Category', type: 'select', options: Array.from(new Set(RO.rows.map(r => r.category).filter(Boolean))) },
+          { key: 'supplierName', label: 'Supplier', type: 'select', options: Array.from(new Set(RO.rows.map(r => r.supplierName).filter(Boolean))) }
+        ],
+        columns: [
+          { key: 'priority', label: 'Priority', render: r => {
+            const cls = r.priority === 'OUT_OF_STOCK' ? 'err' : r.priority === 'CRITICAL' ? 'err' :
+              r.priority === 'BELOW_REORDER' ? 'warn' : '';
+            return h('span', { class: 'badge ' + cls }, r.priority.replace(/_/g, ' '));
+          } },
+          { key: 'code', label: 'Code' },
+          { key: 'name', label: 'Item', render: r => h('div', null, h('b', null, r.name),
+              /* v2.6 QA — table cell nowrap tha is liye "Velocity 0.1/day · cover 30d"
+                 kat raha tha (268px text / 258px cell). Ab 2 lines me wrap hoga. */
+              h('div', { style: { fontSize: 'var(--fs-xs)', color: 'var(--muted)',
+                whiteSpace: 'normal', overflowWrap: 'anywhere', lineHeight: 1.3 } }, r.reason)) },
+          { key: 'supplierName', label: 'Supplier' },
+          { key: 'onHand', label: 'On hand', num: true },
+          { key: 'onOrder', label: 'On order', num: true },
+          { key: 'avgDailySales', label: 'Sales/day', num: true },
+          { key: 'daysOfCover', label: 'Days cover', num: true, render: r => r.daysOfCover === null ? '—' : r.daysOfCover },
+          { key: 'targetLevel', label: 'Target', num: true },
+          { key: 'suggestedQty', label: 'Order qty', num: true, render: r => orderInput(r) },
+          { key: 'cost', label: 'Cost', num: true, render: r => fmt.money(r.cost) },
+          { key: 'value', label: 'Value', num: true, render: r => h('b', null, fmt.money(r.value)) }
+        ],
+        rowActions: r => [
+          { icon: '📦', label: 'Item', onClick: () => App.go('items', { open: r.itemId }) }
+        ],
+        emptyAction: { label: '⚙ Rules check karein', onClick: () => App.go('settings', { tab: 'automation' }) }
+      }));
+    }).catch(e => { host.innerHTML = ''; host.appendChild(h('div', { class: 'empty' }, '⚠ ' + e.message)); });
+
+  function orderInput(r) {
+    const inp = h('input', { type: 'number', value: r.suggestedQty, min: '0',
+      'aria-label': 'Order qty', title: 'Order qty',
+      style: { width: '76px', textAlign: 'right', fontWeight: '700' } });
+    inp.onchange = () => {
+      r.suggestedQty = Math.max(0, Number(inp.value || 0));
+      r.value = Math.round(r.suggestedQty * r.cost * 100) / 100;
+      UI.toast('Qty update: ' + r.suggestedQty, 'ok', 900);
+    };
+    return inp;
+  }
+}
+
+/* ================================= RULES =================================== */
+function renderRules(c) {
+  const r = RO.rules || {};
+  const card = (label, value, hint) => h('div', { class: 'f-col' },
+    h('label', null, label), h('div', { style: { fontWeight: '700', fontSize: 'var(--fs-md)' } }, value),
+    hint ? h('div', { class: 'f-hint' }, hint) : '');
+
+  c.appendChild(h('div', { class: 'card' }, h('div', { class: 'card-head' },
+    h('h4', null, '⚙ Active rules (Settings ▸ Automation ▸ Purchase reorder rules)')),
+    h('div', { class: 'card-body' },
+      h('div', { class: 'f-grid' },
+        card('Method', r.method || 'VELOCITY', 'VELOCITY = sales velocity + lead time'),
+        card('Lookback', (r.lookback || 30) + ' days', 'Sales history window'),
+        card('Cover for', (r.coverageDays || 30) + ' days', 'Desired stock cover'),
+        card('Lead time', (r.leadTimeDays || 7) + ' days', 'Supplier delivery time'),
+        card('Safety stock', (r.safetyDays || 7) + ' days', 'Buffer'),
+        card('Supplier', r.supplierMode || 'PRIMARY', 'PRIMARY / LAST / CHEAPEST'),
+        card('PO status', r.createAs || 'DRAFT', 'Draft ya approved'),
+        card('Min order value', fmt.money(r.minOrderValue || 0), 'Is se kam line skip')))));
+
+  c.appendChild(UI2.section('Formula'));
+  c.appendChild(h('div', { class: 'card' }, h('div', { class: 'card-body' },
+    h('pre', { style: { fontSize: 'var(--fs-xs)', lineHeight: 1.6, margin: 0, whiteSpace: 'pre-wrap' } },
+      'avgDailySales = qty sold in last ' + (r.lookback || 30) + ' days / ' + (r.lookback || 30) + '\n' +
+      'safetyStock   = avgDailySales x ' + (r.safetyDays || 7) + '\n' +
+      'targetLevel   = avgDailySales x (' + (r.coverageDays || 30) + ' + ' + (r.leadTimeDays || 7) + ') + safetyStock\n' +
+      '              (kabhi bhi reorderPoint se kam nahi hoga)\n' +
+      'available     = onHand + onOrder (open POs)\n' +
+      'suggestedQty  = CEILING(targetLevel - available) → pack size tak round up\n' +
+      'priority      = OUT_OF_STOCK | CRITICAL (cover < lead time) | BELOW_REORDER | LOW_COVER | REPLENISH'))));
+
+  c.appendChild(h('button', { class: 'btn', style: { marginTop: '10px' },
+    onclick: () => App.go('settings', { tab: 'automation' }) }, '⚙ Settings mein badlein'));
+}
+
+/* ================================ HISTORY ================================== */
+function renderHistory(c) {
+  const host = h('div', { class: 'reorders' }); c.appendChild(host);
+  host.appendChild(UI.skeleton ? UI.skeleton(4) : h('div', { class: 'empty' }, 'Load ho raha hai…'));
+
+  Promise.all([
+    API.call('purchase.po.list', {}, { offlineFallback: () => [] }),
+    API.call('items.reorderSuggest', {}, { offlineFallback: () => [] }),
+    Shared.suppliers({})   /* v2.27.0 W3.T3 */
+  ]).then(([rows, suggest, sup]) => {
+    const suppliers = sup || [];
+    window.__sup = suppliers;
+    const supName = id => { const f = suppliers.find(x => x.id === id); return f ? f.name : '—'; };
+    host.innerHTML = '';
+
+    const all = rows || [];
+    const auto = all.filter(p => p.source === 'AUTO_REORDER' ||
+      String(p.notes || '').indexOf('Auto reorder') > -1 ||
+      String(p.notes || '').indexOf('auto') > -1);
+    const list = auto.length ? auto : all;
+
+    /* ---------- summary strip ---------- */
+    host.appendChild(h('div', { class: 'ro-summary' },
+      h('span', { class: 'chip2' }, 'POs: ' + list.length),
+      h('span', { class: 'chip2' }, 'Auto-generated: ' + auto.length),
+      h('span', { class: 'chip2' }, 'Suggestions: ' + ((suggest || []).length)),
+      h('button', { class: 'btn sm sec', onclick: () => App.go('purchase') }, 'Purchase mein kholein')));
+
+    /* ---------- PO table (products included) ---------- */
+    if (!list.length) {
+      host.appendChild(h('div', { class: 'card' },
+        h('div', { class: 'card-head' }, h('h4', null, '📋 Abhi koi purchase order nahi')),
+        h('div', { class: 'card-body' },
+          h('div', { class: 'empty' }, 'Suggestions tab se PO banayein — yahan wo list ho jayenge.'))));
+    } else {
+      host.appendChild(UI2.table({
+        screen: 'reorder_po', rows: list, height: '46vh', exportName: 'auto-reorder-pos',
+        columns: [
+          { key: 'poNo', label: 'PO no.' },
+          { key: 'date', label: 'Date', render: r => fmt.date(r.date) },
+          { key: 'supplierId', label: 'Supplier', render: r => supName(r.supplierId) },
+          { key: '__items', label: 'Products', render: r => {
+            const n = (r.itemCount !== undefined ? r.itemCount
+              : (r.lines !== undefined ? r.lines : (r.items ? r.items.length : null)));
+            return h('span', { class: 'badge ' + (n ? 'info' : 'warn') },
+              (n === null ? '—' : n + ' item' + (n === 1 ? '' : 's')));
+          } },
+          { key: 'total', label: 'Total', num: true, render: r => fmt.money(r.total) },
+          { key: 'status', label: 'Status', render: r => h('span',
+            { class: 'badge ' + (r.status === 'RECEIVED' ? 'ok' : r.status === 'APPROVED' ? 'info' : 'warn') }, r.status) }
+        ],
+        onRow: r => openPoDetail(r)
+      }));
+    }
+
+    /* ---------- suggested products (verification ke liye) ---------- */
+    const sug = (suggest || []).slice(0, 60);
+    host.appendChild(h('div', { class: 'card', style: { marginTop: '12px' } },
+      h('div', { class: 'card-head' }, h('h4', null, '📦 Reorder ke liye products (' + sug.length + ')'),
+        h('button', { class: 'btn sm sec', onclick: () => App.go('inventory') }, 'Stock dekhein')),
+      h('div', { class: 'card-body tight' },
+        sug.length ? UI2.table({
+          screen: 'reorder_products', rows: sug, height: '40vh', exportName: 'reorder-products',
+          columns: [
+            { key: 'code', label: 'Code' },
+            { key: 'name', label: 'Product' },
+            { key: 'stock', label: 'Stock', num: true },
+            { key: 'reorderLevel', label: 'Reorder at', num: true },
+            { key: 'suggestedQty', label: 'Order qty', num: true, render: r =>
+              h('b', null, fmt.num(r.suggestedQty || r.suggestQty || 0)) },
+            { key: 'estCost', label: 'Est. cost', num: true, render: r => fmt.money(r.estCost || r.value || 0) },
+            { key: 'supplierId', label: 'Supplier', render: r =>
+              r.supplierName || supName(r.supplierId || r.primarySupplierId) }
+          ],
+          onRow: r => App.go('items', { open: r.id })
+        }) : h('div', { class: 'empty' }, 'Koi product reorder limit par nahi 🎉'))));
+  }).catch(e => { host.innerHTML = ''; host.appendChild(h('div', { class: 'empty' }, '⚠ ' + e.message)); });
+}
+
+/** PO detail — kaun se products order hue (verification) */
+async function openPoDetail(po) {
+  let items = [];
+  try {
+    const r = await API.call('purchase.po.get', { id: po.id }, { offlineFallback: () => ({ items: [] }) });
+    items = (r && (r.items || r.po && r.po.items)) || [];
+  } catch (e) { items = []; }
+  const body = h('div', null,
+    h('div', { class: 'po-meta' },
+      h('span', null, 'PO: ' + (po.poNo || po.id)),
+      h('span', null, 'Date: ' + fmt.date(po.date)),
+      h('span', null, 'Supplier: ' + (() => {
+        const f = (window.__sup || []).find(s => s.id === po.supplierId); return f ? f.name : '—';
+      })()),
+      h('span', null, 'Status: ' + (po.status || 'DRAFT'))),
+    items.length ? UI2.table({
+      screen: 'po_detail_items', rows: items, height: '46vh', exportName: 'po-' + (po.poNo || po.id),
+      columns: [
+        { key: 'code', label: 'Code' },
+        { key: 'name', label: 'Product' },
+        { key: 'qty', label: 'Qty', num: true },
+        { key: 'rate', label: 'Rate', num: true, render: r => fmt.money(r.rate) },
+        { key: 'lineTotal', label: 'Amount', num: true, render: r => fmt.money(r.lineTotal) },
+        { key: 'receivedQty', label: 'Received', num: true, render: r => fmt.num(r.receivedQty || 0) }
+      ]
+    }) : h('div', { class: 'empty' }, 'Is PO ki line items load nahi hui (offline?)'),
+    h('div', { class: 'tot-row grand' }, h('span', null, 'Total'), h('span', null, fmt.money(po.total || 0))));
+  UI2.modal({ title: '🧾 PO ' + (po.poNo || ''), size: 'lg', body,
+    actions: [
+      { label: 'GRN mein load karein', cls: 'ok', onClick: c => { c(); App.go('purchase', { grn: po.id }); } },
+      { label: 'Close', onClick: c => c() }
+    ] });
+}
+
+function createPOs() {
+  const chosen = RO.rows.filter(r => Number(r.suggestedQty) > 0);
+  if (!chosen.length) return UI.toast('Koi line select nahi (qty 0 hai)', 'warn');
+
+  const bySup = {};
+  chosen.forEach(r => {
+    const k = r.supplierName || '(no supplier)';
+    bySup[k] = bySup[k] || { supplier: k, lines: [], value: 0 };
+    bySup[k].lines.push(r);
+    bySup[k].value += r.value;
+  });
+
+  const box = h('div');
+  box.appendChild(h('p', { style: { fontSize: 'var(--fs-sm)', color: 'var(--muted)' } },
+    chosen.length + ' lines · ' + fmt.money(chosen.reduce((a, r) => a + r.value, 0)) +
+    ' · ' + Object.keys(bySup).length + ' purchase orders banenge (' + (RO.rules.createAs || 'DRAFT') + ')'));
+
+  Object.keys(bySup).forEach(k => {
+    box.appendChild(h('div', { class: 'card', style: { marginTop: '10px' } },
+      h('div', { class: 'card-head' }, h('h4', null, '🏭 ' + k),
+        h('span', { class: 'badge brand' }, fmt.money(bySup[k].value))),
+      h('div', { class: 'card-body tight' }, bySup[k].lines.slice(0, 6).map(r =>
+        h('div', { class: 'list-item' },
+          h('div', { class: 'li-main' }, h('b', null, r.name), h('span', null, r.code)),
+          h('span', { class: 'badge' }, r.suggestedQty + ' × ' + fmt.money(r.cost)))),
+        bySup[k].lines.length > 6 ? h('div', { class: 'tbl-empty' }, '+ ' + (bySup[k].lines.length - 6) + ' aur lines') : '')));
+  });
+
+  UI2.modal({
+    title: '🚚 Purchase orders banaayein?', size: 'lg', body: box,
+    actions: [
+      { label: 'Cancel', cls: 'ghost', onClick: c => c() },
+      { label: 'Create ' + Object.keys(bySup).length + ' POs', cls: 'ok', onClick: async c => {
+        try {
+          const res = await API.call('reorder.createPOs', {
+            locationId: App.state.locationId,
+            items: chosen.map(r => ({ itemId: r.itemId, qty: r.suggestedQty, cost: r.cost, supplierId: r.supplierId }))
+          });
+          UI.toast((res.created || 0) + ' PO ban gaye ✅', 'ok');
+          c(); App.go('reorder', { tab: 'history' });
+        } catch (e) { UI.toast(e.message, 'err'); }
+      } }
+    ]
+  });
+}
+
+window.__reorder = { RO, createPOs };
+})();
+</script>

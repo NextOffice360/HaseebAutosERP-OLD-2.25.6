@@ -1,0 +1,2355 @@
+<script>
+/* ==========================================================================
+   HASEEB AUTOS — SCREENS (Part 2)
+   Purchase · Customers & Suppliers · Payments & Cash · Reports · Users · Settings
+   ========================================================================== */
+(function () {
+'use strict';
+
+const locName = id => { const l = (App.state.locations || []).find(x => x.id === id); return l ? l.name : id; };
+
+/* helpers shared from Screens Part-1 */
+const __ui = window.__ui || {};
+const branchSelect = __ui.branchSelect || (() => h('select'));
+const searchBox = __ui.searchBox || (() => h('input'));
+const rangeBar = __ui.rangeBar || (() => ({ el: h('div'), values: () => ({}) }));
+const exportBtn = __ui.exportBtn || (() => h('button'));
+const itemForm = __ui.itemForm || (() => { });
+
+function rangeBar2(onChange, defDays) {
+  const from = h('input', { type: 'date', value: fmt.date(Date.now() - (defDays || 29) * 864e5), 'aria-label': 'From date', title: 'From date' });
+  const to = h('input', { type: 'date', value: fmt.date(new Date()), 'aria-label': 'To date', title: 'To date' });
+  const seg = h('div', { class: 'seg' },
+    ...[['Today', 0], ['7d', 6], ['30d', 29], ['90d', 89]].map(([lbl, d], i) =>
+      h('button', { class: i === 2 ? 'on' : '', onclick: e => {
+        Array.from(seg.children).forEach(b => b.classList.remove('on')); e.target.classList.add('on');
+        from.value = fmt.date(Date.now() - d * 864e5); to.value = fmt.date(new Date()); onChange(values());
+      } }, lbl)));
+  function values() { return { from: from.value, to: to.value }; }
+  from.onchange = to.onchange = () => onChange(values());
+  return { el: h('div', { class: 'filters' }, from, to, seg), values };
+}
+
+/* ================================ PURCHASE ================================ */
+App.registerScreen('purchase', {
+  title: 'Purchase', icon: '🚚', perm: 'purchase.view',
+  subtitle: () => 'PO → GRN → Returns',
+  /* deep link: App.go('purchase', { reorder:true }) → low-stock items se PO draft */
+  onParams(p) {
+    if (!p.reorder) return;
+    setTimeout(async () => {
+      try {
+        const rows = await API.call('items.reorderSuggest', {}, { offlineFallback: () => [] });
+        if (!rows || !rows.length) return UI.toast('Reorder ke liye koi item nahi', 'warn');
+        poForm(null, rows.map(r => ({ itemId: r.id, code: r.code, name: r.name,
+          qty: Math.max(1, (Number(r.reorderLevel) || Number(r.minStock) || 10) - Number(r.stock || 0)),
+          rate: Number(r.costPrice) || 0 })));
+      } catch (e) { UI.toast(e.message, 'err'); }
+    }, 400);
+  },
+  actions() {
+    const a = [{ label: 'Refresh', icon: '↻', onClick: () => App.refresh() }];
+    if (App.can('purchase.po.create')) a.unshift({ label: 'New PO', icon: '➕', onClick: () => poForm() });
+    if (App.can('purchase.grn')) a.push({ label: 'GRN', icon: '📥', onClick: () => grnForm() });
+    a.push({ label: 'Price list', icon: '📥', onClick: () => window.PriceList && PriceList.open() });
+    return a;
+  },
+  render(body) {
+    let tab = 'po';
+    const host = h('div');
+    const seg = h('div', { class: 'seg' },
+      ...[['po', 'Purchase Orders'], ['grn', 'GRN'], ['ret', 'Returns'], ['analysis', 'Supply Analysis']].map(([id, lbl]) =>
+        h('button', { class: id === 'po' ? 'on' : '', onclick: e => {
+          tab = id; Array.from(seg.children).forEach(b => b.classList.remove('on')); e.target.classList.add('on'); load();
+        } }, lbl)));
+    body.appendChild(h('div', { class: 'card' }, h('div', { class: 'filters' }, seg,
+      branchSelect(v => { App.state.tmpLoc = v; load(); }, true)), host));
+
+    async function load() {
+      host.innerHTML = ''; host.appendChild(UI.skeleton(5));
+      const loc = App.state.tmpLoc || '';
+      try {
+        if (tab === 'po') {
+          const rows = await API.call('purchase.po.list', { locationId: loc });
+          host.innerHTML = '';
+          host.appendChild(UI.table({
+            columns: [
+              { key: 'poNo', label: 'PO No.' }, { key: 'date', label: 'Date', render: r => fmt.date(r.date) },
+              { key: 'supplierName', label: 'Supplier' },
+              { key: 'orderedQty', label: 'Ordered', num: true, render: r => h('b', null, fmt.num(r.orderedQty||0)) },
+              { key: 'receivedQty', label: 'Received', num: true, render: r => fmt.num(r.receivedQty||0) },
+              { key: 'pendingQty', label: 'Pending', num: true, render: r => h('span', {class:'badge '+(Number(r.pendingQty||0)>0?'warn':Number(r.pendingQty||0)<0?'err':'ok')}, fmt.num(r.pendingQty||0)) },
+              { key: 'difference', label: 'Short', num: true, render: r => {
+                var diff = Number(r.orderedQty||0) - Number(r.receivedQty||0);
+                var over = diff < 0 ? Math.abs(diff) : 0;
+                var short = diff > 0 ? diff : 0;
+                if(over) return h('span', {class:'badge err'}, 'Over '+fmt.num(over));
+                if(short) return h('span', {class:'badge warn'}, fmt.num(short));
+                return h('span', {class:'badge ok'}, '0');
+              }},
+              { key: 'total', label: 'Total', num: true, render: r => fmt.money(r.total) },
+              { key: 'status', label: 'Status', render: r => h('span', { class: 'badge ' + (r.status === 'RECEIVED' ? 'ok' : r.status === 'APPROVED' ? 'info' : 'warn') }, r.status) },
+              { key: 'id', label: '', render: r => h('div', { style: { display: 'flex', gap: '4px' } },
+                r.status === 'DRAFT' && App.can('purchase.po.approve') ? h('button', { class: 'btn sm sec', onclick: e => { e.stopPropagation(); approve(r.id); } }, 'Approve') : '',
+                r.pendingQty > 0 && App.can('purchase.grn') ? h('button', { class: 'btn sm', onclick: e => { e.stopPropagation(); grnForm(r); } }, 'Receive') : '',
+                h('button', { class: 'btn sm ghost', title: 'Print item label', onclick: e => { e.stopPropagation(); Print.labelFlow([r.itemId || r.id]); } }, '🏷')) }
+            ], rows, emptyText: 'Koi PO nahi', onRow: r => poForm(r)
+          }));
+        } else if (tab === 'grn') {
+          const rows = await API.call('purchase.grn.list', { locationId: loc });
+          host.innerHTML = '';
+          host.appendChild(UI.table({
+            columns: [
+              { key: 'grnNo', label: 'GRN' }, { key: 'date', label: 'Date', render: r => fmt.date(r.date) },
+              { key: 'supplierId', label: 'Supplier', render: r => supplierName(r.supplierId) },
+              { key: 'poNo', label: 'PO ref', render: r => r.poNo || r.poId || '—' },
+              { key: 'invoiceNo', label: 'Supplier inv.' },
+              { key: 'orderedQty', label: 'Ordered', num: true, render: r => r.orderedQty!==undefined ? fmt.num(r.orderedQty) : '—' },
+              { key: 'receivedQty', label: 'Received', num: true, render: r => r.receivedQty!==undefined ? fmt.num(r.receivedQty) : fmt.num(r.qty||r.totalQty||0) },
+              { key: 'difference', label: 'Short', num: true, render: r => {
+                var ord = r.orderedQty, rec = r.receivedQty!==undefined ? r.receivedQty : (r.qty||0);
+                if(ord===undefined) return h('span',{class:'muted'}, '—');
+                var diff = Number(ord||0)-Number(rec||0);
+                if(diff>0) return h('span',{class:'badge warn'}, fmt.num(diff));
+                if(diff<0) return h('span',{class:'badge err'}, 'Over '+fmt.num(Math.abs(diff)));
+                return h('span',{class:'badge ok'}, '0');
+              }},
+              { key: 'total', label: 'Total', num: true, render: r => fmt.money(r.total) },
+              { key: 'status', label: 'Status', render: r => h('span', { class: 'badge ok' }, r.status) },
+              /* v2.6 §4 — har GRN ko print / PDF / share */
+              { key: '_doc', label: '', render: r => h('button', {
+                class: 'icon-btn', title: 'Print / PDF / share', 'aria-label': 'Print GRN',
+                onclick: (e) => { e.stopPropagation(); grnDocActions(r); }
+              }, '🖨') }
+            ], rows, emptyText: 'Koi GRN nahi', onRow: r => grnDetail(r)
+          }));
+        } else if (tab === 'ret') {
+          /* v2.24.2 — Purchase ▸ Returns ka UI pehle MAUJOOD HI NAHI THA
+             (backend par purchase.listReturns / purchase.saveReturn aur
+             permission purchase.return tha, magar screen khaali). Ab poora
+             flow: list + "New purchase return" form jisme wahi shared
+             scan-first picker hai jo POS/PO/GRN mein hai. */
+          let rows = [];
+          try { rows = await API.call('purchase.listReturns', { limit: 100 }, { offlineFallback: () => [] }) || []; }
+          catch (e) { rows = []; }   /* backend purana/unavailable ho to UI phir bhi khule */
+          if (!Array.isArray(rows)) rows = rows.rows || [];
+          host.innerHTML = '';
+          host.appendChild(h('div', { class: 'filters', style: { marginBottom: '10px' } },
+            h('button', { class: 'btn sm ok', onclick: () => purchaseReturnForm(() => load()) }, '↩ New purchase return'),
+            h('span', { class: 'muted', style: { fontSize: 'var(--fs-xs)' } },
+              'Supplier ko maal wapas — stock kam, ledger credit (purchase return).')));
+          host.appendChild(UI.table({
+            screen: 'purchase_returns',
+            columns: [
+              { key: 'returnNo', label: 'Return no.', render: r => h('b', null, r.returnNo || '—') },
+              { key: 'date', label: 'Date', render: r => fmt.date(r.date) },
+              { key: 'supplierId', label: 'Supplier', render: r => supplierName(r.supplierId) },
+              { key: 'grnId', label: 'GRN ref', render: r => r.grnId || '—' },
+              { key: 'reason', label: 'Reason', render: r => r.reason || '—' },
+              { key: 'total', label: 'Total', num: true, render: r => fmt.money(r.total) },
+              { key: 'status', label: 'Status', render: r => h('span', { class: 'badge ok' }, r.status || 'POSTED') }
+            ],
+            rows,
+            emptyText: 'Koi purchase return nahi — "New purchase return" se banayein'
+          }));
+        } else if(tab==='analysis'){
+          host.innerHTML=''; host.appendChild(UI.skeleton(5));
+          try{
+            var poRows = await API.call('purchase.po.list', {locationId: loc});
+            var grnRows = await API.call('purchase.grn.list', {locationId: loc});
+            // Aggregate per product and per supplier
+            var prodMap={}; var supMap={};
+            (poRows||[]).forEach(function(po){
+              var sup=po.supplierName||supplierName(po.supplierId)||'—';
+              if(!supMap[sup]) supMap[sup]={supplier:sup, ordered:0, received:0, pending:0, pos:0, shorts:0};
+              supMap[sup].ordered+=Number(po.orderedQty||0); supMap[sup].received+=Number(po.receivedQty||0); supMap[sup].pending+=Number(po.pendingQty||0); supMap[sup].pos+=1;
+              if(Number(po.pendingQty||0)>0) supMap[sup].shorts+=1;
+            });
+            // Per product from PO items if available via po.get for each PO (limit 6)
+            var prodAlerts=[];
+            // Use demo PO_ITEMS if available in mock, else approximate from poRows
+            try{
+              var allItems=[];
+              /* W7 (v2.26.0) — 4 sequential po.get calls -> parallel (independent reads) */
+              var _tops=poRows.slice(0,4);
+              var _det=await API.parallel(_tops.map(function(pr){ return function(){
+                return API.call('purchase.po.get', {id: pr.id}, {offlineFallback:function(){return null;}}); }; }), 4);
+              for(var i=0;i<_det.length; i++){
+                var d=_det[i]; if(d && d.__err) d=null;
+                if(d && d.items) allItems=allItems.concat(d.items.map(function(it){ return {po:poRows[i], it:it}; }));
+              }
+              allItems.forEach(function(x){
+                var key=x.it.code||x.it.name;
+                if(!prodMap[key]) prodMap[key]={code:x.it.code, name:x.it.name, ordered:0, received:0, pending:0, suppliers:{}, pos:[]};
+                prodMap[key].ordered+=Number(x.it.qty||0);
+                prodMap[key].received+=Number(x.it.receivedQty||0);
+                prodMap[key].pending+=Math.max(0, Number(x.it.qty||0)-Number(x.it.receivedQty||0));
+                var supName=x.po.supplierName||'—';
+                if(!prodMap[key].suppliers[supName]) prodMap[key].suppliers[supName]=0;
+                prodMap[key].suppliers[supName]+=Number(x.it.qty||0)-Number(x.it.receivedQty||0);
+                if(prodMap[key].po.indexOf(x.po.poNo)===-1) prodMap[key].po.push(x.po.poNo);
+              });
+            }catch(e){}
+            host.innerHTML='';
+            // Filters
+            var fProd=h('input',{class:'f-input', placeholder:'Product search', style:'max-width:160px'});
+            /* v2.24.2 — filter box scan-aware (shared): barcode scan = us product par filter */
+            if (UI2.attachScan) UI2.attachScan(fProd, function(code){
+              var lc=String(code).toLowerCase();
+              var hit=Object.keys(prodMap).filter(function(k){ return String(prodMap[k].code||'').toLowerCase()===lc; })[0];
+              fProd.value = hit ? prodMap[hit].code : code;
+              fProd.dispatchEvent(new Event('input',{bubbles:true}));
+              UI.toast(hit ? ('📷 ' + prodMap[hit].code + ' — ' + prodMap[hit].name) : ('Code nahi mila: ' + code), hit ? 'ok' : 'warn');
+            });
+            var fSup=h('select',{class:'f-input', style:'max-width:140px'}, h('option',{value:''},'All suppliers'));
+            Object.keys(supMap).forEach(function(s){ fSup.appendChild(h('option',{value:s},s)); });
+            var fShort=h('select',{class:'f-input', style:'max-width:120px'}, h('option',{value:''},'All'), h('option',{value:'short'},'Short only'), h('option',{value:'pending'},'Pending >0'));
+            var fDateFrom=h('input',{type:'date', class:'f-input', style:'max-width:130px'});
+            var fDateTo=h('input',{type:'date', class:'f-input', style:'max-width:130px'});
+            var filterBar=h('div',{class:'filters', style:'flex-wrap:wrap'}, fProd, fSup, fShort, fDateFrom, fDateTo, h('button',{class:'btn sm sec', onclick:function(){ load(); }}, '↻ Refresh'));
+            host.appendChild(h('div',{class:'card'}, h('div',{class:'card-head'}, h('h3',null,'🔍 Filters — Product, Supplier, Date, Status, Shortage'), filterBar)));
+            // Summary KPIs
+            var totalOrd=Object.values(supMap).reduce(function(a,x){return a+x.ordered;},0);
+            var totalRec=Object.values(supMap).reduce(function(a,x){return a+x.received;},0);
+            var totalPend=Object.values(supMap).reduce(function(a,x){return a+x.pending;},0);
+            var shortProdCount=Object.values(prodMap).filter(function(p){return p.pending>0;}).length;
+            // Guard: if no data, show empty
+            if(!Object.keys(supMap).length && !Object.keys(prodMap).length){
+              host.appendChild(h('div',{class:'empty'}, 'No PO/GRN data for this branch — create a PO to see supply analysis'));
+            } else {
+              host.appendChild(h('div',{class:'grid g4'}, UI.kpi('📦','Ordered', fmt.num(totalOrd)), UI.kpi('✅','Received', fmt.num(totalRec),'','ok'), UI.kpi('⚠','Pending/Short', fmt.num(totalPend),'','warn'), UI.kpi('🔥','Products with short', String(shortProdCount),'','err')));
+            }
+            // Supplier reliability table
+            var supRows=Object.values(supMap).map(function(x){ var rate= x.ordered? Math.round((x.received/x.ordered)*100):100; return {supplier:x.supplier, ordered:x.ordered, received:x.received, pending:x.pending, rate:rate, pos:x.pos, reliability: rate>=90?'Good': rate>=70?'Partial':'Poor'}; });
+            supRows.sort(function(a,b){ return a.rate - b.rate; });
+            /* v2.24.2 — filters ko LIVE banaya (pehle bind hi nahi thay: type karne
+               par kuch nahi hota tha, sirf Refresh kaam karta tha) + supplier table
+               ko product query se filter honay ka bug hataya (product text supplier
+               rows ko gira deta tha). Ab dono tables apne-apne filter se chalti hain. */
+            var supTableWrap=h('div'), prodTableWrap=h('div');
+            host.appendChild(h('div',{class:'card'}, h('div',{class:'card-head'}, h('h3',null,'🏭 Supplier reliability — Ordered vs Supplied')), h('div',{class:'card-body tight'}, supTableWrap)));
+            function supFiltered(){ var s=(fSup.value||''); var sh=fShort.value; return supRows.filter(function(r){ if(s && r.supplier!==s) return false; if(sh==='short' && r.pending===0) return false; if(sh==='pending' && r.pending===0) return false; return true; }); }
+            function drawSupTable(){ supTableWrap.innerHTML=''; supTableWrap.appendChild(UI2.table({screen:'sup_analysis', rows: supFiltered(), columns:[
+              {key:'supplier', label:'Supplier'}, {key:'ordered', label:'Ordered', num:true, render:function(r){return fmt.num(r.ordered);}}, {key:'received', label:'Supplied', num:true, render:function(r){return fmt.num(r.received);}}, {key:'pending', label:'Short', num:true, render:function(r){return h('span',{class:'badge '+(r.pending>0?'warn':'ok')}, fmt.num(r.pending));}}, {key:'rate', label:'Fill %', num:true, render:function(r){return h('b',{style:{color: r.rate<70?'var(--err)': r.rate<90?'var(--warn)':'var(--ok)'}}, r.rate+'%');}}, {key:'reliability', label:'Status', render:function(r){return h('span',{class:'badge '+(r.reliability==='Good'?'ok': r.reliability==='Poor'?'err':'warn')}, r.reliability);}}
+            ], height:'28vh'})); }
+            drawSupTable();
+            // Product hot/short analysis
+            var prodRows=Object.values(prodMap).map(function(p){ var supList=Object.keys(p.suppliers).map(function(s){return s+'('+fmt.num(p.suppliers[s])+')';}).join(', '); return {code:p.code, name:p.name, ordered:p.ordered, received:p.received, pending:p.pending, suppliers: supList||'—', pos:(p.po||[]).join(', ')}; });
+            prodRows.sort(function(a,b){ return b.pending - a.pending; });
+            var hotRows=prodRows.filter(function(r){ return r.pending>0; }).slice(0,12);
+            host.appendChild(h('div',{class:'card'}, h('div',{class:'card-head'}, h('h3',null,'🔥 Hot / Frequently short products — Ordered but not fully supplied')), h('div',{class:'card-body tight'}, hotRows.length? UI2.table({screen:'prod_hot', rows: hotRows, columns:[
+              {key:'code', label:'Code'}, {key:'name', label:'Product'}, {key:'ordered', label:'Ordered', num:true}, {key:'received', label:'Received', num:true}, {key:'pending', label:'Short', num:true, render:function(r){return h('span',{class:'badge warn'}, fmt.num(r.pending));}}, {key:'suppliers', label:'Suppliers (short)'}, {key:'pos', label:'POs'}
+            ], height:'30vh'}): h('div',{class:'empty'}, 'No shorts — all supplied ✅'))));
+            // Full product table with filters (v2.24.2: live re-render)
+            host.appendChild(h('div',{class:'card'}, h('div',{class:'card-head'}, h('h3',null,'📦 Product supply — Detailed')), h('div',{class:'card-body tight'}, prodTableWrap)));
+            function prodFiltered(){ var q=(fProd.value||'').toLowerCase(); var s=(fSup.value||''); var sh=fShort.value; return prodRows.filter(function(r){ if(q && (String(r.code).toLowerCase().indexOf(q)===-1 && String(r.name).toLowerCase().indexOf(q)===-1)) return false; if(s && String(r.suppliers).indexOf(s)===-1) return false; if(sh==='short' && r.pending===0) return false; if(sh==='pending' && r.pending===0) return false; return true; }); }
+            function drawProdTable(){ prodTableWrap.innerHTML=''; prodTableWrap.appendChild(UI2.table({screen:'prod_detail', rows: prodFiltered(), columns:[
+              {key:'code', label:'Code'}, {key:'name', label:'Product'}, {key:'ordered', label:'Ordered', num:true}, {key:'received', label:'Received', num:true}, {key:'pending', label:'Pending/Short', num:true, render:function(r){ return h('span',{class:'badge '+(r.pending>0?'warn': r.pending<0?'err':'ok')}, r.pending>0? fmt.num(r.pending): r.pending<0? 'Over '+fmt.num(Math.abs(r.pending)) : '0'); }}, {key:'suppliers', label:'Supplier(s)'}
+            ], height:'34vh'})); }
+            drawProdTable();
+            /* filter controls ko LIVE bind karein (pehle koi binding nahi thi) */
+            [fProd, fSup, fShort] .forEach(function(el){
+              el.addEventListener(el.tagName==='SELECT' ? 'change' : 'input', function(){ drawSupTable(); drawProdTable(); });
+            });
+            fDateFrom.addEventListener('change', function(){ drawSupTable(); drawProdTable(); });
+            fDateTo.addEventListener('change', function(){ drawSupTable(); drawProdTable(); });
+            // Workflow hint
+            host.appendChild(h('div',{class:'card', style:'background:var(--info-soft);border-color:var(--info)'}, h('div',{class:'card-body'}, h('b',null,'Workflow: Demand → PO → Supplier → Ordered → GRN Received → Difference/Pending → Inventory → Supplier Performance'), h('div',{style:'font-size:12px;color:var(--muted);margin-top:4px'}, 'All values auto-calculated from actual PO and GRN — no manual difference. Use filters: Product, Supplier, Date, PO status, shortage, pending qty.'))));
+          }catch(e){ host.innerHTML=''; host.appendChild(h('div',{class:'empty'}, '⚠ '+e.message)); }
+        }
+      } catch (e) { host.innerHTML = ''; host.appendChild(h('div', { class: 'empty' }, '⚠ ' + e.message)); }
+    }
+    async function approve(id) { await API.call('purchase.po.approve', { id }); UI.toast('Approved', 'ok'); load(); }
+
+  /* v2.6 §4 — GRN ke liye print / PDF / share (row ke 🖨 button se) */
+  function grnDocActions(r) {
+    UI.modal({
+      title: '📄 GRN ' + (r.grnNo || ''), size: 'sm',
+      body: docActions('grn', r.id),
+      actions: [
+        { label: '🏷 Labels (received items)', cls: 'sec', onClick: async c => {
+            c();
+            try {
+              const d = await API.call('purchase.grn.get', { id: r.id }, { offlineFallback: () => null });
+              const ids = ((d && d.items) || []).map(x => x.itemId || x.id).filter(Boolean);
+              if (!ids.length) { UI.toast('GRN me items nahi mile — pehle detail kholein', 'warn'); return; }
+              Print.labelFlow(ids);
+            } catch (e) { UI.toast('Labels fail: ' + (e.message || e), 'err'); }
+          } },
+        { label: 'Close', onClick: c => c() }
+      ]
+    });
+  }
+
+  /* ------------------- GRN detail — supplier balance ke sath ---------------- */
+  async function grnDetail(row) {
+    let d = null;
+    try { d = await API.call('purchase.grn.get', { id: row.id }, { offlineFallback: () => null }); }
+    catch (e) { UI.toast(e.message, 'err'); return; }
+    if (!d) { UI.toast('Detail load nahi hui (offline)', 'warn'); return; }
+    const sup = d.supplier || {};
+    const body = h('div', null,
+      h('div', { class: 'po-meta' },
+        h('span', null, 'GRN: ' + (d.grnNo || '')),
+        h('span', null, 'Date: ' + fmt.date(d.date, true)),      /* v2.29.0 (W4) — ab date + waqt */
+        UI2.stampRow(d) ? h('span', { class: 'muted' }, UI2.stampRow(d).textContent) : '',
+        h('span', null, 'Supplier: ' + (sup.name || supplierName(d.supplierId))),
+        h('span', null, 'Invoice: ' + (d.invoiceNo || '—')),
+        d.poNo ? h('span', null, 'Against PO: ' + d.poNo) : ''),
+      /* ---- previous balance block (customer invoice jaisa) ---- */
+      h('div', { class: 'bal-card' },
+        h('div', { class: 'bal-title' }, '💰 Supplier balance'),
+        h('div', { class: 'bal-row' }, h('span', null, 'Pichhla baqaya (previous payable)'),
+          h('b', null, fmt.money(d.prevBalance || 0))),
+        h('div', { class: 'bal-row' }, h('span', null, 'Is GRN ki mal'),
+          h('b', null, fmt.money(d.total || 0))),
+        h('div', { class: 'bal-row' }, h('span', null, 'Is GRN ke khilaf adaigi'),
+          h('b', null, '− ' + fmt.money(d.paid || 0))),
+        h('div', { class: 'bal-row grand' }, h('span', null, 'Total dena hai (closing payable)'),
+          h('b', null, fmt.money(d.closingBalance || 0))),
+        sup.paymentTerms ? h('div', { class: 'bal-note' }, 'Payment terms: ' + sup.paymentTerms) : ''),
+      (d.items && d.items.length) ? UI2.table({
+        screen: 'grn_items', rows: d.items, height: '34vh', exportName: 'grn-' + (d.grnNo || d.id),
+        columns: [
+          { key: 'code', label: 'Code' },
+          { key: 'name', label: 'Product' },
+          { key: 'qty', label: 'Qty', num: true },
+          { key: 'cost', label: 'Rate', num: true, render: r => fmt.money(r.cost) },
+          { key: 'lineTotal', label: 'Amount', num: true, render: r => fmt.money(r.lineTotal) }
+        ]
+      }) : h('div', { class: 'empty' }, 'Koi line item nahi'),
+      h('div', { class: 'tot-row grand' }, h('span', null, 'GRN total'), h('span', null, fmt.money(d.total || 0))));
+
+    UI2.modal({
+      title: '📥 GRN ' + (d.grnNo || ''), size: 'lg', body,
+      actions: [
+        { label: '💸 Payment', cls: 'ok', onClick: c => { c(); supplierPayment(d); } },
+        { label: 'Close', onClick: c => c() }
+      ]
+    });
+  }
+
+  /* supplier payment against a GRN */
+  function supplierPayment(d) {
+    const f2 = UI2.form({
+      values: { amount: d.closingBalance || 0, method: 'CASH', date: new Date().toISOString().slice(0, 10) },
+      fields: [
+        { key: 'amount', label: 'Amount', type: 'money' },
+        { key: 'method', label: 'Method', type: 'select', options: ['CASH', 'BANK', 'CHEQUE', 'JAZZCASH', 'EASYPAISA', 'RAAST'] },
+        { key: 'date', label: 'Date', type: 'date' },
+        { key: 'reference', label: 'Reference / voucher no.' },
+        { key: 'notes', label: 'Note', full: true }
+      ]
+    });
+    UI2.modal({
+      title: '💸 Supplier payment — ' + (d.supplier && d.supplier.name ? d.supplier.name : ''),
+      size: 'sm', body: f2.el,
+      actions: [{
+        label: 'Pay', cls: 'ok', onClick: async c => {
+          const v = f2.values();
+          if (!(Number(v.amount) > 0)) return UI.toast('Amount darj karein', 'err');
+          try {
+            await API.call('payments.create', {
+              type: 'SUPPLIER_PAYMENT', partyType: 'SUPPLIER', partyId: d.supplierId,
+              method: v.method, amount: Number(v.amount), date: v.date,
+              purchaseId: d.id, reference: v.reference || '', notes: v.notes || 'GRN ' + (d.grnNo || '')
+            });
+            UI.toast('Payment recorded ✅', 'ok'); c(); App.refresh();
+          } catch (e) { UI.toast(e.message, 'err'); }
+        }
+      }, { label: 'Cancel', onClick: c => c() }]
+    });
+  }
+    load();
+  }
+});
+
+let SUPPLIERS = [];
+/* v2.24.2 — Purchase return form: shared scan-first picker (POS/PO/GRN ke sath
+   bilkul same scan behaviour) + supplier/reason/date + stock-aware qty row. */
+function purchaseReturnForm(onDone) {
+  const items = [];          /* {id, code, name, qty, cost, stock} */
+  const supplier = h('select', { class: 'f-input' }, h('option', { value: '' }, '— supplier —'),
+    (SUPPLIERS || []).map(s2 => h('option', { value: s2.id }, s2.name)));
+  const date = h('input', { class: 'f-input', type: 'date', value: new Date().toISOString().slice(0, 10) });
+  const reason = h('input', { class: 'f-input', type: 'text', placeholder: 'Reason (damaged / wrong item / rate issue…)' });
+  const linesHost = h('div');
+  function renderLines() {
+    linesHost.innerHTML = '';
+    if (!items.length) { linesHost.appendChild(h('div', { class: 'empty' }, 'Koi item nahi — scan ya search se add karein')); return; }
+    linesHost.appendChild(UI.table({
+      screen: 'preturn_lines',
+      columns: [
+        { key: 'code', label: 'Code' }, { key: 'name', label: 'Item' },
+        { key: 'stock', label: 'Stock', num: true, render: r => fmt.num(r.stock) },
+        { key: 'qty', label: 'Return qty', num: true, render: r => {
+            const q = h('input', { class: 'f-input', type: 'number', min: '1', value: r.qty,
+              'aria-label': 'Return qty', style: { width: '80px', textAlign: 'right' } });
+            q.onchange = () => { r.qty = Math.max(1, Number(q.value) || 1); q.value = r.qty; };
+            return q;
+          } },
+        { key: 'cost', label: 'Cost', num: true, render: r => fmt.money(r.cost) },
+        { key: 'lt', label: 'Line total', num: true, render: r => fmt.money(Number(r.qty) * Number(r.cost)) },
+        { key: '_x', label: '', render: r => h('button', { class: 'icon-btn', title: 'Remove line', 'aria-label': 'Remove line',
+            onclick: e => { e.stopPropagation(); const i = items.indexOf(r); if (i > -1) items.splice(i, 1); renderLines(); } }, '✕') }
+      ],
+      rows: items
+    }));
+  }
+  const picker = UI2.itemPicker({
+    lines: items,
+    icon: '↩', title: 'Return items — scan ya search',
+    hint: 'Scan → line (qty merge) · qty badalne ke liye table mein edit karein',
+    /* shared picker ke row ko hamari line shape mein dhaal dein (cost/stock bhi) */
+    map: (r, qty) => ({
+      id: r.id, code: r.code, name: r.name,
+      qty: Math.max(1, Number(qty) || 1),
+      stock: Number(r.stock) || 0,
+      cost: Number(r.costPrice || r.cost || 0)
+    }),
+    after: () => renderLines()
+  });
+  renderLines();
+  UI2.modal({
+    title: '↩ New purchase return',
+    size: 'lg',
+    body: h('div', { class: 'mod-stack' },
+      UI2.section('Return details', null, 'info'),
+      h('div', { class: 'f-grid' },
+        h('div', { class: 'f-col' }, h('label', null, 'Supplier *'), supplier),
+        h('div', { class: 'f-col' }, h('label', null, 'Date'), date),
+        h('div', { class: 'f-col full' }, h('label', null, 'Reason'), reason)),
+      UI2.section('Items — scan ya search', null, 'info'),
+      picker,
+      linesHost),
+    actions: [{ label: 'Post return', cls: 'danger', onClick: async (c) => {
+      if (!items.length) return UI.toast('Kam az kam ek item add karein', 'warn');
+      const payload = {
+        supplierId: supplier.value || '', date: date.value || '',
+        reason: reason.value || '', locationId: App.state.tmpLoc || '',
+        items: items.map(l => ({ itemId: l.id, qty: Number(l.qty) || 1, cost: Number(l.cost) || 0 }))
+      };
+      if (!payload.supplierId) return UI.toast('Supplier select karein', 'warn');
+      try {
+        await API.call('purchase.saveReturn', payload);
+        UI.toast('Purchase return post ho gaya ✅', 'ok');
+        c(); onDone && onDone(); API.pullCatalog && API.pullCatalog(true);
+      } catch (e) { UI.toast(e.message || 'Return save nahi hua', 'err', 6000); }
+    } }]
+  });
+}
+
+function supplierName(id) { const s = SUPPLIERS.find(x => x.id === id); return s ? s.name : (id || '—'); }
+window.addEventListener('ha:authenticated', () => {
+  const token = App.state.session && App.state.session.token;
+  if (!token) return;
+  Shared.suppliers({}).then(rows => {   /* v2.27.0 W3.T3 */
+    if (App.state.session && App.state.session.token === token) SUPPLIERS = rows || [];
+  }).catch(() => { });
+});
+window.addEventListener('ha:logged-out', () => { SUPPLIERS = []; });
+
+/** Supplier balance card — PO / GRN form ke upar lagta hai.
+ *  .refresh(id) call karain to supplier ka pichhla baqaya aa jata hai. */
+function supplierBalanceCard() {
+  const el = h('div', { class: 'party-bal', style: { display: 'none', marginBottom: '10px' } });
+  el.refresh = async function (supId) {
+    if (!supId) { el.style.display = 'none'; return; }
+    try {
+      const st = await API.call('purchase.supplierStatement', { supplierId: supId },
+        { offlineFallback: () => null });
+      if (!st) { el.style.display = 'none'; return; }
+      el.innerHTML = ''; el.style.display = '';
+      /* v2.6 QA — English titles (title attribute me Urdu hint), aur .pb-rows
+         grid (auto-fit 120px) — ab ye 4 fields ek hi line me fit hote hain,
+         truncate/overlap nahi hote. */
+      const row = (en, ur, node, extra) => h('div',
+        { class: 'pb-row' + (extra ? ' ' + extra : ''), title: ur },
+        h('span', null, en), node);
+      const rows = h('div', { class: 'pb-rows' });
+      rows.appendChild(row('Supplier', 'سپلائر', h('b', null, st.supplier.name || '—')));
+      rows.appendChild(row('Prev. balance', 'پچھلا بقایا (ادا کرنا ہے)',
+        h('b', { class: (st.closingBalance || 0) > 0 ? 'err' : 'ok' }, fmt.money(st.closingBalance || 0))));
+      rows.appendChild(row('Total purchases', 'کل خریداری', h('b', null, fmt.money(st.totalPurchased || 0))));
+      rows.appendChild(row('Total paid', 'کل ادائیگی', h('b', null, fmt.money(st.totalPaid || 0))));
+      el.appendChild(rows);
+      if (st.supplier.paymentTerms) el.appendChild(h('div', { class: 'pb-row muted', title: 'ادائیگی کی شرائط' },
+        h('span', null, 'Payment terms'), h('b', null, st.supplier.paymentTerms)));
+    } catch (e) { el.style.display = 'none'; }
+  };
+  return el;
+}
+
+function poForm(po, preset) {
+  const items = po ? [] : [];
+  /* supplier ka pichhla baqaya form ke upar nazar aaye */
+  const supBal = supplierBalanceCard();
+  const lines = (preset && preset.length) ? preset.slice() : [];
+  /* edit mode: PO ki asli detail (lines, dates, status) backend se */
+  let detail = null;
+  const poMeta = h('div', { class: 'po-meta', style: { display: 'none' } });
+  const listEl = h('div');
+  // --- Custom product for PO (when product not in catalog) ---
+  const poCustomBtn = h('button', { class: 'btn sm sec', title: 'Naya product jo catalog mein nahi — manual entry', onclick: openPoCustom }, '＋ Custom product');
+  /* v2.25.0 (req 1) — POS wala hi dedicated Bulk Add modal (multi-select + Add All) */
+  const poBulkBtn = h('button', { class: 'btn sm sec', type: 'button',
+    title: 'Bulk Add — multi-select modal (POS jaisa): scan + tick + Add All',
+    onclick: () => UI2.bulkAddModal({
+      icon: '🛒', title: 'Bulk Add — PO', commitLabel: 'Add to PO lines',
+      modalTitle: '📦 Bulk Add — PO Multi Select',
+      sub: r => [r.code, r.category, (r.stock !== undefined ? 'stock ' + r.stock : '')].filter(Boolean).join(' · '),
+      map: (r, qty) => {
+        const cat = catalogItem(r.id);
+        return { itemId: r.id, code: r.code, name: r.name, qty: r2q(qty) || 1, rate: Number(r.costPrice) || 0,
+          retailPrice: Number(r.retailPrice) || 0, wholesalePrice: Number(r.wholesalePrice) || 0,
+          conv: Math.max(1, Number(r.conversionFactor || (cat && cat.cv) || 1)), mode: 'PCS',
+          prevPrice: 0, prevDate: '', prevSource: '' };
+      },
+      onAdd: l => { lines.push(l); try { fetchPrev(l); } catch (e) { } render(); }
+    }) }, '📋 Bulk add');
+  function openPoCustom(){
+    const cf = UI2.form({
+      values: { qty: 1, rate: 0 },
+      fields: [
+        { key: 'name', label: 'Product name *', required:true, placeholder: 'e.g. Brake Pad Set', full:true },
+        { key: 'code', label: 'Part code / SKU', placeholder: 'BP-1001' },
+        { key: 'category', label: 'Category', placeholder: 'Brakes' },
+        { key: 'qty', label: 'Qty *', type:'number', value:1 },
+        { key: 'rate', label: 'Rate per unit', type:'number', value:0 }
+      ]
+    });
+    UI2.modal({ title:'＋ Custom product (not in catalog)', size:'md', body: cf.el,
+      actions:[{ label:'Add to PO', cls:'ok', onClick:c=>{
+        const v=cf.values(); if(!v.name) return UI.toast('Name zaruri','err');
+        const l={ itemId:'', code:v.code||'CUSTOM', name:v.name, qty: Number(v.qty)||1, rate: Number(v.rate)||0, retailPrice:0, wholesalePrice:0, conv:1, mode:'PCS', prevPrice:0, prevDate:''};
+        lines.push(l); try{ fetchPrev(l);}catch(e){} render(); UI.toast('Custom add ✅','ok'); c();
+      }},{ label:'Cancel', onClick:c=>c()}]
+    });
+  }
+  // --- Customer Demand → PO: auto-identify outstanding demands for this branch ---
+  const demandSuggestBox = h('div', { class: 'card', style: { display: 'none', marginBottom: '10px', borderLeft: '4px solid var(--warn)' } });
+  let demandSuggestData = null;
+  async function loadDemandSuggest(){
+    if (po && po.id) { demandSuggestBox.style.display='none'; return; }
+    if (!App.can('demand.view') || !App.can('purchase.view')) { demandSuggestBox.style.display='none'; return; }
+    try {
+      const res = await API.call('demand.suggestForPO', { locationId: (f && f.values ? f.values().locationId : App.state.locationId) || App.state.locationId, limit: 8 }, { offlineFallback: ()=>({items:[],totalItems:0})});
+      demandSuggestData = res;
+      if(!res || !res.items || !res.items.length){ demandSuggestBox.style.display='none'; return; }
+      demandSuggestBox.style.display='';
+      demandSuggestBox.innerHTML='';
+      const head = h('div', {class:'card-head'}, h('h4', null, '📝 Customer demands — ' + res.totalItems + ' items · ' + res.totalDemands + ' requests'), h('span', {class:'badge warn'}, fmt.money(res.estimatedValue)));
+      const hint = h('div', {style:{fontSize:'12px', color:'var(--muted)', marginBottom:'6px'}}, 'These are what customers are waiting for — add to this PO in one click. Top priority shown first.');
+      const chips = h('div', {style:{display:'flex', flexWrap:'wrap', gap:'6px', marginBottom:'8px'}});
+      res.items.slice(0,6).forEach(it=>{
+        const chip = h('button', {class:'btn sm sec wrap', title: it.customers ? it.customers.slice(0,2).map(c=>c.name).join(', ') : ''},
+          it.itemName + ' ×' + it.totalQty + '  · ' + it.demandCount + ' req' + (it.topPriority==='URGENT'?' ⚠' : ''));
+        chip.onclick = ()=>{
+          // add to PO lines if not already
+          const exists = lines.find(l=> l.itemId===it.itemId || (it.itemCode && l.code===it.itemCode));
+          if(exists){ UI.toast('Already in PO: '+it.itemName, 'warn'); return; }
+          const l = { itemId: it.itemId || '', code: it.itemCode || '', name: it.itemName, qty: Number(it.totalQty)||1, rate: Number(it.costPrice)||0, retailPrice: Number(it.retailPrice)||0, wholesalePrice: Number(it.wholesalePrice)||0, conv:1, mode:'PCS', prevPrice:0, prevDate:''};
+          lines.push(l); fetchPrev(l); render();
+          UI.toast('Added from demands: '+it.itemName+' ×'+it.totalQty, 'ok');
+        };
+        chips.appendChild(chip);
+      });
+      const addAll = h('button', {class:'btn sm ok'}, '➕ Add all '+Math.min(6,res.items.length)+' to PO');
+      addAll.onclick = ()=>{
+        let added=0;
+        res.items.slice(0,6).forEach(it=>{
+          if(lines.find(l=> l.itemId===it.itemId)) return;
+          const l = { itemId: it.itemId || '', code: it.itemCode || '', name: it.itemName, qty: Number(it.totalQty)||1, rate: Number(it.costPrice)||0, retailPrice: Number(it.retailPrice)||0, wholesalePrice: Number(it.wholesalePrice)||0, conv:1, mode:'PCS', prevPrice:0, prevDate:''};
+          lines.push(l); fetchPrev(l); added++;
+        });
+        render();
+        if(added) UI.toast(added+' demand items added ✅','ok'); else UI.toast('All already in PO','warn');
+      };
+      const viewAll = h('button', {class:'btn sm sec', onclick: ()=> App.go('demands', {tab:'poSuggest'})}, 'Open demands → PO');
+      demandSuggestBox.append(head, h('div', {class:'card-body'}, hint, chips, h('div', {style:{display:'flex', gap:'6px', flexWrap:'wrap'}}, addAll, viewAll,
+        res.items.some(x=>x.costPrice) ? '' : h('span', {style:{fontSize:'11px', color:'var(--muted)', marginLeft:'6px'}}, 'Tip: set cost in product master for accurate value')
+      )));
+    } catch(e){ demandSuggestBox.style.display='none'; }
+  }
+  // load after supplier list done
+  setTimeout(loadDemandSuggest, 600);
+
+  /* ---- v2.9 §7/§8 — product picker: multi-select (checkbox + qty per item),
+     list bahar click tak khuli rehti hai, 📋 se poori list, search + add. ---- */
+  /* v2.24.0 — PO form bhi ab WAHI shared scan-first picker use karta hai jo
+     GRN/Stock Issue/POS par hai. Pehle yahan custom search tha: na scan, na
+     bulk modal, na dup-merge/stock-cap — isi liye "PO par barcode kaam nahi
+     karta" wali shikayat thi. */
+  const r2q = n => Math.round(Number(n) * 1000) / 1000;   // qty 3-decimal helper (render/map dono use karte hain)
+  const picker = UI2.itemPicker({
+    lines: lines, after: render,
+    icon: '🛒', title: 'PO items — scan ya search',
+    hint: 'Scan → seedha PO line mein (qty merge + stock cap) · ya 📋 poori list se multi-select',
+    commitLabel: 'Add to PO lines',
+    placeholder: 'Item dhoondain (code / name / barcode)… ya 📋 poori list',
+    sub: r => [r.code, r.category, (r.stock !== undefined ? 'stock ' + r.stock : ''),
+      (r.costPrice ? 'cost ' + fmt.money(r.costPrice) : '')].filter(Boolean).join(' · '),
+    map: (r, qty) => {
+      const cat = catalogItem(r.id);
+      return { itemId: r.id, code: r.code, name: r.name, qty: r2q(qty) || 1, rate: Number(r.costPrice) || 0,
+        retailPrice: Number(r.retailPrice) || 0, wholesalePrice: Number(r.wholesalePrice) || 0,
+        conv: Math.max(1, Number(r.conversionFactor || (cat && cat.cv) || 1)), mode: 'PCS',
+        prevPrice: 0, prevDate: '', prevSource: '' };
+    },
+    onAdd: l => fetchPrev(l)
+  });
+
+  /* ---- v2.6 §3 — pichhli rate server se laayein (settings-driven) ---- */
+  const r2 = n => Math.round(Number(n) * 100) / 100;
+  async function fetchPrev(l) {
+    try {
+      const d = await API.call('purchase.priceInfo', {
+        itemId: l.itemId,
+        supplierId: (f && f.values ? (f.values().supplierId || '') : ''),
+        rate: Number(l.rate !== undefined ? l.rate : l.cost) || 0
+      }, { offlineFallback: () => null });
+      if (!d) return;
+      l.prevPrice = Number(d.prevPrice || 0);
+      l.prevDate = d.prevDate || ''; l.prevSource = d.prevSource || ''; l.prevGrnNo = d.prevGrnNo || '';
+      l.retailPrice = Number(d.retailPrice || l.retailPrice || 0);
+      l.wholesalePrice = Number(d.wholesalePrice || l.wholesalePrice || 0);
+      repaint(l);
+    } catch (e) { }
+  }
+  /** Strip dobara banayein — poora list re-render nahi (taake input focus na toote).
+   * v2.9 — guard: async fetchPrev modal close/re-render ke baad bhi aa sakta
+   * hai; purane (detached) strip par replaceChild error hota tha. */
+  const repaint = (l) => {
+    try {
+      if (!l._strip || !l._strip.isConnected || !l._strip.parentNode) {
+        if (document.body.contains(l._strip)) return; // row render() se fresh ho gayi
+        render(); return;
+      }
+      l._strip.parentNode.replaceChild(priceStrip(l), l._strip);
+    } catch (e) { /* silent — strip sirf decorative hai */ }
+  };
+  /** Compact multi-column strip (§2 + §3): Previous · Current · Change + Retail/Wholesale */
+  function priceStrip(l) {
+    const strip = h('div', { class: 'pl-price' });
+    l._strip = strip;
+    if (String((App.state.settings || {}).purchasePriceCompare) === 'false') return strip;
+    const cur = Number(l.rate !== undefined ? l.rate : l.cost) || 0;
+    const prev = Number(l.prevPrice) || 0;
+    if (l.retailPrice || l.wholesalePrice) {
+      strip.appendChild(h('span', { class: 'pl-tag' },
+        'Retail ' + fmt.money(l.retailPrice || 0) + ' · Wholesale ' + fmt.money(l.wholesalePrice || 0)));
+    }
+    if (!prev) { strip.appendChild(h('span', { class: 'pl-hint' }, 'Pichhli rate: record nahi')); return strip; }
+    const chg = r2(cur - prev);
+    const pct = prev ? r2((chg / prev) * 100) : 0;
+    strip.append(
+      h('span', null, 'Previous: ' + fmt.money(prev) + (l.prevDate ? ' (' + String(l.prevDate).slice(0, 10) + ')' : '')),
+      h('span', null, 'Current: ' + fmt.money(cur)),
+      h('span', { class: 'pl-chg ' + (chg > 0 ? 'up' : chg < 0 ? 'down' : 'flat') },
+        'Change: ' + (chg > 0 ? '+' : '') + fmt.money(chg) + ' (' + (pct > 0 ? '+' : '') + pct.toFixed(2) + '%)'));
+    return strip;
+  }
+
+  /* catalog se stock / last cost — PO banate waqt nazar rahe */
+  const catalogItem = id => {
+    const list = ((App.state.catalog || {}).items) || [];
+    return list.filter(x => x.id === id)[0] || null;
+  };
+  function render() {
+    listEl.innerHTML = '';
+    listEl.appendChild(h('div', { class: 'po-line-head' },
+      h('span', { class: 'plh-name' }, 'Item'),
+      h('span', { class: 'plh-num' }, 'Stock'),
+      h('span', { class: 'plh-num' }, 'Qty'),
+      h('span', { class: 'plh-num' }, 'Rate'),
+      h('span', { class: 'plh-num' }, 'Amount'),
+      h('span', { style: { width: '28px' } }, '')));
+    lines.forEach((l, i) => {
+      /* v2.9 §8 — pack conversion: 1 pack = N base units (e.g. BOX = 12 PCS).
+         User pack mein qty/rate dekhta hai; line BASE units mein store hoti hai
+         taake GRN/stock/ledger sab ek hi unit par rahein. */
+      const cat0 = catalogItem(l.itemId);
+      l.conv = Math.max(1, Number(l.conv || (cat0 && cat0.cv) || 1));
+      if (l.conv <= 1) l.mode = 'PCS';
+      const isBox = l.mode === 'BOX';
+      const amt = h('b', { class: 'pl-num' }, fmt.money(Number(l.qty || 0) * Number(l.rate || 0)));
+      const q = h('input', { type: 'number', value: isBox ? r2q(Number(l.qty || 0) / l.conv) : l.qty,
+        'aria-label': 'Quantity', title: isBox ? 'Qty in packs (' + l.conv + ' pcs each)' : 'Quantity',
+        class: 'f-input', style: { width: '72px', textAlign: 'right' } });
+      q.oninput = () => { const v = Number(q.value) || 0; l.qty = isBox ? r2q(v * l.conv) : v;
+        amt.textContent = fmt.money(Number(l.qty || 0) * Number(l.rate || 0)); renderTot(); };
+      const rt = h('input', { type: 'number', value: isBox ? Math.round(Number(l.rate || 0) * l.conv * 100) / 100 : l.rate,
+        'aria-label': 'Rate', title: isBox ? 'Rate per pack' : 'Rate',
+        class: 'f-input', style: { width: '92px', textAlign: 'right' } });
+      /* v2.6 §3 — rate badalte hi muqabla update (focus qaim rahe) */
+      rt.oninput = () => { const v = Number(rt.value) || 0; l.rate = isBox ? Math.round((v / l.conv) * 100) / 100 : v;
+        amt.textContent = fmt.money(Number(l.qty || 0) * Number(l.rate || 0)); repaint(l); renderTot(); };
+      const rcv = Number(l.receivedQty || 0);
+      const cat = cat0;
+      const stock = l.stock !== undefined ? Number(l.stock) : (cat ? Number(cat.stock || 0) : null);
+      const pending = Math.max(0, Number(l.qty || 0) - rcv);
+      listEl.appendChild(h('div', { class: 'po-line' },
+        h('div', { class: 'pl-name' },
+          h('b', null, l.name || l.code || 'Item'),
+          h('span', { class: 'pl-sub' },
+            (l.code || '—') +
+            (rcv ? ' · received ' + fmt.num(rcv) : '') +
+            (rcv && pending > 0 ? ' · pending ' + fmt.num(pending) : '') +
+            (cat && cat.unit ? ' · ' + cat.unit : ''),
+            l.conv > 1 ? ' · pack ×' + l.conv : ''),
+          l.conv > 1 ? h('button', { class: 'link-btn', type: 'button',
+            title: 'Qty aur rate ko pack units mein dein/base units mein',
+            onclick: () => { l.mode = l.mode === 'BOX' ? 'PCS' : 'BOX'; render(); } },
+            l.mode === 'BOX' ? '↔ Switch to per-' + (cat && cat.unit ? cat.unit : 'pcs')
+              : '↔ Buying per pack (rate auto ×' + l.conv + ')') : '',
+          priceStrip(l)),
+        h('span', { class: 'pl-num' + (stock !== null && stock <= 0 ? ' warn' : '') },
+          stock === null ? '—' : fmt.num(stock)),
+        q, rt,
+        amt,
+        h('button', { class: 'icon-btn', title: 'Line hata dein', 'aria-label': 'Remove line',
+          style: { width: '28px', height: '28px', border: 0 }, onclick: () => { lines.splice(i, 1); render(); } }, '✕')));
+    });
+    if (!lines.length) listEl.appendChild(h('div', { class: 'tbl-empty' }, 'Items add karein'));
+    renderTot();
+  }
+  const tot = h('div', { class: 'po-total' });
+  function renderTot() {
+    const qty = lines.reduce((a, l) => a + Number(l.qty || 0), 0);
+    const val = lines.reduce((a, l) => a + Number(l.qty || 0) * Number(l.rate || 0), 0);
+    tot.innerHTML = '';
+    tot.append(h('span', null, 'Lines: ' + lines.length + ' · Qty: ' + fmt.num(qty)),
+      h('b', null, 'Total: ' + fmt.money(val)));
+  }
+
+  const f = UI.form([
+    /* v2.6 QA — English titles; Urdu sirf hint (neeche chhoti line) me.
+       3-column grid: supplier 2 column leta hai (lambe naam ke liye),
+       baqi 3 fields agle line me — koi truncation/overlap nahi. */
+    { key: 'supplierId', label: 'Supplier', hint: 'سپلائر منتخب کریں', span: 2, type: 'select', options: [{ value: '', label: '— select —' }].concat(SUPPLIERS.map(s => ({ value: s.id, label: s.name }))), value: po ? po.supplierId : '' },
+    { key: 'locationId', label: 'Deliver to', hint: 'کہاں ڈیلیور ہونا ہے', type: 'select', options: App.state.locations.map(l => ({ value: l.id, label: l.name })), value: po ? po.locationId : App.state.locationId },
+    { key: 'date', label: 'PO date', hint: 'پی او کی تاریخ', type: 'date', value: po ? String(po.date || '').slice(0, 10) : '' },
+    { key: 'expectedDate', label: 'Expected date', hint: 'متوقع آمد کی تاریخ', type: 'date', value: po ? String(po.expectedDate || '').slice(0, 10) : '' },
+    { key: 'budgetLimit', label: 'Budget limit', hint: 'بجٹ کی حد (0 = کوئی حد نہیں)', type: 'number', value: po ? (po.budgetLimit || 0) : 0 },
+    { key: 'notes', label: 'Notes', hint: 'نوٹس (اختیاری)', type: 'textarea', full: true, rows: 2, value: po ? (po.notes || '') : '' }
+  ], null, { cols: 3 });
+  render();
+
+  /* ---- existing PO: asli lines + status backend se laayein ---- */
+  if (po && po.id) {
+    API.call('purchase.po.get', { id: po.id }, { offlineFallback: () => null })
+      .then(d => {
+        detail = d;
+        if (!d) return;
+        lines.length = 0;
+        (d.items || []).forEach(l => lines.push({
+          itemId: l.itemId, code: l.code, name: l.name, qty: Number(l.qty),
+          rate: Number(l.rate), receivedQty: Number(l.receivedQty || 0)
+        }));
+        render();
+        poMeta.innerHTML = '';
+        poMeta.style.display = '';
+        poMeta.appendChild(h('span', null, 'PO: ' + (d.poNo || '')));
+        poMeta.appendChild(h('span', { class: 'badge ' + (d.status === 'RECEIVED' ? 'ok' : d.status === 'APPROVED' ? 'info' : 'warn') },
+          'Status: ' + (d.status || 'DRAFT')));
+        poMeta.appendChild(h('span', null, 'Lines: ' + ((d.items || []).length)));
+        poMeta.appendChild(h('span', null, 'Ordered: ' + fmt.num(d.orderedQty || 0)));
+        poMeta.appendChild(h('span', null, 'Received: ' + fmt.num(d.receivedQty || 0)));
+        poMeta.appendChild(h('span', null, 'Pending: ' + fmt.num(d.pendingQty || 0)));
+        poMeta.appendChild(h('span', null, 'Total: ' + fmt.money(d.total || 0)));
+        if (d.budgetLimit) poMeta.appendChild(h('span', null, 'Budget: ' + fmt.money(d.budgetLimit)));
+        /* is PO ke khilaf kitne GRN ho chuke — detail view ke liye */
+        API.call('purchase.grn.list', { locationId: '' }, { offlineFallback: () => [] })
+          .then(g => {
+            const mine = (g || []).filter(x => x.poId === po.id || x.poNo === d.poNo);
+            if (!mine.length) return;
+            poMeta.appendChild(h('span', { class: 'ok' }, 'GRN received: ' + mine.length +
+              ' (' + fmt.money(mine.reduce((a, x) => a + Number(x.total || 0), 0)) + ')'));
+          }).catch(() => { });
+        /* v2.6 §4 — print / PDF / duplicate / share */
+        poMeta.appendChild(docActions('po', po.id, { onDone: () => { UI.toast('Nayi copy list mein hai', 'ok'); } }));
+        if (d.supplier && d.supplier.name) supBal.refresh(d.supplierId);
+      })
+      .catch(() => { });
+  }
+  /* v2.6 QA — PO drawer 520px tha: 6-column items table usme kuchal raha tha
+     (fields truncate + overlap). Ab chauda drawer — purani cheezein waisi hain,
+     sirf jagah barhi hai. */
+  UI.drawer({
+    title: po ? 'PO ' + po.poNo : 'New purchase order',
+    width: 'min(980px,96vw)',
+    body: (function () {
+      setTimeout(() => {
+        const sel = f.el.querySelector('select');
+        if (!sel) return;
+        sel.addEventListener('change', () => supBal.refresh(sel.value));
+        supBal.refresh(sel.value);
+      }, 0);
+      return h('div', null, poMeta, supBal, demandSuggestBox, f.el,
+        UI2.section('🛒 Items — scan ya search', [poBulkBtn, poCustomBtn], 'inv'),
+        h('div', { class: 'picker-field' }, picker),
+        listEl, tot);
+    })(),
+    actions: [
+      { label: 'Save PO', cls: 'ok', busyLabel: 'PO save ho raha hai', okLabel: 'Saved',
+        write: true, writeLabel: 'PO save', onClick: async (c) => {
+      const v = f.values();
+      if (!lines.length) return UI.toast('Items add karein', 'warn');
+      /* v2.9 ka manual 'Saving…' + disabled hack HATA diya — v2.25.9 W2.T2 se
+         busy state + double-submit guard shared UI.run deta hai (modal actions
+         par khud-ba-khud lagta hai), is liye per-page patch ki zaroorat nahi. */
+      try {
+        /* status preserve karein — approved PO dobara DRAFT na ho */
+        await API.call('purchase.po.save', { po: Object.assign({}, v, {
+          items: lines.map(l => ({ itemId: l.itemId, qty: Number(l.qty), rate: Number(l.rate) })),
+          id: po ? po.id : null,
+          status: (detail && detail.status) ? detail.status : (po && po.status) ? po.status : 'DRAFT'
+        }) });
+        UI.toast('PO saved ✅', 'ok'); c(); App.refresh();
+      } catch (e) { UI.toast(e.message, 'err'); }   /* busy state UI.run sambhalta hai */
+    } },
+      (po && po.id) ? { label: '📥 Receive (GRN)', cls: 'sec', onClick: c => { c(); grnForm(po); } } : null,
+      (po && po.id && String(detail ? detail.status : po.status) === 'DRAFT' && App.can('purchase.po.approve'))
+        ? { label: '✅ Approve', cls: 'sec', onClick: async c => {
+            try {
+              await API.call('purchase.po.approve', { id: po.id });
+              UI.toast('PO approved ✅', 'ok'); c(); App.refresh();
+            } catch (e) { UI.toast(e.message, 'err'); }
+          } } : null
+    ].filter(Boolean)
+  });
+}
+
+/* --------------------------------------------------------------------------
+ * v2.25.0 (requirement 2) — GRN drawer: POORA dobara design.
+ *
+ * Purane code ka audit (kya galat tha):
+ *   · 8-column grid head + har row mein inline hardcoded (2 jagah) — mobile par
+ *     toot jata tha, aur PO ke bina bhi "Ordered/Received/Short" ke khaali
+ *     columns dikhte thay ("—" ka shor).
+ *   · Saare fields (invoice, freight, switches) ek hi section mein the.
+ *   · Freight total mein nazar nahi aata tha (sirf lines ka jama).
+ *   · PO badalne par scanned lines KHAMOSHI se mit jati thin.
+ *   · Ek hi select par do change-listeners + supplier sel[0]/sel[1] index se set
+ *     (layout badalte hi tootne wala).
+ *   · Koi validation nahi (qty 0, credit bina supplier), koi receive-all ya
+ *     keyboard shortcut nahi.
+ *
+ * Naya: 4 saaf sections (Supplier & invoice → PO → Items → Charges), PO columns
+ * sirf PO mode mein, responsive line grid (mobile par label ke saath stack),
+ * live summary (Subtotal + Freight = Total), receive-all (line par aur F4),
+ * F2 = scan focus, F9 = Post, validation ke saath. Scanning/bulk POS jaisa hi
+ * (UI2.itemPicker — wahi scan → Found → Added → field clear behaviour).
+ * -------------------------------------------------------------------------- */
+function grnForm(po) {
+  const lines = [];
+  const r2 = n => Math.round(Number(n) * 100) / 100;
+  let poCtx = (po && (po.id || po.poNo))
+    ? { id: po.id || '', poNo: po.poNo || '', supplierId: po.supplierId || '' } : null;
+  const isPO = () => !!(poCtx && poCtx.id);
+  /* v2.25.0 — `picked` PO banner ke liye chahiye tha lekin declare nahi hua tha
+     (ReferenceError: picked is not defined → PO load aur banner dono toot jate
+     thay). Ab yahan declare hota hai. */
+  let picked = { lines: 0, total: 0 };
+  const supList = (typeof SUPPLIERS !== 'undefined' && SUPPLIERS) ? SUPPLIERS : [];
+
+  /* ======================= 1) SUPPLIER & INVOICE ======================= */
+  const supBal = supplierBalanceCard();
+  const fTop = UI.form([
+    { key: 'supplierId', label: 'Supplier *', type: 'select', required: true,
+      options: [{ value: '', label: '— select supplier —' }].concat(supList.map(s => ({ value: s.id, label: s.name }))),
+      hint: 'Credit (udhaar) ke liye supplier lazmi hai' },
+    { key: 'invoiceNo', label: 'Supplier invoice no.', placeholder: 'INV-2291',
+      hint: 'Bill number — audit aur search ke liye' },
+    { key: 'locationId', label: 'Receive at (warehouse)', type: 'select',
+      options: App.state.locations.map(l => ({ value: l.id, label: l.name })), value: App.state.locationId },
+    { key: 'onCredit', label: 'On credit (supplier udhaar)', type: 'switch', value: true,
+      hint: 'Off = cash purchase (supplier ka balance nahi barhega)' }
+  ]);
+
+  /* ======================= 2) PO CONTEXT ======================= */
+  const poPick = h('select', { class: 'f-input', 'aria-label': 'Load pending lines from purchase order',
+    title: 'Kisi bhi open PO ki pending lines yahan load karein' },
+    h('option', { value: '' }, '— Direct purchase (bina PO) —'));
+  const poBanner = h('div', { class: 'grn-banner', hidden: 'hidden' });
+  const poWrap = h('div', { class: 'grn-po-pick' },
+    h('label', { class: 'field' },
+      h('span', null, 'Purchase order (optional)'), poPick), poBanner);
+
+  async function loadPoList() {
+    try {
+      const rows = await API.call('purchase.po.list', {}, { offlineFallback: () => [] });
+      const pend = r => Number(r.pendingQty !== undefined ? r.pendingQty
+        : (Number(r.orderedQty || 0) - Number(r.receivedQty || 0)));
+      const open = (rows || []).filter(r => {
+        const st = String(r.status || '').toUpperCase();
+        return st !== 'RECEIVED' && st !== 'CANCELLED' && pend(r) > 0;
+      });
+      poPick.innerHTML = '';
+      poPick.appendChild(h('option', { value: '' }, '— Direct purchase (bina PO) —'));
+      open.forEach(r => poPick.appendChild(h('option', { value: r.id },
+        (r.poNo || r.id) + ' · ' + (r.supplierName || '—') + ' · ' + pend(r) + ' pending')));
+      if (!open.length) poPick.appendChild(h('option', { value: '', disabled: 'disabled' }, 'Koi open PO nahi'));
+      if (poCtx && poCtx.id) poPick.value = poCtx.id;
+    } catch (e) { }
+  }
+
+  function poBannerPaint() {
+    poBanner.innerHTML = '';
+    if (typeof paintTitle === 'function') paintTitle();   /* title bhi sync rahe */
+    if (!isPO()) { poBanner.hidden = true; return; }
+    poBanner.hidden = false;
+    poBanner.append(
+      h('span', { class: 'gb-ico' }, '📄'),
+      h('div', { class: 'gb-tx' },
+        h('b', null, 'PO ' + (poCtx.poNo || poCtx.id) + ' ke khilaf receive ho raha hai'),
+        h('span', null, 'Pending lines ' + lines.length + ' · PO total ' + fmt.money(picked.total || 0) +
+          (poCtx.supplierName ? ' · ' + poCtx.supplierName : ''))),
+      h('button', { class: 'btn sm ghost', type: 'button', title: 'PO hata dein — direct purchase par jayein',
+        onclick: async () => {
+          if (lines.length && !(await UI2.confirm('PO hata dein? Items list bhi khali ho jaye gi.', null, true))) return;
+          poCtx = null; lines.length = 0; poPick.value = '';
+          poBannerPaint(); render();
+        } }, 'Clear PO'));
+  }
+
+  async function loadPoIntoGrn(d, poId) {
+    const fresh = [];
+    (d.items || []).forEach(l => {
+      const pend = Math.max(0, Number(l.pendingQty !== undefined ? l.pendingQty
+        : (Number(l.qty) - Number(l.receivedQty || 0))));
+      if (pend <= 0) return;                 /* jo poori receive ho chuki, wo dubara na aaye */
+      fresh.push({ itemId: l.itemId, code: l.code, name: l.name, qty: pend, unit: l.unit,
+        cost: Number(l.rate) || 0, orderedQty: Number(l.qty), receivedQty: Number(l.receivedQty || 0) });
+    });
+    poCtx = { id: poId, poNo: d.poNo || '', supplierId: d.supplierId || '',
+      supplierName: (d.supplier && d.supplier.name) || '' };
+    picked = { lines: fresh.length, total: Number(d.total || 0) };
+    lines.length = 0;
+    fresh.forEach(l => lines.push(l));
+    if (d.supplierId) fTop.set('supplierId', d.supplierId);
+    if (d.locationId) fTop.set('locationId', d.locationId);
+    supBal.refresh(d.supplierId);
+    lines.forEach(l => fetchPrev(l));
+    poBannerPaint(); render();
+    if (!lines.length) UI.toast('Is PO ki saari lines receive ho chuki hain', 'warn');
+    else UI.toast(fresh.length + ' pending lines load ho gayin', 'ok');
+  }
+
+  poPick.onchange = async () => {
+    if (!poPick.value) {
+      if (lines.length && !(await UI2.confirm('PO hat jaye ga — items list khali ho jaye gi? Continue?', null, true))) {
+        poPick.value = poCtx ? poCtx.id : ''; return;
+      }
+      poCtx = null; lines.length = 0; poBannerPaint(); render(); return;
+    }
+    if (lines.length && !(await UI2.confirm('PO load karne se maujooda ' + lines.length + ' lines badal jayengi. Continue?', null, true))) {
+      poPick.value = poCtx ? poCtx.id : ''; return;
+    }
+    try {
+      const d = await API.call('purchase.po.get', { id: poPick.value }, { offlineFallback: () => null });
+      if (d) await loadPoIntoGrn(d, poPick.value);
+    } catch (e) { UI.toast(e.message, 'err'); }
+  };
+
+  /* ======================= 3) ITEMS (scan-first, POS jaisa) ======================= */
+  const listEl = h('div', { class: 'grn-lines' });
+  const picker = UI2.itemPicker({ lines, after: render,
+    icon: '📦', title: 'GRN items — scan ya search',
+    hint: 'Scan → seedha GRN line mein (qty merge + stock cap) · ya 📋 poori list se multi-select',
+    commitLabel: 'Add to GRN lines',
+    sub: r => (r.code || '') + ' · stock ' + r.stock,
+    map: (r, qty) => ({ itemId: r.id, code: r.code, name: r.name, unit: r.unit,
+      qty: Math.max(0, Number(qty) || 1), cost: Number(r.costPrice) || 0,
+      retailPrice: Number(r.retailPrice) || 0, wholesalePrice: Number(r.wholesalePrice) || 0,
+      prevPrice: 0, prevDate: '', prevSource: '' }),
+    onAdd: l => fetchPrev(l) });
+
+  function openCustomProduct() {
+    const cf = UI2.form({
+      values: { qty: 1, cost: 0 },
+      fields: [
+        { key: 'name', label: 'Product name *', required: true, placeholder: 'e.g. Flamingo Polish 450ML', full: true },
+        { key: 'code', label: 'Part code / SKU', placeholder: 'FL-1003' },
+        { key: 'category', label: 'Category', placeholder: 'Car Care' },
+        { key: 'brand', label: 'Brand', placeholder: 'Flamingo' },
+        { key: 'qty', label: 'Qty *', type: 'number', value: 1 },
+        { key: 'cost', label: 'Cost per unit', type: 'number', value: 0 }
+      ]
+    });
+    UI2.modal({
+      title: '＋ Add custom product (not in store)', size: 'md', body: cf.el,
+      actions: [{ label: 'Add to GRN', cls: 'ok', onClick: c => {
+        const v = cf.values();
+        if (!v.name) return UI.toast('Product name zaruri hai', 'err');
+        const l = { itemId: '', code: v.code || 'CUSTOM', name: v.name, qty: Number(v.qty) || 1,
+          cost: Number(v.cost) || 0, retailPrice: 0, wholesalePrice: 0, prevPrice: 0, prevDate: '', orderedQty: undefined };
+        lines.push(l); render(); UI.toast('Custom item add ho gaya', 'ok'); c();
+      } }, { label: 'Cancel', onClick: c => c() }]
+    });
+  }
+  const customBtn = h('button', { class: 'btn sm sec', type: 'button',
+    title: 'Naya product jo store mein nahi — manual entry', onclick: openCustomProduct }, '＋ Custom product');
+  /* v2.25.0 (req 1) — POS wala hi dedicated Bulk Add modal (multi-select + Add All).
+     Inline picker direct-scan mode mein hai (scan → line), bulk ke liye ye modal. */
+  const grnMap = (r, qty) => ({ itemId: r.id, code: r.code, name: r.name, unit: r.unit,
+    qty: Math.max(0, Number(qty) || 1), cost: Number(r.costPrice) || 0,
+    retailPrice: Number(r.retailPrice) || 0, wholesalePrice: Number(r.wholesalePrice) || 0,
+    prevPrice: 0, prevDate: '', prevSource: '' });
+  const bulkBtn = h('button', { class: 'btn sm sec', type: 'button',
+    title: 'Bulk Add — multi-select modal (POS jaisa): scan + tick + Add All',
+    onclick: () => UI2.bulkAddModal({
+      icon: '📦', title: 'Bulk Add — GRN', commitLabel: 'Add to GRN lines',
+      modalTitle: '📦 Bulk Add — GRN Multi Select',
+      sub: r => (r.code || '') + ' · stock ' + r.stock,
+      map: grnMap,
+      onAdd: l => { lines.push(l); fetchPrev(l); render(); }
+    }) }, '📋 Bulk add');
+  const allBtn = h('button', { class: 'btn sm sec', type: 'button',
+    title: 'Har PO line ki poori pending qty bhar dein (F4)', onclick: () => receiveAllPending() }, '↧ Receive all');
+  allBtn.hidden = true;
+
+  /* ======================= 4) CHARGES & SUMMARY ======================= */
+  const fCharges = UI.form([
+    { key: 'freight', label: 'Freight / other charges', type: 'number', value: 0,
+      hint: 'Total mein jud jayega (supplier bill ke mutabiq)' },
+    { key: 'updateCost', label: 'Update item cost from GRN', type: 'switch', value: true,
+      hint: 'On = item ki cost is GRN ki rate se update ho gi' }
+  ]);
+  /* v2.25.0 — freight badalte hi summary/total update (pehle sirf line qty/cost
+     par hota tha, is liye freight total mein foran nazar nahi aata tha) */
+  fCharges.el.addEventListener('change', () => rt());   /* lazy — rt neeche define hai */
+  fCharges.el.addEventListener('input', () => rt());
+  const sumEl = h('div', { class: 'grn-sum' });
+  const tot = h('div', { class: 'po-total' });
+
+  function totals() {
+    const qty = lines.reduce((a, l) => a + Number(l.qty || 0), 0);
+    const sub = r2(lines.reduce((a, l) => a + Number(l.qty || 0) * Number(l.cost || 0), 0));
+    const fr = r2(Number(fCharges.values().freight || 0));
+    return { qty: r2(qty), sub: sub, freight: fr, total: r2(sub + fr) };
+  }
+  const rt = () => {
+    const t = totals();
+    tot.innerHTML = '';
+    tot.append(h('span', null, 'Lines: ' + lines.length + ' · Qty: ' + fmt.num(t.qty)),
+      h('b', null, 'Total: ' + fmt.money(t.total)));
+    sumEl.innerHTML = '';
+    sumEl.append(
+      h('span', { class: 'gs-i' }, 'Lines ', h('b', null, String(lines.length))),
+      h('span', { class: 'gs-i' }, 'Qty ', h('b', null, fmt.num(t.qty))),
+      h('span', { class: 'gs-i' }, 'Subtotal ', h('b', null, fmt.money(t.sub))),
+      h('span', { class: 'gs-i' }, 'Freight ', h('b', null, fmt.money(t.freight))),
+      h('span', { class: 'gs-i main' }, 'Total ', h('b', null, fmt.money(t.total))));
+  };
+
+  function receiveAllPending() {
+    if (!lines.length) return UI.toast('Pehle PO load karein ya items add karein', 'warn');
+    let n = 0;
+    lines.forEach(l => {
+      if (l.orderedQty !== undefined) {
+        const pend = Math.max(0, Number(l.orderedQty || 0) - Number(l.receivedQty || 0));
+        if (pend !== Number(l.qty || 0)) { l.qty = pend; n++; }
+      }
+    });
+    render();
+    UI.toast(n ? n + ' lines poori pending qty par set' : 'Sab lines pehle se pending qty par hain', n ? 'ok' : 'warn');
+  }
+
+  /* ---- previous rate context (PO/GRN pricing) — v2.6 §3 ka wahi view ---- */
+  async function fetchPrev(l) {
+    try {
+      const d = await API.call('purchase.priceInfo', {
+        itemId: l.itemId,
+        supplierId: fTop.values().supplierId || (poCtx && poCtx.supplierId) || '',
+        rate: Number(l.cost !== undefined ? l.cost : l.rate) || 0
+      }, { offlineFallback: () => null });
+      if (!d) return;
+      l.prevPrice = Number(d.prevPrice || 0);
+      l.prevDate = d.prevDate || ''; l.prevSource = d.prevSource || ''; l.prevGrnNo = d.prevGrnNo || '';
+      l.retailPrice = Number(d.retailPrice || l.retailPrice || 0);
+      l.wholesalePrice = Number(d.wholesalePrice || l.wholesalePrice || 0);
+      repaint(l);
+    } catch (e) { }
+  }
+  /* v2.25.0 — crash fix: pehle `l._strip.parentNode.replaceChild(priceStrip(l), l._strip)`
+     tha, jismein `priceStrip(l)` PEHLE chalta hai (l._strip ko naya node bana deta hai)
+     aur phir wahi naya node "purana" bana kar replaceChild ko diya jata tha →
+     "The node to be replaced is not a child of this node" (do prev-rate calls
+     sath sath aane par). Ab purana node pehle capture hota hai. */
+  const repaint = (l) => {
+    const old = l._strip;
+    if (!old || !old.parentNode) { render(); return; }
+    const fresh = priceStrip(l);
+    old.parentNode.replaceChild(fresh, old);
+  };
+  function priceStrip(l) {
+    const strip = h('div', { class: 'pl-price' });
+    l._strip = strip;
+    if (String((App.state.settings || {}).purchasePriceCompare) === 'false') return strip;
+    const cur = Number(l.cost !== undefined ? l.cost : l.rate) || 0;
+    const prev = Number(l.prevPrice) || 0;
+    if (l.retailPrice || l.wholesalePrice) {
+      strip.appendChild(h('span', { class: 'pl-tag' },
+        'Retail ' + fmt.money(l.retailPrice || 0) + ' · Wholesale ' + fmt.money(l.wholesalePrice || 0)));
+    }
+    if (!prev) { strip.appendChild(h('span', { class: 'pl-hint' }, 'Pichhli rate: record nahi')); return strip; }
+    const chg = r2(cur - prev);
+    const pct = prev ? r2((chg / prev) * 100) : 0;
+    strip.append(
+      h('span', null, 'Previous: ' + fmt.money(prev) + (l.prevDate ? ' (' + String(l.prevDate).slice(0, 10) + ')' : '')),
+      h('span', null, 'Current: ' + fmt.money(cur)),
+      h('span', { class: 'pl-chg ' + (chg > 0 ? 'up' : chg < 0 ? 'down' : 'flat') },
+        'Change: ' + (chg > 0 ? '+' : '') + fmt.money(chg) + ' (' + (pct > 0 ? '+' : '') + pct.toFixed(2) + '%)'));
+    return strip;
+  }
+
+  /* ---- line grid: PO mode = 8 columns, direct = 5 (khaali columns ka shor nahi) ---- */
+  const cell = (label, node, cls) => h('span', { class: 'gl-cell ' + (cls || ''), 'data-l': label }, node);
+
+  /* v2.25.0 — qty/cost badalte hi Short badge + Amount + "Receive all" button bhi
+     update hon (pehle sirf poora render() par hota tha, is liye qty badalne par
+     badge/amount purane value dikhate rehte thay — confusing). */
+  function shortBadgeFor(l) {
+    const s = (l.orderedQty !== undefined)
+      ? (Number(l.orderedQty || 0) - Number(l.receivedQty || 0) - Number(l.qty || 0)) : null;
+    if (s === null) return h('span', { class: 'pl-num muted' }, '—');
+    if (s > 0) return h('span', { class: 'badge warn' }, 'Short ' + fmt.num(s));
+    if (s < 0) return h('span', { class: 'badge err' }, 'Over ' + fmt.num(Math.abs(s)));
+    return h('span', { class: 'badge ok' }, '0');
+  }
+  function paintLine(l) {
+    const sc = l._shortCell;
+    if (sc && sc.parentNode) {
+      const old = sc.querySelector('.badge, .pl-num');
+      const fresh = shortBadgeFor(l);
+      if (old) sc.replaceChild(fresh, old); else sc.appendChild(fresh);
+    }
+    if (l._amt && l._amt.parentNode) l._amt.textContent = fmt.money(Number(l.qty || 0) * Number(l.cost || 0));
+    if (l._fill) l._fill.hidden = !(l.orderedQty !== undefined &&
+      (Number(l.orderedQty || 0) - Number(l.receivedQty || 0) - Number(l.qty || 0)) > 0);
+  }
+  function render() {
+    listEl.innerHTML = '';
+    listEl.className = 'grn-lines ' + (isPO() ? 'grn-po' : 'grn-direct');
+    allBtn.hidden = !isPO();
+    const head = isPO()
+      ? ['Item', 'Ordered', 'Received', 'Now', 'Short', 'Cost', 'Amount', '']
+      : ['Item', 'Now', 'Cost', 'Amount', ''];
+    const hd = h('div', { class: 'grn-line-head' });
+    head.forEach((t, i) => hd.appendChild(h('span', { class: i ? 'gl-h' : 'gl-h name' }, t)));
+    listEl.appendChild(hd);
+
+    if (!lines.length) {
+      listEl.appendChild(h('div', { class: 'grn-empty' },
+        h('b', null, 'Abhi koi line nahi'),
+        h('span', null, isPO() ? 'PO load hone ka intezar… ya scan/search se items add karein'
+          : 'Scan karein ya 📋 poori list se items add karein')));
+      rt(); return;
+    }
+
+    lines.forEach((l, i) => {
+      const q = h('input', { type: 'number', class: 'f-input gl-input', value: l.qty, min: 0, step: 1,
+        inputmode: 'numeric', 'aria-label': 'Receive qty — ' + (l.name || l.code || 'item'),
+        title: 'Aaj kitni qty receive ho rahi hai' });
+      q.onchange = () => { l.qty = Math.max(0, Number(q.value) || 0); q.value = l.qty; paintLine(l); rt(); };
+      const c = h('input', { type: 'number', class: 'f-input gl-input', value: l.cost, min: 0, step: 0.01,
+        inputmode: 'decimal', 'aria-label': 'Unit cost — ' + (l.name || l.code || 'item'),
+        title: 'Unit cost (isi GRN ki rate)' });
+      c.onchange = () => { l.cost = Math.max(0, Number(c.value) || 0); c.value = l.cost; paintLine(l); repaint(l); rt(); };
+
+      const shortBadge = shortBadgeFor(l);
+      const shortCell = cell('Short', shortBadge);
+      l._shortCell = shortCell;
+
+      const subBits = [(l.code || '—')];
+      if (l.orderedQty !== undefined) subBits.push('ordered ' + fmt.num(l.orderedQty) + (l.unit ? ' ' + l.unit : ''));
+      if (l.supplierName) subBits.push(l.supplierName);
+      const nameCell = h('div', { class: 'pl-name' },
+        h('b', null, l.name || l.code || 'Item'),
+        h('span', { class: 'pl-sub' }, subBits.join(' · ')),
+        (function () {
+          if (l.orderedQty === undefined) return '';
+          const shortVal = Number(l.orderedQty || 0) - Number(l.receivedQty || 0) - Number(l.qty || 0);
+          const btn = h('button', { class: 'btn xs ghost gl-fill', type: 'button',
+            title: 'Is line ki poori pending qty bhar dein',
+            onclick: () => { l.qty = Math.max(0, Number(l.orderedQty || 0) - Number(l.receivedQty || 0)); render(); } },
+            '↧ Receive all');
+          btn.hidden = !(shortVal > 0);
+          l._fill = btn;
+          return btn;
+        })(),
+        priceStrip(l));
+
+      const row = h('div', { class: 'grn-line' }, nameCell);
+      if (isPO()) {
+        row.append(h('span', { class: 'gl-cell pl-num', 'data-l': 'Ordered' }, fmt.num(l.orderedQty || 0)),
+          h('span', { class: 'gl-cell pl-num', 'data-l': 'Received' }, fmt.num(l.receivedQty || 0)));
+      }
+      const amtEl = h('b', { class: 'pl-num' }, fmt.money(Number(l.qty || 0) * Number(l.cost || 0)));
+      l._amt = amtEl;
+      row.append(cell('Now', q), shortCell,
+        cell('Cost', c), cell('Amount', amtEl),
+        h('button', { class: 'icon-btn gl-rm', type: 'button', title: 'Line hata dein',
+          'aria-label': 'Remove line ' + (l.name || l.code || ''), onclick: () => { lines.splice(i, 1); render(); } }, '✕'));
+      listEl.appendChild(row);
+    });
+    rt();
+  }
+
+  /* ======================= SAVE / VALIDATION ======================= */
+  const values = () => Object.assign({}, fTop.values(), fCharges.values());
+  async function post(c) {
+    const v = values();
+    const zero = lines.filter(l => !(Number(l.qty) > 0));
+    if (!lines.length) return UI.toast('Pehle items add karein (scan ya poori list se)', 'warn');
+    if (zero.length) return UI.toast(zero.length + ' line(s) ki qty 0 hai — theek karein', 'warn');
+    if (v.onCredit && !v.supplierId) return UI.toast('Credit purchase ke liye supplier chunein', 'warn');
+    try {
+      await API.call('purchase.grn.save', { grn: Object.assign({}, v, {
+        items: lines.map(l => ({ itemId: l.itemId, qty: Number(l.qty), cost: Number(l.cost) })),
+        poId: isPO() ? poCtx.id : '',
+        freight: Number(v.freight) || 0
+      }) });
+      UI.toast('GRN posted — stock update ho gaya', 'ok');
+      if (c) c();
+      App.refresh(); API.pullCatalog(true);
+    } catch (e) { UI.toast(e.message, 'err'); }
+  }
+
+  /* ======================= DRAWER ======================= */
+  const body = h('div', { class: 'grn-wrap' },
+    UI2.section('🏢 Supplier & invoice', null, 'fin',
+      { desc: 'Kis supplier se maal aaya, bill number, aur kis warehouse mein jama hoga.' }),
+    fTop.el, supBal,
+    UI2.section('📄 Purchase order (optional)', null, 'info',
+      { desc: 'PO chunein to uski pending lines khud aa jayengi. Bina PO = direct purchase.' }),
+    poWrap,
+    UI2.section('📦 Items — scan ya poori list se add', [allBtn, bulkBtn, customBtn], 'inv',
+      { desc: 'Scanner se scan karein (POS jaisa): Found → Added → field khali. Ya 📋 list se multi-select.' }),
+    h('div', { class: 'picker-field' }, picker),
+    listEl, tot, sumEl,
+    UI2.section('🧾 Charges & costing', null, 'warn',
+      { desc: 'Freight total mein judta hai; cost update se item ki cost GRN rate se badal jati hai.' }),
+    fCharges.el);
+
+  const dr = UI.drawer({
+    title: '📥 Goods Receipt Note' + (poCtx && poCtx.poNo ? ' — PO ' + poCtx.poNo
+      : (poCtx && poCtx.id ? ' (PO)' : ' — Direct Purchase')),
+    body: body,
+    width: 'min(1100px, 96vw)',
+    actions: [{ label: 'Post GRN (F9)', cls: 'ok', busyLabel: 'GRN post ho raha hai', okLabel: 'Posted',
+      write: true, writeLabel: 'GRN post',
+      onClick: (c) => post(c) },
+      { label: 'Cancel', cls: 'ghost', onClick: (c) => c() }]
+  });
+
+  /* v2.25.0 (req 2) — title bhi PO context ke sath badalta rahe (pehle PO load
+     karne par bhi "Direct Purchase" hi likha reh jata tha — confusing). */
+  /* UI.drawer `{ close, body }` deta hai (`.el` nahi) — title body ke closest
+     `.drawer` se nikalta hai. */
+  const headTitle = (dr && dr.body && dr.body.closest) ? dr.body.closest('.drawer').querySelector('.modal-head h3') : null;
+  paintTitle();
+  function paintTitle() {
+    if (!headTitle) return;
+    headTitle.textContent = '📥 Goods Receipt Note' + (poCtx && poCtx.poNo ? ' — PO ' + poCtx.poNo
+      : (poCtx && poCtx.id ? ' (PO)' : ' — Direct Purchase'));
+  }
+
+  /* F2 = scan field, F4 = receive all pending, F9 = post (drawer khula hone par) */
+  function onKey(e) {
+    if (!document.body.contains(dr.body)) { document.removeEventListener('keydown', onKey); return; }
+    const k = e.key;
+    if (k === 'F2') {
+      e.preventDefault();
+      const i = picker.querySelector('.ipk-q');
+      if (i) { i.focus(); if (i.select) i.select(); }
+    } else if (k === 'F4') { e.preventDefault(); receiveAllPending(); }
+    else if (k === 'F9') { e.preventDefault(); post(dr.close); }
+  }
+  document.addEventListener('keydown', onKey);
+
+  render();
+  poBannerPaint();
+  loadPoList();
+  setTimeout(() => {
+    supBal.refresh(fTop.values().supplierId);
+    const q = picker.querySelector('.ipk-q'); if (q) q.focus();
+  }, 60);
+  /* PO screen se aaya hua PO: lines foran load karein */
+  if (poCtx && poCtx.id) {
+    API.call('purchase.po.get', { id: poCtx.id }, { offlineFallback: () => null })
+      .then(d => { if (d) loadPoIntoGrn(d, poCtx.id); })
+      .catch(() => { });
+  }
+}
+
+/* ========================== CUSTOMERS & SUPPLIERS ========================= */
+
+/* --------------------------------------------------------------------------
+ * v2.6 §18 — DUPLICATE SCREEN REMOVED: 'parties' do jagah register ho rahi thi.
+ * Live version baad wali file mein hai (load order: last one wins), to yahan
+ * purani dead copy hata di gayi — 0 ambiguity, 0 dead code.
+ * -------------------------------------------------------------------------- */
+
+function typeName(id) { const c = (App.state.customerTypes || []).find(x => x.id === id); return c ? c.name : '—'; }
+
+function ledger(type, party) {
+  API.call('customers.ledger', { id: party.id }).then(() => { }).catch(() => { });
+  const call = type === 'CUSTOMER' ? 'customers.ledger' : 'suppliers.ledger';
+  const host = h('div');
+  API.call(call, { id: party.id }).then(res => {
+    host.innerHTML = '';
+    host.appendChild(h('div', { class: 'grid g3', style: { marginBottom: '12px' } },
+      UI.kpi('👤', 'Party', party.name, party.code || ''),
+      UI.kpi('📒', 'Opening', fmt.money(res.opening), ''),
+      UI.kpi('💰', 'Closing balance', fmt.money(res.closing), res.closing > 0 ? 'Receivable' : 'Clear')));
+    host.appendChild(UI.table({
+      columns: [
+        { key: 'date', label: 'Date', render: r => fmt.date(r.date) },
+        { key: 'refType', label: 'Type' }, { key: 'description', label: 'Description' },
+        { key: 'debit', label: 'Debit', num: true, render: r => r.debit ? fmt.money(r.debit) : '—' },
+        { key: 'credit', label: 'Credit', num: true, render: r => r.credit ? fmt.money(r.credit) : '—' },
+        { key: 'balance', label: 'Balance', num: true, render: r => h('b', null, fmt.money(r.balance)) }
+      ], rows: res.rows, emptyText: 'Koi entry nahi'
+    }));
+  }).catch(e => host.appendChild(h('div', { class: 'empty' }, e.message)));
+  UI.drawer({ title: '📒 Ledger — ' + party.name, body: host });
+}
+
+function receivePay(customer) {
+  const f = UI.form([
+    { key: 'amount', label: 'Amount', type: 'number', value: customer.balance || 0 },
+    { key: 'method', label: 'Method', type: 'select', options: ['CASH', 'BANK', 'JAZZCASH', 'EASYPAISA', 'CHEQUE', 'CARD'] },
+    { key: 'reference', label: 'Reference' },
+    { key: 'notes', label: 'Notes', full: true }
+  ]);
+  UI.modal({
+    title: '💰 Receive payment — ' + customer.name, body: f.el,
+    actions: [{ label: 'Receive', cls: 'ok', onClick: async (c) => {
+      const v = f.values();
+      try {
+        await API.call('payments.create', { payment: { ...v, type: 'RECEIPT', partyType: 'CUSTOMER', partyId: customer.id, locationId: App.state.locationId } });
+        UI.toast('Payment received ✅', 'ok'); c(); App.refresh();
+      } catch (e) { UI.toast(e.message, 'err'); }
+    } }]
+  });
+}
+
+function paySupplier(supplier) {
+  const f = UI.form([
+    { key: 'amount', label: 'Amount', type: 'number', value: Math.abs(supplier.balance || 0) },
+    { key: 'method', label: 'Method', type: 'select', options: ['CASH', 'BANK', 'CHEQUE', 'JAZZCASH'] },
+    { key: 'reference', label: 'Reference' },
+    { key: 'notes', label: 'Notes', full: true }
+  ]);
+  UI.modal({
+    title: '💸 Pay supplier — ' + supplier.name, body: f.el,
+    actions: [{ label: 'Pay', onClick: async (c) => {
+      const v = f.values();
+      try {
+        await API.call('payments.create', { payment: { ...v, type: 'SUPPLIER_PAYMENT', partyType: 'SUPPLIER', partyId: supplier.id, locationId: App.state.locationId } });
+        UI.toast('Payment recorded ✅', 'ok'); c(); App.refresh();
+      } catch (e) { UI.toast(e.message, 'err'); }
+    } }]
+  });
+}
+
+function customerForm(c) {
+  const f = UI.form([
+    { key: 'name', label: 'Name', required: true },
+    { key: 'phone', label: 'Phone' },
+    { key: 'customerTypeId', label: 'Customer type', type: 'select', options: (App.state.customerTypes || []).map(x => ({ value: x.id, label: x.name })) },
+    { key: 'email', label: 'Email' },
+    { key: 'address', label: 'Address', full: true },
+    { key: 'cnic', label: 'CNIC' },
+    { key: 'ntn', label: 'NTN' },
+    { key: 'creditLimit', label: 'Credit limit', type: 'number' },
+    { key: 'openingBalance', label: 'Opening udhaar', type: 'number' },
+    { key: 'notes', label: 'Notes', type: 'textarea', full: true }
+  ], c || {});
+  UI.drawer({
+    title: c ? '✏ ' + c.name : '➕ Naya customer', body: f.el,
+    actions: [{ label: 'Save', onClick: async (close) => {
+      const v = f.values(); if (!v.name) return UI.toast('Name zaroori hai', 'err');
+      try { await API.call('customers.save', { customer: v }); UI.toast('Saved ✅', 'ok'); close(); App.refresh(); } catch (e) { UI.toast(e.message, 'err'); }
+    } }]
+  });
+}
+
+function supplierForm(s) {
+  const f = UI.form([
+    { key: 'name', label: 'Name', required: true },
+    { key: 'phone', label: 'Phone' },
+    { key: 'email', label: 'Email' },
+    { key: 'address', label: 'Address', full: true },
+    { key: 'ntn', label: 'NTN' },
+    { key: 'paymentTerms', label: 'Payment terms' },
+    { key: 'openingBalance', label: 'Opening balance (+ hum denay hain)', type: 'number' },
+    { key: 'notes', label: 'Notes', type: 'textarea', full: true }
+  ], s || {});
+  UI.drawer({
+    title: s ? '✏ ' + s.name : '➕ Naya supplier', body: f.el,
+    actions: [{ label: 'Save', onClick: async (close) => {
+      const v = f.values(); if (!v.name) return UI.toast('Name zaroori hai', 'err');
+      try { await API.call('suppliers.save', { supplier: v }); UI.toast('Saved ✅', 'ok'); close(); App.refresh(); SUPPLIERS = await Shared.suppliers({}); } catch (e) { UI.toast(e.message, 'err'); }
+    } }]
+  });
+}
+
+/* =========================== PAYMENTS & CASH ============================== */
+App.registerScreen('money', {
+  title: 'Payments & Cash', icon: '💰', perm: 'payments.view',
+  actions() {
+    const a = [{ label: 'Refresh', icon: '↻', onClick: () => App.refresh() }];
+    if (App.can('payments.create')) a.unshift({ label: 'Receive', icon: '⬇', onClick: () => receivePay({ id: '', name: 'Walk-in', balance: 0 }) });
+    if (App.can('expenses.create')) a.push({ label: 'Expense', icon: '⬆', onClick: expenseForm });
+    return a;
+  },
+  render(body) {
+    let tab = 'payments';
+    const host = h('div');
+    const rb = rangeBar2(() => load());
+    const seg = h('div', { class: 'seg' },
+      ...[['payments', 'Payments'], ['expenses', 'Expenses'], ['session', 'Cash Session']].map(([id, lbl]) =>
+        h('button', { class: id === 'payments' ? 'on' : '', onclick: e => {
+          tab = id; Array.from(seg.children).forEach(b => b.classList.remove('on')); e.target.classList.add('on'); load();
+        } }, lbl)));
+    body.appendChild(h('div', { class: 'card' }, h('div', { class: 'filters' }, seg, rb.el), host));
+
+    async function load() {
+      host.innerHTML = ''; host.appendChild(UI.skeleton(5));
+      const params = Object.assign({ locationId: '' }, rb.values());
+      try {
+        if (tab === 'payments') {
+          const rows = await API.call('payments.list', params);
+          host.innerHTML = '';
+          host.appendChild(UI.table({
+            columns: [
+              { key: 'voucherNo', label: 'Voucher' }, { key: 'date', label: 'Date', render: r => fmt.date(r.date, true) },
+              { key: 'partyName', label: 'Party' }, { key: 'type', label: 'Type' }, { key: 'method', label: 'Method' },
+              { key: 'amount', label: 'Amount', num: true, render: r => h('b', null, fmt.money(r.amount)) },
+              { key: 'reference', label: 'Ref' }
+            ], rows, emptyText: 'Koi payment nahi'
+          }));
+          host.appendChild(h('div', { class: 'pager' }, 'Total: ' + fmt.money(rows.reduce((a, r) => a + r.amount, 0))));
+        } else if (tab === 'expenses') {
+          const rows = await API.call('expenses.list', params);
+          host.innerHTML = '';
+          host.appendChild(UI.table({
+            columns: [
+              { key: 'voucherNo', label: 'Voucher' }, { key: 'date', label: 'Date', render: r => fmt.date(r.date) },
+              { key: 'category', label: 'Category' }, { key: 'paidTo', label: 'Paid to' }, { key: 'method', label: 'Method' },
+              { key: 'amount', label: 'Amount', num: true, render: r => h('b', { style: { color: 'var(--err)' } }, fmt.money(r.amount)) },
+              { key: 'notes', label: 'Notes' }
+            ], rows, emptyText: 'Koi kharcha nahi'
+          }));
+        } else {
+          const s = await API.call('cash.session.current', { locationId: App.state.locationId });
+          host.innerHTML = '';
+          if (!s) {
+            host.appendChild(h('div', { class: 'empty' }, h('span', { class: 'big' }, '🏦'),
+              h('div', null, 'Koi open cash session nahi'),
+              App.can('pos.cash.manage') ? h('button', { class: 'btn', style: { marginTop: '12px' }, onclick: openSession }, 'Open session') : ''));
+          } else {
+            const t = s.totals || {};
+            host.appendChild(h('div', { class: 'grid g4' },
+              UI.kpi('🏦', 'Session', s.sessionNo, fmt.rel(s.openedAt), 'info'),
+              UI.kpi('💵', 'Opening', fmt.money(s.openingCash), ''),
+              UI.kpi('⬇', 'Cash in', fmt.money(t.cashIn), t.txns + ' txns', 'ok'),
+              UI.kpi('💰', 'Expected', fmt.money(s.expectedCash), 'Closing ke waqt count karein')));
+            host.appendChild(h('div', { style: { marginTop: '14px', display: 'flex', gap: '8px' } },
+              h('button', { class: 'btn danger', onclick: closeSession }, '🔒 Close session (count cash)')));
+          }
+        }
+      } catch (e) { host.innerHTML = ''; host.appendChild(h('div', { class: 'empty' }, '⚠ ' + e.message)); }
+    }
+
+    async function openSession() {
+      const f = UI.form([{ key: 'openingCash', label: 'Opening cash in drawer', type: 'number', value: 0 }]);
+      UI.modal({
+        title: '🏦 Open cash session', width: 'narrow', body: f.el,
+        actions: [{ label: 'Open', cls: 'ok', onClick: async (c) => {
+          await API.call('cash.session.open', { openingCash: f.values().openingCash, locationId: App.state.locationId });
+          UI.toast('Session open ✅', 'ok'); c(); load();
+        } }]
+      });
+    }
+    async function closeSession() {
+      const f = UI.form([{ key: 'closingCash', label: 'Counted cash in drawer', type: 'number' }, { key: 'notes', label: 'Notes', type: 'textarea' }]);
+      UI.modal({
+        title: '🔒 Close cash session', width: 'narrow', body: f.el,
+        actions: [{ label: 'Close', cls: 'danger', onClick: async (c) => {
+          const r = await API.call('cash.session.close', Object.assign(f.values(), { locationId: App.state.locationId }));
+          const v = Number(r.variance);
+          UI.toast('Session closed. Variance: ' + fmt.money(v), Math.abs(v) > 1 ? 'warn' : 'ok'); c(); load();
+          /* v2.6 §7 — is raaste se report GHAIB thi (sirf toast aata tha).
+             Ab yahan bhi wahi dayReportModal (print / PDF / WhatsApp / CSV). */
+          try {
+            const sid = (r && (r.id || r.sessionId)) || '';
+            if (sid) setTimeout(() => dayReportModal(sid), 350);
+          } catch (e) { /* report fail ho to close to ho chuka hai */ }
+        } }]
+      });
+    }
+    load();
+  }
+});
+
+function expenseForm() {
+  const f = UI.form([
+    { key: 'category', label: 'Category', type: 'select', options: ['Rent', 'Salary', 'Electricity', 'Fuel', 'Tea/Meals', 'Repair', 'Marketing', 'Transport', 'Petty cash', 'Other'] },
+    { key: 'amount', label: 'Amount', type: 'number' },
+    { key: 'paidTo', label: 'Paid to' },
+    { key: 'method', label: 'Method', type: 'select', options: ['CASH', 'BANK', 'JAZZCASH', 'EASYPAISA'] },
+    { key: 'notes', label: 'Notes', full: true }
+  ]);
+  UI.modal({
+    title: '⬆ Expense', body: f.el,
+    actions: [{ label: 'Save', cls: 'danger', onClick: async (c) => {
+      try { await API.call('expenses.create', { expense: Object.assign(f.values(), { locationId: App.state.locationId }) }); UI.toast('Saved', 'ok'); c(); App.refresh(); }
+      catch (e) { UI.toast(e.message, 'err'); }
+    } }]
+  });
+}
+
+/* ================================ REPORTS ================================= */
+
+/* ==========================================================================
+   v2.6 §4 — PO / GRN document actions: print · PDF · duplicate · share
+   Ek hi helper, dono jagah (PO drawer + GRN drawer).
+   ========================================================================== */
+function docPrint(html, title) {
+  const w = window.open('', '_blank');
+  if (!w) { UI.toast('Popup blocked — print ke liye popups allow karein', 'warn'); return; }
+  w.document.write(html); w.document.close();
+  setTimeout(() => w.print(), 300);
+}
+function docActions(kind, id, extra) {
+  const isPO = kind === 'po';
+  const wrap = h('div', { class: 'actions', style: { marginTop: '8px', flexWrap: 'wrap', gap: '6px' } });
+  const btn = (label, title, fn) => wrap.appendChild(
+    h('button', { class: 'btn sm sec', title, onclick: fn }, label));
+
+  btn('🖨 Print', 'Print / PDF', async () => {
+    try {
+      const d = await API.call('purchase.' + kind + '.html', { id });
+      docPrint(ExportsWrap(d), (isPO ? 'PO ' : 'GRN ') + id);
+    } catch (e) { UI.toast(e.message || 'Print nahi ho saka', 'err'); }
+  });
+  btn('📄 PDF', 'PDF download', async () => {
+    try {
+      const d = await API.call('purchase.' + kind + '.pdf', { id });
+      if (d && d.url) window.open(d.url, '_blank');
+      else UI.toast('PDF ban gayi', 'ok');
+    } catch (e) { UI.toast(e.message || 'PDF nahi ban saki', 'err'); }
+  });
+  if (isPO) {
+    btn('📋 Duplicate', 'Is PO ki copy → naya draft', async () => {
+      try {
+        const d = await API.call('purchase.po.duplicate', { id });
+        UI.toast('Copy ban gayi: ' + (d.poNo || ''), 'ok');
+        if (extra && extra.onDone) extra.onDone(d);
+      } catch (e) { UI.toast(e.message || 'Copy nahi ban saki', 'err'); }
+    });
+  }
+  btn('📤 Share', 'WhatsApp / share', async () => {
+    try {
+      const d = await API.call('purchase.' + kind + '.html', { id });
+      const txt = (isPO ? 'Purchase Order ' : 'GRN ') + (d.poNo || d.grnNo || id);
+      if (typeof Share !== 'undefined' && Share.text) Share.text(txt, txt);
+      else UI.toast('Share unavailable', 'warn');
+    } catch (e) { UI.toast(e.message || 'Share nahi ho saka', 'err'); }
+  });
+  return wrap;
+}
+/** Server se aya HTML fragment ho to use print-ready document bana de */
+function ExportsWrap(html) {
+  if (/<html/i.test(html || '')) return html;
+  return '<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>' + (html || '') + '</body></html>';
+}
+
+App.registerScreen('reports', {
+  title: 'Reports', icon: '📈', perm: 'reports.view',
+  subtitle: () => 'Sales, profit, stock, udhaar — sab kuch',
+  render(body) {
+    const types = [
+      ['sales', 'Sales summary'], ['salesByItem', 'Item-wise sales'], ['salesByCategory', 'Category sales'],
+      ['profit', 'Profit & loss'], ['inventoryValuation', 'Stock valuation'], ['lowStock', 'Low stock'],
+      ['receivables', 'Receivables (udhaar)'], ['payables', 'Payables'],
+      ['partyBalances', 'Party balances (prev / new / closing)'], ['cashbook', 'Cash book']
+    ];
+    let type = 'sales';
+    let cashMethod = '';                 /* cash book method filter (settings-driven default server par) */
+    const host = h('div');
+    let mode = 'quick';                  /* 'quick' = 10 purane reports · 'all' = v2.6 catalog (54) */
+    const rb = rangeBar2(() => (mode === 'all' ? runAll() : load()));
+    const sel = h('select', { class: 'rpt-type', title: 'Report type', 'aria-label': 'Report type', onchange: () => { type = sel.value; load(); } },
+      ...types.map(([v, l]) => h('option', { value: v }, l)));
+
+    /* =====================================================================
+       v2.6 §9 — SAB REPORTS (54): catalog se chalne wala browser.
+       Ek hi code path — naya report banana sirf catalog mein ek line hai.
+       ===================================================================== */
+    let zGroup = '', zReport = '';
+    const zResult = h('div');
+    const allHost = h('div');
+
+    function zEsc(v) {
+      return String(v === null || v === undefined ? '' : v)
+        .replace(/[&<>"]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[m]));
+    }
+    function zPrint(res) {
+      const w = window.open('', '_blank');
+      if (!w) { UI.toast('Popup blocked — print ke liye popups allow karein', 'warn'); return; }
+      const cell = r => res.cols.map(c =>
+        '<td>' + zEsc(c.money ? fmt.money(r[c.key]) : (r[c.key] === undefined || r[c.key] === null ? '' : r[c.key])) + '</td>').join('');
+      w.document.write('<html><head><title>' + zEsc(res.meta.name) + '</title><style>' +
+        'body{font-family:system-ui,Segoe UI,sans-serif;padding:16px;color:#111}' +
+        'h2{margin:0 0 4px}p{margin:0 0 12px;color:#555;font-size:12px}' +
+        'table{border-collapse:collapse;width:100%}th,td{border:1px solid #ccc;padding:6px 8px;font-size:12px}' +
+        'th{background:#f2f2f2;text-align:left}tfoot td{font-weight:700}</style></head><body>' +
+        '<h2>' + zEsc(res.meta.name) + '</h2><p>' +
+        zEsc([res.meta.from, res.meta.to].filter(Boolean).join(' → ')) + ' · ' +
+        res.meta.rowCount + ' rows</p>' +
+        '<table><thead><tr>' + res.cols.map(c => '<th>' + zEsc(c.label) + '</th>').join('') + '</tr></thead><tbody>' +
+        res.rows.map(r => '<tr>' + cell(r) + '</tr>').join('') + '</tbody>');
+      if (res.totals) {
+        w.document.write('<tfoot><tr>' + res.cols.map((c, i) =>
+          '<td>' + (i === 0 ? 'TOTAL' : (res.totals[c.key] !== undefined ? zEsc(c.money ? fmt.money(res.totals[c.key]) : res.totals[c.key]) : '')) + '</td>'
+        ).join('') + '</tr></tfoot>');
+      }
+      w.document.write('</table></body></html>');
+      w.document.close();
+      setTimeout(() => w.print(), 250);
+    }
+
+    async function runAll() {
+      if (!zReport) return;
+      zResult.innerHTML = ''; zResult.appendChild(UI.skeleton(6));
+      const params = Object.assign({ id: zReport, locationId: App.state.tmpLoc || '' }, rb.values());
+      try {
+        const res = await API.call('reports.run', params, { offlineFallback: () => null });
+        zResult.innerHTML = '';
+        if (!res) { zResult.appendChild(h('div', { class: 'tbl-empty' }, 'Offline — report data maujood nahi')); return; }
+        const columns = res.cols.map(c => ({
+          key: c.key, label: c.label, num: !!(c.num || c.money),
+          render: c.money ? (r => (r.__total ? '' : fmt.money(r[c.key]))) : (c.num ? (r => fmt.num(r[c.key])) : null)
+        }));
+        const rows = res.rows.slice();
+        if (res.totals) {
+          const t = { __total: true };
+          columns.forEach((c, i) => {
+            t[c.key] = (i === 0) ? 'TOTAL'
+              : (res.totals[c.key] !== undefined ? res.totals[c.key] : '');
+          });
+          rows.push(t);
+        }
+        zResult.appendChild(h('div', { class: 'card' },
+          h('div', { class: 'card-head' },
+            h('h3', null, (res.meta.icon ? res.meta.icon + ' ' : '') + res.meta.name +
+              '  ·  ' + res.meta.rowCount + ' rows'),
+            h('div', { class: 'actions' },
+              h('button', { class: 'btn sm sec', title: 'CSV download',
+                onclick: () => API.call('reports.runCsv', params).then(r => downloadCsv(r.csv, r.filename)) }, '⬇ CSV'),
+              h('button', { class: 'btn sm sec', title: 'Print / PDF', onclick: () => zPrint(res) }, '🖨 Print'),
+              h('button', { class: 'btn sm', title: 'Export / share',
+                onclick: () => (typeof Share !== 'undefined' && Share.report
+                  ? Share.report({ rows: res.rows, kind: res.meta.id, params, title: res.meta.name })
+                  : UI.toast('Share is unavailable', 'warn')) }, '📤 Export / share'))),
+          h('div', { class: 'card-body tight' }, UI2.table({
+            screen: 'report-' + res.meta.id, columns, rows,
+            pageSize: 50, exportName: res.meta.id
+          }))));
+      } catch (e) {
+        zResult.innerHTML = '';
+        zResult.appendChild(h('div', { class: 'tbl-empty' }, 'Report error: ' + (e.message || e)));
+      }
+    }
+
+    async function renderCatalog() {
+      allHost.innerHTML = ''; allHost.appendChild(UI.skeleton(4));
+      let cats = [];
+      try { cats = await API.call('reports.catalog', {}, { offlineFallback: () => [] }) || []; }
+      catch (e) { cats = []; }
+      if (!cats.length) {
+        allHost.innerHTML = '';
+        allHost.appendChild(h('div', { class: 'tbl-empty' }, 'Report catalog load nahi hua'));
+        return;
+      }
+      if (!zGroup) zGroup = cats[0].group;
+      const zTotal = cats.reduce((a, c) => a + c.reports.length, 0);
+      const zBtn = document.getElementById('rptmode-all');
+      if (zBtn) zBtn.textContent = '📚 All reports (' + zTotal + ')';
+      const ur = (typeof T !== 'undefined' && T.lang === 'ur');
+      const grpBar = h('div', { class: 'chips' }, ...cats.map(c =>
+        h('button', { class: 'chip2' + (c.group === zGroup ? ' on' : ''),
+          onclick: () => { zGroup = c.group; zReport = ''; renderCatalog(); } },
+          c.group + ' (' + c.reports.length + ')')));
+      const cur = cats.filter(c => c.group === zGroup)[0];
+      const listBar = h('div', { class: 'chips' });
+      (cur ? cur.reports : []).forEach(r => {
+        listBar.appendChild(h('button', {
+          class: 'chip2' + (r.id === zReport ? ' on' : ''), title: r.note || '',
+          onclick: () => { zReport = r.id; renderCatalog(); runAll(); }
+        }, (r.icon || '📄') + ' ' + (ur ? r.nameUr : r.name)));
+      });
+      const picked = cur && cur.reports.filter(r => r.id === zReport)[0];
+      allHost.innerHTML = '';
+      allHost.append(grpBar, listBar);
+      if (picked && picked.note) {
+        allHost.appendChild(h('div', { class: 'f-hint', style: { margin: '0 0 8px' } }, picked.note));
+      }
+      allHost.appendChild(zResult);
+      if (zReport) runAll();
+    }
+
+    const quickBar = h('div', { class: 'filters' }, sel, rb.el,
+      branchSelect(v => { App.state.tmpLoc = v; (mode === 'all' ? runAll() : load()); }, true));
+    const modeBar = h('div', { class: 'filters', style: { marginBottom: '10px' } },
+      h('button', { class: 'btn sm', id: 'rptmode-quick', onclick: () => setMode('quick') }, '⚡ Quick reports'),
+      h('button', { class: 'btn sm sec', id: 'rptmode-all',
+        onclick: () => setMode('all') }, '📚 All reports'));
+    function setMode(m) {
+      mode = m;
+      const q = document.getElementById('rptmode-quick');
+      const a = document.getElementById('rptmode-all');
+      if (q) q.className = 'btn sm' + (m === 'quick' ? '' : ' sec');
+      if (a) a.className = 'btn sm' + (m === 'all' ? '' : ' sec');
+      quickBar.hidden = m !== 'quick';
+      host.hidden = m !== 'quick';
+      allHost.hidden = m !== 'all';
+      if (m === 'all') renderCatalog(); else load();
+    }
+    body.appendChild(h('div', { class: 'card' }, modeBar, quickBar, host, allHost));
+    allHost.hidden = true;
+
+    async function load() {
+      host.innerHTML = ''; host.appendChild(UI.skeleton(6));
+      const params = Object.assign({ locationId: App.state.tmpLoc || '' }, rb.values());
+      if (type === 'cashbook' && cashMethod) params.method = cashMethod;
+      try {
+        const data = await API.call('reports.' + type, params);
+        host.innerHTML = '';
+        if (type === 'sales') {
+          host.appendChild(h('div', { class: 'grid g4' },
+            UI.kpi('🧾', 'Invoices', data.summary.count, '', 'info'),
+            UI.kpi('💰', 'Total sales', fmt.moneyCompact(data.summary.total), fmt.money(data.summary.total)),
+            UI.kpi('🏆', 'Gross profit', fmt.moneyCompact(data.summary.grossProfit), '', 'ok'),
+            UI.kpi('📒', 'Outstanding', fmt.moneyCompact(data.summary.due), '', data.summary.due > 0 ? 'err' : 'ok')));
+          host.appendChild(h('div', { class: 'card' },
+            h('div', { class: 'card-head' }, h('h3', null, 'Invoices'),
+              h('div', { class: 'actions' }, h('button', { class: 'btn sm sec', onclick: () => exportCsv('sales', params) }, '⬇ CSV'),
+                h('button', { class: 'btn sm', title: 'Export / share', onclick: () => Share.report({ rows: data.rows || [], kind: 'sales', params, title: 'Sales summary' }) }, '📤 Export / share'))),
+            h('div', { class: 'card-body tight' }, UI.table({
+              columns: [
+                { key: 'invoiceNo', label: 'Invoice' }, { key: 'date', label: 'Date', render: r => fmt.date(r.date) },
+                { key: 'customerName', label: 'Customer' },
+                { key: 'total', label: 'Total', num: true, render: r => fmt.money(r.total) },
+                { key: 'discount', label: 'Disc', num: true }, { key: 'paid', label: 'Paid', num: true, render: r => fmt.money(r.paid) },
+                { key: 'due', label: 'Due', num: true }, { key: 'status', label: 'Status' }
+              ], rows: data.rows
+            }))));
+        } else if (type === 'salesByItem' || type === 'salesByCategory') {
+          const rows = data.rows || [];
+          const keys = type === 'salesByItem'
+            ? [['code', 'Code'], ['name', 'Item'], ['qty', 'Qty'], ['revenue', 'Revenue'], ['cost', 'Cost'], ['profit', 'Profit']]
+            : [['category', 'Category'], ['qty', 'Qty'], ['revenue', 'Revenue'], ['profit', 'Profit']];
+          host.appendChild(h('div', { class: 'grid g3' },
+            UI.kpi('📦', 'Rows', rows.length, ''),
+            UI.kpi('💰', 'Revenue', fmt.moneyCompact(rows.reduce((a, r) => a + r.revenue, 0)), ''),
+            UI.kpi('🏆', 'Profit', fmt.moneyCompact(rows.reduce((a, r) => a + r.profit, 0)), '', 'ok')));
+          host.appendChild(h('div', { class: 'card' },
+            h('div', { class: 'card-head' }, h('h3', null, 'Breakdown'),
+              h('div', { class: 'actions' }, h('button', { class: 'btn sm sec', onclick: () => exportCsv(type, params) }, '⬇ CSV'))),
+            h('div', { class: 'card-body tight' }, UI.table({
+              columns: keys.map(([k, l]) => ({
+                key: k, label: l, num: ['qty', 'revenue', 'cost', 'profit'].includes(k),
+                render: ['revenue', 'cost', 'profit'].includes(k) ? (r => fmt.money(r[k])) : null
+              })), rows
+            }))));
+          host.appendChild(h('div', { class: 'card' }, h('div', { class: 'card-head' }, h('h3', null, 'Top 10 by revenue')),
+            h('div', { class: 'card-body' }, UI.bars(rows.slice(0, 10).map(r => ({ label: (r.name || r.category || '').slice(0, 10), value: r.revenue }))))));
+        } else if (type === 'profit') {
+          host.appendChild(h('div', { class: 'grid g4' },
+            UI.kpi('💰', 'Revenue', fmt.moneyCompact(data.revenue), fmt.money(data.revenue)),
+            UI.kpi('📦', 'COGS', fmt.moneyCompact(data.cogs), '', 'warn'),
+            UI.kpi('🏆', 'Gross profit', fmt.moneyCompact(data.grossProfit), data.margin + '% margin', 'ok'),
+            UI.kpi('⬆', 'Expenses', fmt.moneyCompact(data.expenses), '', 'err')));
+          host.appendChild(h('div', { class: 'card' },
+            h('div', { class: 'card-head' }, h('h3', null, 'Net profit: ' + fmt.money(data.netProfit))),
+            h('div', { class: 'card-body tight' }, UI.table({
+              columns: [{ key: 'category', label: 'Category' }, { key: 'qty', label: 'Qty', num: true },
+                { key: 'revenue', label: 'Revenue', num: true, render: r => fmt.money(r.revenue) },
+                { key: 'profit', label: 'Profit', num: true, render: r => fmt.money(r.profit) }],
+              rows: data.byCategory || []
+            }))));
+        } else if (type === 'inventoryValuation') {
+          host.appendChild(h('div', { class: 'grid g4' },
+            UI.kpi('📦', 'Cost value', fmt.moneyCompact(data.summary.costValue), fmt.money(data.summary.costValue)),
+            UI.kpi('🏷', 'Retail value', fmt.moneyCompact(data.summary.retailValue), fmt.money(data.summary.retailValue)),
+            UI.kpi('🔢', 'Units', fmt.num(data.summary.units), '', 'info'),
+            /* v2.8.5 — "Potential margin" user ko samajh nahi aata tha; ab sub
+               line khud batati hai ke ye kya hai (Retail − Cost). */
+            UI.kpi('🏆', 'Potential margin', fmt.moneyCompact(data.summary.retailValue - data.summary.costValue),
+              'Retail − Cost · agar poora stock bik jaye', 'ok')));
+          host.appendChild(h('div', { class: 'card' }, h('div', { class: 'card-body tight' }, UI.table({
+            columns: [
+              { key: 'code', label: 'Code' }, { key: 'name', label: 'Item' }, { key: 'category', label: 'Category' },
+              { key: 'qty', label: 'Qty', num: true }, { key: 'avgCost', label: 'Avg cost', num: true, render: r => fmt.money(r.avgCost) },
+              { key: 'value', label: 'Value', num: true, render: r => fmt.money(r.value) }
+            ], rows: data.rows
+          }))));
+        } else if (type === 'lowStock') {
+          host.appendChild(h('div', { class: 'card' }, h('div', { class: 'card-body tight' }, UI.table({
+            columns: [
+              { key: 'code', label: 'Code' }, { key: 'name', label: 'Item' }, { key: 'category', label: 'Category' },
+              { key: 'stock', label: 'Stock', num: true, render: r => h('span', { class: 'badge err' }, r.stock) },
+              { key: 'reorderLevel', label: 'Reorder', num: true },
+              { key: 'suggestQty', label: 'Suggested', num: true },
+              { key: 'estCost', label: 'Est. cost', num: true, render: r => fmt.money(r.estCost) }
+            ], rows: data || [], emptyText: '✅ Sab stock theek hai'
+          }))));
+        } else if (type === 'receivables' || type === 'payables') {
+          const isRec = type === 'receivables';
+          const pTY = isRec ? 'CUSTOMER' : 'SUPPLIER';
+          host.appendChild(h('div', { class: 'grid g4' },
+            UI.kpi('📅', 'Pichhla baqaya (prev)', fmt.moneyCompact(data.prevTotal), fmt.money(data.prevTotal), 'info'),
+            UI.kpi('➕', isRec ? 'Naya udhaar' : 'Naya purchase', fmt.moneyCompact(data.newTotal), fmt.money(data.newTotal), 'warn'),
+            UI.kpi('✅', isRec ? 'Wasooli' : 'Payment', fmt.moneyCompact(data.settledTotal), fmt.money(data.settledTotal), 'ok'),
+            UI.kpi(isRec ? '📒' : '🧾', isRec ? 'Total udhaar (closing)' : 'Total payable (closing)',
+              fmt.moneyCompact(data.total), fmt.money(data.total), isRec ? 'err' : 'warn')));
+          host.appendChild(h('div', { class: 'card' },
+            h('div', { class: 'card-head' },
+              h('h3', null, isRec ? 'Customer-wise udhaar' : 'Supplier-wise payable'),
+              h('div', { class: 'actions' },
+                h('span', { class: 'muted', style: { fontSize: 'var(--fs-xs)', marginRight: '8px' } },
+                  'Prev + ' + (isRec ? 'Naya' : 'Purchase') + ' − ' + (isRec ? 'Wasooli' : 'Paid') + ' = Closing'),
+                h('button', { class: 'btn sm sec', onclick: () => exportCsv(type, params) }, '⬇ CSV'))),
+            h('div', { class: 'card-body tight' }, UI.table({
+              columns: [
+                { key: 'code', label: 'Code' }, { key: 'name', label: 'Name' }, { key: 'phone', label: 'Phone' },
+                { key: 'prevBalance', label: 'Prev', num: true, render: r => h('span', { class: 'muted' }, fmt.money(r.prevBalance)) },
+                { key: 'newAmount', label: isRec ? 'Naya' : 'Purchase', num: true, render: r => fmt.money(r.newAmount) },
+                { key: 'settled', label: isRec ? 'Wasooli' : 'Paid', num: true, render: r => fmt.money(r.settled) },
+                { key: 'balance', label: 'Closing', num: true, render: r => h('b', { style: { color: 'var(--err)' } }, fmt.money(r.balance)) },
+                { key: 'id', label: '', render: r => h('button', { class: 'btn sm sec', onclick: e => { e.stopPropagation(); ledger(pTY, r); } }, 'Ledger') }
+              ], rows: data.rows || [], onRow: r => ledger(pTY, r)
+            }))));
+        } else if (type === 'partyBalances') {
+          const rows = data.rows || [];
+          host.appendChild(h('div', { class: 'grid g4' },
+            UI.kpi('📅', 'Pichhla baqaya', fmt.moneyCompact(data.prevTotal), fmt.money(data.prevTotal), 'info'),
+            UI.kpi('➕', 'Naya', fmt.moneyCompact(data.newTotal), fmt.money(data.newTotal), 'warn'),
+            UI.kpi('✅', 'Wasool / paid', fmt.moneyCompact(data.settledTotal), fmt.money(data.settledTotal), 'ok'),
+            UI.kpi('📒', 'Closing', fmt.moneyCompact(data.total), fmt.money(data.total), 'err')));
+          host.appendChild(h('div', { class: 'card' }, h('div', { class: 'card-body tight' }, UI.table({
+            columns: [
+              { key: 'code', label: 'Code' }, { key: 'name', label: 'Name' }, { key: 'phone', label: 'Phone' },
+              { key: 'prevBalance', label: 'Prev', num: true, render: r => fmt.money(r.prevBalance) },
+              { key: 'newAmount', label: 'New', num: true, render: r => fmt.money(r.newAmount) },
+              { key: 'settled', label: 'Settled', num: true, render: r => fmt.money(r.settled) },
+              { key: 'balance', label: 'Closing', num: true, render: r => h('b', null, fmt.money(r.balance)) }
+            ], rows, onRow: r => ledger((r.partyType || 'CUSTOMER'), r)
+          }))));
+        } else if (type === 'cashbook') {
+          /* Cash book — opening → in → out → closing (running balance ke saath) */
+          const det = data.openingDetail || {};
+          const methodSel = h('select', { class: 'cb-method', title: 'Method', 'aria-label': 'Payment method' },
+            ...['ALL'].concat((data.byMethod || []).map(m => m.method))
+              .filter((v, i, a) => a.indexOf(v) === i)
+              .map(v => h('option', { value: v, selected: v === (data.method || 'ALL') }, v === 'ALL' ? 'All methods' : v)));
+          methodSel.onchange = () => { cashMethod = methodSel.value; load(); };
+
+          host.appendChild(h('div', { class: 'grid g4' },
+            UI.kpi('🔓', 'Opening', fmt.moneyCompact(data.opening), fmt.money(data.opening), 'info'),
+            UI.kpi('⬇', 'Cash in', fmt.moneyCompact(data.inflow), fmt.money(data.inflow), 'ok'),
+            UI.kpi('⬆', 'Cash out', fmt.moneyCompact(data.outflow), fmt.money(data.outflow), 'err'),
+            UI.kpi('💰', 'Closing', fmt.moneyCompact(data.closing), fmt.money(data.closing), data.closing >= 0 ? 'ok' : 'err')));
+
+          host.appendChild(h('div', { class: 'card cb-basis' },
+            h('div', { class: 'card-body tight' },
+              h('div', { class: 'cb-eq' },
+                h('span', null, 'Opening ' + fmt.money(data.opening)),
+                h('span', { class: 'op' }, '+'),
+                h('span', null, 'Cash in ' + fmt.money(data.inflow)),
+                h('span', { class: 'op' }, '−'),
+                h('span', null, 'Cash out ' + fmt.money(data.outflow)),
+                h('span', { class: 'op' }, '='),
+                h('b', { class: 'cb-total' }, 'Closing ' + fmt.money(data.closing))),
+              h('div', { class: 'hint', style: { marginTop: '6px' } },
+                'Opening kahan se aaya: ' + (det.basis || '—') +
+                (det.base ? (' · settings balance ' + fmt.money(det.base) + (det.asOf ? ' as on ' + det.asOf : '')) : '') +
+                (det.movements ? (' · purani movements ' + fmt.money(det.movements)) : '') +
+                ' · badalne ke liye ',
+                h('button', { class: 'btn sm sec', onclick: () => App.go('settings', { tab: 'trade' }) }, '⚙ Settings')))));
+
+          host.appendChild(h('div', { class: 'card cb-methods' },
+            h('div', { class: 'card-head' }, h('h3', null, 'Method-wise'),
+              h('div', { class: 'actions' }, methodSel)),
+            h('div', { class: 'card-body tight' }, UI.table({
+              columns: [
+                { key: 'method', label: 'Method' }, { key: 'count', label: 'Entries', num: true },
+                { key: 'inflow', label: 'In', num: true, render: r => fmt.money(r.inflow) },
+                { key: 'outflow', label: 'Out', num: true, render: r => fmt.money(r.outflow) },
+                { key: 'net', label: 'Net', num: true, render: r => h('b', null, fmt.money(r.net)) }
+              ], rows: data.byMethod || []
+            }))));
+
+          host.appendChild(h('div', { class: 'card cb-days' },
+            h('div', { class: 'card-head' }, h('h3', null, 'Day-wise cash book'),
+              h('div', { class: 'actions' },
+                h('button', { class: 'btn sm sec', onclick: () => exportCsv('cashbook', params) }, '⬇ CSV'),
+                h('button', { class: 'btn sm', onclick: () => Share.report({ rows: data.days || [], kind: 'cash-book', params, title: 'Cash book' }) }, '📤 Export / share'))),
+            h('div', { class: 'card-body tight' }, UI.table({
+              columns: [
+                { key: 'date', label: 'Date', render: r => fmt.date(r.date) },
+                { key: 'opening', label: 'Opening', num: true, render: r => fmt.money(r.opening) },
+                { key: 'inflow', label: 'In', num: true, render: r => fmt.money(r.inflow) },
+                { key: 'outflow', label: 'Out', num: true, render: r => fmt.money(r.outflow) },
+                { key: 'closing', label: 'Closing', num: true, render: r => h('b', null, fmt.money(r.closing)) }
+              ], rows: data.days || []
+            }))));
+
+          host.appendChild(h('div', { class: 'card cb-entries' },
+            h('div', { class: 'card-head' }, h('h3', null, 'Entries (running balance)'),
+              h('div', { class: 'actions' }, h('span', { class: 'muted', style: { fontSize: 'var(--fs-xs)' } },
+                (data.entries || []).length + ' rows'))),
+            h('div', { class: 'card-body tight' }, UI.table({
+              columns: [
+                { key: 'voucherNo', label: 'Voucher' }, { key: 'date', label: 'Date', render: r => fmt.date(r.date) },
+                { key: 'partyName', label: 'Party', render: r => r.partyName || r.accountName || '—' },
+                { key: 'type', label: 'Type', render: r => h('span', { class: 'badge ' + (r.kind === 'EXPENSE' ? 'warn' : 'info') }, r.type || '—') },
+                { key: 'method', label: 'Method' },
+                { key: 'direction', label: 'In', num: true, render: r => r.direction === 'IN' ? h('span', { class: 'ok' }, fmt.money(r.amount)) : '—' },
+                { key: '_out', label: 'Out', num: true, render: r => r.direction === 'OUT' ? h('span', { class: 'err' }, fmt.money(r.amount)) : '—' },
+                { key: 'balance', label: 'Balance', num: true, render: r => h('b', null, fmt.money(r.balance)) }
+              ], rows: data.entries || []
+            }))));
+        }
+
+      } catch (e) { host.innerHTML = ''; host.appendChild(h('div', { class: 'empty' }, '⚠ ' + e.message)); }
+    }
+    load();
+  }
+});
+
+async function exportCsv(type, params) {
+  const r = await API.call('reports.export', Object.assign({ type }, params || {}));
+  downloadCsv(r.csv, r.filename);
+}
+
+/* =========================== USERS & SECURITY ============================= */
+App.registerScreen('users', {
+  title: 'Users & Security', icon: '🔐', perm: 'users.view',
+  actions() {
+    const a = [{ label: 'Refresh', icon: '↻', onClick: () => App.refresh() }];
+    if (App.can('users.manage')) a.unshift({ label: 'New User', icon: '➕', onClick: userForm });
+    return a;
+  },
+  render(body) {
+    let tab = 'users';
+    const host = h('div');
+    const seg = h('div', { class: 'seg' },
+      ...[['users', 'Users'], ['groups', 'Groups & Rights'], ['perms', 'Permissions'], ['audit', 'Audit Log']].map(([id, lbl]) =>
+        h('button', { class: id === 'users' ? 'on' : '', onclick: e => {
+          tab = id; Array.from(seg.children).forEach(b => b.classList.remove('on')); e.target.classList.add('on'); load();
+        } }, lbl)));
+    body.appendChild(h('div', { class: 'card' }, h('div', { class: 'filters' }, seg), host));
+
+    async function load() {
+      host.innerHTML = ''; host.appendChild(UI.skeleton(5));
+      try {
+        if (tab === 'users') {
+          const rows = await API.call('users.list', {});
+          host.innerHTML = '';
+          host.appendChild(UI.table({
+            columns: [
+              { key: 'username', label: 'Username', render: r => h('b', null, r.username) },
+              { key: 'fullName', label: 'Name' },
+              { key: 'role', label: 'Role', render: r => h('span', { class: 'badge brand' }, r.role) },
+              { key: 'locationIds', label: 'Branches', render: r => String(r.locationIds || '').split(',').map(locName).filter(Boolean).join(', ') },
+              { key: 'lastLogin', label: 'Last login', render: r => r.lastLogin ? fmt.rel(r.lastLogin) : '—' },
+              { key: 'active', label: 'Status', render: r => h('span', { class: 'badge ' + (String(r.active) !== 'false' ? 'ok' : 'err') }, String(r.active) !== 'false' ? 'Active' : 'Disabled') },
+              { key: 'id', label: '', render: r => App.can('users.manage') ? h('button', { class: 'btn sm sec', onclick: e => { e.stopPropagation(); userForm(r); } }, 'Edit') : '' }
+            ], rows, onRow: r => userForm(r)
+          }));
+        } else if (tab === 'groups') {
+          const rows = await API.call('users.groups.list', {});
+          host.innerHTML = '';
+          host.appendChild(UI.table({
+            columns: [
+              { key: 'name', label: 'Group' }, { key: 'type', label: 'Type' },
+              { key: 'permissions', label: 'Extra permissions', render: r => String(r.permissions || '—').slice(0, 60) },
+              { key: 'saleReturnLimit', label: 'Return limit', num: true },
+              { key: 'dataViewLimit', label: 'Data view (days)', num: true },
+              { key: 'id', label: '', render: r => App.can('users.manage') ? h('button', { class: 'btn sm sec', onclick: e => { e.stopPropagation(); groupForm(r); } }, 'Edit') : '' }
+            ], rows, onRow: r => groupForm(r)
+          }));
+          host.appendChild(h('div', { class: 'card-body' },
+            h('div', { style: { fontSize: 'var(--fs-xs)', color: 'var(--muted)' } },
+              'Permissions comma separated likhein, masalan: ',
+              h('code', { style: { background: 'var(--bg-2)', padding: '2px 6px', borderRadius: '5px' } },
+                'pos.discount, items.price.edit, reports.financial'),
+              ' · ', h('b', null, '*'), ' = full admin')));
+        } else if (tab === 'perms') {
+          const meta = await API.call('users.perms', {}, { offlineFallback: () => null });
+          if (!meta) { host.innerHTML = ''; host.appendChild(h('div', { class: 'empty' }, '⚠ Permissions load nahi hui')); return; }
+          host.innerHTML = '';
+          host.appendChild(buildPermMatrix(meta));
+        } else {
+          const rows = await API.call('audit.search', { limit: 200 });
+          host.innerHTML = '';
+          host.appendChild(UI.table({
+            columns: [
+              { key: 'ts', label: 'Time', render: r => fmt.date(r.ts, true) },
+              { key: 'username', label: 'User' }, { key: 'action', label: 'Action' },
+              { key: 'entity', label: 'Entity' },
+              { key: 'entityId', label: 'Record', render: r => String(r.entityId || '').slice(0, 14) },
+              { key: 'id', label: '', render: r => h('button', { class: 'btn sm sec', onclick: e => { e.stopPropagation(); showAudit(r); } }, 'Diff') }
+            ], rows, emptyText: 'Koi log nahi'
+          }));
+        }
+      } catch (e) { host.innerHTML = ''; host.appendChild(h('div', { class: 'empty' }, '⚠ ' + e.message)); }
+    }
+    load();
+  }
+});
+
+
+/* ======================= PERMISSIONS MATRIX (v2.5) =======================
+ * Har permission × har role ke liye checkbox. Owner hamesha locked (full access).
+ * Data backend (Auth.perms ▸ PERMISSION_CATALOG) se aata hai — koi hardcode nahi.
+ * ======================================================================== */
+function buildPermMatrix(meta) {
+  const canEdit = App.can('users.manage');
+  const roles = (meta.roles || []).map(r => typeof r === 'string' ? { id: r, label: r } : r);
+  const roleList = roles.length ? roles : Object.keys(meta.matrix || {}).map(id => ({ id, label: id }));
+  const locked = meta.locked || ['OWNER'];
+  const matrix = meta.matrix || {};
+  const dirty = {};                                   // role -> Set(permIds)
+
+  const wrap = h('div', { class: 'perm-matrix' });
+
+  /* ---------- toolbar ---------- */
+  const search = h('input', { class: 'f-input', type: 'search',
+    placeholder: 'Permission dhoondhein… (masalan discount, stock)', style: { flex: '1', minWidth: '180px' } });
+  const lang = (App.state && App.state.lang) || 'en';
+  const lbl = e => (lang === 'ur' && e.ur) ? e.ur : e.en;
+  const gl = g => (lang === 'ur' && g.labelUr) ? g.labelUr : g.label;
+
+  wrap.appendChild(h('div', { class: 'pm-tools' },
+    search,
+    h('span', { class: 'pm-count' }, (meta.catalog || []).length + ' permissions · ' + roleList.length + ' roles'),
+    h('button', { class: 'btn sm sec', onclick: () => setAll(true) }, 'Sab ON'),
+    h('button', { class: 'btn sm sec', onclick: () => setAll(false) }, 'Sab OFF'),
+    h('button', { class: 'btn sm sec', onclick: () => resetAll() }, '↺ Defaults'),
+    canEdit ? h('button', { class: 'btn sm ok', onclick: () => save() }, '💾 Save') : ''
+  ));
+  if (!canEdit) wrap.appendChild(h('div', { class: 'hint' }, 'Sirf dekh sakte hain — badalne ke liye users.manage chahiye.'));
+
+  /* ---------- header row ---------- */
+  function header() {
+    return h('div', { class: 'pm-row pm-head' },
+      h('div', { class: 'pm-perm' }, 'Permission'),
+      ...roleList.map(r => h('div', { class: 'pm-cell' },
+        h('span', { class: 'pm-role', title: r.label }, String(r.label).slice(0, 5)))));
+  }
+  wrap.appendChild(header());
+
+  /* ---------- grouped body ---------- */
+  const body = h('div', { class: 'pm-body' });
+  wrap.appendChild(body);
+
+  const boxes = [];   // { role, perm, cb }
+
+  (meta.groups || []).forEach(g => {
+    const perms = (meta.catalog || []).filter(x => x.group === g.id);
+    if (!perms.length) return;
+    const grp = h('div', { class: 'pm-group' });
+    grp.appendChild(h('div', { class: 'pm-group-head' },
+      h('span', null, (g.icon || '') + ' ' + gl(g)),
+      h('span', { class: 'pm-group-count' }, perms.length)));
+    perms.forEach(pe => {
+      const row = h('div', { class: 'pm-row', dataset: { perm: pe.id, txt: (pe.en + ' ' + pe.ur + ' ' + pe.id).toLowerCase() } },
+        h('div', { class: 'pm-perm' },
+          h('b', null, lbl(pe)),
+          h('span', { class: 'pm-desc' }, pe.desc || ''),
+          h('code', { class: 'pm-code' }, pe.id)),
+        ...roleList.map(r => {
+          const isLocked = locked.indexOf(r.id) > -1;
+          const on = isLocked || (matrix[r.id] || []).indexOf(pe.id) > -1;
+          const cb = h('button', {
+            class: 'pm-box' + (on ? ' on' : '') + (isLocked ? ' locked' : ''),
+            type: 'button', disabled: !canEdit || isLocked,
+            title: (isLocked ? 'Hamesha ON — ' : (on ? 'Allowed' : 'Blocked')) + ' · ' + r.label,
+            'aria-pressed': on ? 'true' : 'false',
+            onclick: () => {
+              if (!canEdit || isLocked) return;
+              const now = cb.classList.toggle('on');
+              cb.setAttribute('aria-pressed', now ? 'true' : 'false');
+              markDirty(r.id);
+            }
+          }, on ? '✓' : '');
+          boxes.push({ role: r.id, perm: pe.id, cb, locked: isLocked });
+          return h('div', { class: 'pm-cell' }, cb);
+        }));
+      grp.appendChild(row);
+    });
+    body.appendChild(grp);
+  });
+
+  /* ---------- helpers ---------- */
+  function markDirty(role) {
+    dirty[role] = true;
+    const badge = wrap.querySelector('.pm-count');
+    if (badge && !/•/.test(badge.textContent)) badge.textContent += ' • unsaved';
+  }
+  function setAll(on) {
+    if (!canEdit) return;
+    boxes.forEach(b => {
+      if (b.locked) return;
+      b.cb.classList.toggle('on', on);
+      b.cb.textContent = on ? '✓' : '';
+      b.cb.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
+    roleList.forEach(r => { if (locked.indexOf(r.id) === -1) dirty[r.id] = true; });
+    const badge = wrap.querySelector('.pm-count');
+    if (badge && !/•/.test(badge.textContent)) badge.textContent += ' • unsaved';
+  }
+  async function resetAll() {
+    if (!canEdit) return UI.toast('Permission nahi', 'err');
+    if (!(await UI.confirm('Saare roles ko default permissions par wapas karein?'))) return;
+    try {
+      const fresh = await API.call('users.perms', {});
+      roleList.forEach(r => {
+        const list = fresh.matrix[r.id] || [];
+        boxes.filter(b => b.role === r.id && !b.locked).forEach(b => {
+          const on = list.indexOf(b.perm) > -1;
+          b.cb.classList.toggle('on', on); b.cb.textContent = on ? '✓' : '';
+        });
+      });
+      Object.keys(dirty).forEach(k => delete dirty[k]);
+      UI.toast('Defaults restore ho gaye (save karein)', 'ok', 2600);
+    } catch (e) { UI.toast(e.message, 'err'); }
+  }
+  async function save() {
+    const rolesToSave = Object.keys(dirty).filter(r => locked.indexOf(r) === -1);
+    if (!rolesToSave.length) return UI.toast('Koi tabdeeli nahi', 'warn');
+    /* W7 (v2.26.0) — pehle har role ka apna round-trip (sequential) aur pehli ghalti par
+       baqi roles chhoot jate the. Ab parallel batches; sab errors jama ho kar batate hain. */
+    const jobs = rolesToSave.map(role => ({
+      role, fn: () => API.call('users.perms.save', { role, permissions:
+        boxes.filter(b => b.role === role && !b.locked && b.cb.classList.contains('on')).map(b => b.perm) })
+    }));
+    const res = await API.parallel(jobs.map(j => j.fn), 4);
+    const errs = [];
+    res.forEach((r, i) => { if (r && r.__err) errs.push(jobs[i].role + ': ' + r.__err); });
+    if (errs.length) { UI.toast(errs.length + ' role save nahi ho sake — ' + errs.slice(0, 2).join(' · '), 'err'); return; }
+    Object.keys(dirty).forEach(k => delete dirty[k]);
+    const badge = wrap.querySelector('.pm-count');
+    if (badge) badge.textContent = badge.textContent.replace(' • unsaved', '');
+    UI.toast('Permissions save ho gayeen ✅', 'ok');
+    App.refresh();
+  }
+
+  /* ---------- as-you-type filter (no bottom scroll: fixed height body) ---------- */
+  search.oninput = () => {
+    const q = search.value.trim().toLowerCase();
+    Array.from(body.querySelectorAll('.pm-row')).forEach(row => {
+      row.style.display = !q || (row.dataset.txt || '').indexOf(q) > -1 ? '' : 'none';
+    });
+    Array.from(body.querySelectorAll('.pm-group')).forEach(g => {
+      const vis = Array.from(g.querySelectorAll('.pm-row')).filter(r => r.style.display !== 'none').length;
+      g.style.display = vis ? '' : 'none';
+    });
+  };
+
+  return wrap;
+}
+
+function showAudit(entry) {
+  const pre = h('pre', { style: { fontSize: 'var(--fs-xs)', whiteSpace: 'pre-wrap', background: 'var(--panel-2)', padding: '10px', borderRadius: '10px' } },
+    'BEFORE:\n' + JSON.stringify(entry.before, null, 1) + '\n\nAFTER:\n' + JSON.stringify(entry.after, null, 1));
+  UI.modal({ title: 'Audit detail — ' + entry.action, width: 'wide', body: pre, actions: [{ label: 'Close', onClick: c => c() }] });
+}
+
+/* ================== PER-USER RULES (v2.5) ==============================
+ * Role ke baad har action ko Allow (extra) ya Deny (block) kiya ja sakta hai.
+ * Tri-state: inherit (role jaisa) → allow → deny → inherit.
+ * Catalog backend (Auth.perms ▸ PERMISSION_CATALOG) se — koi hardcode nahi.
+ * ====================================================================== */
+let __permMeta = null;
+async function permMeta() {
+  if (__permMeta) return __permMeta;
+  try { __permMeta = await API.call('users.perms', {}, { offlineFallback: () => null }); } catch (e) { __permMeta = null; }
+  return __permMeta;
+}
+
+function userRulesEditor(u, roleRef) {
+  const extra = new Set(String((u && u.extraPermissions) || '').split(',').filter(Boolean));
+  const denied = new Set(String((u && u.deniedPermissions) || '').split(',').filter(Boolean));
+  const wrap = h('div', { class: 'rules-editor' });
+  wrap.appendChild(h('div', { class: 'empty', style: { padding: '10px' } }, 'Rules load ho rahe hain…'));
+
+  const stateOf = id => extra.has(id) ? 'allow' : (denied.has(id) ? 'deny' : 'inherit');
+  const setState = (id, next) => {
+    extra.delete(id); denied.delete(id);
+    if (next === 'allow') extra.add(id);
+    if (next === 'deny') denied.add(id);
+  };
+
+  permMeta().then(meta => {
+    wrap.innerHTML = '';
+    if (!meta || !(meta.catalog || []).length) {
+      wrap.appendChild(h('div', { class: 'empty' }, 'Permission catalog load nahi hua'));
+      return;
+    }
+    const lang = (App.state && App.state.lang) || 'en';
+    const lbl = e => (lang === 'ur' && e.ur) ? e.ur : e.en;
+    const gl = g => (lang === 'ur' && g.labelUr) ? g.labelUr : g.label;
+
+    const search = h('input', { class: 'f-input', type: 'search', placeholder: '🔍 Action dhoondhein (masalan discount, return, delete)…' });
+    const count = h('span', { class: 'pm-count' });
+    const rows = [];
+    wrap.append(h('div', { class: 're-tools' }, search, count,
+      h('button', { class: 'btn sm sec', onclick: () => { extra.clear(); denied.clear(); paint(); } }, '↺ Sab inherit')));
+
+    const body = h('div', { class: 're-body' });
+    wrap.appendChild(body);
+
+    (meta.groups || []).forEach(g => {
+      const perms = (meta.catalog || []).filter(x => x.group === g.id);
+      if (!perms.length) return;
+      const grp = h('div', { class: 're-group' });
+      grp.appendChild(h('div', { class: 're-group-head' }, (g.icon || '') + ' ' + gl(g),
+        h('span', { class: 'pm-group-count' }, perms.length)));
+      perms.forEach(pe => {
+        const role = () => (roleRef && roleRef.value) ? roleRef.value : ((u && u.role) || 'OTHER');
+        const roleOn = () => ((meta.matrix || {})[role()] || []).indexOf(pe.id) > -1 || role() === 'OWNER';
+        const btn = h('button', { class: 're-box', type: 'button',
+          title: 'Inherit (role) → Allow → Deny', onclick: () => {
+            const order = ['inherit', 'allow', 'deny'];
+            const next = order[(order.indexOf(stateOf(pe.id)) + 1) % 3];
+            setState(pe.id, next); paint();
+          } });
+        const row = h('div', { class: 're-row', dataset: { txt: (pe.en + ' ' + (pe.ur || '') + ' ' + pe.id).toLowerCase() } },
+          h('div', { class: 're-txt' }, h('b', null, lbl(pe)),
+            h('span', { class: 're-desc' }, pe.desc || '')),
+          h('span', { class: 're-role ' + (roleOn() ? 'on' : 'off') }, roleOn() ? 'role: ON' : 'role: OFF'),
+          btn);
+        rows.push({ pe, btn, row });
+        grp.appendChild(row);
+      });
+      body.appendChild(grp);
+    });
+
+    function paint() {
+      rows.forEach(({ pe, btn }) => {
+        const st = stateOf(pe.id);
+        btn.className = 're-box ' + st;
+        btn.textContent = st === 'allow' ? '✓ Allow' : (st === 'deny' ? '⛔ Deny' : 'Inherit');
+        btn.setAttribute('aria-pressed', st);
+      });
+      count.textContent = extra.size + ' allow · ' + denied.size + ' deny';
+    }
+    search.oninput = () => {
+      const q = search.value.trim().toLowerCase();
+      rows.forEach(({ row }) => { row.style.display = !q || (row.dataset.txt || '').indexOf(q) > -1 ? '' : 'none'; });
+      Array.from(body.querySelectorAll('.re-group')).forEach(g => {
+        const vis = Array.from(g.querySelectorAll('.re-row')).filter(r => r.style.display !== 'none').length;
+        g.style.display = vis ? '' : 'none';
+      });
+    };
+    paint();
+  });
+
+  return { el: wrap, values: () => ({ extraPermissions: Array.from(extra).join(','), deniedPermissions: Array.from(denied).join(',') }) };
+}
+
+function userForm(u) {
+  const roles = ['OWNER', 'MANAGER', 'SALESMAN', 'CASHIER', 'PURCHASE', 'WAREHOUSE', 'ACCOUNTANT', 'DELIVERY', 'OTHER'];
+  const f = UI.form([
+    { key: 'username', label: 'Username', required: true },
+    { key: 'fullName', label: 'Full name' },
+    { key: 'password', label: u ? 'New password (optional)' : 'Password', type: 'password' },
+    { key: 'role', label: 'Role', type: 'select', options: roles },
+    { key: 'email', label: 'Email' },
+    { key: 'phone', label: 'Phone' },
+    { key: 'commissionRate', label: 'Commission %', type: 'number' },
+    { key: 'discountLimit', label: 'Discount limit %', type: 'number' },
+    { key: 'defaultLocationId', label: 'Default branch', type: 'select', options: App.state.locations.map(l => ({ value: l.id, label: l.name })) },
+    { key: 'active', label: 'Active', type: 'switch', value: true }
+  ], u || {});
+  /* v2.6 QA — "Users & Security main Branch access main toggle button theek
+     nahi hain". Wajah: ye raw <label class="switch"> haath se bana hua tha,
+     shared UI2.toggle() (On/Off state + keyboard focus) use hi nahi hua tha.
+     Ab har branch ek professional switch-row hai (§1/§17: EK hi component). */
+  const locBox = h('div', { class: 'field full' }, h('label', null, 'Branch access'),
+    h('div', { class: 'ui2-block', style: { padding: '10px 12px' } },
+      App.state.locations.length
+        ? App.state.locations.map(l => {
+          const tg = UI2.toggle({
+            row: true,
+            label: l.name,
+            hint: l.code || '',
+            checked: !!(u && String(u.locationIds || '').indexOf(l.id) > -1)
+          });
+          tg.input.dataset.loc = l.id;      /* save() isi se padhta hai */
+          return tg.el;
+        })
+        : h('div', { class: 'empty' }, 'Koi branch defined nahi')));
+  f.el.appendChild(locBox);
+
+  /* ---------- v2.5: per-user rules (allow / disallow actions) ---------- */
+  const roleRef = Array.from(f.el.querySelectorAll('select'))
+    .find(sel => Array.from(sel.options).some(o => o.value === 'OWNER')) || null;
+  const rules = userRulesEditor(u, roleRef);
+  const rulesHost = h('div', { class: 'field full' });
+  rulesHost.appendChild(h('label', null, 'Rules — kaun se actions allow / disallow hain'));
+  rulesHost.appendChild(h('div', { class: 'sub', style: { fontSize: 'var(--fs-xs)', color: 'var(--muted)', marginBottom: '6px' } },
+    'Role ke baad “Allow” extra permission deta hai, “Deny” usay block kar deta hai. Har row par click karke Inherit → Allow → Deny badal dein.'));
+  rulesHost.appendChild(rules.el);
+  f.el.appendChild(rulesHost);
+
+  UI.drawer({
+    title: u ? '✏ ' + u.username : '➕ Naya user', body: f.el,
+    actions: [{ label: 'Save', onClick: async (c) => {
+      const v = Object.assign({}, f.values(), rules.values());
+      v.locationIds = Array.from(locBox.querySelectorAll('input:checked')).map(i => i.dataset.loc);
+      if (!v.username) return UI.toast('Username zaroori hai', 'err');
+      try {
+        if (u) await API.call('users.update', { id: u.id, patch: v });
+        else await API.call('users.create', { user: v });
+        UI.toast('Saved ✅', 'ok'); c(); App.refresh();
+      } catch (e) { UI.toast(e.message, 'err'); }
+    } }]
+  });
+}
+
+function groupForm(g) {
+  const f = UI.form([
+    { key: 'name', label: 'Group name', required: true },
+    { key: 'type', label: 'Type', type: 'select', options: ['Admin', 'Shop', 'HO'] },
+    { key: 'permissions', label: 'Extra permissions (comma separated)', full: true, type: 'textarea', rows: 2 },
+    { key: 'saleReturnLimit', label: 'Sale return limit', type: 'number' },
+    { key: 'dataViewLimit', label: 'Data view limit (days)', type: 'number' },
+    { key: 'comments', label: 'Comments', full: true, type: 'textarea' }
+  ], g || {});
+  UI.drawer({
+    title: g ? '✏ ' + g.name : '➕ Naya group', body: f.el,
+    actions: [{ label: 'Save', onClick: async (c) => {
+      try { await API.call('users.groups.save', { group: f.values() }); UI.toast('Saved ✅', 'ok'); c(); App.refresh(); }
+      catch (e) { UI.toast(e.message, 'err'); }
+    } }]
+  });
+}
+
+/* v2.28.0 (W5) — permission matrix builder ko app-level par expose karo:
+   Users & Security ke ilawa Reports/settings bhi isi builder ko reuse kar sakte
+   hain (spec: "controls should be reusable globally") aur QA rendered-DOM proof
+   leta hai (koi duplicate builder nahi). */
+try { window.buildPermMatrix = buildPermMatrix; } catch (e) { }
+
+})();
+</script>

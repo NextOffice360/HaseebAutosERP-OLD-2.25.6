@@ -1,0 +1,29 @@
+# ---- dependencies / caches (ye machine-specific hain, repo mein nahi jate) ----
+node_modules/
+__pycache__/
+*.pyc
+.cache/
+.npm/
+.local/
+.venv/
+venv/
+
+# ---- OS junk ----
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---- secrets (kabhi commit na hon) ----
+.env
+.env.*
+*credentials*.json
+*service-account*.json
+.netrc
+.git-credentials
+
+# ---- git bundles (download artefact hain, repo ka hissa nahi) ----
+*.bundle
+
+# ---- scratch (verification logs rehte hain, magar probes/junk nahi) ----
+tmp/probe_*.js
+tmp/dbg*.js

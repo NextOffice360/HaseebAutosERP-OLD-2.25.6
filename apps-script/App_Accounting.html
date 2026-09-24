@@ -1,0 +1,1038 @@
+<script>
+/* ==========================================================================
+   HASEEB AUTOS — ACCOUNTING (v2.5)
+   Proper accounting page: Overview · Transactions · Expenses · Accounts ·
+   Banks (reconciliation) · Reports (Trial balance / P&L / Balance sheet /
+   Cash book / Bank book / Ledger)
+   — sab kuch backend Accounting.gs se aata hai, yahan koi hisaab hardcode nahi
+   — bottom scroll nahi: tables apne panel mein scroll hoti hain, entry modal/offcanvas
+   ========================================================================== */
+
+App.registerScreen('accounting', {
+  title: 'Accounting', icon: '📒', perm: 'reports.financial',
+  subtitle: 'Books, vouchers, banks aur financial reports',
+  actions() {
+    const a = [{ label: 'Refresh', icon: '↻', onClick: () => App.refresh() }];
+    if (App.can('payments.create')) a.unshift({ label: 'New voucher', icon: '➕', cls: 'ok', onClick: voucherForm });
+    if (App.can('expenses.create')) a.push({ label: 'Expense', icon: '⬆', onClick: expenseForm2 });
+    if (App.can('settings.manage')) a.push({ label: 'Backfill', icon: '🧮', onClick: backfillDialog });
+    return a;
+  },
+  render(body) {
+    const host = h('div'); body.appendChild(host);
+    UI2.tabs(host, {
+      level: 1,
+      tabs: [
+        { id: 'overview', label: 'Overview', icon: '🏠', render: c => accOverview(c) },
+        { id: 'txns', label: 'Transactions', icon: '🧾', render: c => accDayBook(c) },
+        { id: 'expenses', label: 'Expenses', icon: '⬆', render: c => accExpenses(c) },
+        { id: 'coa', label: 'Chart of accounts', icon: '📒', render: c => accCOA(c) },
+        { id: 'banks', label: 'Banks', icon: '🏦', render: c => accBanks(c) },
+        { id: 'wallets', label: 'Wallets', icon: '📲', render: c => accWallets(c) },
+        { id: 'reports', label: 'Reports', icon: '📊', render: c => accReports(c) }
+      ]
+    });
+  }
+});
+
+/* --------------------------- Wallets (gateway) ---------------------------- */
+function accWallets(c) {
+  if (typeof WalletUI === 'undefined') {
+    c.appendChild(h('div', { class: 'empty' }, 'Wallet component load nahi hua')); return;
+  }
+  c.appendChild(h('div', { class: 'muted', style: { fontSize: 'var(--fs-xs)', marginBottom: '8px' } },
+    'EasyPaisa / JazzCash wallet requests — status, payer (from) aur merchant (to) numbers.'));
+  WalletUI.monitor().then(el => c.appendChild(el));
+}
+
+/* ============================ shared helpers ============================== */
+
+function accRangeBar(onChange) {
+  const today = new Date().toISOString().slice(0, 10);
+  const monthStart = today.slice(0, 8) + '01';
+  const from = h('input', { class: 'st2-f', type: 'date', value: monthStart, 'aria-label': 'From date' });
+  const to = h('input', { class: 'st2-f', type: 'date', value: today, 'aria-label': 'To date' });
+  const quick = h('select', { class: 'st2-f', 'aria-label': 'Quick range' });
+  [['today', 'Today'], ['month', 'This month'], ['qtr', 'Last 90 days'], ['year', 'This year'], ['all', 'All time']]
+    .forEach(([v, l]) => quick.appendChild(h('option', { value: v }, l)));
+  quick.value = 'month';
+  function apply(v) {
+    const d = new Date();
+    if (v === 'today') { from.value = today; to.value = today; }
+    else if (v === 'month') { from.value = monthStart; to.value = today; }
+    else if (v === 'qtr') { const x = new Date(Date.now() - 90 * 864e5); from.value = x.toISOString().slice(0, 10); to.value = today; }
+    else if (v === 'year') { from.value = today.slice(0, 4) + '-01-01'; to.value = today; }
+    else { from.value = '2000-01-01'; to.value = '2099-12-31'; }
+    onChange && onChange(values());
+  }
+  function values() { return { from: from.value, to: to.value }; }
+  quick.onchange = () => apply(quick.value);
+  from.onchange = to.onchange = () => { quick.value = ''; onChange && onChange(values()); };
+  const el = h('div', { class: 'st2-bar' }, h('span', { class: 'pf-lab' }, 'From'), from,
+    h('span', { class: 'pf-lab' }, 'To'), to, quick);
+  return { el, values };
+}
+
+function accEmpty(msg) { return h('div', { class: 'empty' }, msg || 'Koi data nahi'); }
+function accLoading() { return h('div', { class: 'empty' }, 'Load ho raha hai…'); }
+function money(v) { return fmt.money(Number(v) || 0); }
+function signed(v) {
+  const n = Number(v) || 0;
+  return h('span', { style: { color: n < 0 ? 'var(--err)' : (n > 0 ? 'var(--ok)' : 'var(--muted)') } }, money(n));
+}
+function accGroups() {
+  return [['ASSET', 'Assets'], ['LIABILITY', 'Liabilities'], ['EQUITY', 'Equity'],
+    ['INCOME', 'Income'], ['EXPENSE', 'Expenses']];
+}
+
+/* ============================== 1. OVERVIEW ================================ */
+
+async function accOverview(c) {
+  c.appendChild(accLoading());
+  let d = null, tb = null;
+  try {
+    [d, tb] = await Promise.all([
+      API.call('accounting.dashboard', {}, { offlineFallback: () => null }),
+      API.call('accounting.trialBalance', {}, { offlineFallback: () => null })
+    ]);
+  } catch (e) { c.innerHTML = ''; c.appendChild(accEmpty('⚠ ' + e.message)); return; }
+  if (!d) { c.innerHTML = ''; c.appendChild(accEmpty('Accounting dashboard load nahi hua')); return; }
+  c.innerHTML = '';
+
+  c.appendChild(UI2.kpiGrid([
+    { icon: '💵', label: 'Cash in hand', value: money(d.cashInHand), sub: 'Cash accounts', cls: 'ok' },
+    { icon: '🏦', label: 'Bank balance', value: money(d.bankBalance), sub: 'Bank accounts', cls: 'info' },
+    { icon: '📥', label: 'Receivables (udhaar)', value: money(d.receivables), sub: 'Customers', cls: 'warn' },
+    { icon: '📤', label: 'Payables', value: money(d.payables), sub: 'Suppliers', cls: 'err' },
+    { icon: '📦', label: 'Stock value', value: money(d.stockValue), sub: 'At average cost', cls: 'brand' },
+    { icon: '⚖', label: 'Net worth', value: money(d.netWorth), sub: 'Cash + bank + AR + stock − AP', cls: 'ok' },
+    { icon: '🧾', label: 'Vouchers today', value: fmt.num(d.vouchersToday), sub: money(d.postedToday) + ' posted', cls: 'info' },
+    { icon: '📈', label: 'MTD profit', value: money(d.mtd.netProfit), sub: 'Income ' + money(d.mtd.income), cls: d.mtd.netProfit >= 0 ? 'ok' : 'err' }
+  ], 4));
+
+  /* trial balance health */
+  c.appendChild(h('div', { class: 'card', style: { marginTop: '12px' } },
+    h('div', { class: 'card-head' }, h('h4', null, '⚖ Trial balance health'),
+      h('span', { class: 'badge ' + (tb && tb.balanced ? 'ok' : 'err') }, tb && tb.balanced ? 'Balanced' : 'Out of balance')),
+    h('div', { class: 'card-body' },
+      h('div', { class: 'party-bal' },
+        h('div', { class: 'pb-row' }, h('span', null, 'Total debits'), h('b', null, money(tb ? tb.totalDebit : 0))),
+        h('div', { class: 'pb-row' }, h('span', null, 'Total credits'), h('b', null, money(tb ? tb.totalCredit : 0))),
+        h('div', { class: 'pb-row' }, h('span', null, 'Difference'),
+          h('b', { class: tb && tb.balanced ? 'ok' : 'err' },
+            money(tb ? Math.abs(tb.totalDebit - tb.totalCredit) : 0))),
+      h('div', { style: { marginTop: '10px', display: 'flex', gap: '8px', flexWrap: 'wrap' } },
+        h('button', { class: 'btn sm', onclick: () => App.go('accounting') && voucherForm() }, '➕ New voucher'),
+        h('button', { class: 'btn sm sec', onclick: () => openLedgerPicker() }, '📖 Ledger'),
+        h('button', { class: 'btn sm sec', onclick: () => backfillDialog() }, '🧮 Backfill vouchers'))))));
+
+  /* recent vouchers */
+  const recentHost = h('div');
+  c.appendChild(h('div', { class: 'card', style: { marginTop: '12px' } },
+    h('div', { class: 'card-head' }, h('h4', null, '🕘 Recent vouchers')),
+    h('div', { class: 'card-body tight' }, recentHost)));
+  API.call('journal.list', { limit: 12 }, { offlineFallback: () => [] })
+    .then(rows => {
+      recentHost.innerHTML = '';
+      recentHost.appendChild((rows || []).length ? UI2.table({
+        screen: 'acc_recent', rows, height: '32vh', exportName: 'recent-vouchers',
+        columns: [
+          { key: 'voucherNo', label: 'Voucher' },
+          { key: 'date', label: 'Date', render: r => fmt.date(r.date) },
+          { key: 'type', label: 'Type', render: r => h('span', { class: 'badge info' }, r.type) },
+          { key: 'debitAccounts', label: 'Debit' },
+          { key: 'creditAccounts', label: 'Credit' },
+          { key: 'totalDebit', label: 'Amount', num: true, render: r => money(r.totalDebit) }
+        ], onRow: r => voucherDetail(r.id)
+      }) : accEmpty('Abhi koi voucher nahi — upar "New voucher" se shuru karein'));
+    }).catch(() => recentHost.appendChild(accEmpty('Vouchers load nahi hue')));
+}
+
+/* =========================== 2. TRANSACTIONS ============================== */
+
+async function accDayBook(c) {
+  const host = h('div');
+  const rb = accRangeBar(() => load());
+  const typeSel = h('select', { class: 'st2-f', 'aria-label': 'Voucher type' });
+  [['', 'All types'], ['JV', 'Journal'], ['SALE', 'Sale'], ['PURCHASE', 'Purchase'],
+   ['RECEIPT', 'Receipt'], ['PAYMENT', 'Payment'], ['CONTRA', 'Contra'], ['OPENING', 'Opening']]
+    .forEach(([v, l]) => typeSel.appendChild(h('option', { value: v }, l)));
+  typeSel.onchange = () => load();
+
+  const bar = h('div', { class: 'st2-bar' }, rb.el, typeSel,
+    h('span', { class: 'sp' }),
+    h('button', { class: 'btn sm ok', onclick: () => voucherForm(null, () => load()) }, '➕ New voucher'));
+
+  c.appendChild(h('div', { class: 'card' }, h('div', { class: 'filters' }, bar), host));
+
+  async function load() {
+    host.innerHTML = ''; host.appendChild(accLoading());
+    const p = Object.assign({ limit: 300 }, rb.values());
+    if (typeSel.value) p.type = typeSel.value;
+    try {
+      const book = await API.call('accounting.dayBook', p, { offlineFallback: () => ({ rows: [] }) });
+      host.innerHTML = '';
+      host.appendChild(h('div', { class: 'party-bal', style: { marginBottom: '8px' } },
+        h('div', { class: 'pb-row' }, h('span', null, 'Vouchers'), h('b', null, fmt.num((book.rows || []).length))),
+        h('div', { class: 'pb-row' }, h('span', null, 'Total debits'), h('b', null, money(book.totalDebit))),
+        h('div', { class: 'pb-row' }, h('span', null, 'Total credits'), h('b', null, money(book.totalCredit)))));
+      host.appendChild((book.rows || []).length ? UI2.table({
+        screen: 'acc_daybook', rows: book.rows, height: '54vh', exportName: 'day-book',
+        columns: [
+          { key: 'voucherNo', label: 'Voucher', render: r => h('b', null, r.voucherNo) },
+          { key: 'date', label: 'Date', render: r => fmt.date(r.date) },
+          { key: 'type', label: 'Type', render: r => h('span', { class: 'badge ' + (r.type === 'VOID' ? 'err' : 'info') }, r.type) },
+          { key: 'debitAccounts', label: 'Debit account(s)' },
+          { key: 'creditAccounts', label: 'Credit account(s)' },
+          { key: 'totalDebit', label: 'Amount', num: true, render: r => money(r.totalDebit) },
+          { key: 'narration', label: 'Narration' },
+          { key: 'status', label: 'Status', render: r => h('span', { class: 'badge ' + (r.status === 'VOID' ? 'err' : 'ok') }, r.status) }
+        ], onRow: r => voucherDetail(r.id)
+      }) : accEmpty('Is range mein koi voucher nahi'));
+    } catch (e) { host.innerHTML = ''; host.appendChild(accEmpty('⚠ ' + e.message)); }
+  }
+  load();
+}
+
+async function voucherDetail(id) {
+  let v = null;
+  try { v = await API.call('journal.get', { id }, { offlineFallback: () => null }); }
+  catch (e) { return UI.toast(e.message, 'err'); }
+  if (!v) return UI.toast('Voucher load nahi hua', 'warn');
+  const body = h('div', null,
+    h('div', { class: 'po-meta' },
+      h('span', null, 'Voucher: ' + v.voucherNo),
+      h('span', null, 'Date: ' + fmt.date(v.date)),
+      h('span', null, 'Type: ' + v.type),
+      h('span', null, 'Status: ' + v.status),
+      v.refType ? h('span', null, 'Source: ' + v.refType) : ''),
+    v.narration ? h('div', { class: 'hint', style: { marginBottom: '8px' } }, v.narration) : '',
+    UI2.table({
+      screen: 'acc_voucher_lines', rows: v.lines || [], height: '40vh', exportName: 'voucher-' + v.voucherNo,
+      columns: [
+        { key: 'accountCode', label: 'Code' },
+        { key: 'accountName', label: 'Account' },
+        { key: 'debit', label: 'Debit', num: true, render: r => r.debit ? money(r.debit) : '—' },
+        { key: 'credit', label: 'Credit', num: true, render: r => r.credit ? money(r.credit) : '—' },
+        { key: 'narration', label: 'Narration' }
+      ]
+    }),
+    h('div', { class: 'tot-row' }, h('span', null, 'Total debit'), h('span', null, money(v.totalDebit))),
+    h('div', { class: 'tot-row grand' }, h('span', null, 'Total credit'), h('span', null, money(v.totalCredit))));
+
+  UI2.modal({
+    title: '🧾 ' + v.voucherNo + (v.status === 'VOID' ? ' (VOID)' : ''), size: 'lg', body,
+    actions: [
+      App.can('settings.manage') && v.status !== 'VOID'
+        ? { label: 'Void', cls: 'danger', onClick: async cc => {
+            if (!(await UI2.confirm('Ye voucher void karein? Balance se hat jayega.', null, true))) return;
+            try { await API.call('journal.void', { id }); UI.toast('Voided', 'ok'); cc(); App.refresh(); }
+            catch (e) { UI.toast(e.message, 'err'); }
+          } } : null,
+      { label: 'Close', onClick: cc => cc() }
+    ].filter(Boolean)
+  });
+}
+
+/* ---- voucher entry form (proper double entry) ---- */
+function voucherForm(preset, onDone) {
+  const lines = [];
+  let accounts = [];
+
+  const listEl = h('div');
+  const totalsEl = h('div', { class: 'party-bal', style: { marginTop: '8px' } });
+
+  const typeSel = h('select', { class: 'f-input', 'aria-label': 'Voucher type' });
+  [['JV', 'Journal voucher'], ['RECEIPT', 'Cash/Bank receipt'], ['PAYMENT', 'Cash/Bank payment'],
+   ['CONTRA', 'Contra (cash ⇄ bank)'], ['OPENING', 'Opening balance']]
+    .forEach(([v, l]) => typeSel.appendChild(h('option', { value: v }, l)));
+
+  const dateInp = h('input', { class: 'f-input', type: 'date', value: new Date().toISOString().slice(0, 10) });
+  const narr = h('input', { class: 'f-input', placeholder: 'Narration / wajah' });
+
+  const addRow = h('div', { class: 'pay-extra' });
+  function newLineRow(line) {
+    const accSel = h('select', { class: 'f-input', 'aria-label': 'Account' });
+    accounts.forEach(g => {
+      const og = h('optgroup', { label: g.label });
+      g.items.forEach(a => og.appendChild(h('option', { value: a.id, selected: a.id === line.accountId },
+        a.code + ' — ' + a.name)));
+      accSel.appendChild(og);
+    });
+    accSel.onchange = () => { line.accountId = accSel.value; };
+    const dr = h('input', { class: 'f-input', type: 'number', step: '0.01', value: line.debit || '',
+      placeholder: 'Debit', 'aria-label': 'Debit' });
+    const cr = h('input', { class: 'f-input', type: 'number', step: '0.01', value: line.credit || '',
+      placeholder: 'Credit', 'aria-label': 'Credit' });
+    /* ek line mein sirf debit YA credit — doosra lock ho jata hai */
+    dr.oninput = () => { line.debit = Number(dr.value || 0); if (line.debit) { cr.value = ''; line.credit = 0; } totals(); };
+    cr.oninput = () => { line.credit = Number(cr.value || 0); if (line.credit) { dr.value = ''; line.debit = 0; } totals(); };
+    return h('div', { style: { display: 'grid', gridTemplateColumns: '1fr 110px 110px 32px', gap: '6px', marginBottom: '6px' } },
+      accSel, dr, cr,
+      h('button', { class: 'icon-btn', style: { border: 0 }, title: 'Line hatayein',
+        onclick: () => { const i = lines.indexOf(line); if (i > -1) lines.splice(i, 1); paintLines(); } }, '✕'));
+  }
+  function paintLines() {
+    addRow.innerHTML = '';
+    lines.forEach(l => addRow.appendChild(newLineRow(l)));
+    if (!lines.length) addRow.appendChild(h('div', { class: 'tbl-empty' }, 'Line add karein'));
+    totals();
+  }
+  function totals() {
+    const td = lines.reduce((a, l) => a + (Number(l.debit) || 0), 0);
+    const tc = lines.reduce((a, l) => a + (Number(l.credit) || 0), 0);
+    const diff = Math.round((td - tc) * 100) / 100;
+    totalsEl.innerHTML = '';
+    totalsEl.appendChild(h('div', { class: 'pb-row' }, h('span', null, 'Total debit'), h('b', null, money(td))));
+    totalsEl.appendChild(h('div', { class: 'pb-row' }, h('span', null, 'Total credit'), h('b', null, money(tc))));
+    totalsEl.appendChild(h('div', { class: 'pb-row' }, h('span', null, 'Difference'),
+      h('b', { class: diff === 0 ? 'ok' : 'err' }, money(diff))));
+    return { td, tc, diff };
+  }
+
+  const body = h('div', null,
+    h('div', { class: 'f-grid' },
+      h('div', { class: 'f-col' }, h('label', { class: 'pf-lab' }, 'Voucher type'), typeSel),
+      h('div', { class: 'f-col' }, h('label', { class: 'pf-lab' }, 'Date'), dateInp)),
+    h('div', { class: 'f-col', style: { marginTop: '8px' } }, h('label', { class: 'pf-lab' }, 'Narration'), narr),
+    h('div', { class: 'cfg-bar', style: { marginTop: '10px' } },
+      h('button', { class: 'btn sm sec', onclick: () => { lines.push({ accountId: '', debit: 0, credit: 0 }); paintLines(); } }, '＋ Add line'),
+      h('button', { class: 'btn sm sec', onclick: () => {
+        /* quick templates — industry standard vouchers */
+        const cash = (accounts.find(g => g.id === 'ASSET') || { items: [] }).items.find(a => a.isCash);
+        const rent = (accounts.find(g => g.id === 'EXPENSE') || { items: [] }).items[0];
+        const cap = (accounts.find(g => g.id === 'EQUITY') || { items: [] }).items[0];
+        lines.length = 0;
+        if (rent && cash) lines.push({ accountId: rent.id, debit: 0, credit: 0 }, { accountId: cash.id, debit: 0, credit: 0 });
+        else if (cap && cash) lines.push({ accountId: cash.id, debit: 0, credit: 0 }, { accountId: cap.id, debit: 0, credit: 0 });
+        paintLines();
+      } }, '⚡ Quick 2-line'),
+      h('span', { class: 'sp' })),
+    addRow, totalsEl);
+
+  UI2.modal({
+    title: '➕ Naya voucher', size: 'lg', body,
+    actions: [{
+      label: 'Post voucher', cls: 'ok', onClick: async cc => {
+        const { td, diff } = totals();
+        if (lines.length < 2) return UI.toast('Kam az kam 2 lines chahiye', 'err');
+        if (Math.abs(diff) > 0.009) return UI.toast('Debit aur credit barabar nahi (farq ' + money(diff) + ')', 'err');
+        if (!td) return UI.toast('Amount darj karein', 'err');
+        try {
+          await API.call('journal.post', {
+            date: dateInp.value, type: typeSel.value, narration: narr.value,
+            lines: lines.map(l => ({ accountId: l.accountId, debit: Number(l.debit) || 0, credit: Number(l.credit) || 0 }))
+          });
+          UI.toast('Voucher posted ✅', 'ok'); cc(); App.refresh(); onDone && onDone();
+        } catch (e) { UI.toast(e.message, 'err'); }
+      }
+    }, { label: 'Cancel', onClick: cc => cc() }]
+  });
+
+  Shared.raw('accounts.list', {}, { ttl: 180000, offline: () => [] }).then(rows => {
+    accounts = accGroups().map(([id, label]) => ({
+      id, label, items: (rows || []).filter(a => a.group === id)
+    }));
+    if (preset && preset.accountId) lines.push({ accountId: preset.accountId, debit: 0, credit: 0 });
+    if (!lines.length) lines.push({ accountId: '', debit: 0, credit: 0 }, { accountId: '', debit: 0, credit: 0 });
+    paintLines();
+  }).catch(() => { });
+}
+
+async function openLedgerPicker() {
+  let rows = [];
+  try { rows = await Shared.raw('accounts.list', {}, { ttl: 180000, offline: () => [] }); }   /* v2.27.0 W3.T3 */
+  catch (e) { return UI.toast(e.message, 'err'); }
+  const sel = h('select', { class: 'f-input' });
+  (rows || []).forEach(a => sel.appendChild(h('option', { value: a.id }, a.code + ' — ' + a.name)));
+  UI2.modal({
+    title: '📖 Ledger', size: 'sm',
+    body: h('div', null, h('label', { class: 'pf-lab' }, 'Account'), sel),
+    actions: [{
+      label: 'Open', cls: 'ok', onClick: c => { c(); accountLedger(sel.value); }
+    }, { label: 'Cancel', onClick: c => c() }]
+  });
+}
+
+async function accountLedger(accountId) {
+  const rb = accRangeBar(() => load());
+  const host = h('div');
+  UI2.modal({
+    title: '📖 Ledger', size: 'xl',
+    body: h('div', null, rb.el, host),
+    actions: [{ label: 'Close', onClick: c => c() }]
+  });
+  async function load() {
+    host.innerHTML = ''; host.appendChild(accLoading());
+    try {
+      const led = await API.call('accounting.ledger',
+        Object.assign({ accountId }, rb.values()), { offlineFallback: () => null });
+      host.innerHTML = '';
+      if (!led) { host.appendChild(accEmpty('Ledger load nahi hua')); return; }
+      host.appendChild(h('div', { class: 'party-bal' },
+        h('div', { class: 'pb-row' }, h('span', null, 'Account'), h('b', null, led.account.code + ' — ' + led.account.name)),
+        h('div', { class: 'pb-row' }, h('span', null, 'Opening'), h('b', null, money(led.opening))),
+        h('div', { class: 'pb-row' }, h('span', null, 'Debit / Credit'),
+          h('b', null, money(led.totalDebit) + ' / ' + money(led.totalCredit))),
+        h('div', { class: 'pb-row' }, h('span', null, 'Closing'), h('b', null, money(led.closing)))));
+      host.appendChild((led.rows || []).length ? UI2.table({
+        screen: 'acc_ledger', rows: led.rows, height: '44vh', exportName: 'ledger-' + led.account.code,
+        columns: [
+          { key: 'date', label: 'Date', render: r => fmt.date(r.date) },
+          { key: 'voucherNo', label: 'Voucher' },
+          { key: 'type', label: 'Type', render: r => h('span', { class: 'badge info' }, r.type) },
+          { key: 'narration', label: 'Narration' },
+          { key: 'debit', label: 'Debit', num: true, render: r => r.debit ? money(r.debit) : '—' },
+          { key: 'credit', label: 'Credit', num: true, render: r => r.credit ? money(r.credit) : '—' },
+          { key: 'balance', label: 'Balance', num: true, render: r => signed(r.balance) }
+        ], onRow: r => voucherDetail(r.journalId)
+      }) : accEmpty('Is range mein koi entry nahi'));
+    } catch (e) { host.innerHTML = ''; host.appendChild(accEmpty('⚠ ' + e.message)); }
+  }
+  load();
+}
+
+/* ============================== 3. EXPENSES ================================ */
+
+/* account code/name lookup (expense list + detail) */
+let __accCache = null;
+async function accList() {
+  if (__accCache) return __accCache;
+  try { __accCache = await Shared.raw('accounts.list', {}, { ttl: 180000, offline: () => [] }) || []; }
+  catch (e) { __accCache = []; }
+  return __accCache;
+}
+function accName(id) {
+  if (!id) return '';
+  const a = (__accCache || []).filter(x => x.id === id)[0];
+  return a ? (a.code ? a.code + ' — ' + a.name : a.name) : '';
+}
+
+function expenseCategories() {
+  const raw = (App.state.settings || {}).expenseCategories || '';
+  return raw ? String(raw).split(',').map(s => s.trim()).filter(Boolean) : ['General'];
+}
+
+async function accExpenses(c) {
+  const host = h('div');
+  const rb = accRangeBar(() => load());
+  c.appendChild(h('div', { class: 'card' },
+    h('div', { class: 'filters' }, rb.el,
+      h('span', { class: 'sp' }),
+      App.can('expenses.create')
+        ? h('button', { class: 'btn sm ok', onclick: () => expenseForm2(() => load()) }, '⬆ Add expense') : ''),
+    host));
+
+  async function load() {
+    host.innerHTML = ''; host.appendChild(accLoading());
+    try {
+      await accList();                       // account names table mein dikhane ke liye
+      const rows = await API.call('expenses.list', Object.assign({ limit: 300 }, rb.values()),
+        { offlineFallback: () => [] });
+      const list = rows || [];
+      const byCat = {};
+      list.forEach(e => { byCat[e.category || 'GENERAL'] = (byCat[e.category || 'GENERAL'] || 0) + Number(e.amount || 0); });
+      host.innerHTML = '';
+      host.appendChild(UI2.kpiGrid([
+        { icon: '🧾', label: 'Expense vouchers', value: fmt.num(list.length), cls: 'info' },
+        { icon: '💸', label: 'Total spent', value: money(list.reduce((a, e) => a + Number(e.amount || 0), 0)), cls: 'err' },
+        { icon: '🏷', label: 'Categories', value: fmt.num(Object.keys(byCat).length), cls: 'warn' },
+        { icon: '📊', label: 'Biggest head', value: (Object.keys(byCat).sort((a, b) => byCat[b] - byCat[a])[0] || '—'), cls: 'brand' }
+      ], 4));
+      const pending = list.filter(e => String(e.status || '') === 'PENDING');
+      if (pending.length && App.can('expenses.create')) {
+        host.appendChild(h('div', { class: 'exp-pending' },
+          h('b', null, '⏳ ' + pending.length + ' expense approval ke intezar mein'),
+          h('span', null, money(pending.reduce((a, e) => a + Number(e.amount || 0), 0))),
+          h('button', { class: 'btn sm ok',
+            onclick: ev => UI.run(ev.currentTarget, async () => {
+            /* W7 (v2.26.0) — pehle N alag calls (20 pending = ~1 minute). Ab EK batch request.
+               Purana backend ho (batch na ho) to API.parallel fallback (4 at a time). */
+            const ids = pending.map(e => e.id);
+            let done = 0;
+            try {
+              const r = await API.call('expenses.approveBatch', { ids: ids, approve: true });
+              done = (r && r.approved) || 0;
+            } catch (err) {
+              const res = await API.parallel(ids.map(id => () => API.call('expenses.approve', { id: id })), 4);
+              done = res.filter(x => x && !x.__err).length;
+            }
+            UI.toast(done + ' expenses approve ho gayeen ✅', 'ok'); load(); App.refresh();
+            return done;
+          }, { busyLabel: 'Approve ho rahe hain', write: true, writeLabel: 'bulk approve' }) }, 'Sab approve karein')));
+      }
+      host.appendChild(h('div', { style: { marginTop: '10px' } }, list.length ? UI2.table({
+        screen: 'acc_expenses', rows: list, height: '46vh', exportName: 'expenses',
+        columns: [
+          { key: 'voucherNo', label: 'Voucher' },
+          { key: 'date', label: 'Date', render: r => fmt.date(r.date) },
+          { key: 'category', label: 'Category', render: r => h('span', { class: 'badge info' }, r.category || 'GENERAL') },
+          { key: 'paidTo', label: 'Paid to' },
+          { key: 'accountId', label: 'Paid from', render: r => h('span', { class: 'muted' }, accName(r.accountId) || (r.method || '—')) },
+          { key: 'reference', label: 'Bill / ref', render: r => r.reference || '—' },
+          { key: 'amount', label: 'Amount', num: true, render: r => h('b', null, money(r.amount)) },
+          { key: 'status', label: 'Status', render: r => h('span',
+            { class: 'badge ' + (String(r.status || 'POSTED') === 'PENDING' ? 'warn' : String(r.status) === 'REJECTED' ? 'err' : 'ok') },
+            String(r.status || 'POSTED')) },
+          { key: 'notes', label: 'Note' }
+        ],
+        rowActions: r => [
+          String(r.status || '') === 'PENDING' && App.can('expenses.create')
+            ? { icon: '✅', label: 'Approve', onClick: async () => {
+                await API.call('expenses.approve', { id: r.id }); UI.toast('Approved ✅', 'ok'); load(); App.refresh();
+              } } : null,
+          String(r.status || '') === 'PENDING' && App.can('expenses.create')
+            ? { icon: '⛔', label: 'Reject', onClick: async () => {
+                await API.call('expenses.approve', { id: r.id, approve: false }); UI.toast('Rejected', 'warn'); load();
+              } } : null,
+          r.attachmentUrl ? { icon: '📎', label: 'Attachment', onClick: () => window.open(r.attachmentUrl, '_blank') } : null
+        ].filter(Boolean),
+        onRow: r => expenseDetail(r, load)
+      }) : accEmpty('Is range mein koi expense nahi')));
+
+      /* category breakdown — accounting heads ke sath */
+      const cats = Object.keys(byCat).map(k => ({ category: k, amount: byCat[k] }))
+        .sort((a, b) => b.amount - a.amount);
+      if (cats.length) {
+        host.appendChild(h('div', { class: 'card', style: { marginTop: '12px' } },
+          h('div', { class: 'card-head' }, h('h4', null, '🏷 Category breakdown')),
+          h('div', { class: 'card-body tight' }, UI2.table({
+            screen: 'acc_exp_cat', rows: cats, height: '26vh', exportName: 'expense-by-category',
+            columns: [
+              { key: 'category', label: 'Category' },
+              { key: 'amount', label: 'Amount', num: true, render: r => money(r.amount) },
+              { key: '__pct', label: '% of spend', num: true, render: r => {
+                const tot = cats.reduce((a, x) => a + x.amount, 0);
+                return (tot ? (r.amount / tot * 100).toFixed(1) : '0') + '%';
+              } }
+            ]
+          }))));
+      }
+    } catch (e) { host.innerHTML = ''; host.appendChild(accEmpty('⚠ ' + e.message)); }
+  }
+  load();
+}
+
+async function expenseForm2(onDone) {
+  const cats = expenseCategories();
+  let accounts = [];
+  try {
+    accounts = (await accList()).filter(a => a.isBank || /cash/i.test(String(a.name || '')));
+  } catch (e) { accounts = []; }
+  const f = UI2.form({
+    values: { amount: '', method: 'CASH', date: new Date().toISOString().slice(0, 10), taxAmount: 0 },
+    fields: [
+      { key: 'category', label: 'Category (expense head)', type: 'select', options: cats },
+      { key: 'amount', label: 'Amount', type: 'money' },
+      { key: 'method', label: 'Paid by', type: 'select',
+        options: String((App.state.settings || {}).paymentMethods || 'CASH,BANK,JAZZCASH,EASYPAISA').split(',') },
+      accounts.length ? { key: 'accountId', label: 'Paid from account (cash / bank)', type: 'select',
+        options: [{ value: '', label: '— auto (method se) —' }].concat(
+          accounts.map(a => ({ value: a.id, label: a.code + ' — ' + a.name }))) } : null,
+      { key: 'date', label: 'Date', type: 'date' },
+      { key: 'taxAmount', label: 'Tax amount (optional)', type: 'money' },
+      { key: 'paidTo', label: 'Paid to (vendor / person)' },
+      { key: 'reference', label: 'Bill / reference no.' },
+      { key: 'attachmentUrl', label: 'Attachment URL (bill photo / PDF)', full: true },
+      { key: 'notes', label: 'Note', full: true }
+    ].filter(Boolean)
+  });
+  UI2.modal({
+    title: '⬆ Naya expense', size: 'sm', body: f.el,
+    actions: [{
+      label: 'Save expense', cls: 'ok', onClick: async c => {
+        const v = f.values();
+        if (!(Number(v.amount) > 0)) return UI.toast('Amount darj karein', 'err');
+        try {
+          await API.call('expenses.create', { expense: v });
+          UI.toast('Expense saved ✅ (voucher auto-posted)', 'ok');
+          c(); App.refresh(); onDone && onDone();
+        } catch (e) { UI.toast(e.message, 'err'); }
+      }
+    }, { label: 'Cancel', onClick: c => c() }]
+  });
+}
+
+/** Expense detail — voucher, approval, attachment (professional record view) */
+async function expenseDetail(e, onDone) {
+  UI2.offcanvas({
+    title: '⬆ ' + (e.voucherNo || 'Expense'),
+    subtitle: (e.category || 'GENERAL') + ' · ' + fmt.date(e.date), size: 'sm',
+    actions: String(e.status || '') === 'PENDING' && App.can('expenses.create')
+      ? [{ label: '✅ Approve', cls: 'ok', onClick: async c => {
+          try { await API.call('expenses.approve', { id: e.id }); UI.toast('Approved ✅ — voucher posted', 'ok'); c(); onDone && onDone(); }
+          catch (err) { UI.toast(err.message, 'err'); }
+        } }] : [],
+    body: h('div', { class: 'f-grid' },
+      h('div', { class: 'party-bal' },
+        h('div', { class: 'pb-main' },
+          h('span', { class: 'pb-lab' }, 'Amount'),
+          h('b', { class: 'pb-val' }, money(e.amount)),
+          h('span', { class: 'pb-sub' }, (e.method || '') + (e.accountId ? ' · ' + (accName(e.accountId) || '') : ''))),
+        h('div', { class: 'pb-rows' },
+          h('div', { class: 'pb-row' }, h('span', null, 'Status'),
+            h('b', null, String(e.status || 'POSTED'))),
+          h('div', { class: 'pb-row' }, h('span', null, 'Paid to'), h('b', null, e.paidTo || '—')),
+          h('div', { class: 'pb-row' }, h('span', null, 'Bill / ref'), h('b', null, e.reference || '—')),
+          h('div', { class: 'pb-row' }, h('span', null, 'Tax'), h('b', null, money(e.taxAmount || 0)))),
+      h('div', { class: 'f-col full' }, h('span', null, 'Note'), h('div', { class: 'sub' }, e.notes || '—')),
+      e.attachmentUrl ? h('div', { class: 'f-col full' },
+        h('span', null, 'Attachment'),
+        h('a', { class: 'btn sm sec', href: e.attachmentUrl, target: '_blank', rel: 'noopener' }, '📎 Attachment kholein')) : '')
+    )
+  });
+}
+
+/* ======================= 4. CHART OF ACCOUNTS ============================== */
+
+async function accCOA(c) {
+  const host = h('div');
+  c.appendChild(h('div', { class: 'card' },
+    h('div', { class: 'filters' },
+      h('span', { class: 'sp' }),
+      App.can('settings.manage')
+        ? h('button', { class: 'btn sm', onclick: () => accountForm(null, () => load()) }, '➕ New account') : '',
+      App.can('settings.manage')
+        ? h('button', { class: 'btn sm sec', onclick: async () => {
+            await API.call('accounts.seed', {}, { offlineFallback: () => ({}) });
+            UI.toast('Default accounts check ho gaye', 'ok'); load();
+          } }, '↺ Seed defaults') : ''),
+    host));
+
+  async function load() {
+    host.innerHTML = ''; host.appendChild(accLoading());
+    try {
+      const rows = await Shared.raw('accounts.list', {}, { ttl: 180000, offline: () => [] });   /* v2.27.0 W3.T3 */
+      host.innerHTML = '';
+      const list = rows || [];
+      if (!list.length) { host.appendChild(accEmpty('Chart of accounts khaali hai — "Seed defaults" dabayein')); return; }
+
+      const totals = {};
+      accGroups().forEach(([id]) => totals[id] = 0);
+      list.forEach(a => { totals[a.group] = (totals[a.group] || 0) + Number(a.displayBalance || 0); });
+
+      host.appendChild(UI2.kpiGrid([
+        { icon: '🏠', label: 'Assets', value: money(totals.ASSET), cls: 'ok' },
+        { icon: '📤', label: 'Liabilities', value: money(totals.LIABILITY), cls: 'err' },
+        { icon: '⚖', label: 'Equity', value: money(totals.EQUITY), cls: 'info' },
+        { icon: '📈', label: 'Income', value: money(totals.INCOME), cls: 'brand' },
+        { icon: '📉', label: 'Expenses', value: money(totals.EXPENSE), cls: 'warn' },
+        { icon: '📒', label: 'Accounts', value: fmt.num(list.length), cls: 'info' }
+      ], 3));
+
+      accGroups().forEach(([gid, glabel]) => {
+        const grp = list.filter(a => a.group === gid);
+        if (!grp.length) return;
+        host.appendChild(h('div', { class: 'card', style: { marginTop: '12px' } },
+          h('div', { class: 'card-head' }, h('h4', null, glabel + ' (' + grp.length + ')'),
+            h('span', { class: 'pm-count' }, 'Group total: ' + money(totals[gid] || 0))),
+          h('div', { class: 'card-body tight' }, UI2.table({
+            screen: 'acc_coa_' + gid, rows: grp, height: '28vh', exportName: 'coa-' + gid,
+            columns: [
+              { key: 'code', label: 'Code', render: r => h('b', null, r.code) },
+              { key: 'name', label: 'Account' },
+              { key: 'type', label: 'Type', render: r => h('span', { class: 'badge info' }, r.type) },
+              { key: 'bankName', label: 'Bank', render: r => r.bankName || '—' },
+              { key: 'accountNo', label: 'A/c no.', render: r => r.accountNo || '—' },
+              { key: 'openingBalance', label: 'Opening', num: true, render: r => money(r.openingBalance) },
+              { key: 'displayBalance', label: 'Balance', num: true, render: r => signed(r.displayBalance) }
+            ],
+            onRow: r => accountLedger(r.id)
+          }))));
+      });
+    } catch (e) { host.innerHTML = ''; host.appendChild(accEmpty('⚠ ' + e.message)); }
+  }
+  load();
+}
+
+function accountForm(acc, onDone) {
+  const f = UI2.form({
+    values: acc || {},
+    fields: [
+      { key: 'code', label: 'Account code' },
+      { key: 'name', label: 'Account name' },
+      { key: 'group', label: 'Group', type: 'select',
+        options: accGroups().map(([v, l]) => ({ value: v, label: l })) },
+      { key: 'type', label: 'Type', type: 'select',
+        options: ['GENERAL', 'CASH', 'BANK', 'AR', 'AP', 'INVENTORY', 'REVENUE', 'COGS', 'EXPENSE', 'CAPITAL'] },
+      { key: 'openingBalance', label: 'Opening balance', type: 'number' },
+      { key: 'isCash', label: 'Cash account', type: 'switch' },
+      { key: 'isBank', label: 'Bank account', type: 'switch' },
+      { key: 'bankName', label: 'Bank name' },
+      { key: 'accountNo', label: 'Account / IBAN no.' },
+      { key: 'notes', label: 'Notes', full: true }
+    ]
+  });
+  UI2.modal({
+    title: acc ? '✏ ' + acc.name : '➕ Naya account', size: 'md', body: f.el,
+    actions: [{
+      label: 'Save', cls: 'ok', onClick: async c => {
+        const v = f.values();
+        if (!v.name) return UI.toast('Naam zaroori hai', 'err');
+        try {
+          await API.call('accounts.save', Object.assign({}, v, acc ? { id: acc.id } : {}));
+          UI.toast('Account saved ✅', 'ok'); c(); App.refresh(); onDone && onDone();
+        } catch (e) { UI.toast(e.message, 'err'); }
+      }
+    }, { label: 'Cancel', onClick: c => c() }]
+  });
+}
+
+/* =============================== 5. BANKS ================================== */
+
+async function accBanks(c) {
+  const host = h('div');
+  c.appendChild(h('div', { class: 'card' }, h('div', { class: 'filters' }, h('span', { class: 'sp' })), host));
+  let accounts = [];
+  try { accounts = await Shared.raw('accounts.list', {}, { ttl: 180000, offline: () => [] }) || []; }
+  catch (e) { host.appendChild(accEmpty('⚠ ' + e.message)); return; }
+  const banks = accounts.filter(a => a.isBank);
+  host.innerHTML = '';
+  if (!banks.length) { host.appendChild(accEmpty('Koi bank account nahi — Chart of accounts mein banayein')); return; }
+
+  host.appendChild(UI2.kpiGrid(banks.map(b => ({
+    icon: '🏦', label: b.name, value: money(b.displayBalance),
+    sub: b.bankName ? b.bankName + ' · ' + (b.accountNo || '') : b.code,
+    cls: (b.displayBalance || 0) >= 0 ? 'ok' : 'err'
+  })), 3));
+
+  UI2.tabs(host, {
+    level: 2,
+    tabs: [
+      { id: 'book', label: 'Bank book', icon: '📖', render: cc => bankBookTab(cc, banks) },
+      { id: 'recon', label: 'Reconciliation', icon: '🔗', render: cc => bankReconTab(cc, banks) }
+    ]
+  });
+}
+
+async function bankBookTab(c, banks) {
+  const sel = h('select', { class: 'st2-f', 'aria-label': 'Bank account' });
+  sel.appendChild(h('option', { value: '' }, 'All bank accounts'));
+  banks.forEach(b => sel.appendChild(h('option', { value: b.id }, b.code + ' — ' + b.name)));
+  const rb = accRangeBar(() => load());
+  const host = h('div');
+  c.appendChild(h('div', { class: 'st2-bar' }, rb.el, sel));
+  sel.onchange = () => load();
+  c.appendChild(host);
+
+  async function load() {
+    host.innerHTML = ''; host.appendChild(accLoading());
+    try {
+      const b = await API.call('accounting.bankBook',
+        Object.assign({ accountId: sel.value }, rb.values()), { offlineFallback: () => null });
+      host.innerHTML = '';
+      if (!b) { host.appendChild(accEmpty('Bank book load nahi hua')); return; }
+      host.appendChild(h('div', { class: 'party-bal' },
+        h('div', { class: 'pb-row' }, h('span', null, 'Account'), h('b', null, b.accountName)),
+        h('div', { class: 'pb-row' }, h('span', null, 'Opening'), h('b', null, money(b.opening))),
+        h('div', { class: 'pb-row' }, h('span', null, 'Money in'), h('b', { class: 'ok' }, money(b.receipts))),
+        h('div', { class: 'pb-row' }, h('span', null, 'Money out'), h('b', { class: 'err' }, money(b.payments))),
+        h('div', { class: 'pb-row grand' }, h('span', null, 'Closing'), h('b', null, money(b.closing)))));
+      host.appendChild((b.rows || []).length ? UI2.table({
+        screen: 'acc_bankbook', rows: b.rows, height: '44vh', exportName: 'bank-book',
+        columns: [
+          { key: 'date', label: 'Date', render: r => fmt.date(r.date) },
+          { key: 'voucherNo', label: 'Voucher' },
+          { key: 'accountName', label: 'Account' },
+          { key: 'narration', label: 'Narration' },
+          { key: 'debit', label: 'In', num: true, render: r => r.debit ? money(r.debit) : '—' },
+          { key: 'credit', label: 'Out', num: true, render: r => r.credit ? money(r.credit) : '—' },
+          { key: 'balance', label: 'Balance', num: true, render: r => signed(r.balance) }
+        ], onRow: r => voucherDetail(r.journalId)
+      }) : accEmpty('Is range mein koi bank entry nahi'));
+    } catch (e) { host.innerHTML = ''; host.appendChild(accEmpty('⚠ ' + e.message)); }
+  }
+  load();
+}
+
+async function bankReconTab(c, banks) {
+  const sel = h('select', { class: 'st2-f', 'aria-label': 'Bank account' });
+  banks.forEach(b => sel.appendChild(h('option', { value: b.id }, b.code + ' — ' + b.name)));
+  const host = h('div');
+  c.appendChild(h('div', { class: 'st2-bar' }, sel,
+    h('button', { class: 'btn sm', onclick: () => reconImport(sel.value, () => load()) }, '📥 Import statement'),
+    h('button', { class: 'btn sm sec', onclick: async () => {
+      try {
+        const r = await API.call('bank.recon.match', { bankAccountId: sel.value });
+        UI.toast(r.matched + ' matched, ' + r.pending + ' pending', r.matched ? 'ok' : 'warn');
+        load();
+      } catch (e) { UI.toast(e.message, 'err'); }
+    } }, '🔗 Auto-match'),
+    h('span', { class: 'sp' })));
+  sel.onchange = () => load();
+  c.appendChild(host);
+
+  async function load() {
+    host.innerHTML = ''; host.appendChild(accLoading());
+    try {
+      const rows = await API.call('bank.recon.list', { bankAccountId: sel.value },
+        { offlineFallback: () => [] }) || [];
+      const cleared = rows.filter(r => r.cleared);
+      const pending = rows.filter(r => !r.cleared);
+      host.innerHTML = '';
+      host.appendChild(UI2.kpiGrid([
+        { icon: '🧾', label: 'Statement lines', value: fmt.num(rows.length), cls: 'info' },
+        { icon: '✅', label: 'Cleared', value: fmt.num(cleared.length), cls: 'ok' },
+        { icon: '⏳', label: 'Pending', value: fmt.num(pending.length), cls: 'warn' },
+        { icon: '💰', label: 'Pending value',
+          value: money(pending.reduce((a, r) => a + (r.direction === 'OUT' ? -r.amount : r.amount), 0)), cls: 'brand' }
+      ], 4));
+      host.appendChild(rows.length ? UI2.table({
+        screen: 'acc_recon', rows, height: '46vh', exportName: 'bank-reconciliation',
+        columns: [
+          { key: 'date', label: 'Date', render: r => fmt.date(r.date) },
+          { key: 'reference', label: 'Reference' },
+          { key: 'direction', label: 'Direction', render: r => h('span',
+            { class: 'badge ' + (r.direction === 'IN' ? 'ok' : 'err') }, r.direction) },
+          { key: 'amount', label: 'Amount', num: true, render: r => money(r.amount) },
+          { key: 'cleared', label: 'Status', render: r => h('span', { class: 'badge ' + (r.cleared ? 'ok' : 'warn') },
+            r.cleared ? 'Cleared' : 'Pending') },
+          { key: 'clearedDate', label: 'Cleared on', render: r => r.clearedDate ? fmt.date(r.clearedDate) : '—' },
+          { key: 'id', label: '', render: r => h('button', { class: 'btn sm sec', onclick: e => {
+            e.stopPropagation();
+            API.call('bank.recon.clear', { ids: [r.id], cleared: !r.cleared }).then(() => load());
+          } }, r.cleared ? 'Un-clear' : 'Clear') }
+        ]
+      }) : accEmpty('Koi statement import nahi hua — "Import statement" dabayein'));
+    } catch (e) { host.innerHTML = ''; host.appendChild(accEmpty('⚠ ' + e.message)); }
+  }
+  load();
+}
+
+function reconImport(bankAccountId, onDone) {
+  const ta = h('textarea', { class: 'f-input', rows: 8,
+    placeholder: 'Har line: date,reference,amount,direction\n2026-09-01,Deposit,25000,IN\n2026-09-02,ATM,4000,OUT' });
+  UI2.modal({
+    title: '📥 Bank statement import', size: 'md',
+    body: h('div', null,
+      h('div', { class: 'hint' }, 'CSV paste karein: date, reference, amount, direction (IN/OUT). Negative amount = OUT.'),
+      ta),
+    actions: [{
+      label: 'Import', cls: 'ok', onClick: async c => {
+        const rows = ta.value.split('\n').map(l => l.trim()).filter(Boolean).map(l => {
+          const p = l.split(',').map(x => x.trim());
+          return { date: p[0], reference: p[1] || '', amount: Number(p[2]) || 0, direction: (p[3] || '').toUpperCase() };
+        }).filter(r => r.amount);
+        if (!rows.length) return UI.toast('Koi valid line nahi', 'err');
+        try {
+          const r = await API.call('bank.recon.import', { bankAccountId, rows });
+          UI.toast(r.added + ' lines import hue', 'ok'); c(); onDone && onDone();
+        } catch (e) { UI.toast(e.message, 'err'); }
+      }
+    }, { label: 'Cancel', onClick: c => c() }]
+  });
+}
+
+/* ============================== 6. REPORTS ================================= */
+
+async function accReports(c) {
+  const host = h('div'); c.appendChild(host);
+  UI2.tabs(host, {
+    level: 2,
+    tabs: [
+      { id: 'tb', label: 'Trial balance', icon: '⚖', render: cc => reportTB(cc) },
+      { id: 'pl', label: 'Profit & Loss', icon: '📈', render: cc => reportPL(cc) },
+      { id: 'bs', label: 'Balance sheet', icon: '🏛', render: cc => reportBS(cc) },
+      { id: 'cash', label: 'Cash book', icon: '💵', render: cc => reportCash(cc) },
+      { id: 'ledger', label: 'Ledger', icon: '📖', render: cc => reportLedgerPick(cc) }
+    ]
+  });
+}
+
+async function reportTB(c) {
+  const asOf = h('input', { class: 'st2-f', type: 'date', value: new Date().toISOString().slice(0, 10) });
+  const host = h('div');
+  c.appendChild(h('div', { class: 'st2-bar' }, h('span', { class: 'pf-lab' }, 'As on'), asOf));
+  c.appendChild(host);
+  asOf.onchange = () => load();
+  async function load() {
+    host.innerHTML = ''; host.appendChild(accLoading());
+    try {
+      const tb = await API.call('accounting.trialBalance', { asOf: asOf.value }, { offlineFallback: () => null });
+      host.innerHTML = '';
+      if (!tb) { host.appendChild(accEmpty('Trial balance load nahi hui')); return; }
+      host.appendChild(h('div', { class: 'party-bal' },
+        h('div', { class: 'pb-row' }, h('span', null, 'Total debits'), h('b', null, money(tb.totalDebit))),
+        h('div', { class: 'pb-row' }, h('span', null, 'Total credits'), h('b', null, money(tb.totalCredit))),
+        h('div', { class: 'pb-row' }, h('span', null, 'Status'),
+          h('b', { class: tb.balanced ? 'ok' : 'err' }, tb.balanced ? 'Balanced ✅' : 'Out of balance ⚠'))));
+      host.appendChild((tb.rows || []).length ? UI2.table({
+        screen: 'acc_tb', rows: tb.rows, height: '52vh', exportName: 'trial-balance',
+        columns: [
+          { key: 'code', label: 'Code' },
+          { key: 'name', label: 'Account' },
+          { key: 'group', label: 'Group', render: r => h('span', { class: 'badge info' }, r.group) },
+          { key: 'debit', label: 'Debit', num: true, render: r => r.debit ? money(r.debit) : '—' },
+          { key: 'credit', label: 'Credit', num: true, render: r => r.credit ? money(r.credit) : '—' }
+        ]
+      }) : accEmpty('Koi balance nahi'));
+    } catch (e) { host.innerHTML = ''; host.appendChild(accEmpty('⚠ ' + e.message)); }
+  }
+  load();
+}
+
+async function reportPL(c) {
+  const rb = accRangeBar(() => load());
+  const host = h('div');
+  c.appendChild(h('div', { class: 'st2-bar' }, rb.el));
+  c.appendChild(host);
+  async function load() {
+    host.innerHTML = ''; host.appendChild(accLoading());
+    try {
+      const pl = await API.call('accounting.profitLoss', rb.values(), { offlineFallback: () => null });
+      host.innerHTML = '';
+      if (!pl) { host.appendChild(accEmpty('P&L load nahi hua')); return; }
+      host.appendChild(UI2.kpiGrid([
+        { icon: '📈', label: 'Total income', value: money(pl.totalIncome), cls: 'ok' },
+        { icon: '📦', label: 'Cost of goods', value: money(pl.cogs), cls: 'warn' },
+        { icon: '💰', label: 'Gross profit', value: money(pl.grossProfit), cls: 'brand' },
+        { icon: '⚖', label: 'Net profit', value: money(pl.netProfit), sub: 'Margin ' + pl.marginPct + '%',
+          cls: pl.netProfit >= 0 ? 'ok' : 'err' }
+      ], 4));
+
+      const block = (title, rows, total, cls) => h('div', { class: 'card', style: { marginTop: '12px' } },
+        h('div', { class: 'card-head' }, h('h4', null, title)),
+        h('div', { class: 'card-body tight' }, (rows || []).length ? UI2.table({
+          screen: 'acc_pl_' + title, rows, height: '24vh', exportName: 'pl-' + title,
+          columns: [
+            { key: 'code', label: 'Code' },
+            { key: 'name', label: 'Head' },
+            { key: 'amount', label: 'Amount', num: true, render: r => money(r.amount) }
+          ]
+        }) : accEmpty('Koi entry nahi')),
+        h('div', { class: 'tot-row grand' }, h('span', null, 'Total ' + title.toLowerCase()),
+          h('span', { class: cls }, money(total))));
+
+      c.appendChild(block('Income', pl.income, pl.totalIncome, 'ok'));
+      c.appendChild(h('div', { class: 'card', style: { marginTop: '12px' } },
+        h('div', { class: 'card-head' }, h('h4', null, 'Cost of goods sold')),
+        h('div', { class: 'card-body' }, h('div', { class: 'party-bal' },
+          h('div', { class: 'pb-row' }, h('span', null, 'Opening stock'), h('b', null, money(pl.openingStock))),
+          h('div', { class: 'pb-row' }, h('span', null, 'Purchases'), h('b', null, money(pl.purchases))),
+          h('div', { class: 'pb-row' }, h('span', null, 'Less: closing stock'), h('b', null, '− ' + money(pl.closingStock)))),
+        h('div', { class: 'tot-row grand' }, h('span', null, 'COGS'),
+          h('span', { class: 'warn' }, money(pl.cogs))))));
+      c.appendChild(block('Operating expenses', pl.expenses, pl.totalExpenses, 'err'));
+    } catch (e) { host.innerHTML = ''; host.appendChild(accEmpty('⚠ ' + e.message)); }
+  }
+  load();
+}
+
+async function reportBS(c) {
+  const asOf = h('input', { class: 'st2-f', type: 'date', value: new Date().toISOString().slice(0, 10) });
+  const host = h('div');
+  c.appendChild(h('div', { class: 'st2-bar' }, h('span', { class: 'pf-lab' }, 'As on'), asOf));
+  c.appendChild(host);
+  asOf.onchange = () => load();
+  async function load() {
+    host.innerHTML = ''; host.appendChild(accLoading());
+    try {
+      const bs = await API.call('accounting.balanceSheet', { asOf: asOf.value }, { offlineFallback: () => null });
+      host.innerHTML = '';
+      if (!bs) { host.appendChild(accEmpty('Balance sheet load nahi hui')); return; }
+      host.appendChild(h('div', { class: 'party-bal' },
+        h('div', { class: 'pb-row' }, h('span', null, 'Total assets'), h('b', null, money(bs.totalAssets))),
+        h('div', { class: 'pb-row' }, h('span', null, 'Liabilities'), h('b', null, money(bs.totalLiabilities))),
+        h('div', { class: 'pb-row' }, h('span', null, 'Equity'), h('b', null, money(bs.totalEquity))),
+        h('div', { class: 'pb-row' }, h('span', null, 'Status'),
+          h('b', { class: bs.balanced ? 'ok' : 'err' }, bs.balanced ? 'Balanced ✅' : 'Out ⚠')),
+        h('div', { class: 'pb-row muted' }, h('span', null, 'Party ledger: AR / AP'),
+          h('b', null, money(bs.partyReceivables) + ' / ' + money(bs.partyPayables)))));
+
+      const block = (title, rows, total) => h('div', { class: 'card', style: { marginTop: '12px' } },
+        h('div', { class: 'card-head' }, h('h4', null, title)),
+        h('div', { class: 'card-body tight' }, (rows || []).length ? UI2.table({
+          screen: 'acc_bs_' + title, rows, height: '24vh', exportName: 'bs-' + title,
+          columns: [
+            { key: 'code', label: 'Code' },
+            { key: 'name', label: 'Head' },
+            { key: 'amount', label: 'Amount', num: true, render: r => signed(r.amount) }
+          ]
+        }) : accEmpty('Koi entry nahi')),
+        h('div', { class: 'tot-row grand' }, h('span', null, 'Total'), h('span', null, money(total))));
+
+      c.appendChild(block('Assets', bs.assets, bs.totalAssets));
+      c.appendChild(block('Liabilities', bs.liabilities, bs.totalLiabilities));
+      c.appendChild(block('Equity', bs.equity, bs.totalEquity));
+    } catch (e) { host.innerHTML = ''; host.appendChild(accEmpty('⚠ ' + e.message)); }
+  }
+  load();
+}
+
+async function reportCash(c) {
+  const rb = accRangeBar(() => load());
+  const host = h('div');
+  c.appendChild(h('div', { class: 'st2-bar' }, rb.el));
+  c.appendChild(host);
+  async function load() {
+    host.innerHTML = ''; host.appendChild(accLoading());
+    try {
+      const b = await API.call('accounting.cashBook', rb.values(), { offlineFallback: () => null });
+      host.innerHTML = '';
+      if (!b) { host.appendChild(accEmpty('Cash book load nahi hua')); return; }
+      host.appendChild(UI2.kpiGrid([
+        { icon: '🔓', label: 'Opening', value: money(b.opening), cls: 'info' },
+        { icon: '📥', label: 'Receipts', value: money(b.receipts), cls: 'ok' },
+        { icon: '📤', label: 'Payments', value: money(b.payments), cls: 'err' },
+        { icon: '🧮', label: 'Closing', value: money(b.closing), cls: 'brand' }
+      ], 4));
+      host.appendChild((b.rows || []).length ? UI2.table({
+        screen: 'acc_cashbook', rows: b.rows, height: '48vh', exportName: 'cash-book',
+        columns: [
+          { key: 'date', label: 'Date', render: r => fmt.date(r.date) },
+          { key: 'voucherNo', label: 'Voucher' },
+          { key: 'accountName', label: 'Account' },
+          { key: 'narration', label: 'Narration' },
+          { key: 'debit', label: 'In', num: true, render: r => r.debit ? money(r.debit) : '—' },
+          { key: 'credit', label: 'Out', num: true, render: r => r.credit ? money(r.credit) : '—' },
+          { key: 'balance', label: 'Balance', num: true, render: r => signed(r.balance) }
+        ], onRow: r => voucherDetail(r.journalId)
+      }) : accEmpty('Is range mein koi cash movement nahi'));
+    } catch (e) { host.innerHTML = ''; host.appendChild(accEmpty('⚠ ' + e.message)); }
+  }
+  load();
+}
+
+async function reportLedgerPick(c) {
+  let rows = [];
+  try { rows = await Shared.raw('accounts.list', {}, { ttl: 180000, offline: () => [] }); }   /* v2.27.0 W3.T3 */
+  catch (e) { c.appendChild(accEmpty('⚠ ' + e.message)); return; }
+  c.appendChild(h('div', { class: 'card' },
+    h('div', { class: 'card-body' },
+      h('div', { class: 'hint', style: { marginBottom: '8px' } },
+        'Koi bhi account chunein — uska ledger (opening → entries → closing) popup mein khulega.'),
+      UI2.table({
+        screen: 'acc_ledger_pick', rows: rows || [], height: '52vh', exportName: 'accounts',
+        columns: [
+          { key: 'code', label: 'Code' },
+          { key: 'name', label: 'Account' },
+          { key: 'group', label: 'Group', render: r => h('span', { class: 'badge info' }, r.group) },
+          { key: 'displayBalance', label: 'Balance', num: true, render: r => signed(r.displayBalance) }
+        ], onRow: r => accountLedger(r.id)
+      }))));
+}
+
+/* =============================== BACKFILL ================================== */
+
+function backfillDialog() {
+  UI2.modal({
+    title: '🧮 Purane documents se vouchers banayein', size: 'sm',
+    body: h('div', null,
+      h('p', { style: { fontSize: 'var(--fs-sm)', color: 'var(--muted)' } },
+        'Jo sales, GRN, payments aur expenses pehle banaye gaye the aur unka voucher nahi bana, ' +
+        'un sab ke liye abhi vouchers ban jayenge. Ye ek baar ka kaam hai — dobara chalane par ' +
+        'kuch nahi badlega (har document ka sirf ek voucher banta hai).'),
+      h('div', { class: 'hint' }, 'Sale → Dr Cash/Bank + Dr Udhaar, Cr Sales · GRN → Dr Purchase, Cr Supplier · ' +
+        'Payment → Dr Supplier / Cr Cash · Expense → Dr Expense head, Cr Cash')),
+    actions: [{
+      label: 'Backfill now', cls: 'ok', onClick: async c => {
+        try {
+          const r = await API.call('accounting.backfill', {});
+          UI.toast('Vouchers: sale ' + r.sales + ' · GRN ' + r.grn + ' · payment ' + r.payments + ' · expense ' + r.expenses, 'ok', 4000);
+          c(); App.refresh();
+        } catch (e) { UI.toast(e.message, 'err'); }
+      }
+    }, { label: 'Cancel', onClick: c => c() }]
+  });
+}
+</script>

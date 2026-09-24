@@ -1,0 +1,208 @@
+{
+ "at": "2026-09-23T20:58:00.618Z",
+ "target": "file:///home/user/haseeb-autos/demo/index.html",
+ "boot": {
+  "calls": 19,
+  "dups": 3,
+  "p50": 171,
+  "p95": 263,
+  "max": 263
+ },
+ "routes": {
+  "dashboard": {
+   "calls": 6,
+   "dups": 0,
+   "p50": 147,
+   "p95": 218,
+   "max": 218,
+   "maxInflight": 5,
+   "wallMs": 1303,
+   "title": "Dashboard",
+   "top": [
+    {
+     "action": "reports.dashboard",
+     "n": 1
+    },
+    {
+     "action": "reports.salesByCategory",
+     "n": 1
+    },
+    {
+     "action": "notifications.summary",
+     "n": 1
+    },
+    {
+     "action": "pay.reconcile",
+     "n": 1
+    }
+   ]
+  },
+  "pos": {
+   "calls": 2,
+   "dups": 0,
+   "p50": 201,
+   "p95": 201,
+   "max": 201,
+   "maxInflight": 2,
+   "wallMs": 1311,
+   "title": "Point of Sale",
+   "top": [
+    {
+     "action": "sales.held.list",
+     "n": 1
+    },
+    {
+     "action": "items.facets",
+     "n": 1
+    }
+   ]
+  },
+  "items": {
+   "calls": 2,
+   "dups": 0,
+   "p50": 246,
+   "p95": 246,
+   "max": 246,
+   "maxInflight": 1,
+   "wallMs": 1305,
+   "title": "Items / Products",
+   "top": [
+    {
+     "action": "config.list",
+     "n": 1
+    },
+    {
+     "action": "items.list",
+     "n": 1
+    }
+   ]
+  },
+  "inventory": {
+   "calls": 1,
+   "dups": 0,
+   "p50": 197,
+   "p95": 197,
+   "max": 197,
+   "maxInflight": 1,
+   "wallMs": 1306,
+   "title": "Inventory",
+   "top": [
+    {
+     "action": "stock.levels",
+     "n": 1
+    }
+   ]
+  },
+  "purchase": {
+   "calls": 1,
+   "dups": 0,
+   "p50": 220,
+   "p95": 220,
+   "max": 220,
+   "maxInflight": 1,
+   "wallMs": 1306,
+   "title": "Purchase",
+   "top": [
+    {
+     "action": "purchase.po.list",
+     "n": 1
+    }
+   ]
+  },
+  "demands": {
+   "calls": 1,
+   "dups": 0,
+   "p50": 214,
+   "p95": 214,
+   "max": 214,
+   "maxInflight": 1,
+   "wallMs": 1305,
+   "title": "Customer Demands",
+   "top": [
+    {
+     "action": "demand.list",
+     "n": 1
+    }
+   ]
+  },
+  "parties": {
+   "calls": 1,
+   "dups": 0,
+   "p50": 215,
+   "p95": 215,
+   "max": 215,
+   "maxInflight": 1,
+   "wallMs": 1305,
+   "title": "Customers & Suppliers",
+   "top": [
+    {
+     "action": "customers.list",
+     "n": 1
+    }
+   ]
+  },
+  "salesman": {
+   "calls": 3,
+   "dups": 0,
+   "p50": 215,
+   "p95": 246,
+   "max": 246,
+   "maxInflight": 2,
+   "wallMs": 1307,
+   "title": "Salesman Stock",
+   "top": [
+    {
+     "action": "salesman.list",
+     "n": 1
+    },
+    {
+     "action": "salesman.performance",
+     "n": 1
+    },
+    {
+     "action": "salesman.issues",
+     "n": 1
+    }
+   ]
+  },
+  "reports": {
+   "calls": 1,
+   "dups": 0,
+   "p50": 173,
+   "p95": 173,
+   "max": 173,
+   "maxInflight": 1,
+   "wallMs": 1305,
+   "title": "Reports",
+   "top": [
+    {
+     "action": "reports.sales",
+     "n": 1
+    }
+   ]
+  },
+  "settings": {
+   "calls": 1,
+   "dups": 0,
+   "p50": 245,
+   "p95": 245,
+   "max": 245,
+   "maxInflight": 1,
+   "wallMs": 1305,
+   "title": "Settings & Configuration",
+   "top": [
+    {
+     "action": "config.defs",
+     "n": 1
+    }
+   ]
+  }
+ },
+ "totals": {
+  "calls": 19,
+  "dups": 0,
+  "worstP95": 246,
+  "routesWithDups": 0
+ },
+ "pageErrors": []
+}

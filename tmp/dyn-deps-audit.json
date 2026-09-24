@@ -1,0 +1,164 @@
+{
+ "dupDropdownHelpers": [
+  {
+   "f": "App_Salesman.html",
+   "n": 3
+  },
+  {
+   "f": "App_UI2.html",
+   "n": 3
+  },
+  {
+   "f": "Pwa_Shell.html",
+   "n": 3
+  },
+  {
+   "f": "App_Accounting.html",
+   "n": 1
+  },
+  {
+   "f": "App_Demand.html",
+   "n": 1
+  },
+  {
+   "f": "App_POS2.html",
+   "n": 1
+  }
+ ],
+ "dupModalHelpers": [
+  {
+   "f": "App_Dashboards.html",
+   "n": 3
+  },
+  {
+   "f": "App_POS2.html",
+   "n": 3
+  },
+  {
+   "f": "App_Salesman.html",
+   "n": 3
+  },
+  {
+   "f": "App_AI.html",
+   "n": 1
+  },
+  {
+   "f": "App_Accounting.html",
+   "n": 1
+  },
+  {
+   "f": "App_Boot.html",
+   "n": 1
+  }
+ ],
+ "dupLoadingHelpers": [
+  {
+   "f": "App_Accounting.html",
+   "n": 1
+  }
+ ],
+ "inlineOptionLists": 104,
+ "inlineOptionListsTop": [
+  {
+   "f": "App_Salesman.html",
+   "n": 21
+  },
+  {
+   "f": "App_Screens2.html",
+   "n": 13
+  },
+  {
+   "f": "App_Warehouse.html",
+   "n": 10
+  },
+  {
+   "f": "App_AIConfig.html",
+   "n": 8
+  },
+  {
+   "f": "App_Accounting.html",
+   "n": 8
+  }
+ ],
+ "hardcodedProviderBranches": 0,
+ "hardcodedProviderTop": [],
+ "routesInManyFiles": [
+  {
+   "route": "items.search",
+   "files": 7,
+   "calls": 9
+  },
+  {
+   "route": "customers.list",
+   "files": 7,
+   "calls": 7
+  },
+  {
+   "route": "sales.list",
+   "files": 5,
+   "calls": 6
+  },
+  {
+   "route": "suppliers.list",
+   "files": 4,
+   "calls": 6
+  },
+  {
+   "route": "customers.save",
+   "files": 4,
+   "calls": 4
+  },
+  {
+   "route": "stock.count",
+   "files": 4,
+   "calls": 4
+  },
+  {
+   "route": "items.save",
+   "files": 4,
+   "calls": 9
+  },
+  {
+   "route": "ai.suggest",
+   "files": 3,
+   "calls": 3
+  }
+ ],
+ "rawFetchBlocks": 11,
+ "loadingPlaceholdersOld": 0,
+ "loadingPlaceholdersTop": [],
+ "dynamicDepMarkers": 0,
+ "tableRenderSites": 100,
+ "refreshAfterWrite": 121,
+ "adHocValidations": 110,
+ "sharedValidatorUses": 5,
+ "uiRunUses": 10,
+ "manualBusyToggles": 11,
+ "searchImpls": [
+  {
+   "f": "App_Salesman.html",
+   "n": 3
+  },
+  {
+   "f": "App_Screens2.html",
+   "n": 2
+  },
+  {
+   "f": "App_POS.html",
+   "n": 1
+  },
+  {
+   "f": "App_Screens.html",
+   "n": 1
+  },
+  {
+   "f": "App_UI2.html",
+   "n": 1
+  },
+  {
+   "f": "Pwa_POS.html",
+   "n": 1
+  }
+ ],
+ "debounceImpls": 21
+}

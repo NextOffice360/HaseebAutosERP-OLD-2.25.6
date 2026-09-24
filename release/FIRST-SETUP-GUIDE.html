@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Haseeb Autos — Pehli dafa Setup (kaun si file, kaunsa function)</title>
+</head>
+<body style="margin:0;padding:0;background:#0b1220;color:#e6edf3;font-family:Segoe UI,Roboto,Helvetica,Arial,sans-serif;line-height:1.65;"><section style="max-width:1050px;margin:20px auto;padding:20px;border:1px solid #334155;border-radius:12px;background:#131c2e"><h2>v2.14.1 — POS multi-select cart, bulk scan, aligned wider cart</h2><p>v2.14.1 supersedes 2.14.0 (install instead; same files + App_POS2/Styles/App_QR rebuilt). Cart bar par ☑ Add items = GRN/PO jaisa checkbox+qty picker (multiple products ek saath, merge-aware); 🔁 Bulk scan = live-camera scanner continuous mode (once=0) — har code foran cart, badge live count, unknown codes summary; cart rows ab Item|Qty|Rate|Amount aligned columns; desktop cart rail 380px se fluid 410–520px. Setup: koi extra field nahi — scanner.liveUrl (2.14.0) hi bulk ke liye use hota hai. Detail: release/CHANGELOG-v2.14.1.md</p><h2>v2.14.0 — scanner, thermal receipts, phone POS (includes v2.13.4)</h2><p>Install v2.14.0 instead of 2.13.4 (same steps, more files). Live camera QR: host pwa/qr-scanner/ on GitHub Pages and paste its URL in Settings ▸ Mobile apps (PWA) ▸ scanner.liveUrl — Apps Script sandboxes block cameras, this is Google-recommended external-page + postMessage design. Receipts: the Print dialog has 58/80/110mm thermal with a true PDF download; the quick-print window now sets real @page sizes (A4/A5-only list gone). Phone POS: cart became a bottom drawer + summary bar; grid no longer covered. Full detail: release/CHANGELOG-v2.14.0.md + release/QR-LIVE-CAMERA-GUIDE.md.</p><h2>v2.13.4 base — report print/PDF, mobile access, and speed</h2><p>Replace these seven files in your existing project: <b>Utils.gs, Exports.gs, Reports.gs, App_Dashboards.html, Schema.gs, Triggers.gs</b> and the hidden <b>appsscript.json</b> (Project Settings → Show manifest). The manifest now uses ANYONE_ANONYMOUS (ANYONE = Google sign-in required) and the broader Drive scope needed by native PDF exports.</p><p>Then, in order: <b>Exports.gs → authorizeReportExports → Run</b> (approve the Drive permission), <b>Setup.gs → reinstallTriggers → Run</b> (installs the new read-only cache-warm job), and <b>Diagnose.gs → diagnoseWebApp → Run</b> (expect rendered:true). Publish <b>Deploy → Manage deployments → your Web app → Edit → New version</b> with Execute as <b>Me</b> and Who has access <b>Anyone</b> (anonymous). If the access option is blocked, create a new deployment and use its URL. The old /exec URL never picks up changes by itself.</p><p>Saved report dates now print without the String/String/String formatter error, and report tabs open from the click itself so mobile popups are not blocked. Phone links must be opened in Chrome — not inside the Google Drive app preview (its "unable to open the file" page is not the ERP).</p><p>Speed: Sales and Payments now share the same chunked sheet cache as master data (writes invalidate instantly), and a 15-minute business-hours warm job keeps it warm — see release/SPEED-ANALYSIS-v2.13.4.md. No setup rerun, reset or report regeneration is needed.</p></section><section style="max-width:1050px;margin:20px auto;padding:20px;border:1px solid #334155;border-radius:12px;background:#131c2e"><h2>v2.13.2 — tabs/headers but no data?</h2><p>Replace all apps-script files and Save. First run <b>Setup.gs ▸ diagnoseSeedData ▸ Run</b>. It returns and logs the exact linked spreadsheet URL and physical seed-row counts. Then run <b>Setup.gs ▸ repairSeedData ▸ Run</b>. Repeat recovery only if it returns complete:false; investigate any thrown error.</p><p>Fresh recovery should create 9 users, 5 groups and 3 locations, plus Settings and other defaults. Existing passwords, settings and transactions are not reset. If fresh default users were created, owner / admin123 is the initial owner login; change all default passwords or disable unused users immediately.</p><p>Sales, payments, orders and product/stock data are not fabricated. Empty transaction sheets are normal. Do not delete the spreadsheet. After recovery, publish a New version of the web app.</p></section><section style="max-width:1050px;margin:20px auto;padding:20px;border:1px solid #334155;border-radius:12px;background:#131c2e"><h2>v2.13.1 — critical startup repair</h2><p>If Setup stops with “Cannot set properties of undefined (setting officialEndpoint)”, replace BOTH AI.gs and AI_ProviderHub.gs. Prefer replacing all apps-script files. Save, then Deploy → Manage deployments → Edit → New version. No file reordering or spreadsheet reset is needed.</p><p>Read-only check: <b>Diagnose.gs ▸ diagnosePerformance ▸ Run</b> returns and logs diagnostics. Existing completed installations do not need setupAll again. Only an unfinished first installation should resume with <b>Setup.gs ▸ setupAll ▸ Run</b>.</p><p>This release also defers protected supplier, dashboard and language requests until login, fixing the false session-expired banner on a new visit.</p></section>
+<section style="max-width:1050px;margin:20px auto;padding:20px;border:1px solid #334155;border-radius:12px;background:#131c2e"><h2>v2.13.0 — AI connections &amp; failover</h2><p><b>Upgrade:</b> replace every apps-script file, including new AI_ProviderHub.gs. Deploy → Manage deployments → Edit → New version. An existing completed installation needs no sheet reset or setupAll rerun.</p><p><b>Connect:</b> open the original Apps Script /exec app → AI Agent → Setup → choose provider → paste a rotated key → Connect &amp; auto-configure. Repeat for additional providers. Choose the primary, arrange fallbacks, and Save routing.</p><p>Use Test connection for an exact-provider check. The downloaded demo only simulates connections: do not enter real keys there. Ollama needs a reachable HTTPS gateway, not localhost.</p><p><b>Diagnostics:</b> Diagnose.gs ▸ diagnosePerformance ▸ Run returns and logs read-only checks. AI_ProviderHub.gs methods run through the app; they are not editor dropdown functions. Provider profiles/model caches use the existing Settings sheet; credentials use Script Properties only.</p></section>
+
+
+<div style="max-width:920px;margin:0 auto;padding:24px 20px 60px;">
+
+  <div style="border-left:4px solid #0b5cff;padding:14px 18px;background:#111c30;border-radius:8px;margin-bottom:26px;">
+    <div style="font-size:22px;font-weight:700;color:#fff;">Pehli dafa Setup — seedha jawab</div>
+    <div style="font-size:14px;color:#9fb0c9;margin-top:4px;">Kaun si file select karein, kaunsa function chalayein, spreadsheet kaise banegi</div>
+  </div>
+
+  <!-- ============ 0. SAB SE PEHLE ============ -->
+  <h2 style="font-size:19px;color:#fff;border-bottom:1px solid #22304a;padding-bottom:8px;">0. Sab se pehle ye baat samajh lein</h2>
+
+  <p style="font-size:14.5px;">Apps Script editor mein aap <b>file</b> select nahi karte — aap <b>function</b> select karte hain.
+  File apne aap khul jati hai. Is liye confusion hoti hai ke "file kaun si?". Jawab: <b>function chunein, file ka fikr chhorein.</b></p>
+
+  <div style="background:#0f1a2c;border:1px solid #22304a;border-radius:8px;padding:16px 18px;margin:16px 0;">
+    <div style="font-size:13px;color:#7ee0c0;font-weight:700;margin-bottom:10px;">EDITOR KA NQSHA (screen par kahan kya hai)</div>
+    <table style="width:100%;border-collapse:collapse;font-size:14px;">
+      <tr><td style="padding:7px 10px;border-bottom:1px solid #1c2740;border-bottom:1px solid #1c2740;width:150px;color:#8fb6ff;font-weight:600;">Bayen taraf</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #1c2740;">Files ki list — <code style="color:#ffd479;">Code.gs</code>, <code style="color:#ffd479;">Setup.gs</code>, <code style="color:#ffd479;">Sales.gs</code> …</td></tr>
+      <tr><td style="padding:7px 10px;border-bottom:1px solid #1c2740;color:#8fb6ff;font-weight:600;">Upar (toolbar)</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #1c2740;">Ek <b>dropdown</b> jisme likha hota hai <i>"Select function"</i> — isi se function chuna jata hai</td></tr>
+      <tr><td style="padding:7px 10px;border-bottom:1px solid #1c2740;color:#8fb6ff;font-weight:600;">Dropdown ke bagal</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #1c2740;">▶ <b>Run</b> button (aur wrench 🔧 <b>Debug</b>)</td></tr>
+      <tr><td style="padding:7px 10px;color:#8fb6ff;font-weight:600;">Neeche</td>
+          <td style="padding:7px 10px;"><b>Execution log</b> — natija yahan likha aata hai</td></tr>
+    </table>
+  </div>
+
+  <div style="background:#2a1f0d;border:1px solid #6b4e12;border-radius:8px;padding:14px 18px;margin:16px 0;">
+    <div style="font-size:14px;color:#ffd479;font-weight:700;">⚠ Bahut zaroori</div>
+    <div style="font-size:14px;margin-top:6px;">Dropdown mein sirf wahi functions nazar aate hain jo file mein <b>seedhe (top-level)</b> likhe hote hain,
+    yani <code style="color:#ffd479;">function setupAll()</code>. <code style="color:#ff9d9d;">Setup.setupAll()</code> jese
+    (jiske beech mein dot hai) dropdown mein <b>kabhi nahi aate</b> — unhen Run nahi kiya ja sakta.</div>
+  </div>
+
+  <!-- ============ 1. TABLE ============ -->
+  <h2 style="font-size:19px;color:#fff;border-bottom:1px solid #22304a;padding-bottom:8px;margin-top:34px;">1. Kaun si file, kaunsa function?</h2>
+
+  <p style="font-size:14.5px;">Ye poori table yaad rakhne ki zaroorat nahi — sirf apna kaam dhoondhein aur woh function chalayein.</p>
+
+  <table style="width:100%;border-collapse:collapse;font-size:14px;margin-top:12px;">
+    <thead>
+      <tr style="background:#16243c;">
+        <th style="padding:10px;text-align:left;color:#8fb6ff;border:1px solid #22304a;">Mera kaam</th>
+        <th style="padding:10px;text-align:left;color:#8fb6ff;border:1px solid #22304a;width:130px;">File</th>
+        <th style="padding:10px;text-align:left;color:#8fb6ff;border:1px solid #22304a;width:230px;">Function (dropdown se chunein)</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="background:#12233d;">
+        <td style="padding:11px;border:1px solid #22304a;"><b>Naya spreadsheet banana</b> + saari sheets + users + settings<br><span style="color:#7ee0c0;font-size:13px;">← 99% log ko yahi chahiye</span></td>
+        <td style="padding:11px;border:1px solid #22304a;"><code style="color:#ffd479;">Setup.gs</code></td>
+        <td style="padding:11px;border:1px solid #22304a;"><code style="color:#7ee0c0;font-size:14.5px;"><b>setupAll</b></code></td>
+      </tr>
+      <tr>
+        <td style="padding:11px;border:1px solid #22304a;">Pehle se bani <b>apni</b> spreadsheet jodni hai</td>
+        <td style="padding:11px;border:1px solid #22304a;"><code style="color:#ffd479;">Setup.gs</code></td>
+        <td style="padding:11px;border:1px solid #22304a;"><code style="color:#7ee0c0;"><b>attachExistingSpreadsheet</b></code></td>
+      </tr>
+      <tr style="background:#0f1a2c;">
+        <td style="padding:11px;border:1px solid #22304a;">Sirf dekhna hai ke <b>abhi kaunsi sheet judi hai</b> (uska link)</td>
+        <td style="padding:11px;border:1px solid #22304a;"><code style="color:#ffd479;">Setup.gs</code></td>
+        <td style="padding:11px;border:1px solid #22304a;"><code style="color:#7ee0c0;"><b>spreadsheetInfo</b></code></td>
+      </tr>
+      <tr>
+        <td style="padding:11px;border:1px solid #22304a;">Update ke baad <b>naye columns</b> theek karna</td>
+        <td style="padding:11px;border:1px solid #22304a;"><code style="color:#ffd479;">Setup.gs</code></td>
+        <td style="padding:11px;border:1px solid #22304a;"><code style="color:#7ee0c0;"><b>repairSchema</b></code></td>
+      </tr>
+      <tr style="background:#0f1a2c;">
+        <td style="padding:11px;border:1px solid #22304a;">Sirf test data (products/customers) bharna</td>
+        <td style="padding:11px;border:1px solid #22304a;"><code style="color:#ffd479;">Setup.gs</code></td>
+        <td style="padding:11px;border:1px solid #22304a;"><code style="color:#7ee0c0;"><b>seedDemo</b></code></td>
+      </tr>
+      <tr style="opacity:.62;">
+        <td style="padding:11px;border:1px solid #22304a;"><s>Spreadsheet jodna</s> <span style="color:#ff9d9d;font-size:13px;">(ye jodta NAHI — sirf likh kar batata hai)</span></td>
+        <td style="padding:11px;border:1px solid #22304a;"><code style="color:#ffd479;">Setup.gs</code></td>
+        <td style="padding:11px;border:1px solid #22304a;"><code style="color:#ff9d9d;"><b>attachSpreadsheet</b></code> ❌</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div style="background:#2a0f12;border:1px solid #6b1a1f;border-radius:8px;padding:14px 18px;margin:16px 0;">
+    <div style="font-size:14px;color:#ff9d9d;font-weight:700;">❌ Purani guide ki ghalti — aap isi wajah se confuse hue</div>
+    <div style="font-size:14px;margin-top:6px;">Purani guide mein likha tha: <i>"pehle <code>attachSpreadsheet</code> chalayein, phir <code>setupAll</code>"</i>.
+    Ye <b>ghalat</b> hai — <code>attachSpreadsheet</code> kuch jodta hi nahi, sirf likh kar batata hai ke
+    <i>"Not linked"</i>. Ab is function par wazahat likh di gayi hai, aur asli kaam ke liye
+    <code>attachExistingSpreadsheet</code> bana diya gaya hai.</div>
+  </div>
+
+  <!-- ============ 2. FLOW ============ -->
+  <h2 style="font-size:19px;color:#fff;border-bottom:1px solid #22304a;padding-bottom:8px;margin-top:34px;">2. Pehli dafa: kaunsa raasta chunenge?</h2>
+
+  <div style="background:#0f1a2c;border:1px solid #22304a;border-radius:8px;padding:18px;margin:14px 0;">
+    <div style="font-size:15px;font-weight:700;color:#7ee0c0;">Sawal: kya aap ke paas pehle se koi spreadsheet (Excel jaisi file) hai jisme aap ka data hai?</div>
+    <table style="width:100%;border-collapse:collapse;font-size:14px;margin-top:12px;">
+      <tr>
+        <td style="padding:12px;border:1px solid #22304a;width:50%;vertical-align:top;">
+          <div style="font-weight:700;color:#8fb6ff;">❌ NAHI — bilkul naya shuru kar rahe hoon</div>
+          <div style="margin-top:8px;">→ <b>Hissa 3</b> par jayein<br>→ Function: <code style="color:#7ee0c0;">setupAll</code><br>
+          <span style="color:#9fb0c9;font-size:13px;">Spreadsheet <b>khud ban jayegi</b>, kuch banane ki zaroorat nahi</span></div>
+        </td>
+        <td style="padding:12px;border:1px solid #22304a;width:50%;vertical-align:top;">
+          <div style="font-weight:700;color:#8fb6ff;">✅ HAAN — apni bana hui sheet use karni hai</div>
+          <div style="margin-top:8px;">→ <b>Hissa 4</b> par jayein<br>→ Function: <code style="color:#7ee0c0;">attachExistingSpreadsheet</code><br>
+          <span style="color:#9fb0c9;font-size:13px;">Pehle us sheet ka <b>ID</b> copy karna hoga</span></div>
+        </td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- ============ 3. NAYA ============ -->
+  <h2 style="font-size:19px;color:#fff;border-bottom:1px solid #22304a;padding-bottom:8px;margin-top:34px;">3. Raasta A — Naya spreadsheet (sab se aasan)</h2>
+
+  <p style="font-size:14.5px;"><b>Ye samajh lein:</b> aap ko spreadsheet banane ki <b>kuch nahi karna</b>.
+  <code>setupAll</code> function khud ek nayi spreadsheet banata hai jiska naam hota hai
+  <code style="color:#ffd479;">Haseeb Autos - ERP Database</code>, us mein 76 sheets banata hai,
+  aur usay script se jod (attach) bhi deta hai. Aap ko sirf Run dabana hai.</p>
+
+  <div style="background:#0f1a2c;border:1px solid #22304a;border-radius:8px;padding:16px 18px;margin:14px 0;">
+    <div style="font-size:13px;color:#7ee0c0;font-weight:700;margin-bottom:12px;">QADAM BA QADAM</div>
+    <table style="width:100%;border-collapse:collapse;font-size:14px;">
+      <tr><td style="padding:8px 6px;width:34px;color:#8fb6ff;font-weight:700;">1</td>
+          <td style="padding:8px 6px;">Browser mein <b>script.google.com</b> kholein aur apna project kholein</td></tr>
+      <tr><td style="padding:8px 6px;color:#8fb6ff;font-weight:700;">2</td>
+          <td style="padding:8px 6px;">Baen taraf files ki list mein <b><code style="color:#ffd479;">Setup.gs</code></b> par click karein (sirf dekhne ke liye — zaroori nahi par dil ko tasalli ho jaye gi ke function isi mein hai)</td></tr>
+      <tr><td style="padding:8px 6px;color:#8fb6ff;font-weight:700;">3</td>
+          <td style="padding:8px 6px;">Upar <b>dropdown</b> par click karein (jisme likha hai "Select function")</td></tr>
+      <tr><td style="padding:8px 6px;color:#8fb6ff;font-weight:700;">4</td>
+          <td style="padding:8px 6px;">List mein se <b><code style="color:#7ee0c0;">setupAll</code></b> chunein</td></tr>
+      <tr><td style="padding:8px 6px;color:#8fb6ff;font-weight:700;">5</td>
+          <td style="padding:8px 6px;">▶ <b>Run</b> dabayein</td></tr>
+      <tr><td style="padding:8px 6px;color:#8fb6ff;font-weight:700;">6</td>
+          <td style="padding:8px 6px;"><b>"Authorization required"</b> aaye ga → <b>Review Permissions</b> → apna Google account chunein</td></tr>
+      <tr><td style="padding:8px 6px;color:#8fb6ff;font-weight:700;">7</td>
+          <td style="padding:8px 6px;"><b>"Google hasn't verified this app"</b> aaye ga → <b>Advanced</b> (chhota link, neeche) → <b>"Go to Haseeb Autos (unsafe)"</b> → <b>Allow</b><br>
+          <span style="color:#ffd479;font-size:13px;">Ghabrayein mat — ye <b>aap ka apna</b> code hai, koi bahar wala nahi. Ye har naye script par aata hai.</span></td></tr>
+      <tr><td style="padding:8px 6px;color:#8fb6ff;font-weight:700;">8</td>
+          <td style="padding:8px 6px;"><b>10–30 second</b> intezaar karein. Neeche <b>Execution log</b> mein lambi list aaye gi</td></tr>
+    </table>
+  </div>
+
+  <div style="background:#0d2620;border:1px solid #1d5c4a;border-radius:8px;padding:14px 18px;margin:14px 0;">
+    <div style="font-size:14px;color:#7ee0c0;font-weight:700;">✅ Kamyabi ka nishan — log mein kya aana chahiye</div>
+    <div style="font-size:13.5px;margin-top:8px;font-family:Consolas,monospace;color:#b9e8d8;white-space:pre-wrap;">{
+  "spreadsheetId": "1AbC...xyz",
+  "url": "https://docs.google.com/spreadsheets/d/1AbC...xyz",
+  "message": "Setup complete. Ab Deploy ▸ New deployment ▸ Web app karein."
+}</div>
+    <div style="font-size:13.5px;margin-top:8px;">
+    Wo <b>url</b> copy kar lein — ye <b>aap ka database</b> hai. Is par click karke aap apna
+    saara data (products, sales, customers) seedha Excel jaisi sheet mein dekh sakte hain.</div>
+  </div>
+
+  <div style="background:#0f1a2c;border-left:3px solid #0b5cff;padding:12px 16px;margin:14px 0;font-size:14px;">
+    <b>Ye spreadsheet kahan milti hai?</b> Apne Google Drive mein — naam <code style="color:#ffd479;">Haseeb Autos - ERP Database</code>.
+    Banane ke baad <code style="color:#7ee0c0;">spreadsheetInfo</code> chala kar bhi link mil jata hai.
+  </div>
+
+  <!-- ============ 4. EXISTING ============ -->
+  <h2 style="font-size:19px;color:#fff;border-bottom:1px solid #22304a;padding-bottom:8px;margin-top:34px;">4. Raasta B — Pehle se bani apni spreadsheet jodna</h2>
+
+  <p style="font-size:14.5px;">Sirf tab karein jab aap ke paas <b>pehle se</b> koi spreadsheet ho jis mein aap ka data hai.
+  Warna Hissa 3 par jayein.</p>
+
+  <div style="background:#0f1a2c;border:1px solid #22304a;border-radius:8px;padding:16px 18px;margin:14px 0;">
+    <div style="font-size:13px;color:#7ee0c0;font-weight:700;margin-bottom:12px;">QADAM BA QADAM</div>
+    <table style="width:100%;border-collapse:collapse;font-size:14px;">
+      <tr><td style="padding:8px 6px;width:34px;color:#8fb6ff;font-weight:700;">1</td>
+          <td style="padding:8px 6px;">Apni spreadsheet Google Sheets mein kholein</td></tr>
+      <tr><td style="padding:8px 6px;color:#8fb6ff;font-weight:700;">2</td>
+          <td style="padding:8px 6px;">Upar <b>address bar</b> (URL) se <b>ID</b> copy karein — ye darmiyani lamba hissa hai:<br>
+          <code style="color:#9fb0c9;font-size:13px;display:block;margin-top:6px;">https://docs.google.com/spreadsheets/d/<span style="background:#3a2f0d;color:#ffd479;padding:2px 5px;border-radius:3px;">1AbCdEfGhIjKlMnOpQrStUvWxYz</span>/edit#gid=0</code>
+          <span style="color:#ffd479;font-size:13px;">Sirf darmiyani hissa — <code>/d/</code> aur <code>/edit</code> ke darmiyan wala.</span></td></tr>
+      <tr><td style="padding:8px 6px;color:#8fb6ff;font-weight:700;">3</td>
+          <td style="padding:8px 6px;">Wapas Apps Script editor mein jayein, files list se <b><code style="color:#ffd479;">Setup.gs</code></b> kholein</td></tr>
+      <tr><td style="padding:8px 6px;color:#8fb6ff;font-weight:700;">4</td>
+          <td style="padding:8px 6px;">File ke <b>bilkul neeche</b> (aakhiri taraf) ye line dhoondhein:<br>
+          <code style="color:#9fb0c9;font-size:13px;display:block;margin-top:6px;">var ATTACH_ID = '';</code></td></tr>
+      <tr><td style="padding:8px 6px;color:#8fb6ff;font-weight:700;">5</td>
+          <td style="padding:8px 6px;">Apna ID un <b>quotes ke beech</b> paste karein:<br>
+          <code style="color:#7ee0c0;font-size:13px;display:block;margin-top:6px;">var ATTACH_ID = '1AbCdEfGhIjKlMnOpQrStUvWxYz';</code></td></tr>
+      <tr><td style="padding:8px 6px;color:#8fb6ff;font-weight:700;">6</td>
+          <td style="padding:8px 6px;">Upar <b>💾 Save</b> (floppy ka nishan) dabayein — <span style="color:#ff9d9d;">ye zaroori hai</span></td></tr>
+      <tr><td style="padding:8px 6px;color:#8fb6ff;font-weight:700;">7</td>
+          <td style="padding:8px 6px;">Dropdown se <b><code style="color:#7ee0c0;">attachExistingSpreadsheet</code></b> chunein → ▶ <b>Run</b></td></tr>
+      <tr><td style="padding:8px 6px;color:#8fb6ff;font-weight:700;">8</td>
+          <td style="padding:8px 6px;">Authorization aaye to wahi Allow karein (Hissa 3 ke qadam 6–7)</td></tr>
+    </table>
+  </div>
+
+  <div style="background:#0d2620;border:1px solid #1d5c4a;border-radius:8px;padding:14px 18px;margin:14px 0;">
+    <div style="font-size:14px;color:#7ee0c0;font-weight:700;">✅ Kamyabi ka nishan</div>
+    <div style="font-size:13.5px;margin-top:8px;font-family:Consolas,monospace;color:#b9e8d8;">"Existing spreadsheet jod di gayi. Ab Deploy ▸ New deployment ▸ Web app karein."</div>
+    <div style="font-size:13.5px;margin-top:8px;">
+    <b>Tasalli:</b> <code style="color:#7ee0c0;">spreadsheetInfo</code> chala kar dekh lein — wahi ID aur link aaye ga to jod chuki hai.</div>
+  </div>
+
+  <div style="background:#0f1a2c;border-left:3px solid #0b5cff;padding:12px 16px;margin:14px 0;font-size:14px;">
+    <b>Kya mera purana data mit jayega?</b> <span style="color:#7ee0c0;">Nahi.</span>
+    Ye function sirf <b>nayi sheets</b> banata hai jo maujood nahi, aur maujood sheets mein
+    <b>khali columns</b> jorta hai. Koi row delete nahi hoti. (v2.8 mein ye dohra chalane par bhi
+    mehfooz hai — data dohra nahi bharta.)
+  </div>
+
+  <!-- ============ 5. CHECK ============ -->
+  <h2 style="font-size:19px;color:#fff;border-bottom:1px solid #22304a;padding-bottom:8px;margin-top:34px;">5. Sab theek hua? Ek minute mein jaanch lein</h2>
+
+  <div style="background:#0f1a2c;border:1px solid #22304a;border-radius:8px;padding:16px 18px;margin:14px 0;">
+    <div style="font-size:14px;margin-bottom:10px;">Dropdown se <b><code style="color:#7ee0c0;">spreadsheetInfo</code></b> chunein → <b>Run</b>. Log mein aana chahiye:</div>
+    <div style="font-size:13.5px;font-family:Consolas,monospace;color:#b9e8d8;white-space:pre-wrap;">{
+  "spreadsheetId": "1AbC...xyz",
+  "url": "https://docs.google.com/spreadsheets/d/1AbC...xyz",
+  "sheetCount": 76,
+  "message": "Judi hui hai ✔"
+}</div>
+    <table style="width:100%;border-collapse:collapse;font-size:14px;margin-top:12px;">
+      <tr><td style="padding:8px 6px;width:180px;color:#7ee0c0;font-weight:600;">sheetCount 76 aaye</td>
+          <td style="padding:8px 6px;">→ ✅ Sab theek. Agle qadam par jayein.</td></tr>
+      <tr><td style="padding:8px 6px;color:#ff9d9d;font-weight:600;">"Koi spreadsheet judi hui NAHIN"</td>
+          <td style="padding:8px 6px;">→ Setup abhi nahi hua. Hissa 3 dobara chalayein.</td></tr>
+      <tr><td style="padding:8px 6px;color:#ff9d9d;font-weight:600;">sheetCount kam hai (masalan 2)</td>
+          <td style="padding:8px 6px;">→ Sheets poori nahi bani. <code style="color:#7ee0c0;">repairSchema</code> chalayein, phir dobara check karein.</td></tr>
+    </table>
+  </div>
+
+  <!-- ============ 6. MISTAKES ============ -->
+  <h2 style="font-size:19px;color:#fff;border-bottom:1px solid #22304a;padding-bottom:8px;margin-top:34px;">6. Aam ghaltiyan (aur un ka ilaaj)</h2>
+
+  <table style="width:100%;border-collapse:collapse;font-size:14px;">
+    <thead><tr style="background:#16243c;">
+      <th style="padding:10px;text-align:left;color:#ffd479;border:1px solid #22304a;width:44%;">Ghalti / pareshani</th>
+      <th style="padding:10px;text-align:left;color:#7ee0c0;border:1px solid #22304a;">Kya karein</th>
+    </tr></thead>
+    <tbody>
+      <tr><td style="padding:10px;border:1px solid #22304a;">Dropdown mein mera function <b>nazar hi nahi aa raha</b></td>
+          <td style="padding:10px;border:1px solid #22304a;">Files list mein <code style="color:#ffd479;">Setup.gs</code> khuli hai? Dropdown sirf <b>us waqt khuli file</b> ke top-level functions dikhati hai. <code>Setup.gs</code> par click karke dobara dekhein.</td></tr>
+      <tr><td style="padding:10px;border:1px solid #22304a;">"SPREADSHEET_ID not set" ki ghalti</td>
+          <td style="padding:10px;border:1px solid #22304a;">Setup abhi nahi hua. <code style="color:#7ee0c0;">setupAll</code> chalayein.</td></tr>
+      <tr><td style="padding:10px;border:1px solid #22304a;">Log mein "Not linked" aata hai</td>
+          <td style="padding:10px;border:1px solid #22304a;">Ye <code>attachSpreadsheet</code> ka purana paigham hai — wo jodta nahi. <code style="color:#7ee0c0;">setupAll</code> ya <code style="color:#7ee0c0;">attachExistingSpreadsheet</code> chalayein.</td></tr>
+      <tr><td style="padding:10px;border:1px solid #22304a;">"ID nahi mila" (attachExistingSpreadsheet mein)</td>
+          <td style="padding:10px;border:1px solid #22304a;"><code>Setup.gs</code> mein <code>ATTACH_ID = ''</code> khali chhor diya. Hissa 4 ke qadam 4–6 dobara karein, aur <b>Save</b> zaroor dabayein.</td></tr>
+      <tr><td style="padding:10px;border:1px solid #22304a;">Do spreadsheet ban gayin</td>
+          <td style="padding:10px;border:1px solid #22304a;"><code>setupAll</code> do dafa chala — purane versions mein har dafa nayi sheet banti thi. v2.12 usi database ko resume karta hai. Koi database delete na karein; linked ID <code>spreadsheetInfo</code> se confirm kar lein.</td></tr>
+      <tr><td style="padding:10px;border:1px solid #22304a;">Authorization baar baar mangta hai</td>
+          <td style="padding:10px;border:1px solid #22304a;">Normal hai. Har dafa <b>Advanced → Go to … (unsafe) → Allow</b> karein.</td></tr>
+    </tbody>
+  </table>
+
+  <section style="padding:16px;border:1px solid #22304a;border-radius:12px;margin-top:18px;">
+    <h2 style="font-size:19px;color:#fff;">v2.12 — timeout aaye to</h2>
+    <p>Setup: <b>Setup.gs ▸ setupAll ▸ Run</b> dobara karein agar result <code>complete:false</code> hai.
+    App/AI: error mein action naam dekhein; internet/provider check karein. <b>Save/Post timeout ka matlab failure pakka nahi</b>:
+    pehle record/history dekhein, phir retry karein. Server abhi kaam kar sakta hai.</p>
+    <p>AI provider request: 20s maximum per fetch; shared 50s budget. Browser watchdog: AI 65s, other actions 60s.
+    Apps Script ▸ Executions mein function/duration/error milta hai. Timed-out writes automatically repeat nahi hote.</p>
+  </section>
+  <section style="padding:16px;border:1px solid #22304a;border-radius:12px;margin-top:18px;">
+    <h2 style="font-size:19px;color:#fff;">v2.12.1 — ab bhi slow ho to read-only check</h2>
+    <p><b>Diagnose.gs ▸ diagnosePerformance ▸ Run</b>. Result return bhi hota hai aur log bhi:
+    code version, spreadsheet-open time, Settings/Items/Sales ke row/column metadata timings.
+    Ye setup dobara nahi chalata, poora data nahi parhta, aur provider key nahi dekhta.</p>
+    <p>Is update mein settings batch save hoti hain aur unchanged values dobara nahi likhi jatin.
+    Purana database delete/reset na karein. Files replace kar ke <b>Manage deployments ▸ Edit ▸ New version</b> karein.
+    Actual failing action ke liye <b>Apps Script ▸ Executions</b> ka duration/error dekhein.</p>
+  </section>
+  <!-- ============ 6b. AI AGENT TAB ============ -->
+  <h2 style="font-size:19px;color:#fff;border-bottom:1px solid #22304a;padding-bottom:8px;margin-top:34px;">6b. AI Agent — 2 minute mein chalu karein (apna tab)</h2>
+
+  <div style="background:#0f1a2c;border:1px solid #22304a;border-radius:8px;padding:16px 18px;margin:14px 0;">
+    <p style="margin:0 0 10px;color:#dbe6f7;">v2.10 se AI ka apna sidebar tab hai — settings ke andar dhoondna nahi parta. Kaam ka tareeqa:</p>
+    <ol style="margin:0 0 10px 18px;color:#dbe6f7;line-height:1.9;">
+      <li>App mein <b>AI Agent ▸ Setup</b> kholein. Provider card par <b>Google Gemini</b> chunein.</li>
+      <li><a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" style="color:#7fb3ff;">aistudio.google.com/apikey</a> se free key banayein → box mein paste → <b>Show</b> se dobara parh kar confirm karein → <b>Save settings</b>.</li>
+      <li><b>Test connection</b> dabayein — hara banner (&quot;Connection KAAMYAB&quot;) = sab theek. Laal aaye to us mein likhi salah parhein (aksar: copy-paste adhura reh gaya).</li>
+      <li><b>Assistant</b> tab mein likhein &quot;aaj ki sale kitni hui?&quot; — jawab aapke asli spreadsheet data se aayega (AI aapka data parhta hai, kehta nahi sunta).</li>
+    </ol>
+    <p style="margin:0;color:#9fb2cc;font-size:13px;">Key sirf Script Properties mein mehfooz hoti hai (<b>Code.gs</b> route → <b>AI.gs ▸ AI.setKey</b>); sheet ya browser mein kahin nahi likhi jati. Key ke bagair bhi app <b>Mock mode</b> mein chalta hai (rule-based, phir bhi aapke data par tools). Model list: <b>Refresh models</b> se live + neeche &quot;Model ID khud likhein&quot; fallback. Neeche <b>API mode</b> ka box hai — <b>Auto</b> hi rakhein: Gemini naye <b>Interactions API</b> (Google ka current standard) par chalta hai, OpenAI <b>Responses API</b> par; purane accounts ke liye legacy modes bhi yahan se chun saktay hain. Har call <b>store=false</b> (stateless) hai — app conversation storage request nahi karta; provider ki retention policy phir bhi lagu hoti hai. Chat history <b>AIThreads</b> sheet (pehli chat par ap-aap banti hai). File guide: <b>App_AIConfig.html</b> (tab UI) ▸ <b>App_AI.html</b> (floating chat) ▸ <b>AI.gs</b> (dimagh).</p>
+  </div>
+
+  <!-- ============ 7. NEXT ============ -->
+  <h2 style="font-size:19px;color:#fff;border-bottom:1px solid #22304a;padding-bottom:8px;margin-top:34px;">7. Ab aage kya</h2>
+
+  <div style="background:#0f1a2c;border:1px solid #22304a;border-radius:8px;padding:16px 18px;margin:14px 0;">
+    <table style="width:100%;border-collapse:collapse;font-size:14px;">
+      <tr><td style="padding:9px 6px;width:34px;color:#8fb6ff;font-weight:700;">9</td>
+          <td style="padding:9px 6px;"><b>Deploy ▸ New deployment</b> → gear icon ⚙ → <b>Web app</b></td></tr>
+      <tr><td style="padding:9px 6px;color:#8fb6ff;font-weight:700;">10</td>
+          <td style="padding:9px 6px;">Execute as: <b>Me</b> · Who has access: <b>Anyone</b> → <b>Deploy</b></td></tr>
+      <tr><td style="padding:9px 6px;color:#8fb6ff;font-weight:700;">11</td>
+          <td style="padding:9px 6px;">URL copy karke browser mein kholein — <b>app chal gayi 🎉</b></td></tr>
+      <tr><td style="padding:9px 6px;color:#8fb6ff;font-weight:700;">12</td>
+          <td style="padding:9px 6px;">Andar jakar <b>Settings ▸ Data &amp; tools ▸ Maintenance ▸ 🧰 Repair / upgrade sheets</b> ek dafa chalayein</td></tr>
+      <tr><td style="padding:9px 6px;color:#8fb6ff;font-weight:700;">13</td>
+          <td style="padding:9px 6px;">Mobile PWA: <code>URL?app=wh</code> · <code>URL?app=fo</code> · <code>URL?app=sm</code></td></tr>
+    </table>
+  </div>
+
+
+  <h2 style="font-size:19px;color:#fff;border-bottom:1px solid #22304a;padding-bottom:8px;margin-top:34px;">8. Deploy karne ke baad error aaye? (asli waqiyat)</h2>
+
+  <p style="color:#b9c6dc;font-size:14px;line-height:1.7;">
+    Ye woh ghaltiyan hain jo <b>asli deployment</b> par paish aati hain — Apps Script
+    editor mein test chalne ke bawajood. Sab ka ilaaj likha hai.
+  </p>
+
+  <div style="background:#0f1a2c;border:1px solid #22304a;border-radius:8px;padding:6px 14px;margin:14px 0;">
+    <table style="width:100%;border-collapse:collapse;font-size:14px;">
+      <tr style="border-bottom:1px solid #22304a;">
+        <td style="padding:12px 6px;width:46%;color:#ffb4b4;">
+          <b>Exception: The meta tag you specified is not allowed in this context.</b>
+          <div style="color:#7d8da6;font-size:12.5px;margin-top:4px;">(line 58, file "Code") · app khulti hi nahi</div>
+        </td>
+        <td style="padding:12px 6px;color:#d5e0f2;">
+          <b style="color:#7ef0a8;">v2.8.1 mein THEEK ho chuka.</b> Apps Script sirf 4 meta tags allow karta hai
+          (<code>viewport</code>, <code>apple-mobile-web-app-capable</code>,
+          <code>mobile-web-app-capable</code>, <code>google-site-verification</code>).
+          Purane code mein <code>theme-color</code> aur 3 aur tags server se add ho rahe the → har
+          request par exception.<br>
+          <b>Ilaj:</b> v2.8.1 wali files upload karein (<code>Code.gs</code>, <code>Pwa.gs</code>,
+          <code>Index.html</code>, <code>Pwa_Shell.html</code>, teenon <code>Pwa_*.html</code>) →
+          <b>Deploy ▸ Manage deployments ▸ ✏ Edit ▸ Version: New ▸ Deploy</b>.
+        </td>
+      </tr>
+      <tr style="border-bottom:1px solid #22304a;">
+        <td style="padding:12px 6px;color:#ffd9a0;">
+          <b>URL khulte hi Google sign-in maangta hai</b>
+          <div style="color:#7d8da6;font-size:12.5px;margin-top:4px;">accounts.google.com par chala jata hai</div>
+        </td>
+        <td style="padding:12px 6px;color:#d5e0f2;">
+          <b>Who has access</b> mein <b>Anyone</b> nahi chuna gaya (sirf <i>Anyone with Google account</i>
+          ya <i>Only myself</i> chuna hai).<br>
+          <b>Ilaj:</b> Deploy ▸ Manage deployments ▸ ✏ Edit ▸
+          <b>Who has access: Anyone</b> ▸ <b>Deploy</b>. Phir doosre phone/PC se kholein (apne account
+          se nahi) — tab hi asal test hai.
+        </td>
+      </tr>
+      <tr style="border-bottom:1px solid #22304a;">
+        <td style="padding:12px 6px;color:#ffd9a0;">
+          <b>Executions log mein "Failed · 0s"</b>
+          <div style="color:#7d8da6;font-size:12.5px;margin-top:4px;">doGet / setupAll bar bar fail</div>
+        </td>
+        <td style="padding:12px 6px;color:#d5e0f2;">
+          0 second ka matlab: code shuru hote hi ruka (ghalti ya permission).
+          <b>Ilaj:</b> Executions ▸ us line par click ▸ neeche <b>error message</b> padhein —
+          wahi asal wajah hai. Upar wali table mein woh message dhoondein.
+        </td>
+      </tr>
+      <tr style="border-bottom:1px solid #22304a;">
+        <td style="padding:12px 6px;color:#ffd9a0;">
+          <b>setupAll 195 second le raha hai</b>
+          <div style="color:#7d8da6;font-size:12.5px;margin-top:4px;">kya ye atka hua hai?</div>
+        </td>
+        <td style="padding:12px 6px;color:#d5e0f2;">
+          <b style="color:#7ef0a8;">v2.12: setup ab resume hota hai.</b>
+          <b>Setup.gs ▸ setupAll ▸ Run</b>. Returned/logged result mein <code>complete:false</code>
+          ho to yehi function dobara Run karein. <code>completedSteps/totalSteps</code> progress batata hai.
+          Wahi database use hota hai; data delete/reset nahi hota. <code>complete:true</code> ho to deploy karein.
+          Har completed step checkpoint hota hai; 45-second budget steps ke darmiyan check hota hai.
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:12px 6px;color:#ffd9a0;">
+          <b>"Google hasn't verified this app"</b>
+          <div style="color:#7d8da6;font-size:12.5px;margin-top:4px;">unsafe warning screen</div>
+        </td>
+        <td style="padding:12px 6px;color:#d5e0f2;">
+          Ye har un-verified script par aata hai — <b>aap ka apna code hai</b>, khatra nahi.
+          <b>Advanced → Go to Haseeb Autos (unsafe) → Allow</b>.
+        </td>
+      </tr>
+    </table>
+  </div>
+
+  <div style="background:#12233a;border-left:4px solid #38bdf8;border-radius:0 8px 8px 0;padding:12px 16px;margin:16px 0;color:#cfe0f5;font-size:13.5px;line-height:1.7;">
+    <b>Tasalli ka tareeqa:</b> Apps Script editor ▸ <b>Executions</b> (baen taraf clock ka icon).
+    <code>setupAll</code> ke saamne <b>Completed</b> ho to database theek hai — masla sirf
+    <code>Code.gs</code> ▸ <code>doGet</code> (web page serve karne wala hissa) ka hota hai,
+    aur us ka ilaj upar pehli line mein hai.
+  </div>
+
+
+  <h2 style="font-size:19px;color:#fff;border-bottom:1px solid #22304a;padding-bottom:8px;margin-top:34px;">9. Mobile par kaise kholein? (aur "Anyone" ya "Anyone with Google account"?)</h2>
+
+  <div style="background:#12233a;border-left:4px solid #f59e0b;border-radius:0 8px 8px 0;padding:14px 16px;margin:14px 0;color:#e8d9bf;font-size:14px;line-height:1.75;">
+    <b style="color:#ffd9a0;">Seedha jawab:</b> <b>Who has access: Anyone</b> chunein.
+    <br>"Anyone with Google account" chunne par Google pehle <b>sign-in redirect</b> karta hai,
+    aur mobile browser (khaas kar iPhone Safari) us redirect ki cookie rok deta hai —
+    natija: <b>"Sorry, unable to open the file at present."</b>
+    Ye <b>aap ki app ki ghalti nahi</b>, Google ka mashhoor multi-account bug hai.
+  </div>
+
+  <h3 style="color:#8fb6ff;font-size:15.5px;margin:20px 0 8px;">Dono options ka farq</h3>
+  <div style="background:#0f1a2c;border:1px solid #22304a;border-radius:8px;padding:6px 14px;margin:10px 0;">
+    <table style="width:100%;border-collapse:collapse;font-size:14px;">
+      <tr style="border-bottom:1px solid #22304a;color:#8fb6ff;">
+        <th style="text-align:left;padding:10px 6px;width:30%;">Option</th>
+        <th style="text-align:left;padding:10px 6px;width:35%;">Kya hota hai</th>
+        <th style="text-align:left;padding:10px 6px;">Kab chunein</th>
+      </tr>
+      <tr style="border-bottom:1px solid #22304a;">
+        <td style="padding:11px 6px;"><b style="color:#7ef0a8;">Anyone</b> ⭐</td>
+        <td style="padding:11px 6px;color:#d5e0f2;">Koi sign-in nahi. Link khulte hi app khulti hai.
+          <b>Redirect hi nahi hota</b>, is liye mobile wala bug paida hi nahi hota.</td>
+        <td style="padding:11px 6px;color:#d5e0f2;"><b>Dukan ke liye yahi behtar hai</b> — counter, salesman,
+          warehouse sab ke phone par. App ke andar apna login (owner / admin123) phir bhi lagta hai,
+          is liye data mehfooz hai.</td>
+      </tr>
+      <tr>
+        <td style="padding:11px 6px;">Anyone with Google account</td>
+        <td style="padding:11px 6px;color:#d5e0f2;">Pehle Google sign-in, phir app. Mobile par
+          multi-account hone par aksar fail hota hai.</td>
+        <td style="padding:11px 6px;color:#d5e0f2;">Sirf tab jab aap chahte hain ke <b>sirf Google
+          account wale</b> hi khol sakein (maslan sirf aap ki team, aur sab ke paas Gmail ho).</td>
+      </tr>
+    </table>
+  </div>
+
+  <h3 style="color:#8fb6ff;font-size:15.5px;margin:22px 0 8px;">Mobile par kholne ka tareeqa (qadam ba qadam)</h3>
+  <div style="background:#0f1a2c;border:1px solid #22304a;border-radius:8px;padding:16px 18px;margin:10px 0;">
+    <table style="width:100%;border-collapse:collapse;font-size:14px;">
+      <tr><td style="padding:9px 6px;width:34px;color:#8fb6ff;font-weight:700;">1</td>
+          <td style="padding:9px 6px;color:#d5e0f2;">Deploy karte waqt <b>Who has access: Anyone</b> chunein → <b>Deploy</b></td></tr>
+      <tr><td style="padding:9px 6px;color:#8fb6ff;font-weight:700;">2</td>
+          <td style="padding:9px 6px;color:#d5e0f2;">Jo <code>/exec</code> URL mila hai, usay phone ke
+          <b>Chrome</b> mein kholein (WhatsApp se nahi — WhatsApp ka andaruni browser aksar rokta hai)</td></tr>
+      <tr><td style="padding:9px 6px;color:#8fb6ff;font-weight:700;">3</td>
+          <td style="padding:9px 6px;color:#d5e0f2;">Agar phir bhi error aaye to ye URL azmaayein —
+          link mein <code>script.google.com/</code> ke baad <code>a/~/</code> laga dein:<br>
+          <code style="display:block;margin-top:6px;padding:7px 9px;background:#08111f;border-radius:6px;font-size:12.5px;word-break:break-all;">https://script.google.com/a/~/macros/s/AKfyc…/exec</code>
+          <span style="color:#7d8da6;font-size:12.5px;">(Workspace account ho to <code>a/~/</code> ki jagah <code>a/*/</code>)</span></td></tr>
+      <tr><td style="padding:9px 6px;color:#8fb6ff;font-weight:700;">4</td>
+          <td style="padding:9px 6px;color:#d5e0f2;">Phir bhi na khule to <b>Incognito / Private tab</b>
+          mein kholein (ek account ka masla khatam)</td></tr>
+      <tr><td style="padding:9px 6px;color:#8fb6ff;font-weight:700;">5</td>
+          <td style="padding:9px 6px;color:#d5e0f2;">iPhone par: link ko <b>Google app</b> ke search
+          bar mein paste karein — wo Google ke apne mahol mein khulta hai, is liye chalta hai</td></tr>
+      <tr><td style="padding:9px 6px;color:#8fb6ff;font-weight:700;">6</td>
+          <td style="padding:9px 6px;color:#d5e0f2;">App khulne ke baad: Chrome menu ⋮ →
+          <b>Add to Home screen</b> → icon ban jayega, agli dafa seedha app ki tarah khulega</td></tr>
+    </table>
+  </div>
+
+  <h3 style="color:#8fb6ff;font-size:15.5px;margin:22px 0 8px;">Teen mobile PWA (alag alag kaam ke liye)</h3>
+  <div style="background:#0f1a2c;border:1px solid #22304a;border-radius:8px;padding:6px 14px;margin:10px 0;">
+    <table style="width:100%;border-collapse:collapse;font-size:14px;">
+      <tr><td style="padding:9px 6px;width:32%;"><b>Warehouse / Godown</b></td>
+          <td style="padding:9px 6px;color:#d5e0f2;"><code>URL?app=wh</code></td></tr>
+      <tr><td style="padding:9px 6px;"><b>Field Orders</b></td>
+          <td style="padding:9px 6px;color:#d5e0f2;"><code>URL?app=fo</code></td></tr>
+      <tr><td style="padding:9px 6px;"><b>Salesman</b></td>
+          <td style="padding:9px 6px;color:#d5e0f2;"><code>URL?app=sm</code></td></tr>
+      <tr><td style="padding:9px 6px;"><b>Poora ERP</b></td>
+          <td style="padding:9px 6px;color:#d5e0f2;"><code>URL</code> (bina ?app ke)</td></tr>
+    </table>
+  </div>
+
+  <h3 style="color:#8fb6ff;font-size:15.5px;margin:22px 0 8px;">Apne account ki haqeeqat khud dekhein (naya, v2.8.2)</h3>
+  <div style="background:#0f1a2c;border:1px solid #22304a;border-radius:8px;padding:16px 18px;margin:10px 0;">
+    <p style="color:#b9c6dc;font-size:14px;line-height:1.7;margin:0 0 10px;">
+      Apps Script editor mein <b>Diagnose.gs</b> file kholein aur dropdown se ye function chalayein:
+    </p>
+    <table style="width:100%;border-collapse:collapse;font-size:14px;">
+      <tr style="border-bottom:1px solid #22304a;">
+        <td style="padding:9px 6px;width:40%;"><code>Diagnose.gs</code> ▸ <b>diagnoseWebApp</b> ▸ Run</td>
+        <td style="padding:9px 6px;color:#d5e0f2;">Page server par render hota hai ya nahi, size,
+          missing HTML files, teenon PWA, database — aur mobile wale URLs</td></tr>
+      <tr style="border-bottom:1px solid #22304a;">
+        <td style="padding:9px 6px;"><code>Diagnose.gs</code> ▸ <b>deploymentUrls</b> ▸ Run</td>
+        <td style="padding:9px 6px;color:#d5e0f2;">Aap ka asli <code>/exec</code> URL +
+          <code>/a/~/</code> variant + teenon PWA URLs — copy karne ke liye taiyar</td></tr>
+      <tr>
+        <td style="padding:9px 6px;"><code>Diagnose.gs</code> ▸ <b>diagnoseAll</b> ▸ Run</td>
+        <td style="padding:9px 6px;color:#d5e0f2;">Sab kuch ek saath (web app + database + triggers)</td></tr>
+    </table>
+    <p style="color:#7d8da6;font-size:13px;margin:12px 0 0;">
+      In ka jawab <b>Execution log</b> mein aata hai — wo poora text mujhe bhej dein, main batata hoon ke masla kahan hai.
+    </p>
+  </div>
+
+  <div style="margin-top:30px;padding-top:14px;border-top:1px solid #22304a;font-size:13px;color:#7d8da6;">
+    Haseeb Autos v2.8.2 · Hissa 8 = deploy ke baad ki ghaltiyan (meta tag crash, sign-in redirect).
+    Hissa 9 = mobile par kholna, "Anyone" vs "Anyone with Google account", aur Diagnose.gs se khud jaanch.
+  </div>
+
+</div>
+</body>
+</html>

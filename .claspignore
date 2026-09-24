@@ -1,0 +1,15 @@
+# ==========================================================================
+# .claspignore — clasp push par ye files Google par UPLOAD NAHI hongi.
+# Sirf apps-script/ ka code jana chahiye; tools, demo aur reports local hain.
+# ==========================================================================
+**/*.md
+**/*.pdf
+**/*.zip
+tools/**
+demo/**
+release/**
+node_modules/**
+.cache/**
+*.log
+.git/**
+test/**

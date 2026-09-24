@@ -1,0 +1,151 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Haseeb Autos — Punch-list verification (v2.5.2)</title>
+<style>
+ :root{--bg:#f4f6fb;--panel:#fff;--ink:#0f172a;--muted:#64748b;--line:#e5e9f0;--brand:#ff6a00;--ok:#16a34a;--err:#dc2626}
+ *{box-sizing:border-box}
+ body{margin:0;padding:24px;background:var(--bg);color:var(--ink);font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans",sans-serif}
+ .wrap{max-width:1080px;margin:0 auto}
+ h1{font-size:22px;margin:0 0 4px}
+ .sub{color:var(--muted);margin:0 0 18px;font-size:13px}
+ .sum{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:18px}
+ .kpi{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 16px;min-width:150px}
+ .kpi b{display:block;font-size:20px}
+ .kpi span{color:var(--muted);font-size:12px}
+ table{width:100%;border-collapse:collapse;background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+ td{border-top:1px solid var(--line);padding:12px 14px;vertical-align:top}
+ tr.ok td{background:#fff}
+ tr.bad td{background:#fff5f5}
+ td.num{width:38px;color:var(--muted);font-weight:700}
+ td.st{width:96px;text-align:right;white-space:nowrap;font-weight:700;color:var(--ok)}
+ tr.bad td.st{color:var(--err)}
+ .cnt{font-size:11px;color:var(--muted);font-weight:400}
+ .why{color:var(--muted);font-size:12px;margin:3px 0 7px}
+ .checks{display:flex;flex-wrap:wrap;gap:5px}
+ .chip{font-size:11px;padding:3px 8px;border-radius:20px;background:#f1f5f9;color:#334155;border:1px solid #e2e8f0}
+ .chip-ok{background:#e8f7ee;color:#14532d;border-color:#bbf7d0}
+ .chip-bad{background:#fdecec;color:#7f1d1d;border-color:#fecaca}
+ footer{margin-top:16px;color:var(--muted);font-size:12px}
+</style></head><body><div class="wrap">
+<h1>Haseeb Autos — Punch-list verification</h1>
+<p class="sub">Har requirement ke liye static (source) + live (demo app) checks · 2.5.2 · 2026-09-24</p>
+<div class="sum">
+ <div class="kpi"><b>16/16</b><span>requirements pass</span></div>
+ <div class="kpi"><b>117/117</b><span>checks pass</span></div>
+ <div class="kpi"><b>0</b><span>failures</span></div>
+</div>
+<table><tbody>
+    <tr class="ok">
+      <td class="num">1</td>
+      <td><b>AI agents — koi hardcoded model name nahi (Gemini/OpenAI sab settings se)</b><div class="why">Model names code mein hone se wo deprecate hote hi app toot-ti hai. Ab catalog provider se discover hota hai.</div>
+          <div class="checks"><span class="chip chip-ok">✔ production code mein koi vendor model name nahi</span><span class="chip chip-ok">✔ AI.gs: AI.catalog</span><span class="chip chip-ok">✔ AI.gs: discoverModels</span><span class="chip chip-ok">✔ AI.gs: defaultModel</span><span class="chip chip-ok">✔ AI.gs: AI_PROVIDERS</span></div>
+      </td>
+      <td class="st">✅ PASS<div class="cnt">5/5</div></td>
+    </tr>
+    <tr class="ok">
+      <td class="num">2</td>
+      <td><b>Charts — bars ki text/values overlap nahi, donut/gauge size band</b><div class="why">Bars ab HTML rows hain (label + value alag column), donut/gauge ke size SIZING se clamp.</div>
+          <div class="checks"><span class="chip chip-ok">✔ App_Charts.html: SIZING</span><span class="chip chip-ok">✔ App_Charts.html: max: 170</span><span class="chip chip-ok">✔ App_Charts.html: function barsHTML</span><span class="chip chip-ok">✔ App_Charts.html: bars-html</span><span class="chip chip-ok">✔ App_Charts.html: bh-row</span><span class="chip chip-ok">✔ App_Charts.html: bh-lab</span><span class="chip chip-ok">✔ App_Charts.html: bh-val</span><span class="chip chip-ok">✔ App_Charts.html: maxBarChartH</span><span class="chip chip-ok">✔ dashboard bars HTML rows hain (label + value alag column, SVG text nahi)</span><span class="chip chip-ok">✔ donut/gauge size band hai (&lt;= 180px)</span></div>
+      </td>
+      <td class="st">✅ PASS<div class="cnt">10/10</div></td>
+    </tr>
+    <tr class="ok">
+      <td class="num">3</td>
+      <td><b>Print preview — professional tax invoice (A4/A5/Half-A4 + thermal)</b><div class="why">Invoice mein business header, bank details, amount in words, signature — settings-driven.</div>
+          <div class="checks"><span class="chip chip-ok">✔ App_Print.html: A4 tax invoice</span><span class="chip chip-ok">✔ App_Print.html: A5 invoice</span><span class="chip chip-ok">✔ App_Print.html: Half A4</span><span class="chip chip-ok">✔ App_Print.html: Previous balance</span><span class="chip chip-ok">✔ App_Print.html: amountInWords</span><span class="chip chip-ok">✔ App_Print.html: ESC/POS</span><span class="chip chip-ok">✔ release/invoice-sample-a4.html maujood</span><span class="chip chip-ok">✔ sales history se print preview khulta hai</span></div>
+      </td>
+      <td class="st">✅ PASS<div class="cnt">8/8</div></td>
+    </tr>
+    <tr class="ok">
+      <td class="num">4</td>
+      <td><b>Customer previous balance har jagah (invoice + customer + reports)</b><div class="why">Pichhla due + naya = total closing balance, invoice aur reports dono mein.</div>
+          <div class="checks"><span class="chip chip-ok">✔ prev balance: Previous balance</span><span class="chip chip-ok">✔ prev balance: Closing balance</span><span class="chip chip-ok">✔ prev balance: __prevBalance</span><span class="chip chip-ok">✔ prev balance: PARTY SUMMARY</span><span class="chip chip-ok">✔ prev balance: summary: function (partyType, partyId)</span><span class="chip chip-ok">✔ prev balance: opening: U.round(opening, 2)</span><span class="chip chip-ok">✔ prev balance: balance: U.round(balance, 2)</span><span class="chip chip-ok">✔ prev balance: Pichhla baqaya (prev)</span><span class="chip chip-ok">✔ invoice preview mein Previous balance + closing balance</span><span class="chip chip-ok">✔ customer detail mein pichhla baqaya/prev balance</span></div>
+      </td>
+      <td class="st">✅ PASS<div class="cnt">10/10</div></td>
+    </tr>
+    <tr class="ok">
+      <td class="num">5</td>
+      <td><b>Suppliers ke liye bhi wahi previous balance / payable hisaab</b><div class="why">Supplier opening + purchases − paid = payable, party detail aur reports mein.</div>
+          <div class="checks"><span class="chip chip-ok">✔ supplier payable: SUPPLIER</span><span class="chip chip-ok">✔ supplier payable: payable</span><span class="chip chip-ok">✔ supplier payable: Supplier-wise payable</span><span class="chip chip-ok">✔ supplier section mein payable (prev + purchase − paid)</span></div>
+      </td>
+      <td class="st">✅ PASS<div class="cnt">4/4</div></td>
+    </tr>
+    <tr class="ok">
+      <td class="num">6</td>
+      <td><b>Transactions &amp; Expenses, Accounts, Banks — proper accounting page</b><div class="why">Expense voucher (approval + tax + attachment), chart of accounts, bank book, reconciliation.</div>
+          <div class="checks"><span class="chip chip-ok">✔ accounting: bankBook</span><span class="chip chip-ok">✔ accounting: cashBook</span><span class="chip chip-ok">✔ accounting: balanceSheet</span><span class="chip chip-ok">✔ accounting: trialBalance</span><span class="chip chip-ok">✔ accounting: approveExpense</span><span class="chip chip-ok">✔ accounting: taxAmount</span><span class="chip chip-ok">✔ accounting: attachmentUrl</span><span class="chip chip-ok">✔ accounting: Accounts:</span><span class="chip chip-ok">✔ accounting: Journals:</span><span class="chip chip-ok">✔ accounting: JournalLines:</span><span class="chip chip-ok">✔ accounting page: expenses / banks / ledger tabs</span><span class="chip chip-ok">✔ expenses tab mein Status column + approval</span><span class="chip chip-ok">✔ banks tab: bank book (opening / in / out / closing)</span></div>
+      </td>
+      <td class="st">✅ PASS<div class="cnt">13/13</div></td>
+    </tr>
+    <tr class="ok">
+      <td class="num">7</td>
+      <td><b>Cart payment — EasyPaisa/JazzCash REAL integration (cell from/to, hashing, inquiry)</b><div class="why">Official docs ke mutabiq: HMAC-SHA256 hash, payer/receiver mobile, initiate + status polling.</div>
+          <div class="checks"><span class="chip chip-ok">✔ wallet: hmacHex</span><span class="chip chip-ok">✔ wallet: hmacB64</span><span class="chip chip-ok">✔ wallet: ppmpf_1</span><span class="chip chip-ok">✔ wallet: sandbox.jazzcash.com.pk</span><span class="chip chip-ok">✔ wallet: easypaystg.easypaisa.com.pk</span><span class="chip chip-ok">✔ wallet: epStatus</span><span class="chip chip-ok">✔ wallet: jcStatus</span><span class="chip chip-ok">✔ wallet: mobileAccountNo</span><span class="chip chip-ok">✔ wallet: payerMobile</span><span class="chip chip-ok">✔ wallet: receiverMobile</span><span class="chip chip-ok">✔ wallet: txnId</span><span class="chip chip-ok">✔ settings ▸ Wallets (EasyPaisa / JazzCash) credentials fields</span></div>
+      </td>
+      <td class="st">✅ PASS<div class="cnt">12/12</div></td>
+    </tr>
+    <tr class="ok">
+      <td class="num">8</td>
+      <td><b>Purchase order detail (create/edit par) + GRN mein PO load</b><div class="why">PO line editor (rate/qty/tax/discount) aur GRN mein PO select karke receive.</div>
+          <div class="checks"><span class="chip chip-ok">✔ PO/GRN: loadPoIntoGrn</span><span class="chip chip-ok">✔ PO/GRN: po-line</span><span class="chip chip-ok">✔ PO/GRN: _poBrief</span><span class="chip chip-ok">✔ PO/GRN: itemCount</span><span class="chip chip-ok">✔ PO form detail ke saath khulta hai (line editor)</span><span class="chip chip-ok">✔ GRN mein PO select karke load hota hai</span></div>
+      </td>
+      <td class="st">✅ PASS<div class="cnt">6/6</div></td>
+    </tr>
+    <tr class="ok">
+      <td class="num">9</td>
+      <td><b>Auto reorder — “Orders to verify” mein products nazar aayein</b><div class="why">Suggested qty, est. cost aur supplier ke saath — ab khaali nahi rehta.</div>
+          <div class="checks"><span class="chip chip-ok">✔ reorder: suggestedQty</span><span class="chip chip-ok">✔ reorder: supplierName</span><span class="chip chip-ok">✔ reorder: reorderTargetMultiplier</span><span class="chip chip-ok">✔ “Orders to verify” mein products hain</span></div>
+      </td>
+      <td class="st">✅ PASS<div class="cnt">4/4</div></td>
+    </tr>
+    <tr class="ok">
+      <td class="num">10</td>
+      <td><b>🏪 Shop Open/Close — header icon + comprehensive + day/shift closing report (PDF)</b><div class="why">Header pill + quick dialog + cash-drawer reconciliation wali closing report (print/PDF/WhatsApp/CSV).</div>
+          <div class="checks"><span class="chip chip-ok">✔ shop: shop-pill</span><span class="chip chip-ok">✔ shop: btnShop</span><span class="chip chip-ok">✔ shop: dayReport</span><span class="chip chip-ok">✔ shop: expectedCash</span><span class="chip chip-ok">✔ shop: 'shop.dayReport'</span><span class="chip chip-ok">✔ shop: 'exports.pdf'</span><span class="chip chip-ok">✔ header mein 🏪 shop pill (icon + state)</span><span class="chip chip-ok">✔ closing report: print / PDF / WhatsApp / CSV</span></div>
+      </td>
+      <td class="st">✅ PASS<div class="cnt">8/8</div></td>
+    </tr>
+    <tr class="ok">
+      <td class="num">11</td>
+      <td><b>Export / print → PDF, Excel, CSV + WhatsApp share</b><div class="why">Har report/table se PDF/Excel/CSV aur free wa.me (ya Cloud API/Twilio) se share.</div>
+          <div class="checks"><span class="chip chip-ok">✔ export: csv:</span><span class="chip chip-ok">✔ export: sheet:</span><span class="chip chip-ok">✔ export: report:</span><span class="chip chip-ok">✔ export: invoicePdf</span><span class="chip chip-ok">✔ export: htmlToPdf</span><span class="chip chip-ok">✔ export: xlsx</span><span class="chip chip-ok">✔ export: wa.me</span><span class="chip chip-ok">✔ reports se Export / share → PDF, Excel, CSV, WhatsApp</span></div>
+      </td>
+      <td class="st">✅ PASS<div class="cnt">8/8</div></td>
+    </tr>
+    <tr class="ok">
+      <td class="num">12</td>
+      <td><b>Settings &amp; configuration professional + polished toggles</b><div class="why">Har switch settings-row mein (label/hint + modern switch + On/Off), sab kuch settings-driven.</div>
+          <div class="checks"><span class="chip chip-ok">✔ settings UI: .f-row-switch</span><span class="chip chip-ok">✔ settings UI: .switch</span><span class="chip chip-ok">✔ settings UI: f-row-switch</span><span class="chip chip-ok">✔ settings rows modern switch ke saath (On/Off)</span></div>
+      </td>
+      <td class="st">✅ PASS<div class="cnt">4/4</div></td>
+    </tr>
+    <tr class="ok">
+      <td class="num">13</td>
+      <td><b>Dedicated Warehouse app — count, audit, bins, inventory</b><div class="why">Count sheets, blind count, variance, adjustments, bin/rack transfer — alag app.</div>
+          <div class="checks"><span class="chip chip-ok">✔ warehouse: countCreate</span><span class="chip chip-ok">✔ warehouse: countPost</span><span class="chip chip-ok">✔ warehouse: binTransfer</span><span class="chip chip-ok">✔ warehouse: audit: function</span><span class="chip chip-ok">✔ warehouse: putaway</span><span class="chip chip-ok">✔ warehouse: varianceValue</span><span class="chip chip-ok">✔ warehouse screen registered (App_Inventory2.html)</span><span class="chip chip-ok">✔ warehouse app: count sheets / audit / bins &amp; racks tabs</span></div>
+      </td>
+      <td class="st">✅ PASS<div class="cnt">8/8</div></td>
+    </tr>
+    <tr class="ok">
+      <td class="num">14</td>
+      <td><b>Dedicated mobile order-taking app (customers se order lena)</b><div class="why">Mobile-first order booking: customer, items, qty, advance → sale/order.</div>
+          <div class="checks"><span class="chip chip-ok">✔ registerScreen('takeorder')</span><span class="chip chip-ok">✔ orders.gs: convert</span><span class="chip chip-ok">✔ orders.gs: advance</span><span class="chip chip-ok">✔ order-taking app: products + cart</span></div>
+      </td>
+      <td class="st">✅ PASS<div class="cnt">4/4</div></td>
+    </tr>
+    <tr class="ok">
+      <td class="num">15</td>
+      <td><b>Product cards 1:1 square image + hover quick view (supplier waghera)</b><div class="why">aspect-ratio 1/1, supplier line, hover popover mein stock/price/rack.</div>
+          <div class="checks"><span class="chip chip-ok">✔ cards: aspect-ratio:1/1</span><span class="chip chip-ok">✔ cards: .pc-pop</span><span class="chip chip-ok">✔ cards: .pc-sup</span><span class="chip chip-ok">✔ cards: posSupplierName</span><span class="chip chip-ok">✔ cards: hoverQuickView</span><span class="chip chip-ok">✔ POS cards 1:1 image (aspect-ratio 1/1)</span><span class="chip chip-ok">✔ card par supplier line + hover quick view</span></div>
+      </td>
+      <td class="st">✅ PASS<div class="cnt">7/7</div></td>
+    </tr>
+    <tr class="ok">
+      <td class="num">16</td>
+      <td><b>🔐 Users &amp; Security — allow / disallow rules (checkboxes)</b><div class="why">Har permission par tri-state: Inherit (role) → ✓ Allow → ⛔ Deny.</div>
+          <div class="checks"><span class="chip chip-ok">✔ rules: extraPermissions</span><span class="chip chip-ok">✔ rules: deniedPermissions</span><span class="chip chip-ok">✔ rules: _permList</span><span class="chip chip-ok">✔ rules: userRulesEditor</span><span class="chip chip-ok">✔ rules: rules-editor</span><span class="chip chip-ok">✔ user form mein allow / disallow rules editor</span></div>
+      </td>
+      <td class="st">✅ PASS<div class="cnt">6/6</div></td>
+    </tr></tbody></table>
+<footer>Generated by <code>node tools/verify_punchlist.js</code> — gate: <code>bash tools/verify.sh</code></footer>
+</div></body></html>

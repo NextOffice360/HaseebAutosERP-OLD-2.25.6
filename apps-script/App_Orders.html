@@ -1,0 +1,437 @@
+<script>
+/* ==========================================================================
+   HASEEB AUTOS — ORDER BOOK + MOBILE ORDER PAD
+   --------------------------------------------------------------------------
+   • orders   — order book (list · detail · status · convert to invoice)
+   • takeorder— mobile-first order pad: bara search, bari qty buttons,
+                customer select, advance, submit. Field salesman ke liye bana
+                hai (thumb reach: sab kuch neechay, koi bottom scroll nahi).
+   ========================================================================== */
+(function () {
+  'use strict';
+
+  const ORDER_STATUS = ['DRAFT', 'CONFIRMED', 'PICKING', 'PACKED', 'DELIVERED', 'INVOICED', 'CANCELLED'];
+
+  function statusBadge(st) {
+    const cls = { DRAFT: 'info', CONFIRMED: 'info', PICKING: 'warn', PACKED: 'warn',
+      DELIVERED: 'ok', INVOICED: 'ok', CANCELLED: 'err' }[String(st || '').toUpperCase()] || 'info';
+    return h('span', { class: 'badge ' + cls }, (st || '—'));
+  }
+
+  /* ============================== ORDER BOOK =============================== */
+  App.registerScreen('orders', {
+    title: 'Order Book', icon: '📝', perm: 'pos.sell',
+    subtitle: () => 'Field orders · status · invoice mein badlein',
+    actions() {
+      const a = [{ label: 'Refresh', icon: '↻', onClick: () => App.refresh() }];
+      a.unshift({ label: '📱 Take order', icon: '📱', cls: 'ok', onClick: () => App.go('takeorder') });
+      return a;
+    },
+    render(body) {
+      const host = h('div'); body.appendChild(host);
+      UI2.tabs(host, {
+        level: 1,
+        tabs: [
+          { id: 'list', label: 'Orders', icon: '📝', render: c => renderOrderList(c) },
+          { id: 'board', label: 'Pipeline', icon: '📊', render: c => renderOrderBoard(c) }
+        ]
+      });
+    }
+  });
+
+  function renderOrderList(c) {
+    const host = h('div');
+    const bar = h('div', { class: 'filters' });
+    const status = h('select', { class: 'st2-f', 'aria-label': 'Order status' },
+      h('option', { value: '' }, 'All statuses'),
+      ...ORDER_STATUS.map(s => h('option', { value: s }, s)));
+    const q = h('input', { class: 'st2-q', type: 'search', placeholder: '🔎 Order no / customer / phone…', 'aria-label': 'Search orders' });
+    bar.append(status, q);
+    c.appendChild(bar); c.appendChild(host);
+    let timer = null;
+    q.oninput = () => { clearTimeout(timer); timer = setTimeout(load, 220); };
+    status.onchange = load;
+
+    function load() {
+      host.innerHTML = '';
+      host.appendChild(UI2.skeleton ? UI2.skeleton(5) : h('div', null, '…'));
+      API.call('orders.list', { status: status.value, q: q.value.trim() }, { offlineFallback: () => [] })
+        .then(rows => {
+          host.innerHTML = '';
+          host.appendChild(UI2.table({
+            screen: 'orders_list', rows: rows || [], height: '52vh', exportName: 'orders',
+            columns: [
+              { key: 'orderNo', label: 'Order', render: r => h('b', null, r.orderNo) },
+              { key: 'date', label: 'Date', render: r => fmt.date(r.date) },
+              { key: 'expectedDate', label: 'Delivery', render: r => r.expectedDate ? fmt.date(r.expectedDate) : '—' },
+              { key: 'customerName', label: 'Customer' },
+              { key: 'phone', label: 'Phone', render: r => fmt.phone(r.phone) },
+              { key: 'total', label: 'Total', num: true, render: r => fmt.money(r.total) },
+              { key: 'advance', label: 'Advance', num: true, render: r => fmt.money(r.advance) },
+              { key: 'balance', label: 'Balance', num: true, render: r => h('b', {
+                style: { color: Number(r.balance) > 0 ? 'var(--err)' : 'var(--ok)' } }, fmt.money(r.balance)) },
+              { key: 'status', label: 'Status', render: r => statusBadge(r.status) }
+            ],
+            rowActions: r => [
+              { icon: '👁', label: 'Open', onClick: () => orderDetail(r.id, load) },
+              r.status !== 'INVOICED' ? { icon: '🧾', label: 'Invoice', onClick: () => convertOrder(r, load) } : null
+            ].filter(Boolean),
+            onRow: r => orderDetail(r.id, load)
+          }));
+        }).catch(e => { host.innerHTML = ''; host.appendChild(h('div', { class: 'empty' }, '⚠ ' + e.message)); });
+    }
+    load();
+  }
+
+  function renderOrderBoard(c) {
+    const host = h('div');
+    c.appendChild(host);
+    API.call('orders.summary', {}, { offlineFallback: () => ({}) }).then(sum => {
+      host.innerHTML = '';
+      host.appendChild(UI2.kpiGrid([
+        { icon: '📝', label: 'Total orders', value: sum.total || 0 },
+        { icon: '📅', label: 'Aaj ke orders', value: sum.today || 0, cls: 'info' },
+        { icon: '💰', label: 'Open value', value: fmt.money(sum.openValue || 0), cls: 'warn' },
+        { icon: '✅', label: 'Advance liya gaya', value: fmt.money(sum.advance || 0), cls: 'ok' }
+      ], 4));
+      host.appendChild(UI2.table({
+        screen: 'orders_board', height: '30vh',
+        rows: Object.keys(sum.byStatus || {}).map(k => ({ status: k, count: sum.byStatus[k] })),
+        columns: [
+          { key: 'status', label: 'Status', render: r => statusBadge(r.status) },
+          { key: 'count', label: 'Orders', num: true }
+        ]
+      }));
+    }).catch(e => host.appendChild(h('div', { class: 'empty' }, '⚠ ' + e.message)));
+  }
+
+  function orderDetail(id, after) {
+    API.call('orders.get', { id: id }, { offlineFallback: () => null }).then(res => {
+      if (!res) return UI.toast('Order load nahi hui', 'err');
+      const o = res.order;
+      const host = h('div');
+      host.appendChild(h('div', { class: 'po-meta', style: { display: 'flex' } },
+        h('div', null, h('div', { class: 'muted', style: { fontSize: 'var(--fs-xs)' } }, 'Order'), h('b', null, o.orderNo)),
+        h('div', null, h('div', { class: 'muted', style: { fontSize: 'var(--fs-xs)' } }, 'Customer'), h('b', null, o.customerName || 'Walk-in')),
+        h('div', null, h('div', { class: 'muted', style: { fontSize: 'var(--fs-xs)' } }, 'Status'), statusBadge(o.status)),
+        h('div', null, h('div', { class: 'muted', style: { fontSize: 'var(--fs-xs)' } }, 'Total'), h('b', null, fmt.money(o.total)))));
+      host.appendChild(UI2.table({
+        screen: 'order_lines', rows: res.items || [], height: '30vh',
+        columns: [
+          { key: 'code', label: 'Code' }, { key: 'name', label: 'Item' },
+          { key: 'qty', label: 'Qty', num: true },
+          { key: 'price', label: 'Price', num: true, render: r => fmt.money(r.price) },
+          { key: 'discount', label: 'Disc', num: true, render: r => fmt.money(r.discount) },
+          { key: 'lineTotal', label: 'Line total', num: true, render: r => fmt.money(r.lineTotal) }
+        ]
+      }));
+      UI2.modal({
+        title: '📝 Order ' + o.orderNo, size: 'lg', body: host,
+        subtitle: (o.phone ? '📞 ' + fmt.phone(o.phone) + ' · ' : '') + (o.expectedDate ? 'Delivery ' + fmt.date(o.expectedDate) : ''),
+        actions: [
+          { label: 'Close', cls: 'ghost', onClick: c => c() },
+          res.actions.canConvert ? { label: '🧾 Convert to invoice', cls: 'ok', onClick: c => { c(); convertOrder(o, after); } } : null,
+          res.actions.canCancel ? { label: 'Cancel order', cls: 'danger', onClick: c => {
+            UI2.confirm('Order cancel karein?', ok => {
+              if (!ok) return;
+              API.call('orders.status', { id: o.id, status: 'CANCELLED' })
+                .then(() => { UI.toast('Cancelled', 'ok'); c(); if (after) after(); })
+                .catch(e => UI.toast(e.message, 'err'));
+            });
+          } } : null
+        ].filter(Boolean)
+      });
+    }).catch(e => UI.toast(e.message, 'err'));
+  }
+
+  function convertOrder(order, after) {
+    const adv = h('input', { class: 'f-input', type: 'number', value: order.advance || 0, 'aria-label': 'Advance received' });
+    const method = h('select', { class: 'f-input', 'aria-label': 'Payment method' },
+      ...['CASH', 'BANK', 'JAZZCASH', 'EASYPAISA', 'RAAST', 'CARD'].map(m => h('option', { value: m }, m)));
+    UI2.modal({
+      title: '🧾 Order → Invoice', size: 'sm',
+      subtitle: 'Total ' + fmt.money(order.total) + ' · baqi udhaar ban jayega',
+      body: h('div', { class: 'f-grid' },
+        h('div', { class: 'f-col' }, h('label', null, 'Advance liya gaya'), adv),
+        h('div', { class: 'f-col' }, h('label', null, 'Method'), method)),
+      actions: [
+        { label: 'Cancel', cls: 'ghost', onClick: c => c() },
+        { label: 'Convert', cls: 'ok', onClick: async c => {
+          try {
+            const r = await API.call('orders.convert', { id: order.id, advance: Number(adv.value || 0), method: method.value });
+            UI.toast('Invoice ' + r.sale.invoiceNo + ' ban gayi ✅', 'ok');
+            c(); if (after) after(); App.refresh();
+          } catch (e) { UI.toast(e.message, 'err', 4000); }
+        } }
+      ]
+    });
+  }
+
+  /* ========================= MOBILE ORDER PAD ============================== */
+  /* full-screen, thumb-friendly: search upar, cart beech, action bar neechay */
+  App.registerScreen('takeorder', {
+    title: 'Take Order', icon: '📱', perm: 'pos.sell', full: true,
+    subtitle: () => 'Mobile order pad',
+    render(body) {
+      const S = { lines: [], customer: null, discount: 0, advance: 0,
+        expectedDate: '', notes: '', priority: 'NORMAL', editingId: '' };
+
+      /* ---- header ---- */
+      const head = h('div', { class: 'mo-head' },
+        h('button', { class: 'btn sm sec', onclick: () => App.go('orders') }, '← Orders'),
+        h('div', { class: 'mo-title' }, '📱 New order'),
+        h('button', { class: 'btn sm sec', onclick: () => { S.lines = []; S.customer = null; S.editingId = ''; paint(); } }, '♻ Reset'));
+
+      /* ---- customer ---- */
+      const custDetail = h('div', { id:'takeCustDetail', style:'margin:6px 12px 0;display:none;padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--panel-2);font-size:12px' });
+      const custBar = h('button', { class: 'mo-cust', onclick: () => pickCustomer(c => { S.customer = c; paint(); updateTakeCustDetail(c); }) },
+        '👤 Walk-in customer (tap to select)');
+      function updateTakeCustDetail(c){
+        var host=document.getElementById('takeCustDetail'); if(!host) return;
+        if(!c||!c.id){ host.style.display='none'; host.innerHTML=''; return; }
+        host.style.display='block'; host.innerHTML='<div class="muted" style="font-size:11px">⏳ Loading balance…</div>';
+        var stale=Number(c.balance||c.bal||0);
+        var render=function(bal){
+          var prev=Number(bal||0);
+          var total=(function(){ try{ return S.lines.reduce(function(a,l){return a+Number(l.price||0)*Number(l.qty||0);},0);}catch(e){return 0;}})();
+          var closing=Math.max(0, prev+total);
+          var limit=Number(c.creditLimit||c.limit||0);
+          host.innerHTML='';
+          if(c.phone) host.appendChild(h('div',{style:'font-size:11px;color:var(--muted);margin-bottom:4px'}, '📞 '+fmt.phone(c.phone)));
+          var grid=h('div',{style:'display:flex;gap:6px;flex-wrap:wrap;margin-top:6px'});
+          grid.appendChild(h('div',{style:'flex:1;min-width:80px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px;text-align:center'}, h('div',{style:'font-size:10px;color:var(--muted);font-weight:700;letter-spacing:.3px'}, 'Previous'), h('b',{style:'font-size:13px'}, fmt.money(prev)) ));
+          grid.appendChild(h('div',{style:'flex:1;min-width:80px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px;text-align:center'}, h('div',{style:'font-size:10px;color:var(--muted);font-weight:700'}, 'This order'), h('b',{style:'font-size:13px'}, fmt.money(total)) ));
+          grid.appendChild(h('div',{style:'flex:1;min-width:80px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px;text-align:center;border-color:'+(closing>0?'var(--err)':'var(--ok)')}, h('div',{style:'font-size:10px;color:var(--muted);font-weight:700'}, 'Closing'), h('b',{style:'font-size:13px;color:'+(closing>0?'var(--err)':'var(--ok)')}, fmt.money(closing)) ));
+          host.appendChild(grid);
+          if(limit){ host.appendChild(h('div',{style:'margin-top:6px;padding:6px 8px;background:var(--panel);border:1px solid var(--line);border-radius:8px;display:flex;justify-content:space-between;font-size:11px'}, h('span',null,'Limit '+fmt.money(limit)), h('span',{style:'color:'+(prev>limit?'var(--err)':'var(--muted)')}, prev>limit?'OVER LIMIT':'Available '+fmt.money(Math.max(0,limit-prev)) ) )); }
+          API.call('parties.customerHistory',{customerId:c.id, limit:2},{offlineFallback:function(){return null;}}).then(function(hist){
+            if(hist && hist.recentSales){
+              var txt=(hist.recentSales||[]).slice(0,2).map(function(s){return s.invoiceNo+' '+fmt.money(s.total);}).join(' · ');
+              var rating=hist.credit? ' · Rating '+(hist.credit.rating||'-')+'/5':'';
+              host.appendChild(h('div',{style:'font-size:11px;color:var(--muted);margin-top:8px'}, (txt? 'Last: '+txt : 'No recent sales')+rating ));
+            }
+          }).catch(function(){});
+          var btn=h('button',{class:'btn sm sec', style:'margin-top:8px;width:100%'}, '📒 View ledger — prev / paid / closing');
+          btn.onclick=function(){
+            API.call('customers.ledger',{id:c.id},{offlineFallback:function(){return {rows:[], opening:0, closing:prev};}}).then(function(res){
+              var body=h('div');
+              body.appendChild(h('div',{class:'grid g3', style:'margin-bottom:12px'}, h('div',{class:'card', style:'padding:10px;text-align:center'}, h('b',null,fmt.money(res.opening||0)), h('div',{style:'font-size:11px;color:var(--muted)'},'Opening')), h('div',{class:'card', style:'padding:10px;text-align:center'}, h('b',null,fmt.money(res.closing||prev)), h('div',{style:'font-size:11px;color:var(--muted)'},'Closing')), h('div',{class:'card', style:'padding:10px;text-align:center'}, h('b',null, String((res.rows||[]).length)), h('div',{style:'font-size:11px;color:var(--muted)'},'Entries')) ));
+              if(res.rows && res.rows.length){
+                body.appendChild(UI.table({columns:[{key:'date',label:'Date',render:function(r){return fmt.date(r.date);}},{key:'refType',label:'Type'}, {key:'description',label:'Description'}, {key:'debit',label:'Debit',num:true,render:function(r){return r.debit? fmt.money(r.debit):'—';}}, {key:'credit',label:'Credit',num:true,render:function(r){return r.credit? fmt.money(r.credit):'—';}}, {key:'balance',label:'Balance',num:true,render:function(r){return h('b',null,fmt.money(r.balance));}}], rows: res.rows.slice(0,20), emptyText:'Koi entry nahi'}));
+              } else {
+                body.appendChild(h('div',{class:'empty'}, 'Koi ledger entry nahi — naya customer'));
+              }
+              UI.drawer({title:'📒 Ledger — '+c.name, body:body});
+            }).catch(function(e){ UI.toast(e.message,'err'); });
+          };
+          host.appendChild(btn);
+          var collBtn=h('button',{class:'btn sm ghost', style:'margin-top:6px;width:100%'}, '💰 Collect payment');
+          collBtn.onclick=function(){ if(window.OrdersUI && window.OrdersUI.receivePay) window.OrdersUI.receivePay(c); else UI.toast('Collect: POS → Customers → Receive','ok'); };
+          host.appendChild(collBtn);
+        };
+        render(stale);
+        API.call('parties.balance',{partyType:'CUSTOMER', id:c.id},{offlineFallback:function(){return {balance:stale}}}).then(function(r){ var bal=r && typeof r.balance!=='undefined'? Number(r.balance): stale; render(bal); }).catch(function(){});
+      }
+
+      /* ---- search ---- */
+      const catSel = h('select', { class:'f-input', style:'min-width:0;max-width:140px;text-overflow:ellipsis;flex:0 1 auto', 'aria-label':'Category' }, h('option',{value:''},'All categories'));
+      // populate categories from catalog if available
+      try{ var cats=(App.state.catalog && App.state.catalog.items||[]); var uniq=[...new Set(cats.map(x=>x.category||x.cat).filter(Boolean))].sort(); uniq.forEach(function(c){ catSel.appendChild(h('option',{value:c},c)); }); }catch(e){}
+      catSel.onchange = function(){ search.dispatchEvent(new Event('input',{bubbles:true})); };
+      const scanBtn = h('button',{class:'btn sm', title:'Scan barcode/QR', 'aria-label':'Scan', onclick: function(){
+        var doCode=function(code){ search.value=code; search.dispatchEvent(new Event('input',{bubbles:true})); var rows=results.querySelectorAll('.mo-hit'); if(rows.length===1) rows[0].click(); };
+        if(window.HaScan && HaScan.scan) HaScan.scan({onDetect:doCode});
+        else if(window.PWA && PWA.scanWithCamera) PWA.scanWithCamera(doCode);
+        else { UI2.askCode().then(function(c){ if(c) doCode(c); }); }
+      }}, '📷 Scan');
+      const bulkBtn = h('button',{class:'btn sm', title:'Bulk Add — Multi Select Mode (scan + search + tick)', 'aria-label':'Bulk', onclick: function(){
+        if(typeof UI2!=='undefined' && UI2.itemPicker){
+          var picker=UI2.itemPicker({ mode:'multi', icon:'🛒', title:'Bulk Add — Take Order',
+            hint:'Scan → Bulk List → Add All · ya search/📋 list se tick karein', commitLabel:'Add Selected to Order',
+            placeholder:'Search product — name / code / barcode…', map:function(r,q){return {r:r,q:q}}, sub:function(r){ return [r.code, r.barcode? 'barcode '+r.barcode : '', r.category, r.stock!==undefined? 'stock '+fmt.num(r.stock):'', (r.retailPrice||r.price? fmt.money(r.retailPrice||r.price):'')].filter(Boolean).join(' · '); }, onAdd:function(line){ var r=line.r; var f=S.lines.find(function(l){return l.itemId===r.id}); if(f) f.qty+=Number(line.q||1); else S.lines.push({itemId:r.id, code:r.code, name:r.name, qty:Number(line.q||1), price:Number(r.retailPrice||r.price||0), discount:0, taxRate:Number(r.taxRate||0), stock:r.stock}); paint(); UI.toast('Added: '+r.name+' ×'+(line.q||1)+' — order updated','ok'); }, lines: [] });
+          UI2.modal({title:'📦 Bulk Add — Take Order', subtitle:'Scan → auto-add to Bulk List → field clears → next scan ready · or search + tick', size:'lg', body:picker,
+            actions:[ {label:'Cancel', cls:'ghost', onClick:function(c){c();}},
+              {label:'Add Selected to Order', cls:'ok', onClick:function(c){
+                if(!(picker.api && picker.api.hasSel && picker.api.hasSel())){ return UI.toast('Koi item select nahi — scan ya tick karein','warn'); }
+                picker.api.commit(); c();
+              } } ]});
+        } else { UI.toast('Bulk picker not available','warn'); }
+      }}, '☑ Bulk');
+      const search = h('input', { class: 'mo-search', type: 'search',
+        placeholder: '🔎 Item dhoondain (name / code / barcode)', 'aria-label': 'Search item' });
+      search.addEventListener('keydown', function(e){
+        if(e.key!=='Enter') return;
+        e.preventDefault();
+        var q=String(search.value||'').trim();
+        if(!q) return;
+        // Try to find exact barcode/code match via API then add
+        Shared.items({q:q, limit:5}).then(function(rows){   /* v2.27.0 W3.T3 */
+          var exact=(rows||[]).find(function(r){ return String(r.code).toLowerCase()===q.toLowerCase() || String(r.barcode||'').toLowerCase()===q.toLowerCase(); });
+          if(exact){
+            var found=S.lines.find(function(l){return l.itemId===exact.id;});
+            if(found) found.qty+=1; else S.lines.push({itemId:exact.id, code:exact.code, name:exact.name, qty:1, price:Number(exact.retailPrice||0), discount:0, taxRate:Number(exact.taxRate||0)});
+            search.value=''; search.dispatchEvent(new Event('input',{bubbles:true})); results.innerHTML=''; paint(); search.focus();
+            UI.toast('Scanned: '+exact.name,'ok');
+          } else if((rows||[]).length===1){
+            var r=rows[0]; var f=S.lines.find(function(l){return l.itemId===r.id;}); if(f) f.qty+=1; else S.lines.push({itemId:r.id, code:r.code, name:r.name, qty:1, price:Number(r.retailPrice||0), discount:0, taxRate:Number(r.taxRate||0)}); search.value=''; results.innerHTML=''; paint(); search.focus();
+          } else if((rows||[]).length>1){
+            UI.toast(rows.length+' matches — list se chunein','warn');
+            search.dispatchEvent(new Event('input',{bubbles:true}));  // render matches in dropdown
+            search.value=''; search.focus();                            // clear field → next scan never appends
+          } else {
+            UI.toast('Not found: '+q,'warn'); search.value=''; results.innerHTML=''; search.focus();
+          }
+        }).catch(function(){ UI.toast('Search fail','err'); });
+      });
+      const results = h('div', { class: 'mo-results' });
+
+      let timer = null;
+      search.oninput = () => {
+        clearTimeout(timer);
+        timer = setTimeout(async () => {
+          const q = search.value.trim();
+          const cat = catSel.value;
+          results.innerHTML = '';
+          if (!q && !cat) return;
+          let rows = await Shared.items({ q: q, limit: 12 });   /* v2.27.0 W3.T3 */
+          if(cat) rows = (rows||[]).filter(function(r){ return String(r.category||r.cat||'').toLowerCase()===String(cat).toLowerCase(); });
+          (rows || []).forEach(r => results.appendChild(h('button', { class: 'mo-hit', onclick: () => addItem(r) },
+            h('b', null, r.name),
+            h('span', { class: 'muted' }, (r.code || '') + ' · ' + fmt.money(r.retailPrice) +
+              (r.stock !== undefined ? ' · stock ' + fmt.num(r.stock) : '')))));
+          if (!(rows || []).length) results.appendChild(h('div', { class: 'empty' }, 'Koi item nahi mila'));
+        }, 200);
+      };
+
+      function addItem(r) {
+        const found = S.lines.find(l => l.itemId === r.id);
+        if (found) found.qty += 1;
+        else S.lines.push({ itemId: r.id, code: r.code, name: r.name, qty: 1,
+          price: Number(r.retailPrice || 0), discount: 0, taxRate: Number(r.taxRate || 0),
+          stock: r.stock, unit: r.unit || 'pcs' });
+        search.value = ''; results.innerHTML = '';
+        paint();
+      }
+
+      /* ---- cart ---- */
+      const cart = h('div', { class: 'mo-cart' });
+
+      /* ---- totals + action bar ---- */
+      const totals = h('div', { class: 'mo-totals' });
+      const submit = h('button', { class: 'mo-submit' }, '✅ Order save karein');
+      const advanceInput = h('input', { class: 'f-input', type: 'number', value: '', placeholder: '0.00', style: { flex:'1', minWidth:'90px' }, 'aria-label': 'Advance received' });
+      const dateInput = h('input', { class: 'f-input', type: 'date', 'aria-label': 'Delivery date', style:{flex:'1', minWidth:'110px'} });
+      const notesInput = h('input', { class: 'f-input', type: 'text', placeholder: 'Note (optional)', 'aria-label': 'Order note', style:{flex:'1.2', minWidth:'120px'} });
+      const advanceWrap = h('div', {class:'f-col', style:'flex:1;min-width:90px'}, h('label', {style:'font-size:10px;font-weight:700;color:var(--muted);letter-spacing:.3px'}, 'Advance'), advanceInput);
+      const dateWrap = h('div', {class:'f-col', style:'flex:1;min-width:110px'}, h('label', {style:'font-size:10px;font-weight:700;color:var(--muted)'}, 'Delivery date'), dateInput);
+      const notesWrap = h('div', {class:'f-col', style:'flex:1.2;min-width:120px'}, h('label', {style:'font-size:10px;font-weight:700;color:var(--muted)'}, 'Note'), notesInput);
+
+      function totalsOf() {
+        let sub = 0, disc = 0;
+        S.lines.forEach(l => { sub += l.price * l.qty; disc += Number(l.discount || 0); });
+        sub = Math.round(sub * 100) / 100;
+        const total = Math.max(0, Math.round((sub - disc - Number(S.discount || 0)) * 100) / 100);
+        return { sub: sub, disc: disc, total: total, balance: Math.max(0, total - Number(advanceInput.value || 0)) };
+      }
+
+      function paint() {
+        cart.innerHTML = '';
+        if (!S.lines.length) {
+          cart.appendChild(h('div', { class: 'empty' }, h('span', { class: 'big' }, '🛒'),
+            h('div', null, 'Abhi koi item nahi — upar search karein')));
+        }
+        S.lines.forEach((l, i) => {
+          cart.appendChild(h('div', { class: 'mo-line' },
+            h('div', { class: 'mo-linfo' },
+              h('b', null, l.name),
+              h('div', { class: 'muted', style: { fontSize: 'var(--fs-xs)' } },
+                (l.code || '') + ' · ' + fmt.money(l.price) + ' × ' + fmt.num(l.qty) +
+                ' = ' + fmt.money(l.price * l.qty - Number(l.discount || 0)))),
+            h('div', { class: 'mo-lqty' },
+              h('button', { class: 'qbtn', onclick: () => { l.qty = Math.max(1, l.qty - 1); paint(); } }, '−'),
+              h('span', { class: 'qval' }, fmt.num(l.qty)),
+              h('button', { class: 'qbtn', onclick: () => { l.qty += 1; paint(); } }, '＋'),
+              h('button', { class: 'qbtn danger', onclick: () => { S.lines.splice(i, 1); paint(); } }, '🗑'))));
+        });
+        const t = totalsOf();
+        totals.innerHTML = '';
+        totals.appendChild(h('div', { class: 'mo-trow' }, h('span', null, 'Items'), h('b', null, S.lines.length)));
+        totals.appendChild(h('div', { class: 'mo-trow' }, h('span', null, 'Subtotal'), h('b', null, fmt.money(t.sub))));
+        totals.appendChild(h('div', { class: 'mo-trow' }, h('span', null, 'Discount'), h('b', null, fmt.money(t.disc))));
+        totals.appendChild(h('div', { class: 'mo-trow mo-grand' }, h('span', null, 'Total'), h('b', null, fmt.money(t.total))));
+        totals.appendChild(h('div', { class: 'mo-trow' }, h('span', null, 'Balance (baqi)'),
+          h('b', { style: { color: 'var(--err)' } }, fmt.money(t.balance))));
+        custBar.textContent = S.customer
+          ? '👤 ' + S.customer.name + (S.customer.phone ? ' · ' + fmt.phone(S.customer.phone) : '')
+          : '👤 Walk-in customer (tap to select)';
+      }
+
+      advanceInput.oninput = paint;
+
+      submit.onclick = async () => {
+        if (!S.lines.length) return UI.toast('Koi item nahi', 'warn');
+        try {
+          const payload = {
+            id: S.editingId || null,
+            customerId: S.customer ? S.customer.id : '',
+            customerName: S.customer ? S.customer.name : 'Walk-in Customer',
+            phone: S.customer ? (S.customer.phone || '') : '',
+            locationId: App.state.locationId,
+            expectedDate: dateInput.value,
+            priority: S.priority,
+            discount: Number(S.discount || 0),
+            advance: Number(advanceInput.value || 0),
+            notes: notesInput.value.trim(),
+            items: S.lines.map(l => ({ itemId: l.itemId, qty: l.qty, price: l.price,
+              discount: Number(l.discount || 0), taxRate: l.taxRate, note: '' }))
+          };
+          const res = await API.call('orders.save', { order: payload });
+          UI.toast('Order ' + res.order.orderNo + ' save ho gayi ✅', 'ok');
+          S.lines = []; S.customer = null; S.editingId = '';
+          advanceInput.value = '0'; notesInput.value = ''; dateInput.value = '';
+          paint();
+        } catch (e) { UI.toast(e.message, 'err', 4000); }
+      };
+
+      // v2.23.11: Enhanced search row with category dropdown + scan + bulk (like Field/Salesman)
+      const searchRow = h('div', { style:'display:flex;gap:6px;align-items:center;margin:0 12px;flex-wrap:wrap' }, 
+        h('div', {style:'flex:1;min-width:140px'}, search),
+        h('div', {style:'display:flex;gap:6px;flex:0 0 auto;flex-wrap:wrap'}, catSel, scanBtn, bulkBtn)
+      );
+      body.appendChild(h('div', { class: 'mo' },
+        head, custBar, custDetail, searchRow, results, cart,
+        h('div', { class: 'mo-foot' },
+          totals,
+          h('div', { class: 'mo-inputs', style:'display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end' }, advanceWrap, dateWrap, notesWrap),
+          submit)));
+      paint();
+      setTimeout(() => search.focus(), 100);
+    }
+  });
+
+  function pickCustomer(cb) {
+    const q = h('input', { class: 'f-input', type: 'search', placeholder: 'Naam / phone…', 'aria-label': 'Search customer' });
+    const list = h('div', { class: 'gs-results', style: { position: 'static', maxHeight: '240px' } });
+    q.oninput = debounce(async () => {
+      /* v2.27.0 (W3.T3) — shared accessor */
+      const rows = await Shared.customers({ q: q.value.trim(), pageSize: 12 });
+      list.innerHTML = '';
+      rows.forEach(c => list.appendChild(h('div', { class: 'gs-item', onclick: () => { cb(c); close(); } },
+        h('b', null, c.name), h('span', { class: 'muted' }, (c.phone || '') +
+          ' · balance ' + fmt.money(c.balance ?? c.bal ?? 0)))));
+      if (!rows.length) list.appendChild(h('div', { class: 'empty' }, 'Koi customer nahi mila'));
+    }, 220);
+    let close = () => { };
+    UI2.modal({
+      title: 'Customer chunein', size: 'sm',
+      body: h('div', null, q, list),
+      actions: [{ label: 'Walk-in', cls: 'sec', onClick: c => { c(); cb(null); } },
+        { label: 'Close', cls: 'ghost', onClick: c => c() }]
+    });
+    close = () => { const b = Array.from(document.querySelectorAll('.modal2 .btn, .modal .btn'))
+      .find(x => /Close/.test(x.textContent)); if (b) b.click(); };
+  }
+
+  window.OrdersUI = { orderDetail, convertOrder, statusBadge, pickCustomer };
+})();
+</script>

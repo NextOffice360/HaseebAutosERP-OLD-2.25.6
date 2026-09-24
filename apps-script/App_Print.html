@@ -1,0 +1,799 @@
+<script>
+/* ==========================================================================
+   HASEEB AUTOS — PRINT ENGINE (frontend)
+   • Har paper size: 58mm / 80mm / 110mm thermal + A3 / A4 / A5 / Half sheet
+   • Professional invoice layout (bill-to, item table, tax box, balances)
+   • ESC/POS raw download for direct thermal printers
+   • Visual template designer: fields on/off, reorder, custom fields, live preview
+   Sab kuch Settings ▸ Print templates me stored JSON se chalta hai (no hardcoding).
+   ========================================================================== */
+(function () {
+'use strict';
+
+const P = {
+  sizes: [],          // cache: print.sizes
+  templates: {},      // cache by type
+
+  async sizesList() {
+    if (this.sizes.length) return this.sizes;
+    try { this.sizes = await API.call('print.sizes', {}, { offlineFallback: () => FALLBACK_SIZES }) || FALLBACK_SIZES; }
+    catch (e) { this.sizes = FALLBACK_SIZES; }
+    return this.sizes;
+  },
+  size(id) {
+    const all = this.sizes.length ? this.sizes : FALLBACK_SIZES;
+    return all.find(s => s.id === id) || all.find(s => s.id === '80mm') || all[0];
+  },
+  async schema(type) {
+    try { return await API.call('print.fieldSchema', { type }, { offlineFallback: () => [] }) || []; }
+    catch (e) { return []; }
+  },
+  async templatesFor(type) {
+    try {
+      const rows = await API.call('config.templates', { type }, { offlineFallback: () => [] }) || [];
+      return rows.length ? rows : [await API.call('print.defaultTemplate', { type })];
+    } catch (e) { return []; }
+  },
+
+  /* --------------------------- field visibility --------------------------- */
+  vis(cfg, key, dft) {
+    const f = (cfg.fields || {})[key];
+    if (f && f.visible !== undefined) return !!f.visible;
+    return dft !== undefined ? dft : true;
+  },
+
+  /* ============================== RENDER ================================== */
+  /** Professional HTML for any paper size (thermal roll + A-series tax invoice) */
+  html(sale, cfg, opts) {
+    opts = opts || {};
+    const st = App.state.settings || {};
+    const sz = this.size(cfg.paper);
+    const thermal = sz.kind === 'THERMAL';
+    /* invoice par hamesha fixed decimals (Settings ▸ print.decimals), UI wala compact nahi */
+    const dp = Math.max(0, Math.min(4, Number(st.printDecimals !== undefined ? st.printDecimals : 2)));
+    const m = v => (st.currencySymbol || 'Rs') + ' ' +
+      Number(v || 0).toLocaleString('en-US', { minimumFractionDigits: dp, maximumFractionDigits: dp });
+    const dt = fmt.date(sale.date, true);
+    const branch = (App.state.locations || []).find(l => l.id === sale.locationId);
+    const vis = (k, d) => this.vis(cfg, k, d);
+    const on = (k, d) => String(st[k] === undefined ? (d === false ? 'false' : 'true') : st[k]) === 'true';
+    const cf = cfg.customFields || [];
+    const customVal = key => {
+      const f = cf.find(x => x.key === key);
+      if (!f) return '';
+      return sale[f.source || key] || (sale.customFields || {})[key] || f.value || '';
+    };
+    const taxLabel = st.taxLabel || 'GST';
+    const taxPct = (Number(sale.tax || 0) && Number(sale.subtotal || 0) - Number(sale.discount || 0))
+      ? Math.round(Number(sale.tax) / (Number(sale.subtotal) - Number(sale.discount)) * 1000) / 10 : 0;
+
+    /* ----------------------------- ITEM ROWS ----------------------------- */
+    const items = sale.items || [];
+    const t = cfg.table || {};
+    const rowsHtml = items.map((it, i) => {
+      const uom = it.unit || it.uom || '';
+      return '<tr>' +
+        '<td class="c">' + (i + 1) + '</td>' +
+        '<td><div class="iname">' + esc(it.name) + '</div>' +
+          '<div class="imeta">' +
+            (t.showCode !== false && it.code ? '<span>Code: ' + esc(it.code) + '</span>' : '') +
+            (uom ? '<span>Unit: ' + esc(uom) + '</span>' : '') +
+            (t.showHsn && it.hsn ? '<span>HSN: ' + esc(it.hsn) + '</span>' : '') +
+            (it.notes ? '<span>' + esc(it.notes) + '</span>' : '') +
+          '</div></td>' +
+        (t.showQty !== false ? '<td class="c">' + fmt.num(it.qty) + '</td>' : '') +
+        (t.showRate !== false ? '<td class="r">' + m(it.price) + '</td>' : '') +
+        (t.showDiscount ? '<td class="r">' + m(it.discount || 0) + '</td>' : '') +
+        (t.showTax ? '<td class="r">' + m(it.tax || 0) + '</td>' : '') +
+        '<td class="r">' + m(it.lineTotal) + '</td></tr>';
+    }).join('');
+
+    const payRows = (sale.paymentSummary || sale.paymentList || []).map(p =>
+      '<div class="row"><span>' + esc(p.label || p.method) + (p.reference ? ' <span class="sub">· ' + esc(p.reference) + '</span>' : '') + '</span>' +
+      '<b>' + m(p.amount) + '</b></div>' +
+      (p.fee ? '<div class="row sub"><span>Fee (' + p.feePct + '%) + FED</span><span>-' + m(Number(p.fee || 0) + Number(p.fed || 0)) + ' · net ' + m(p.net) + '</span></div>' : '')
+    ).join('');
+
+    /* ------------------------------ HEADER ------------------------------- */
+    const logo = vis('logo', false) && st.logoUrl ? st.logoUrl : (st.bizLogo || '');
+    const headLines = [];
+    if (vis('business', true)) headLines.push('<div class="biz">' + esc(st.receiptHeader || st.businessName || 'Haseeb Autos') + '</div>');
+    if (vis('businessUr', on('showUrduOnReceipt', true)) && st.businessNameUr)
+      headLines.push('<div class="ur">' + esc(st.businessNameUr) + '</div>');
+    if (st.tagline) headLines.push('<div class="tagline">' + esc(st.tagline) + '</div>');
+    if (vis('branch', true)) headLines.push('<div class="sub">' + esc(branch ? branch.name + (branch.address ? ' — ' + branch.address : '') : (st.address || '')) + '</div>');
+    if (vis('phone', true) && st.phone) headLines.push('<div class="sub">' + esc(st.phone) + (st.email ? ' · ' + esc(st.email) : '') + '</div>');
+    if (vis('ntn', true) && (st.ntn || st.strn))
+      headLines.push('<div class="sub">NTN: ' + esc(st.ntn || '—') + (st.strn ? ' &nbsp;·&nbsp; STRN: ' + esc(st.strn) : '') + '</div>');
+
+    const head = '<div class="hd">' +
+      (logo ? '<img class="logo" src="' + esc(logo) + '" alt="" loading="lazy" decoding="async"/>' : '') +
+      '<div class="hblock">' + headLines.join('') + '</div></div>';
+
+    const metaRows = [];
+    if (vis('invoiceNo', true)) metaRows.push(['Invoice No.', esc(sale.invoiceNo || '—')]);
+    if (vis('date', true)) metaRows.push(['Date', esc(dt)]);
+    if (vis('salesman', false) && sale.salespersonName) metaRows.push(['Salesman', esc(sale.salespersonName)]);
+    if (sale.reference) metaRows.push(['Reference / PO', esc(sale.reference)]);
+    if (sale.paymentTerms) metaRows.push(['Payment terms', esc(sale.paymentTerms)]);
+    if (sale.dueDate) metaRows.push(['Due date', esc(fmt.date(sale.dueDate, false))]);
+    if (branch) metaRows.push([st.branchLabel || 'Branch', esc(branch.name)]);
+    cf.filter(f => f.showInMeta).forEach(f => metaRows.push([esc(f.label), esc(customVal(f.key))]));
+
+    const meta = '<div class="meta">' + metaRows.map(r =>
+      '<div><span>' + r[0] + '</span><b>' + r[1] + '</b></div>').join('') + '</div>';
+
+    const title = cfg.showTitle === false ? '' :
+      '<div class="title">' + esc(cfg.showTaxInvoice ? (cfg.taxInvoiceTitle || 'TAX INVOICE') : (cfg.title || 'SALE RECEIPT')) + '</div>';
+
+    /* ------------------------------ TOTALS ------------------------------- */
+    const totals = '<div class="totals">' +
+      (vis('subtotal', true) ? '<div class="row"><span>Subtotal</span><b>' + m(sale.subtotal) + '</b></div>' : '') +
+      (vis('discount', true) && Number(sale.discount) ? '<div class="row"><span>Discount</span><b>-' + m(sale.discount) + '</b></div>' : '') +
+      (vis('tax', true) && Number(sale.tax) ? '<div class="row"><span>' + esc(taxLabel) +
+        (taxPct ? ' @ ' + taxPct + '%' : '') + '</span><b>' + m(sale.tax) + '</b></div>' : '') +
+      (vis('total', true) ? '<div class="row grand"><span>TOTAL</span><b>' + m(sale.total) + '</b></div>' : '') +
+      (vis('savings', false) ? '<div class="row sub"><span>You saved</span><span>' + m(sale.discount || 0) + '</span></div>' : '') +
+      '</div>';
+
+    /* ---------------------- LEDGER / ACCOUNT SUMMARY --------------------- */
+    const hasCustomer = !!(sale.customerId || (sale.customerName && String(sale.customerName) !== 'Walk-in Customer'));
+    const prev = Number(sale.prevBalance || 0), paid = Number(sale.paid || 0);
+    const closing = Number(sale.closingBalance !== undefined ? sale.closingBalance : (prev + Number(sale.total || 0) - paid));
+    const hasBal = hasCustomer && (prev !== 0 || closing !== 0 || Number(sale.total || 0) > 0);
+    const balances = hasBal ? '<div class="balances">' +
+      '<div class="btitle">Account summary</div>' +
+      (vis('prevBalance', true) ? '<div class="row"><span>Previous balance</span><b>' + m(prev) + '</b></div>' : '') +
+      '<div class="row"><span>This invoice</span><b>' + m(sale.total) + '</b></div>' +
+      '<div class="row"><span>Paid now</span><b>-' + m(paid) + '</b></div>' +
+      (vis('closingBalance', true) ? '<div class="row grand ' + (closing > 0 ? 'due' : 'ok') + '"><span>Closing balance</span><b>' + m(closing) + '</b></div>' : '') +
+      (sale.creditLimit ? '<div class="row sub"><span>Credit limit</span><span>' + m(sale.creditLimit) + '</span></div>' : '') +
+      '</div>' : '';
+
+    /* ------------------------------ WORDS -------------------------------- */
+    const words = (on('invoice.showWords', true) && !thermal)
+      ? '<div class="words"><span>Amount in words</span><b>' + esc(amountInWords(sale.total, st.currencyWord || 'Rupees')) + '</b></div>' : '';
+
+    /* ---------------------------- BANK DETAILS --------------------------- */
+    const bankRows = [];
+    if (st.bankName) bankRows.push(['Bank', esc(st.bankName)]);
+    if (st.bankTitle) bankRows.push(['Account title', esc(st.bankTitle)]);
+    if (st.bankAccount) bankRows.push(['Account no.', esc(st.bankAccount)]);
+    if (st.bankIban) bankRows.push(['IBAN', esc(st.bankIban)]);
+    const bank = (!thermal && on('invoice.showBank', true) && bankRows.length)
+      ? '<div class="bank"><div class="btitle">Payment / bank details</div>' +
+        bankRows.map(r => '<div class="row"><span>' + r[0] + '</span><b>' + r[1] + '</b></div>').join('') + '</div>' : '';
+
+    /* --------------------------- BARCODE / QR ---------------------------- */
+    let code = '';
+    if (vis('barcode', true) && sale.invoiceNo) {
+      code += '<div class="bcode">' + Barcode.svg(String(sale.invoiceNo), { height: thermal ? 34 : 40, module: 1.25 }) +
+        '<div class="btext">' + esc(sale.invoiceNo) + '</div></div>';
+    }
+    if (vis('qr', false)) {
+      try {
+        const d = window.QR2 ? window.QR2.svg(JSON.stringify({ inv: sale.invoiceNo, total: sale.total }), { size: 90 }) : '';
+        if (d) code += '<div class="qr">' + d + '</div>';
+      } catch (e) { }
+    }
+
+    /* ------------------------------ FOOTER ------------------------------- */
+    const terms = cfg.terms || st.invoiceTerms || '';
+    const foot = (vis('footer', true) && cfg.footer ? '<div class="foot">' + esc(cfg.footer) + '</div>' : '') +
+      (vis('terms', false) && terms ? '<div class="terms"><b>Terms &amp; conditions</b><div>' + esc(terms) + '</div></div>' : '') +
+      (on('invoice.showSignature', true) && !thermal
+        ? '<div class="sign"><div class="sig"><div class="sigline"></div><div>Customer signature</div></div>' +
+          '<div class="sig"><div class="sigline"></div><div>Authorised signatory</div></div></div>' : '');
+
+    /* ============================ THERMAL =============================== */
+    if (thermal) {
+      return '<div class="doc thermal" style="--mw:' + sz.widthMm + 'mm;--fz:' + (cfg.fontSize || sz.fontPx || 12) + 'px">' +
+        head + title + meta + '<div class="sep"></div>' +
+        (vis('items', true) ? '<table class="items compact"><thead><tr><th class="c">#</th><th>Item</th>' +
+          (t.showQty !== false ? '<th class="c">Qty</th>' : '') +
+          (t.showRate !== false ? '<th class="r">Rate</th>' : '') +
+          '<th class="r">Amount</th></tr></thead><tbody>' + rowsHtml + '</tbody></table>' : '') +
+        '<div class="sep"></div>' + totals +
+        (vis('payments', true) && payRows ? '<div class="sep"></div><div class="pays">' + payRows +
+          (vis('change', true) && sale.change ? '<div class="row"><span>Change</span><b>' + m(sale.change) + '</b></div>' : '') + '</div>' : '') +
+        (hasBal ? '<div class="sep"></div>' + balances : '') +
+        (code ? '<div class="sep"></div><div class="codes">' + code + '</div>' : '') +
+        foot + '<div class="power">Powered by Haseeb Autos ERP</div></div>';
+    }
+
+    /* ==================== SHEET — professional tax invoice ==================== */
+    const itemCols = '<th class="c">#</th><th>Item description</th>' +
+      (t.showHsn ? '<th class="c">HSN</th>' : '') +
+      (t.showQty !== false ? '<th class="c">Qty</th>' : '') +
+      (t.showUnit ? '<th class="c">Unit</th>' : '') +
+      (t.showRate !== false ? '<th class="r">Rate</th>' : '') +
+      (t.showDiscount ? '<th class="r">Disc</th>' : '') +
+      (t.showTax ? '<th class="r">' + esc(taxLabel) + '</th>' : '') +
+      '<th class="r">Amount</th>';
+    const sheetRows = items.map((it, i) => {
+      const uom = it.unit || it.uom || '';
+      return '<tr><td class="c">' + (i + 1) + '</td>' +
+        '<td><div class="iname">' + esc(it.name) + '</div>' +
+          (t.showCode !== false && it.code ? '<div class="imeta">Part no. ' + esc(it.code) + (it.notes ? ' · ' + esc(it.notes) : '') + '</div>' : '') +
+        '</td>' +
+        (t.showHsn ? '<td class="c">' + esc(it.hsn || '—') + '</td>' : '') +
+        (t.showQty !== false ? '<td class="c">' + fmt.num(it.qty) + '</td>' : '') +
+        (t.showUnit ? '<td class="c">' + esc(uom || '—') + '</td>' : '') +
+        (t.showRate !== false ? '<td class="r">' + m(it.price) + '</td>' : '') +
+        (t.showDiscount ? '<td class="r">' + m(it.discount || 0) + '</td>' : '') +
+        (t.showTax ? '<td class="r">' + m(it.tax || 0) + '</td>' : '') +
+        '<td class="r">' + m(it.lineTotal) + '</td></tr>';
+    }).join('');
+
+    return '<div class="doc sheet" style="--w:' + sz.widthMm + 'mm;--h:' + (sz.heightMm || 297) + 'mm;--fz:' + (cfg.fontSize || sz.fontPx || 12) + 'px">' +
+      '<header class="sheet-head">' + head +
+        '<div class="doc-type">' + esc(cfg.showTaxInvoice ? (cfg.taxInvoiceTitle || 'TAX INVOICE') : (cfg.title || 'SALE RECEIPT')) + '</div>' +
+      '</header>' +
+      '<section class="sheet-meta">' +
+        '<div class="box bill-to"><div class="blabel">Bill to</div>' +
+          '<b class="pname">' + esc(sale.customerName || 'Walk-in Customer') + '</b>' +
+          (vis('customerPhone', false) && sale.customerPhone ? '<div>' + esc(sale.customerPhone) + '</div>' : '') +
+          (sale.customerAddress ? '<div class="sub">' + esc(sale.customerAddress) + '</div>' : '') +
+          (sale.customerNtn ? '<div class="sub">NTN: ' + esc(sale.customerNtn) + '</div>' : '') +
+        '</div>' +
+        '<div class="box meta-box">' + meta.replace(/<div><span>/g, '<div class="kv"><span>') + '</div>' +
+      '</section>' +
+      (vis('items', true) ? '<table class="items"><thead><tr>' + itemCols + '</tr></thead><tbody>' + sheetRows + '</tbody></table>' : '') +
+      (words ? words : '') +
+      '<section class="sheet-foot">' +
+        '<div class="col-left">' +
+          (vis('payments', true) && payRows ? '<div class="btitle">Payment received</div><div class="pays">' + payRows +
+            (vis('change', true) && sale.change ? '<div class="row"><span>Change returned</span><b>' + m(sale.change) + '</b></div>' : '') + '</div>' : '') +
+          (bank || '') +
+          (code ? '<div class="codes">' + code + '</div>' : '') +
+        '</div>' +
+        '<div class="col-right">' + totals + balances + '</div>' +
+      '</section>' +
+      foot +
+      '<div class="power">Powered by Haseeb Autos ERP · ' + esc(sale.invoiceNo || '') + '</div></div>';
+  },
+
+  /** @page + document CSS for the chosen paper size */
+  css(cfg, opts) {
+    opts = opts || {};
+    const sz = this.size(cfg.paper);
+    const thermal = sz.kind === 'THERMAL';
+    const w = sz.widthMm, h = sz.heightMm || 0;
+    const page = thermal
+      ? '@page{size:' + w + 'mm ' + (opts.autoHeight === false ? '200mm' : 'auto') + ';margin:2mm}'
+      : '@page{size:' + w + 'mm ' + h + 'mm' + (opts.landscape ? ' landscape' : '') + ';margin:8mm}';
+    return page + '\n' + PRINT_CSS;
+  },
+
+  /** Print window (browser) */
+  async print(sale, template, opts) {
+    opts = opts || {};
+    const cfg = template && template.cfg ? template.cfg : (JSON.parse((template && template.json) || '{}') || {});
+    const html = this.html(sale, cfg, opts);
+    const w = window.open('', '_blank', 'width=820,height=900');
+    if (!w) { UI.toast('Popup block hai — browser setting allow karein', 'warn'); return; }
+    w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>' +
+      esc((sale.invoiceNo || 'Receipt')) + '</title><style>' + this.css(cfg, opts) + '</style></head><body>' +
+      html + '</body></html>');
+    w.document.close();
+    setTimeout(() => { try { w.focus(); w.print(); } catch (e) { } }, 500);
+    return w;
+  },
+
+  /** ESC/POS bytes download (direct thermal printer / print server ke liye) */
+  async escpos(sale, template) {
+    try {
+      const r = await API.call('print.escpos', { id: sale.id, paper: (template && template.cfg ? template.cfg.paper : '80mm') });
+      if (!r || !r.base64) throw new Error('ESC/POS generate nahi hua');
+      const bin = atob(r.base64);
+      const arr = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+      const blob = new Blob([arr], { type: 'application/octet-stream' });
+      const a = h('a', { href: URL.createObjectURL(blob), download: (sale.invoiceNo || 'receipt') + '.bin' });
+      document.body.appendChild(a); a.click(); a.remove();
+      UI.toast('ESC/POS file download ho gayi (' + r.bytes + ' bytes) — thermal printer par bhejein', 'ok', 3200);
+      return r;
+    } catch (e) { UI.toast(e.message, 'err'); }
+  },
+
+  /** v2.14.0 — server-side PDF at the TRUE paper size (thermal rolls keep
+   *  80/58/110mm; Drive HTML→PDF honors @page). Complaint fixed: download
+   *  previously always produced A4 because Exports.CSS hardcodes A4 — the
+   *  'paper' param makes the server append an overriding @page. */
+  async downloadPdf(sale, template, opts) {
+    opts = opts || {};
+    const cfg = template && template.cfg ? template.cfg : (JSON.parse((template && template.json) || '{}') || {});
+    try {
+      const sz = this.size(cfg.paper);
+      UI.toast('PDF ban rahi hai (' + sz.label + ')…', 'info', 2400);
+      const doc = '<!doctype html><html><head><meta charset="utf-8"><title>' +
+        esc(sale.invoiceNo || 'Receipt') + '</title><style>' +
+        this.css(cfg, Object.assign({ autoHeight: sz.kind === 'THERMAL' }, opts)) +
+        '</style></head><body>' + this.html(sale, cfg, opts) + '</body></html>';
+      // v2.23.11 FIX: Demo/offline — server may return placeholder url '#', allow client-side save.
+      let r = null;
+      try { r = await API.call('exports.pdf', { html: doc, name: (sale.invoiceNo || 'receipt') + '-' + cfg.paper, paper: cfg.paper }, { offlineFallback: () => null }); } catch(e){ r=null; }
+      if (r && r.url && r.url !== '#') { window.open(r.url, '_blank', 'noopener'); UI.toast('PDF (' + cfg.paper + ') Drive par tayyar', 'ok', 3400); return r; }
+      // Fallback: client-side Blob (works in demo, offline, no backend) — respects same paper size via @page
+      try {
+        const blob = new Blob([doc], {type:'text/html'});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a'); a.href=url; a.download=(sale.invoiceNo||'receipt')+'-'+cfg.paper+'.html'; document.body.appendChild(a); a.click();
+        setTimeout(()=>{ try{URL.revokeObjectURL(url);}catch(e){} try{a.remove();}catch(e){} }, 3000);
+        UI.toast('PDF ('+cfg.paper+') downloaded — open this file & Print → Save as PDF (keeps '+sz.label+' size)', 'ok', 4000);
+        return {url:url, paper:cfg.paper, local:true};
+      } catch(e2){ UI.toast('PDF fallback failed: '+e2.message,'err'); throw e2; }
+    } catch (e) { UI.toast('PDF: ' + e.message, 'err', 4200); }
+  },
+
+  /* ======================== PRINT DIALOG (POS) ============================= */
+  async dialog(sale) {
+    let templates = await this.templatesFor('RECEIPT');
+    if (!templates.length) templates = [{ id: 'default', name: 'Default', json: JSON.stringify(PRINT_DEFAULT_CFG) }];
+    let tpl = templates[0];
+    let cfg = parseCfg(tpl);
+
+    const preview = h('div', { class: 'print-preview' });
+    let zoom = 0.75;
+    const paint = () => {
+      preview.innerHTML = '';
+      const paper = h('div', { class: 'pp-paper', style: { '--pp-zoom': String(zoom), transform: 'scale(' + zoom + ')' } },
+        rawHtml(P.html(sale, cfg)));
+      preview.appendChild(paper);
+    };
+    const zoomBar = h('div', { class: 'pp-zoom' },
+      h('span', { class: 'sub' }, 'Preview'),
+      ...[[0.5, '50%'], [0.75, '75%'], [1, '100%']].map(([z, lbl]) =>
+        h('button', { class: 'cseg' + (z === zoom ? ' on' : ''), title: 'Zoom ' + lbl,
+          onclick: e => {
+            zoom = z;
+            Array.from(e.target.parentNode.querySelectorAll('.cseg')).forEach(b => b.classList.remove('on'));
+            e.target.classList.add('on');
+            paint();
+          } }, lbl)));
+
+    const presetRow = isLabel ? h('div', { class: 'chips', style: 'margin:0 0 8px' }, 'Preset: ',
+      ...Print.LABEL_TEMPLATES.map(t => h('button', { class: 'chip2' + (t.style === 'retail' ? ' on' : ''), title: t.desc || '', onclick: e => {
+        dPreset = t;
+        Array.from(e.target.parentNode.querySelectorAll('.chip2')).forEach(b => b.classList.remove('on'));
+        e.target.classList.add('on');
+        if (t.size) { cfg.paper = t.size; sizeSel.value = t.size; }
+        schema.forEach(sm => { const on = t.fields ? !!t.fields[sm.key] : true; if (!cfg.fields[sm.key]) cfg.fields[sm.key] = { order: 0 }; cfg.fields[sm.key].visible = on; });
+        renderFields(); paint();
+      } }, t.name))) : '';
+    const sizeSel = h('select', { class: 'f-input', onchange: () => { cfg.paper = sizeSel.value; paint(); } },
+      ...(await this.sizesList()).map(s => h('option', { value: s.id, selected: s.id === cfg.paper }, s.label)));
+
+    const tplSel = h('select', { class: 'f-input', onchange: () => {
+      tpl = templates.find(t => t.id === tplSel.value) || tpl; cfg = parseCfg(tpl);
+      sizeSel.value = cfg.paper; paint();
+    } }, ...templates.map(t => h('option', { value: t.id }, t.name || 'Template')));
+
+    /* professional presets — ek click mein sahi kaghaz + tax-invoice mode */
+    const PRESETS = [
+      { id: 'thermal', label: '🧾 Thermal receipt', paper: '80mm', tax: false },
+      { id: 'a4', label: '📄 A4 tax invoice', paper: 'A4', tax: true },
+      { id: 'a5', label: '📄 A5 invoice', paper: 'A5', tax: true },
+      { id: 'half', label: '🧾 Half A4', paper: 'HALF', tax: false }
+    ];
+    const applyPreset = (preset, btn) => {
+      cfg.paper = preset.paper; cfg.showTaxInvoice = preset.tax;
+      sizeSel.value = preset.paper;
+      if (btn) {
+        Array.from(btn.parentNode.querySelectorAll('.cseg')).forEach(b => b.classList.remove('on'));
+        btn.classList.add('on');
+      }
+      paint();
+    };
+    const presetBar = h('div', { class: 'pp-zoom', style: { marginLeft: '0' } },
+      h('span', { class: 'sub' }, 'Quick format'),
+      ...PRESETS.map(pr => h('button', {
+        class: 'cseg' + (cfg.paper === pr.paper ? ' on' : ''), title: pr.label,
+        onclick: e => applyPreset(pr, e.target)
+      }, pr.label)));
+
+    const body = h('div', { class: 'print-dialog' },
+      h('div', { class: 'pd-tools' },
+        h('label', { class: 'f-col' }, h('span', null, 'Template'), tplSel),
+        presetBar,
+        zoomBar,
+        h('label', { class: 'f-col' }, h('span', null, 'Paper size'), sizeSel),
+        h('div', { class: 'pd-btns' },
+          h('button', { class: 'btn ok', onclick: () => P.print(sale, { cfg: cfg }) }, '🖨 Print / PDF'),
+          h('button', { class: 'btn sec', onclick: () => P.downloadPdf(sale, { cfg: cfg }) }, '📥 Download PDF'),
+          h('button', { class: 'btn sec', onclick: () => P.escpos(sale, { cfg: cfg }) }, '⬇ ESC/POS'),
+          h('button', { class: 'btn sec', onclick: () => P.designer('RECEIPT', tpl, () => { }) }, '🎨 Design'),
+          h('button', { class: 'btn ghost', onclick: () => navigator.clipboard && navigator.clipboard.writeText(JSON.stringify(cfg, null, 2)) }, '{ } JSON'))),
+      preview);
+
+    UI2.modal({ title: 'Print — ' + (sale.invoiceNo || 'receipt'), size: 'xl', body,
+      actions: [{ label: 'Close', onClick: c => c() }] });
+    paint();
+  },
+
+  /* ========================= VISUAL DESIGNER =============================== */
+  async designer(type, template, onSave) {
+    type = type || 'RECEIPT';
+    let cfg = template && template.cfg ? JSON.parse(JSON.stringify(template.cfg)) : (parseCfg(template) || PRINT_DEFAULT_CFG);
+    // Label templates: 6 professional designs with GS1 quiet zones
+    const isLabel = String(type).toUpperCase()==='LABEL';
+    const labelFieldDefs = isLabel ? [
+      {key:'name', label:'Product name', def:true}, {key:'code', label:'SKU / Code', def:true}, {key:'price', label:'Price', def:true},
+      {key:'salePrice', label:'Sale price', def:false}, {key:'unit', label:'Unit', def:true}, {key:'category', label:'Category', def:false},
+      {key:'brand', label:'Brand', def:false}, {key:'barcode', label:'Barcode', def:true}, {key:'qr', label:'QR code', def:false},
+      {key:'batch', label:'Batch / Lot', def:false}, {key:'expiry', label:'Expiry', def:false}, {key:'supplier', label:'Supplier', def:false},
+      {key:'warehouse', label:'Warehouse', def:false}, {key:'stock', label:'Stock', def:false}, {key:'logo', label:'Company logo', def:false},
+      {key:'humanReadable', label:'Human-readable barcode value', def:true}
+    ] : [];
+    const schema = isLabel ? labelFieldDefs : await this.schema(type);
+    if (!cfg.fields) cfg.fields = {};
+    schema.forEach((f, i) => { if (!cfg.fields[f.key]) cfg.fields[f.key] = { visible: !!f.def, order: i }; });
+    if (!cfg.customFields) cfg.customFields = [];
+
+    const preview = h('div', { class: 'print-preview' });
+    let sample = null;
+    let dZoom = 0.7;
+    async function loadSample() {
+      try {
+        const all = await Shared.sales({ pageSize: 1 });   /* v2.27.0 W3.T3 */
+        sample = (all || [])[0];
+        if (sample) sample = await API.call('sales.get', { id: sample.id }, { offlineFallback: () => sample });
+      } catch (e) { }
+      if (!sample) sample = SAMPLE_SALE();
+      paint();
+    }
+    let dPreset = null;
+    function labelCfgFromDesign() {
+      const F = k => { const f = (cfg.fields || {})[k]; if (f && typeof f.visible === 'boolean') return f.visible; const sm = schema.find(x => x.key === k); return sm ? !!sm.def : true; };
+      return { style: (dPreset && dPreset.style) || 'retail',
+        /* v2.25.0 — designer ke ye controls pehle renderer ko bheje hi nahi jate
+           thay (Title/Footer/Terms/Font size/Custom fields) → preview aur print
+           dono unhein ignore karte thay. Ab poora config pass hota hai, is liye
+           jo designer mein nazar aa raha hai bilkul wahi print hota hai. */
+        title: cfg.title || '', showTitle: cfg.showTitle !== false,
+        footer: cfg.footer || '', terms: cfg.terms || '',
+        fontSize: Number(cfg.fontSize) || 12,
+        customFields: cfg.customFields || [],
+        paper: cfg.paper,
+        showName: F('name'), showCode: F('code'), showPrice: F('price'), showSalePrice: F('salePrice'),
+        showUnit: F('unit'), showCategory: F('category'), showBrand: F('brand'), barcode: F('barcode'),
+        qr: F('qr'), humanReadable: F('humanReadable'), showStock: F('stock'), showBatch: F('batch'),
+        showExpiry: F('expiry'), showSupplier: F('supplier'), showWarehouse: F('warehouse') };
+    }
+    function labelSize() { const mm = String(cfg.paper || '50x30').split(/[x\u00d7]/i); return { w: Number(mm[0]) || 50, h: Number(mm[1]) || 30 }; }
+    function labelSampleItems() {
+      return [{ id: 'SMP1', name: 'FLAMINGO DASHBOARD POLISH 450ML', code: 'FL00000', barcode: '6959375198888',
+        price: 338, salePrice: 299, currency: (App.state.settings && App.state.settings.currencySymbol) || 'Rs',
+        unit: 'PCS', category: 'WAX & POLISH', brand: 'Flamingo', stock: 12, batch: 'LOT-24A', expiry: '2028-01',
+        supplier: 'Flamingo Traders', warehouse: 'SDQ' }];
+    }
+    async function labelDocHtml() { const sz = labelSize();
+      return await Print.labelsHtml(labelSampleItems(), { json: JSON.stringify(labelCfgFromDesign()), width: sz.w, height: sz.h }); }
+    async function paint() {
+      preview.innerHTML = '';
+      const html = (isLabel && window.Print && Print.labelsHtml) ? await labelDocHtml() : P.html(sample, cfg);
+      /* v2.25.0 — label CSS print ke sath SHARED hai; preview mein inject karna
+         zaroori hai warna preview be-styled hota hai aur user ko lagta hai ke
+         change "lagu nahi hua". */
+      const doc = rawHtml(isLabel && window.Print && Print.LABEL_CSS
+        ? ('<style>' + Print.LABEL_CSS + '</style>' + html)
+        : html);
+      preview.appendChild(h('div', { class: 'pp-paper', style: { '--pp-zoom': String(dZoom), transform: 'scale(' + dZoom + ')' } }, doc));
+    }
+
+    const presetRow = isLabel ? h('div', { class: 'chips', style: 'margin:0 0 8px' }, 'Preset: ',
+      ...Print.LABEL_TEMPLATES.map(t => h('button', { class: 'chip2' + (t.style === 'retail' ? ' on' : ''), title: t.desc || '', onclick: e => {
+        dPreset = t;
+        Array.from(e.target.parentNode.querySelectorAll('.chip2')).forEach(b => b.classList.remove('on'));
+        e.target.classList.add('on');
+        if (t.size) { cfg.paper = t.size; sizeSel.value = t.size; }
+        schema.forEach(sm => { const on = t.fields ? !!t.fields[sm.key] : true; if (!cfg.fields[sm.key]) cfg.fields[sm.key] = { order: 0 }; cfg.fields[sm.key].visible = on; });
+        renderFields(); paint();
+      } }, t.name))) : '';
+    const sizeSel = h('select', { class: 'f-input', onchange: () => { cfg.paper = sizeSel.value; paint(); } },
+      ...(await this.sizesList()).map(s => h('option', { value: s.id, selected: s.id === cfg.paper }, s.label)));
+    /* v2.25.0 — TRUE LIVE PREVIEW: in controls ka koi repaint nahi tha, is liye
+       Title / Font size / Footer / Terms / Show-title / Tax-mode badalne par
+       preview purana hi rehta tha (user ki shikayat: "refresh ke baghair update
+       nahi hota"). Ab har change foran paint() karta hai. */
+    const copies = numberInput('Copies', cfg.copies || 1, v => { cfg.copies = v; paint(); });
+    const fontSize = numberInput('Font size (px)', cfg.fontSize || 12, v => { cfg.fontSize = v; paint(); });
+    const title = textInput('Title', cfg.title || 'SALE RECEIPT', v => { cfg.title = v; paint(); });
+    const showTitle = checkInput('Show title', cfg.showTitle !== false, v => { cfg.showTitle = v; paint(); });
+    const taxMode = checkInput('Tax invoice mode (NTN/labels)', !!cfg.showTaxInvoice, v => { cfg.showTaxInvoice = v; paint(); });
+    const footer = textInput('Footer', cfg.footer || '', v => { cfg.footer = v; paint(); });
+    const terms = textInput('Terms & conditions', cfg.terms || '', v => { cfg.terms = v; paint(); });
+
+    /* ---- field toggles + ordering ---- */
+    const fieldList = h('div', { class: 'design-fields' });
+    function renderFields() {
+      const ordered = Object.keys(cfg.fields)
+        .map(k => Object.assign({ key: k }, cfg.fields[k]))
+        .sort((a, b) => (a.order || 0) - (b.order || 0));
+      fieldList.innerHTML = '';
+      ordered.forEach((f, i) => {
+        const meta = schema.find(s => s.key === f.key) || { label: f.key };
+        /* v2.6 §1 — UI2.toggle (compact switch, On/Off ke sath) */
+        const cb = UI2.toggle({ label: '', hint: meta.label, checked: !!f.visible,
+          onChange: v => { cfg.fields[f.key].visible = v; paint(); } }).el;
+        fieldList.appendChild(h('div', { class: 'df-row' },
+          cb,
+          h('span', { class: 'df-label' }, meta.label),
+          h('span', { class: 'df-key' }, f.key),
+          h('button', { class: 'btn sm ghost', title: 'Upar', onclick: () => move(i, -1) }, '↑'),
+          h('button', { class: 'btn sm ghost', title: 'Neeche', onclick: () => move(i, 1) }, '↓')));
+      });
+      function move(i, dir) {
+        const j = i + dir;
+        if (j < 0 || j >= ordered.length) return;
+        const a = ordered[i], b = ordered[j];
+        const tmp = a.order; cfg.fields[a.key].order = b.order; cfg.fields[b.key].order = tmp;
+        renderFields();
+      }
+    }
+
+    /* ---- custom fields ---- */
+    const customHost = h('div', { class: 'design-custom' });
+    function renderCustom() {
+      customHost.innerHTML = '';
+      (cfg.customFields || []).forEach((f, i) => {
+        customHost.appendChild(h('div', { class: 'df-row' },
+          h('input', { class: 'f-input', value: f.label || '', placeholder: 'Label',
+            oninput: e => { f.label = e.target.value; paint(); } }),
+          h('input', { class: 'f-input', value: f.key || '', placeholder: 'key (e.g. po_number)',
+            oninput: e => { f.key = e.target.value; paint(); } }),
+          h('input', { class: 'f-input', value: f.source || '', placeholder: 'source field',
+            oninput: e => { f.source = e.target.value; paint(); } }),
+          h('button', { class: 'btn sm danger', title: 'Remove', onclick: () => { cfg.customFields.splice(i, 1); renderCustom(); paint(); } }, '🗑')));
+      });
+      customHost.appendChild(h('button', { class: 'btn sm sec', onclick: () => {
+        cfg.customFields.push({ label: 'New field', key: 'custom_' + (cfg.customFields.length + 1), source: '', value: '' });
+        renderCustom(); paint();
+      } }, '＋ Custom field'));
+    }
+
+    const dZoomBar = h('div', { class: 'pp-zoom' },
+      h('span', { class: 'sub' }, 'Preview'),
+      ...[[0.5, '50%'], [0.7, '70%'], [1, '100%']].map(([z, lbl]) =>
+        h('button', { class: 'cseg' + (z === dZoom ? ' on' : ''), title: 'Zoom ' + lbl,
+          onclick: e => {
+            dZoom = z;
+            Array.from(e.target.parentNode.querySelectorAll('.cseg')).forEach(b => b.classList.remove('on'));
+            e.target.classList.add('on');
+            paint();
+          } }, lbl)));
+    const left = h('div', { class: 'design-left' },
+      presetRow,
+      h('div', { class: 'f-grid' },
+        h('label', { class: 'f-col' }, h('span', null, 'Paper size'), sizeSel),
+        copies, fontSize,
+        h('label', { class: 'f-col full' }, h('span', null, 'Title'), title)),
+      h('div', { class: 'chips' }, showTitle, taxMode),
+      h('label', { class: 'f-col' }, h('span', null, 'Footer'), footer),
+      h('label', { class: 'f-col' }, h('span', null, 'Terms'), terms),
+      h('div', { class: 'sec-title' }, 'Fields (on/off · order)'),
+      dZoomBar,
+      fieldList,
+      h('div', { class: 'sec-title' }, 'Custom fields'),
+      customHost);
+
+    const body = h('div', { class: 'design-wrap' }, left, preview);
+
+    const m = UI2.modal({
+      title: '🎨 Template designer — ' + type, size: 'xl', body,
+      actions: [
+        { label: '💾 Save as new', cls: 'ok', onClick: async c => {
+          const rec = { type: type, name: (cfg.paper || 'RECEIPT') + ' — ' + (cfg.title || 'template'),
+            active: 'true', json: JSON.stringify(cfg) };
+          await API.call('config.templates.save', { template: rec });
+          UI.toast('Template saved', 'ok'); if (onSave) onSave(rec); c();
+        } },
+        { label: '🖨 Test print', cls: 'sec', onClick: async () => {
+            if (isLabel && window.Print && Print.labelsHtml) { try { Print.open(await labelDocHtml(), 'Labels — test', 'A4'); } catch (e) { UI.toast('Label preview fail: ' + (e.message || e), 'err'); } return; }
+            P.print(sample || SAMPLE_SALE(), { cfg: cfg });
+          } },
+        { label: 'Close', onClick: c => c() }
+      ]
+    });
+
+    renderFields(); renderCustom(); loadSample();
+    return m;
+  }
+};
+
+/* ------------------------------- helpers ---------------------------------- */
+function parseCfg(tpl) {
+  try { return typeof (tpl || {}).json === 'string' ? JSON.parse(tpl.json || '{}') : (tpl || {}).cfg || {}; }
+  catch (e) { return {}; }
+}
+function rawHtml(str) {
+  const d = h('div'); d.innerHTML = str; return d;
+}
+function textInput(label, value, onChange) {
+  const i = h('input', { class: 'f-input', value: value || '' });
+  i.oninput = () => onChange(i.value);
+  return h('label', { class: 'f-col' }, h('span', null, label), i);
+}
+function numberInput(label, value, onChange) {
+  const i = h('input', { class: 'f-input', type: 'number', value: value || 0, title: label });
+  i.oninput = () => onChange(Number(i.value));
+  return h('label', { class: 'f-col' }, h('span', null, label), i);
+}
+/* v2.6 §1 — UI2.toggle (single switch component) */
+function checkInput(label, value, onChange) {
+  return UI2.toggle({ label: label, checked: !!value, onChange: onChange }).el;
+}
+/** 5440.50 → "Rupees Five Thousand Four Hundred Forty and Fifty Paisa Only"
+ *  Pakistani numbering (lakh / crore) — bilingual invoices mein standard hai. */
+function amountInWords(amount, curWord) {
+  const ONES = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten',
+    'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
+  const TENS = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+  const two = v => (v < 20 ? ONES[v] : TENS[Math.floor(v / 10)] + (v % 10 ? '-' + ONES[v % 10] : ''));
+  const three = v => {
+    if (!v) return '';
+    return (v >= 100 ? ONES[Math.floor(v / 100)] + ' Hundred ' : '') + (v % 100 ? two(v % 100) : '');
+  };
+  let n = Math.abs(Math.round(Number(amount || 0) * 100) / 100);
+  let rupees = Math.floor(n);
+  const paisa = Math.round((n - rupees) * 100);
+  const parts = [];
+  const crore = Math.floor(rupees / 10000000); rupees %= 10000000;
+  const lakh = Math.floor(rupees / 100000); rupees %= 100000;
+  const thousand = Math.floor(rupees / 1000); rupees %= 1000;
+  if (crore) parts.push(three(crore) + ' Crore');
+  if (lakh) parts.push(three(lakh) + ' Lakh');
+  if (thousand) parts.push(three(thousand) + ' Thousand');
+  if (rupees) parts.push(three(rupees));
+  let out = (curWord || 'Rupees') + ' ' + (parts.join(' ') || 'Zero');
+  if (paisa) out += ' and ' + two(paisa) + ' Paisa';
+  return out + ' Only';
+}
+
+function SAMPLE_SALE() {
+  return {
+    id: 'SAMPLE', invoiceNo: 'INV-SDQ-01001', date: new Date().toISOString(),
+    customerName: 'Sample Customer', customerPhone: '0300-1234567',
+    subtotal: 4700, discount: 50, tax: 790.5, total: 5440.5, paid: 5000, change: 0, due: 440.5,
+    prevBalance: 1250, closingBalance: 1690.5, creditLimit: 50000,
+    items: [
+      { name: 'Brake Pad Set Front (Corolla)', code: 'BRK-001', qty: 2, price: 800, lineTotal: 1600, discount: 0, tax: 0 },
+      { name: 'Engine Oil 20W-50 1L', code: 'OIL-001', qty: 3, price: 1200, lineTotal: 3600, discount: 100, tax: 0 }
+    ],
+    paymentSummary: [{ method: 'CASH', label: 'Cash', amount: 3000, fee: 0, fed: 0, net: 3000 },
+      { method: 'JAZZCASH', label: 'JazzCash', amount: 2000, fee: 40, fed: 0, net: 1960, feePct: 2 }]
+  };
+}
+
+const FALLBACK_SIZES = [
+  { id: '58mm', label: 'Thermal 58mm — Receipt', kind: 'THERMAL', widthMm: 58, cols: 32, fontPx: 11 },
+  { id: '80mm', label: 'Thermal 80mm — Receipt', kind: 'THERMAL', widthMm: 80, cols: 48, fontPx: 12 },
+  { id: '30x20', label: 'Label 30×20mm — Compact product', kind: 'LABEL', widthMm: 30, heightMm: 20, fontPx: 7 },
+  { id: '50x30', label: 'Label 50×30mm — Standard retail', kind: 'LABEL', widthMm: 50, heightMm: 30, fontPx: 8 },
+  { id: '50x25', label: 'Label 50×25mm — Price prominent', kind: 'LABEL', widthMm: 50, heightMm: 25, fontPx: 8 },
+  { id: '60x40', label: 'Label 60×40mm — Inventory barcode', kind: 'LABEL', widthMm: 60, heightMm: 40, fontPx: 9 },
+  { id: '80x50', label: 'Label 80×50mm — Warehouse stock', kind: 'LABEL', widthMm: 80, heightMm: 50, fontPx: 9 },
+  { id: 'A4', label: 'A4 sheet', kind: 'SHEET', widthMm: 210, heightMm: 297, fontPx: 12 },
+  { id: 'A5', label: 'A5 sheet', kind: 'SHEET', widthMm: 148, heightMm: 210, fontPx: 11 },
+  { id: 'A3', label: 'A3 sheet', kind: 'SHEET', widthMm: 297, heightMm: 420, fontPx: 13 },
+  { id: 'HALF', label: 'Half A4', kind: 'SHEET', widthMm: 148, heightMm: 105, fontPx: 10 }
+];
+// 6 professional label templates — SINGLE source: Print.LABEL_TEMPLATES (App_Barcode)
+const LABEL_TEMPLATES = (window.Print && Print.LABEL_TEMPLATES) || [];
+const PRINT_DEFAULT_CFG = { paper: '80mm', copies: 1, fontSize: 12, title: 'SALE RECEIPT',
+  showTitle: true, footer: 'Shukriya! Phir aayein.', terms: '', fields: {}, customFields: [],
+  table: { showCode: true, showQty: true, showRate: true }, styles: { header: 'center', totals: 'right', boldTotal: true, dashed: true } };
+
+const PRINT_CSS = `
+*,*::before,*::after{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{font-family:"Segoe UI",Tahoma,Arial,"Helvetica Neue",sans-serif;background:#eef1f6;color:#111;
+  -webkit-print-color-adjust:exact;print-color-adjust:exact}
+.doc{margin:0 auto;background:#fff;color:#111}
+
+/* =============================== THERMAL ================================ */
+.doc.thermal{width:var(--mw);font-family:"Cascadia Mono",Consolas,"Courier New",monospace;
+  font-size:var(--fz);padding:2mm;line-height:1.35}
+.thermal .hd{text-align:center}
+.thermal .logo{max-height:40px;display:block;margin:0 auto 3px}
+.thermal .biz{font-size:1.4em;font-weight:800;letter-spacing:.4px}
+.thermal .tagline{font-size:.78em;color:#444}
+.thermal .sub{font-size:.8em;color:#333}
+.thermal .title{text-align:center;font-weight:800;border-top:1px dashed #000;border-bottom:1px dashed #000;
+  padding:3px 0;margin:5px 0;letter-spacing:1px}
+.thermal .meta{display:flex;flex-direction:column;gap:1px;font-size:.82em;margin:4px 0}
+.thermal .meta>div{display:flex;justify-content:space-between;gap:6px}
+.thermal .sep{border-top:1px dashed #000;margin:5px 0}
+.thermal table.items td,.thermal table.items th{padding:1px 2px}
+.thermal .row{display:flex;justify-content:space-between;gap:8px;font-size:.9em}
+.thermal .row.grand{font-weight:800;border-top:1px dashed #000;margin-top:3px;padding-top:3px;font-size:1.05em}
+
+/* ================================ SHEET ================================= */
+.doc.sheet{width:var(--w);min-height:var(--h);font-size:var(--fz);padding:12mm 12mm 10mm;
+  position:relative;line-height:1.45}
+.sheet .hd{display:flex;gap:10px;align-items:flex-start}
+.sheet .logo{max-height:64px;max-width:110px;object-fit:contain}
+.sheet .hblock{flex:1}
+.sheet .biz{font-size:1.65em;font-weight:800;letter-spacing:.3px;line-height:1.15}
+.sheet .ur{direction:rtl;font-size:1.05em;color:#222}
+.sheet .tagline{font-size:.82em;color:#555;letter-spacing:.3px}
+.sheet .sub{font-size:.78em;color:#444}
+.sheet-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;
+  border-bottom:3px solid #111;padding-bottom:9px}
+.doc-type{font-weight:800;font-size:1.05em;border:2px solid #111;border-radius:4px;padding:5px 12px;
+  letter-spacing:1.2px;white-space:nowrap}
+.sheet-meta{display:flex;gap:12px;margin:11px 0 12px}
+.sheet-meta .box{flex:1;border:1px solid #d6dbe3;border-radius:6px;padding:8px 10px;background:#fbfcfe}
+.sheet-meta .pname{font-size:1.02em;font-weight:700;display:block;margin-bottom:2px}
+.blabel{font-size:.68em;text-transform:uppercase;letter-spacing:.8px;color:#6b7280;margin-bottom:4px;font-weight:700}
+.meta-box{display:flex;flex-direction:column;gap:3px}
+.kv{display:flex;justify-content:space-between;gap:10px;font-size:.82em;border-bottom:1px dotted #e3e7ee;padding-bottom:2px}
+.kv:last-child{border-bottom:none}
+.kv span{color:#6b7280}
+.kv b{font-weight:700}
+.meta{display:flex;flex-direction:column;gap:2px}
+.meta>div{display:flex;justify-content:space-between;gap:8px}
+
+/* ------------------------------ ITEMS TABLE ------------------------------ */
+table.items{width:100%;border-collapse:collapse;font-size:.85em;margin-top:2px}
+table.items thead{display:table-header-group}
+table.items th{background:#111;color:#fff;font-weight:700;text-align:left;padding:6px 7px;
+  font-size:.92em;letter-spacing:.3px;border:1px solid #111}
+table.items td{padding:5px 7px;border:1px solid #dfe3ea;vertical-align:top}
+table.items tbody tr:nth-child(even) td{background:#f8fafc}
+table.items .c{text-align:center}
+table.items .r{text-align:right;white-space:nowrap}
+table.items .iname{font-weight:600;color:#111}
+table.items .imeta{font-size:.82em;color:#6b7280;display:flex;gap:8px;flex-wrap:wrap;margin-top:1px}
+table.items tfoot td{font-weight:700;background:#f1f5f9}
+
+/* -------------------------------- WORDS ---------------------------------- */
+.words{display:flex;gap:10px;align-items:baseline;border:1px solid #d6dbe3;background:#f8fafc;
+  border-radius:6px;padding:7px 10px;margin-top:10px;font-size:.84em}
+.words span{color:#6b7280;text-transform:uppercase;letter-spacing:.7px;font-size:.85em;font-weight:700}
+.words b{font-weight:700;letter-spacing:.2px}
+
+/* ----------------------- FOOTER: payments + totals ----------------------- */
+.sheet-foot{display:flex;gap:14px;margin-top:12px;align-items:flex-start}
+.sheet-foot .col-left{flex:1;display:flex;flex-direction:column;gap:10px}
+.sheet-foot .col-right{width:47%;min-width:250px;display:flex;flex-direction:column;gap:8px}
+.totals,.balances,.bank{border:1px solid #d6dbe3;border-radius:6px;padding:8px 10px;background:#fff}
+.balances{background:#fbfcfe;border-color:#c9d3e3}
+.btitle{font-size:.68em;text-transform:uppercase;letter-spacing:.8px;color:#6b7280;font-weight:700;margin-bottom:5px}
+.row{display:flex;justify-content:space-between;gap:10px;font-size:.88em;padding:1px 0}
+.row span:first-child{color:#4b5563}
+.row.grand{border-top:2px solid #111;margin-top:5px;padding-top:5px;font-size:1.02em;font-weight:800}
+.row.grand.due b{color:#b91c1c}
+.row.grand.ok b{color:#047857}
+.pays .row{border-bottom:1px dotted #e3e7ee}
+.codes{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.bcode,.qr{text-align:center}
+.btext{font-size:.72em;letter-spacing:1.4px;margin-top:2px;color:#444}
+
+.sign{display:flex;justify-content:space-between;gap:24px;margin-top:22px}
+.sig{flex:1;max-width:44%;text-align:center;font-size:.72em;color:#4b5563;letter-spacing:.4px}
+.sigline{border-top:1px solid #111;margin-bottom:4px}
+.foot{text-align:center;margin-top:12px;font-size:.86em;color:#111}
+.terms{margin-top:10px;font-size:.72em;color:#374151;border:1px solid #e3e7ee;border-radius:6px;padding:7px 9px;background:#fafbfd}
+.terms b{display:block;margin-bottom:2px;text-transform:uppercase;letter-spacing:.6px;color:#6b7280}
+.power{text-align:center;font-size:.65em;color:#9ca3af;margin-top:10px;letter-spacing:.4px}
+.pays+.bank,.bank{margin-top:2px}
+
+/* ================================ PRINT ================================== */
+@media print{
+  body{background:#fff}
+  .doc{box-shadow:none;margin:0}
+  .doc.sheet{width:auto;min-height:0;padding:0;page-break-after:always}
+  .doc.thermal{width:auto;padding:0}
+  table.items tr,.words,.totals,.balances,.bank{break-inside:avoid;page-break-inside:avoid}
+  .sheet-foot{break-inside:avoid}
+  .sign{break-inside:avoid}
+}
+@media screen{
+  .doc.sheet{box-shadow:0 8px 26px rgba(15,23,42,.18)}
+}
+`;
+
+window.Print2 = P;
+})();
+</script>

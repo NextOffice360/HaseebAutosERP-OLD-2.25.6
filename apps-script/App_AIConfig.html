@@ -1,0 +1,782 @@
+<script>
+/* ==========================================================================
+   HASEEB AUTOS — AI AGENT (v2.10 — dedicated tab, full redesign)
+   --------------------------------------------------------------------------
+   Backend (apps-script/AI.gs):
+     AI.agentConfig      → poori config + models + usage (masked key)
+     AI.saveAgentConfig  → save (settings.manage) + optional key
+     AI.testConnection   → provider ping + human hint
+     AI.discoverModels   → live model list (cache) + fallback catalog
+     AI.chat             → agent loop (tools par aapka hi data)
+   UI sirf unhi fields ko dikhata hai jo selected provider ko chahiyein
+   (ai.providers metadata se) — koi provider/model yahan hardcode nahi.
+   ========================================================================== */
+(function () {
+'use strict';
+
+const ST = {
+  cfg: null, provs: [], loaded: false, busy: false, err: '',
+  selectedProvider: '', routeDraft: null, connecting: false, draft: {}, dirty: false, keyVal: '', keyTouched: false, showKey: false,
+  manualModel: false, testRes: null, testBusy: false, saving: false,
+  hist: [], tid: '', chatBusy: false, threads: [], suggestions: []
+};
+
+/* ------------------------------- helpers -------------------------------- */
+function aiSection(title, children) {
+  return h('section', {class:'card ai-section'},
+    h('div',{class:'card-head'},h('h3',null,title)),
+    h('div',{class:'card-body'},children || []));
+}
+
+function goTab(id) {
+  const t = document.querySelector('.tabs.l1 .tab[data-id="' + id + '"]');
+  if (t) { t.click(); return; }
+  App._tabMem = App._tabMem || {}; App._tabMem[(App.current || 'ai') + ':L1'] = id;
+  App.refresh();
+}
+function val(k) {
+  if (ST.draft[k] !== undefined) return ST.draft[k];
+  if (k === 'aiModel' || k === 'aiEndpoint') {
+    const pf = ST.cfg && ST.cfg.profiles && ST.cfg.profiles[prov()];
+    if (pf) return pf[k === 'aiModel' ? 'model' : 'endpoint'] || '';
+  }
+  return (ST.cfg && ST.cfg.values && ST.cfg.values[k] !== undefined) ? ST.cfg.values[k] : '';
+}
+function setv(k, v) {
+  if (String(val(k)) === String(v)) return;
+  ST.draft[k] = v; ST.dirty = true;
+  const dot = document.getElementById('aiDirty');
+  if (dot) dot.textContent = 'Gair-mehfooz tabdeeliyan';
+}
+function prov() { return String(ST.selectedProvider || (ST.cfg && ST.cfg.provider) || 'GEMINI').toUpperCase(); }
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   v2.27.0 (W3.T2) — AI SETUP ab shared Deps system par
+   --------------------------------------------------------------------------
+   Spec: "Dropdowns and selection fields must drive the rest of the UI dynamically …
+   implemented as a reusable dependency/configuration system, not as isolated
+   hard-coded logic for each dropdown."
+   Yahan: provider ek asli field hai (#aiProvider) → usi ke around —
+     · `Deps.define('ai.providers')`  → provider metadata (10 min cache, 1 request)
+     · `Deps.define('ai.models')`     → provider → models cascade (per-provider cache,
+                                        switch back = 0 nayi request, value preserve)
+     · `[data-when="aiProvider=…"]`   → provider-specific sections khud show/hide
+                                        (khali container chhorne ke bajaye)
+   ══════════════════════════════════════════════════════════════════════════════ */
+var AI_PF = 'aiProvider';
+function aiDeps() {
+  if (!window.Deps) return null;
+  if (!aiDeps._done) {
+    aiDeps._done = true;
+    Deps.define('ai.providers', { action: 'ai.providers', ttl: 600000, opts: { offlineFallback: () => [] } });
+    Deps.define('ai.models', { ttl: 600000, fetch: aiModelsFetch });
+  }
+  return Deps;
+}
+/* provider → models (Deps.fetch): pehle loaded config se, warna ek dafa catalog/live */
+async function aiModelsFetch(provId) {
+  const p = String(provId || '').toUpperCase();
+  const cfg = ST.cfg || {};
+  const same = p === String(cfg.provider || '').toUpperCase();
+  let list = (((cfg.allModels || {})[p]) || (same ? (cfg.models || []) : []) || []).slice();
+  if (!list.length) {
+    try {
+      const r = await API.call('ai.models.refresh', { provider: p }, { offlineFallback: () => null });
+      if (r && r.models) { ST.cfg.allModels = Object.assign({}, ST.cfg.allModels, { [p]: r.models }); list = r.models.slice(); }
+    } catch (e) { }
+  }
+  const saved = ((cfg.profiles || {})[p] || {}).model || (same ? (cfg.model || '') : '');
+  let rows = list.map(mm => ({ value: mm.id,
+    label: (mm.label || mm.id) + (mm.free ? ' — FREE' : '') +
+      ((mm.status === 'deprecated' || mm.status === 'legacy') ? ' — RETIRED' : '') }));
+  if (saved && !rows.filter(x => x.value === saved).length) rows = [{ value: saved, label: saved + ' (saved)' }].concat(rows);
+  return rows;
+}
+/* provider badalne ka EK hi rasta (cards + koi bhi caller) */
+function setProviderValue(id) {
+  ST.selectedProvider = String(id || '').toUpperCase();
+  ST.keyVal = ''; ST.keyTouched = false; ST.showKey = false; ST.testRes = null;
+  delete ST.draft.aiModel; delete ST.draft.aiEndpoint;
+  const hid = document.getElementById(AI_PF);
+  if (hid) {
+    hid.value = ST.selectedProvider;
+    try { hid.dispatchEvent(new Event('input', { bubbles: true })); hid.dispatchEvent(new Event('change', { bubbles: true })); } catch (e) { }
+  }
+}
+/* hidden provider field — Deps isi ko parent samajhta hai ([data-when] + cascade).
+   type=hidden rakha gaya hai: layout/a11y audit par koi surface nahi, magar Deps
+   ka `_readParent('aiProvider')` isi ki value parhta hai. */
+function providerField(cur) {
+  return h('input', { id: AI_PF, 'data-field': AI_PF, type: 'hidden', value: String(cur || '') });
+}
+/* bindSelect ke baad: saved model ko selected rakho (warna pehla model — purana behaviour) */
+function keepModelSelected(sel, cfg) {
+  sel.addEventListener('deps:loaded', function () {
+    const want = String(val('aiModel') || cfg.model || '');
+    const has = v => Array.prototype.slice.call(sel.options).some(o => o.value === v);
+    if (want && has(want)) { if (sel.value !== want) sel.value = want; return; }
+    if ((!sel.value || sel.value === '') && sel.options.length) sel.value = sel.options[0].value;
+  });
+}
+function provMeta(id) {
+  return (ST.provs || []).filter(p => p.id === id)[0] || { id: id, label: id, needsKey: true };
+}
+function chip(text, cls) {
+  return h('span', { class: 'badge ' + (cls || ''), style: { marginRight: '6px' } }, text);
+}
+function paintErr(c, e) {
+  c.innerHTML = '';
+  c.appendChild(aiSection('AI Agent', [h('div', { class: 'empty' },
+    String(e && e.message || e),
+    h('div', { style: { marginTop: '8px' } },
+      h('button', { class: 'btn sm', onclick: () => { ST.loaded = false; ST.err = ''; App.refresh(); } }, 'Dobara koshish karein')))]));
+}
+
+/* ------------------------------- data ops -------------------------------- */
+let cfgInflight = null;
+async function loadCfg(force) {
+  if (ST.loaded && !force) return ST.cfg;
+  if (cfgInflight) return cfgInflight;
+  cfgInflight = (async function () {
+  try {
+    const r = await API.call('ai.agentConfig', {}, { offlineFallback: () => null });
+    if (!r) { ST.err = 'AI config nahi mil saka (backend offline?).'; return null; }
+    ST.cfg = r; ST.loaded = true; ST.err = '';
+    ST.draft = {}; ST.dirty = false; ST.keyTouched = false; ST.keyVal = '';
+    aiDeps();
+    const extra = await Promise.all([
+      (window.Deps ? Deps.load('ai.providers').catch(() => []) : API.call('ai.providers', {}, { offlineFallback: () => [] }).catch(() => [])),
+      API.call('ai.suggest', {}, { offlineFallback: () => [] }).catch(() => []),
+      API.call('ai.threads', {}, { offlineFallback: () => [] }).catch(() => [])
+    ]);
+    ST.provs = extra[0] || [];
+    if (extra[1] && extra[1].length) ST.suggestions = extra[1];
+    ST.threads = extra[2] || [];
+    return r;
+  } catch (e) { ST.err = e.message; return null; }
+  })();
+  try { return await cfgInflight; } finally { cfgInflight = null; }
+}
+
+/* v2.25.9 W2.T2 — manual 'Saving…' hack ki jagah shared UI.run (busy + dup-block
+   + ✓/✖ + elapsed). ST.saving sirf internal guard ke liye rehta hai. */
+async function saveAll(btn) {
+  if (!ST.cfg) return;
+  return UI.run(btn, async () => { await saveAllInner(); }, { busyLabel: 'AI settings save ho rahi hain', okLabel: 'Saved', timeoutMs: 45000, write: true, writeLabel: 'AI settings save' });
+}
+async function saveAllInner() {
+  if (!ST.cfg) return;
+  ST.saving = true;
+  const vals = Object.assign({}, ST.cfg.values, ST.draft);
+  vals.aiModel = val('aiModel'); vals.aiEndpoint = val('aiEndpoint');
+  const payload = { provider: prov(), values: vals, tools: ST.cfg.tools };
+  if (ST.keyTouched && String(ST.keyVal).trim()) payload.key = String(ST.keyVal).trim();
+  try {
+    const r = await API.call('ai.agentConfig.save', payload);
+    if (r) { ST.cfg = r; ST.draft = {}; ST.dirty = false; ST.keyTouched = false; ST.keyVal = ''; if (window.Deps) Deps.hardRefresh('ai.models'); }
+    UI.toast('AI settings mehfooz ho gayin ✅', 'ok');
+    const dot = document.getElementById('aiDirty'); if (dot) dot.textContent = 'Sab kuch mehfooz hai';
+  } catch (e) { UI.toast(e.message, 'err', 5200); }
+  ST.saving = false;
+  App.refresh();
+}
+
+async function testConn(btn, host) {
+  return UI.run(btn, async () => { await testConnInner(host); }, { busyLabel: 'Testing connection', timeoutMs: 30000 });
+}
+async function testConnInner(host) {
+  ST.testBusy = true;
+  try {
+    const r = await API.call('ai.test', { provider: prov(), model: String(val('aiModel') || '') || undefined },
+      { offlineFallback: () => ({ ok: false, message: 'Demo ke liye Mock provider chunein — Setup ▸ Provider ▸ Mock.' }) });
+    ST.testRes = r || { ok: false, message: 'Backend jawab nahi de saka.' };
+    if (r) { const fresh=await API.call('ai.agentConfig',{}); if(fresh){ST.cfg=fresh; if (window.Deps) Deps.hardRefresh('ai.models');} }
+  } catch (e) { ST.testRes = { ok: false, message: e.message }; }
+  ST.testBusy = false;
+  if (host) paintTest(host);
+}
+function paintTest(host) {
+  host.innerHTML = '';
+  const r = ST.testRes; if (!r) return;
+  host.appendChild(h('div', { class: 'ai-test ' + (r.ok ? 'ok' : 'err') },
+    h('b', null, r.ok ? 'Connection KAAMYAB' : 'Connection FAIL'),
+    h('span', null, r.message || ''),
+    r.fallback ? chip('Mock fallback', 'info') : '',
+    r.hint ? h('div', { class: 'ai-test-hint' }, 'Salah: ' + r.hint) : '',
+    r.sample ? h('div', { class: 'ai-test-hint', style: { opacity: '.75' } }, 'Sample: ' + r.sample) : '',
+    (r.ms !== undefined && r.ok) ? h('div', { class: 'ai-test-hint', style: { opacity: '.65' } }, 'Latency: ' + r.ms + ' ms') : ''));
+}
+
+/* ============================== SETUP TAB ================================== */
+function renderSetupControls(c) {
+  if (!ST.cfg) { c.appendChild(h('div', { class: 'empty', style: { padding: '26px' } }, 'AI config load ho rahi hai…')); return; }
+  const cfg = Object.assign({}, ST.cfg, (ST.cfg.credentials || {})[prov()] || {});
+  const grid = h('div', { class: 'ai-grid' });
+  c.appendChild(grid);
+  const left = h('div'), right = h('div');
+  grid.append(left, right);
+
+  /* ── status strip ── */
+  const meta = provMeta(prov());
+  const okUsable = cfg.usable;
+  left.appendChild(h('div', { class: 'card' }, h('div', { class: 'card-body tight' },
+    h('div', { style: { display: 'flex', flexWrap: 'wrap', gap: '4px', alignItems: 'center' } },
+      chip(String(val('aiEnabled')) !== 'false' ? 'AI ON' : 'AI OFF', String(val('aiEnabled')) !== 'false' ? 'ok' : 'warn'),
+      chip(meta.label || prov(), 'info'),
+      chip(cfg.model || '—'),
+      cfg.hasKey ? chip('Key set (' + (cfg.keyHint || '••••') + ')', 'ok')
+        : okUsable ? chip('Mock mode', 'info') : chip('Key chahiye', 'err'),
+      String(val('aiCanWrite')) === 'true' ? chip('Data par writes ON', 'warn') : chip('Read-only', 'ok')),
+    (!okUsable) ? h('div', { class: 'f-hint', style: { color: 'var(--warn)' } },
+      'AI chalane ke liye ya to API key daalein, ya provider Mock chunein, ya Mock fallback on karein.') : '')));
+
+  /* ── provider cards ── */
+  const pCards = h('div', { class: 'ai-prov' });
+  (ST.provs.length ? ST.provs : ['GEMINI', 'OPENAI', 'OPENROUTER', 'OLLAMA', 'MOCK'].map(id => ({ id: id, label: id, needsKey: true })))
+    .forEach(p => {
+      const sel2 = p.id === prov();
+      pCards.appendChild(h('button', { class: 'ai-provc' + (sel2 ? ' on' : ''), type: 'button',
+        'aria-pressed': sel2 ? 'true' : 'false',
+        onclick: () => {
+          setProviderValue(p.id);
+          const rec = (cfg.recommendedByProvider || {})[p.id] || '';
+          if (!(cfg.profiles || {})[p.id]) setv('aiModel', rec);
+          App.refresh();
+        } },
+        h('b', null, p.label || p.id),
+        h('span', null, p.tagline || ''),
+        h('span', { class: 'ai-provc-tag' }, (cfg.profiles || {})[p.id] && cfg.profiles[p.id].lastTest ? (cfg.profiles[p.id].lastTest.ok ? 'Test passed' : 'Needs attention') : p.needsKey ? ((cfg.credentials || {})[p.id] && cfg.credentials[p.id].hasKey ? 'Key saved · test pending' : 'Not connected') : (p.id === 'MOCK' ? 'Rule-based demo' : 'Your server')),
+        (function () {
+          const caps = p.caps || {};
+          const tags = [];
+          if (caps.tools) tags.push('function-tools ✓');
+          if (caps.freeModels) tags.push('free models ✓');
+          if (caps.freeTier) tags.push('free tier ✓');
+          if (caps.serverState) tags.push('server-state multi-turn');
+          if (caps.private) tags.push('model aapke server par');
+          if (caps.offline) tags.push('offline chalta hai');
+          return tags.length ? h('span', { class: 'ai-provc-caps' }, tags.join(' · ')) : '';
+        })()));
+    });
+  aiDeps();
+  left.appendChild(aiSection('01 / Choose a connection', [
+    h('p', { class: 'f-hint', style: { margin: '0 0 8px' } },
+      'Select a connection to manage. Your primary provider stays unchanged until you save routing.'),
+    pCards]));
+
+  /* ── API key — v2.27.0: shared [data-when] (MOCK par poora section chhupta hai) ── */
+  {
+    const keyInput = h('input', { class: 'f-input', type: ST.showKey ? 'text' : 'password',
+      'aria-label': 'API key', autocomplete: 'off', spellcheck: 'false',
+      placeholder: cfg.hasKey ? ('Mehfooz: ' + (cfg.keyHint || '••••') + ' — naya daalne par badal jaye gi') : 'API key yahan paste karein',
+      value: ST.keyVal, oninput: e => { ST.keyVal = e.target.value; ST.keyTouched = true; } });
+    const keyChildren = meta.needsKey ? [
+      h('p', { class: 'f-hint', style: { margin: '0 0 8px' } }, meta.keyHelp || ''),
+      h('div', { class: 'ai-keyrow' }, keyInput,
+        h('button', { class: 'btn sm sec', type: 'button',
+          'aria-label': ST.showKey ? 'Hide API key' : 'Show API key',
+          onclick: () => { ST.showKey = !ST.showKey; App.refresh(); } }, ST.showKey ? 'Hide' : 'Show'),
+        meta.keyUrl ? h('a', { class: 'btn sm sec', href: meta.keyUrl, target: '_blank', rel: 'noopener' }, 'Get a key') : ''),
+      h('p', { class: 'f-hint', style: { marginTop: '6px' } },
+        'Key sirf Script Properties mein mehfooz hoti hai — Sheets ya browser mein kahin nahi. Jawab mein kabhi poori key wapas nahi aati (sirf ' + (cfg.keyHint || 'pehle 4…aakhir 3') + ' jaisa hint).'),
+      cfg.hasKey ? h('button', { class: 'link-btn', type: 'button', onclick: async () => {
+        try { await API.call('ai.setKey', { key: '', provider: prov(), model: val('aiModel') });
+          UI.toast('Key hata di gayi', 'ok'); ST.loaded = false; if (window.Deps) Deps.hardRefresh('ai.models'); App.refresh(); }
+        catch (e) { UI.toast(e.message, 'err'); } } }, 'Mehfooz key hata dein') : ''
+    ] : [
+      h('p', { class: 'f-hint', style: { margin: '0' } }, 'Is provider ko API key ki zaroorat nahi — server/local mode.')
+    ];
+    const keySec = aiSection('API key', keyChildren);
+    keySec.setAttribute('data-when', '!aiProvider=MOCK');   /* shared conditional UI */
+    left.appendChild(keySec);
+  }
+
+  /* ── endpoint (Ollama / custom) ── */
+  const pmeta = provMeta(prov());
+  const epCard = aiSection('Server / endpoint', [
+    (function () {
+      const ep = h('input', { class: 'f-input', type: 'text', 'aria-label': 'Custom API endpoint (optional)',
+        placeholder: 'https://… (khali = provider ka official URL)', value: val('aiEndpoint'),
+        oninput: e => setv('aiEndpoint', e.target.value.trim()) });
+      return h('div', null, ep,
+        pmeta.endpointRequired && !String(val('aiEndpoint')).match(/^https?:\/\//)
+          ? h('div', { class: 'f-hint', style: { color: 'var(--err)' } }, 'Ollama ke liye endpoint lazmi hai.') : '',
+        h('p', { class: 'f-hint', style: { marginTop: '6px' } },
+          pmeta.endpointHelp || 'Sirf tab badlein jab aap proxy/khudi ka gateway use kar rahe hon. Aksar users ke liye khali chhor dein.'));
+    })()]);
+  if (pmeta.endpointRequired) left.appendChild(epCard);
+  else {
+    const adv = h('details', { 'data-when': '!aiProvider=MOCK' },
+      h('summary', { style: { minHeight: '32px' } }, 'Advanced: custom endpoint'), epCard);
+    left.appendChild(adv);
+    if (prov() === 'MOCK') adv.style.display = 'none';   /* Deps.when bhi yahi karega (first paint jhatka na ho) */
+  }
+
+  /* ── model select — v2.27.0: shared Deps cascade (provider → models) ── */
+  const cur = String(val('aiModel') || cfg.model || '');
+  const sel = h('select', { class: 'f-input', 'aria-label': 'Model',
+    'data-dep': 'ai.models', 'data-dep-parent': AI_PF, 'data-dep-placeholder': 'false',
+    'data-dep-scope': '#view',
+    onchange: e => { setv('aiModel', e.target.value); App.refresh(); } });
+  keepModelSelected(sel, cfg);
+  const refreshBtn = h('button', { class: 'btn sm sec', type: 'button', onclick: async (e) => {
+    const b = e.target; const o = b.textContent; b.textContent = 'Loading…'; b.disabled = true;
+    try {
+      const r = await API.call('ai.models.refresh', { provider: prov() }, { offlineFallback: () => null });
+      if (r && r.models) {
+        ST.cfg.models = r.models;
+        ST.cfg.allModels = Object.assign({}, ST.cfg.allModels, { [prov()]: r.models });
+        if (r.source) ST.cfg.modelSources = Object.assign({}, ST.cfg.modelSources, { [prov()]: r.source });
+        UI.toast(r.models.length + ' models ' + (r.source === 'live' ? 'provider se' : 'built-in list se') + ' aa gaye', 'ok', 3000);
+        if (r.note) UI.toast(r.note, 'warn', 4200);
+        if (window.Deps) Deps.hardRefresh('ai.models');   /* cache clear → naya list foran */
+        App.refresh();
+      }
+    } catch (err2) { UI.toast(err2.message, 'err', 5000); }
+    b.textContent = o; b.disabled = false;
+  } }, 'Refresh models');
+  const manualBtn = h('button', { class: 'link-btn', type: 'button', onclick: () => { ST.manualModel = !ST.manualModel; App.refresh(); } },
+    ST.manualModel ? 'List se chunein' : 'Model ID khud likhein');
+  left.appendChild(aiSection('Model', [
+    ST.manualModel
+      ? h('input', { class: 'f-input', type: 'text', 'aria-label': 'Model id', placeholder: 'provider ki list wala id',
+          value: cur, onchange: e => { setv('aiModel', e.target.value.trim()); } })
+      : sel,
+    h('div', { style: { display: 'flex', gap: '10px', alignItems: 'center', marginTop: '8px', flexWrap: 'wrap' } },
+      refreshBtn, manualBtn),
+    h('p', { class: 'f-hint', style: { marginTop: '6px' } },
+      'Source: ' + ((cfg.modelSources || {})[prov()] || 'catalog') +
+      ' · recommended: ' + ((cfg.recommendedByProvider || {})[prov()] || '—') +
+      (cfg.modelMeta && (cfg.modelMeta.status === 'deprecated' || cfg.modelMeta.status === 'legacy')
+        ? ' — chuna hua model RETIRED hai, badal dein' : ''))]));
+
+  /* ── API mode (v2.11 adapters: Interactions/Responses vs legacy) ── */
+  const modeSelKey = prov() === 'GEMINI' ? 'aiApiModeGemini' : prov() === 'OPENAI' ? 'aiApiModeOpenai' : '';
+  const modeOpts = (pmeta.apiModes || []);
+  if (modeSelKey && modeOpts.length > 1) {
+    const ms = h('select', { class: 'f-input', 'aria-label': 'API mode',
+      onchange: e => { setv(modeSelKey, e.target.value); } });
+    modeOpts.forEach(op => ms.appendChild(h('option', { value: op.id, selected: String(val(modeSelKey) || 'AUTO') === op.id }, op.label)));
+    left.appendChild(aiSection('API mode', [ms,
+      h('p', { class: 'f-hint', style: { marginTop: '6px' } },
+        prov() === 'GEMINI'
+          ? 'Interactions API Google ka naya standard hai (function-calling steps ke sath) — Auto mode pehle isi ko try karta hai, phir legacy generateContent. Hamara engine store=false (stateless) chalta hai: app conversation storage request nahi karta; provider ki security/retention policy phir bhi lagu hoti hai.'
+          : 'Responses API OpenAI ka naya standard hai (tools + reasoning items) — Auto pehle Responses, phir Chat Completions. Reasoning models par temperature nahi bheja jata (API 400 deti hai — engine khud strip kar ke dobara bhej deta hai).')]));
+  }
+
+  /* ── presets ── */
+  const prEl = h('div', { style: { display: 'flex', gap: '6px', flexWrap: 'wrap' } });
+  (cfg.presets || []).forEach(pr => prEl.appendChild(h('button', { class: 'chip', type: 'button',
+    title: pr.desc || '', onclick: () => {
+      Object.keys(pr.values || {}).forEach(k => setv(k, pr.values[k]));
+      UI.toast('Preset "' + pr.name + '" apply ho gaya — Save dabayein', 'info');
+      App.refresh();
+    } }, pr.name)));
+  left.appendChild(aiSection('Tez shuruat (presets)', [prEl,
+    h('p', { class: 'f-hint', style: { marginTop: '6px' } }, 'Preset sirf draft badalta hai — Save ke baad lagoo hoga. Detail ke liye har chip par hover/tap karein.')]));
+
+  /* ── RIGHT: behavior ── */
+  function tg(key, label, hint, tone) {
+    const t = UI2.toggle({ label: label, hint: hint, checked: String(val(key)) === 'true' });
+    t.input.addEventListener('change', () => { setv(key, t.input.checked ? 'true' : 'false'); paintWarn(); });
+    if (tone) t.el.classList.add(tone);
+    return t.el;
+  }
+  const warnBox = h('div');
+  function paintWarn() {
+    warnBox.innerHTML = '';
+    if (String(val('aiCanWrite')) === 'true')
+      warnBox.appendChild(h('div', { class: 'ai-warn' },
+        'Writes ON: assistant drafts bana sakta hai. "Approval zaroori" on rakhein — post phir bhi insaan karega.'));
+  }
+  paintWarn();
+  right.appendChild(aiSection('Behavior', [
+    tg('aiEnabled', 'AI enabled', 'Poora assistant on/off — off par chat aur signals ruk jayen ge.'),
+    tg('aiCanWrite', 'Drafts banane dein (writes)', 'Default OFF. Sirf draft banta hai; publish/cancel aap khud karte hain.', 'ai-tg-warn'),
+    tg('aiRequireApproval', 'Approval zaroori', 'Draft par bhi confirmation talab ho.'),
+    tg('aiAutoSuggest', 'Smart suggestions', 'Chat ke neeche sawal-chips dikhayein.'),
+    tg('aiFallbackMock', 'Mock fallback', 'Key na ho to rule-based jawab (aapke data par tools) — app AI ke bagair na ruke.'),
+    tg('aiRedact', 'Naam/fon chhupayein', 'Provider ko bhejte waqt customer phone mask ho.'),
+    warnBox]));
+
+  right.appendChild(aiSection('Zaban aur andaaz', [
+    h('div', { class: 'ai-field2' },
+      (function () {
+        const s2 = h('select', { class: 'f-input', 'aria-label': 'Jawab ki zaban', onchange: e => setv('aiLanguage', e.target.value) });
+        [['AUTO', 'Automatic (sawal ki zaban)'], ['ENGLISH', 'English'], ['ROMAN_URDU', 'Roman Urdu'], ['URDU', 'اردو (Urdu script)']]
+          .forEach(o => s2.appendChild(h('option', { value: o[0], selected: String(val('aiLanguage')) === o[0] }, o[1])));
+        return h('div', { class: 'field' }, h('label', null, 'Zaban'), s2);
+      })(),
+      (function () {
+        const s2 = h('select', { class: 'f-input', 'aria-label': 'Jawab ka andaaz', onchange: e => setv('aiStyle', e.target.value) });
+        [['TINY', 'Chhota (1-2 line)'], ['SHORT', 'Mukhtasar'], ['DETAILED', 'Tafseeli']]
+          .forEach(o => s2.appendChild(h('option', { value: o[0], selected: String(val('aiStyle')) === o[0] }, o[1])));
+        return h('div', { class: 'field' }, h('label', null, 'Andaaz'), s2);
+      })()),
+    (function () {
+      const s2 = h('select', { class: 'f-input', 'aria-label': 'Data scope (branch)', onchange: e => setv('aiDataScope', e.target.value) });
+      s2.appendChild(h('option', { value: 'ALL', selected: String(val('aiDataScope')) !== 'LOC' }, 'Saari branches'));
+      (cfg.locations || []).forEach(l => s2.appendChild(h('option', { value: 'LOC:' + l.id,
+        selected: String(val('aiDataScope')) === 'LOC:' + l.id }, l.name)));
+      return h('div', { class: 'field' }, h('label', null, 'Dekh sakega'), s2,
+        h('div', { class: 'f-hint' }, 'Agent sirf in branches ka data parhe ga (RBAC ke upar).'));
+    })()]));
+
+  right.appendChild(aiSection('Advanced (aksar chhorne layak)', [
+    h('div', { class: 'ai-field2' },
+      (function () {
+        const t0 = Number(val('aiTemperature') || 0.2);
+        const out = h('b', { style: { minWidth: '34px', textAlign: 'right' } }, String(t0));
+        const r2 = h('input', { type: 'range', min: '0', max: '1', step: '0.1', value: String(t0),
+          'aria-label': 'Temperature (0 = tay jawab, 1 = khule khayal)', style: { flex: '1', minHeight: '32px' },
+          oninput: e => { out.textContent = e.target.value; setv('aiTemperature', e.target.value); } });
+        return h('div', { class: 'field' }, h('label', null, 'Temperature'),
+          h('div', { style: { display: 'flex', gap: '8px', alignItems: 'center' } }, r2, out));
+      })(),
+      (function () {
+        const s2 = h('select', { class: 'f-input', 'aria-label': 'Max tokens', onchange: e => setv('aiMaxTokens', e.target.value) });
+        ['1024', '2048', '3072', '4096', '8192'].forEach(v =>
+          s2.appendChild(h('option', { value: v, selected: String(val('aiMaxTokens')) === v }, v + ' words tak')));
+        return h('div', { class: 'field' }, h('label', null, 'Max tokens'), s2);
+      })()),
+    h('div', { class: 'ai-field2' },
+      (function () {
+        const n2 = h('input', { class: 'f-input', type: 'number', min: '0', max: '20', 'aria-label': 'History turns',
+          value: String(val('aiHistoryTurns') || 8), onchange: e => setv('aiHistoryTurns', e.target.value) });
+        return h('div', { class: 'field' }, h('label', null, 'Yaad (turns)'), n2);
+      })(),
+      (function () {
+        const wrap2 = h('div', { class: 'field' }, h('label', null, 'Roz ki limit (user / sab)'));
+        const a = h('input', { class: 'f-input', type: 'number', min: '0', 'aria-label': 'Per user daily limit',
+          value: String(val('aiRateLimitPerUser') || 40), style: { flex: '1' }, onchange: e => setv('aiRateLimitPerUser', e.target.value) });
+        const b = h('input', { class: 'f-input', type: 'number', min: '0', 'aria-label': 'Global daily limit',
+          value: String(val('aiRateLimitPerDay') || 200), style: { flex: '1' }, onchange: e => setv('aiRateLimitPerDay', e.target.value) });
+        wrap2.appendChild(h('div', { style: { display: 'flex', gap: '6px' } }, a, b));
+        wrap2.appendChild(h('div', { class: 'f-hint' }, '0 = unlimited'));
+        return wrap2;
+      })()),
+    (function () {
+      const ta = h('textarea', { class: 'f-input', rows: 3, 'aria-label': 'Custom instructions (persona)',
+        placeholder: 'Extra hidayat — misal: hamesha units ke sath jawab do', style: { width: '100%', resize: 'vertical' },
+        oninput: e => setv('aiPersona', e.target.value) });
+      ta.value = String(val('aiPersona') || '');
+      return h('div', { class: 'field', style: { marginTop: '8px' } }, h('label', null, 'Custom hidayat (persona)'), ta);
+    })()]));
+
+  /* ── footer bar (clean, aligned, responsive) ── */
+  const testHost = h('div', { id: 'aiTestHost' });
+  c.appendChild(testHost);
+  paintTest(testHost);
+  c.appendChild(h('div', { class: 'ai-foot' },
+    h('span', { id: 'aiDirty', class: 'ai-dirty' + (ST.dirty ? ' on' : '') },
+      ST.dirty ? 'Gair-mehfooz tabdeeliyan' : 'Sab kuch mehfooz hai'),
+    h('div', { style: { display: 'flex', gap: '8px', flexWrap: 'wrap' } },
+      h('button', { class: 'btn sm sec', type: 'button', onclick: () => { ST.loaded = false; App.refresh(); } }, 'Dobara parein'),
+      h('button', { class: 'btn sm', type: 'button', onclick: e => testConn(e.target, testHost) }, 'Test connection'),
+      h('button', { class: 'btn ok', type: 'button', onclick: e => saveAll(e.target) }, 'Save settings'))));
+
+  /* NOTE (v2.27.0): Deps wiring sirf VISIBLE tree par hoti hai — hub ka renderSetup()
+     ye controls detached `legacy` div se uthata hai, is liye wiring wahan (neeche) hoti hai. */
+}
+
+/* Connection hub: progressive setup; full legacy controls retained below. */
+async function connectProvider(btn) {
+  if (ST.connecting) return;
+  ST.connecting = true; document.querySelectorAll('.ai-hub button, .ai-hub input, .ai-hub select').forEach(el=>{el.disabled=true;}); btn.disabled = true; btn.textContent = 'Verifying · discovering · testing…';
+  const payload = {provider:prov(), key:ST.keyVal || '', endpoint:val('aiEndpoint') || ''};
+  ST.keyVal = ''; ST.keyTouched = false; ST.showKey = false;
+  const input = document.querySelector('.ai-keyrow input'); if (input) input.value = '';
+  try {
+    const r = await API.call('ai.autoConfigure', payload, {queueable:false});
+    ST.testRes = r;
+    if (r.config) { ST.cfg = r.config; ST.draft = {}; ST.dirty = false; ST.routeDraft = null; }
+    UI.toast(r.message || (r.ok ? 'Connected' : 'Connection needs attention'), r.ok ? 'ok' : 'warn', 5500);
+  } catch(e) { ST.testRes = {ok:false,message:e.message}; }
+  finally { payload.key = ''; ST.connecting = false; if (window.Deps) Deps.hardRefresh('ai.models'); App.refresh(); }
+}
+function renderRouting() {
+  const saved = ST.cfg.routing || {primary:ST.cfg.provider,enabled:true,order:['GEMINI','OPENAI','OPENROUTER','OLLAMA']};
+  const route = ST.routeDraft || (ST.routeDraft = {primary:saved.primary,enabled:saved.enabled,order:saved.order.slice()});
+  const primary = h('select', {class:'f-input','aria-label':'Primary AI provider',onchange:e=>{route.primary=e.target.value;App.refresh();}});
+  ST.provs.forEach(p=>primary.appendChild(h('option',{value:p.id,selected:route.primary===p.id},p.label || p.id)));
+  const toggle = UI2.toggle({label:'Automatic failover',hint:'Quota ya service error par agla configured provider.',checked:route.enabled});
+  toggle.input.addEventListener('change',()=>{route.enabled=toggle.input.checked;});
+  const order = h('ol',{class:'ai-route-list'});
+  route.order.forEach((id,index)=>{
+    const profile = (ST.cfg.profiles || {})[id] || {};
+    const move = delta => { const next=index+delta; if(next<0 || next>=route.order.length)return;
+      [route.order[index],route.order[next]]=[route.order[next],route.order[index]]; App.refresh(); };
+    order.appendChild(h('li',{'data-provider':id},h('div',null,
+      h('b',null,provMeta(id).label || id),
+      h('span',{class:'f-hint'},id===route.primary ? 'Primary · always tried first' : profile.configured ? 'Configured fallback' : 'Skipped · connect first')),
+      h('div',{class:'ai-route-actions'},
+        h('button',{class:'btn sm sec',type:'button',disabled:index===0,'aria-label':'Move '+id+' up',onclick:()=>move(-1)},'↑'),
+        h('button',{class:'btn sm sec',type:'button',disabled:index===route.order.length-1,'aria-label':'Move '+id+' down',onclick:()=>move(1)},'↓'))));
+  });
+  const save = h('button',{class:'btn',type:'button',onclick:async e=>{
+    e.target.disabled=true;
+    try { ST.cfg=await API.call('ai.routing.save',route,{queueable:false}); ST.routeDraft=null; UI.toast('Routing saved','ok');App.refresh(); }
+    catch(err){UI.toast(err.message,'err');e.target.disabled=false;}
+  }},'Save routing');
+  return aiSection('03 / Primary & fallback order',[
+    h('label',{class:'ai-field-label'},'Primary provider'),primary,toggle.el,order,
+    h('p',{class:'f-hint'},'Primary first, then this order. Only configured services are used. Fallback can send the same question and permitted business data to another provider and may incur charges.'),
+    h('p',{class:'f-hint'},'Shared 50-second / 4-request budget. Refusals and invalid requests are not bypassed. Draft/write actions are never replayed across providers.'),save]);
+}
+function renderSetup(c) {
+  if (!ST.cfg) return renderSetupControls(c);
+  c.classList.add('ai-hub');
+  const legacy = h('div'); renderSetupControls(legacy);
+  const oldGrid=legacy.querySelector('.ai-grid'), left=oldGrid.children[0], right=oldGrid.children[1];
+  const cards=Array.from(left.children), providerCard=cards.find(el=>el.querySelector('.ai-prov'));
+  const keyCard=cards.find(el=>el.querySelector('.ai-keyrow'));
+  const modelCard=cards.find(el=>el.querySelector('[aria-label="Model"], [aria-label="Model id"]'));
+  const endpointCard=cards.find(el=>el.querySelector('[aria-label="Custom API endpoint (optional)"]'));
+  const profile=(ST.cfg.profiles || {})[prov()] || {};
+  const meta=provMeta(prov());
+  const status=profile.lastTest ? (profile.lastTest.ok ? 'Test passed' : 'Needs attention') : profile.configured ? 'Configured · test recommended' : 'Not connected';
+  c.appendChild(h('header',{class:'ai-hub-head'},h('div',null,
+    h('span',{class:'ai-eyebrow'},'AI WORKSPACE'),h('h2',null,'Connect once. Let your assistant work.'),
+    h('p',null,'API key daalein — endpoint, available model aur connection test khud set ho jayen ge.')),
+    chip('Primary: '+provMeta((ST.cfg.routing || {}).primary || ST.cfg.provider).label,'info')));
+  if (window.MockAPI && !window.API_URL && !(window.google && google.script))
+    c.appendChild(h('div',{class:'ai-hub-demo',role:'note'},'Demo preview — connections are simulated; no provider requests are made. Use test keys here, not real credentials.'));
+  if(providerCard){providerCard.classList.add('ai-hub-providers');c.appendChild(providerCard);}
+  const layout=h('div',{class:'ai-hub-layout'}), connection=h('div',{class:'ai-connection'});
+  connection.appendChild(h('div',{class:'ai-connection-title'},h('div',null,
+    h('span',{class:'ai-eyebrow'},'02 / CONNECT PROVIDER'),h('h3',null,meta.label || prov())),
+    chip(status,profile.lastTest && profile.lastTest.ok ? 'ok' : 'info')));
+  if(keyCard) connection.appendChild(keyCard);
+  if(prov()==='OLLAMA' && endpointCard) connection.appendChild(endpointCard);
+  connection.appendChild(h('div',{class:'ai-connect-action'},
+    h('button',{class:'btn',type:'button',disabled:ST.connecting,'data-action':'auto-connect',onclick:e=>connectProvider(e.currentTarget)},
+      ST.connecting ? 'Connecting…' : prov()==='MOCK' ? 'Configure Mock demo' : 'Connect & auto-configure'),
+    h('p',{class:'f-hint'},prov()==='MOCK' ? 'Rule-based demonstration only. No live AI service.' :
+      'Secure key check → discover models → choose & test → save. For cloud services, this uses the official endpoint.')));
+  const testHost=legacy.querySelector('#aiTestHost'); if(testHost) connection.appendChild(testHost);
+  if(modelCard)connection.appendChild(modelCard);
+  if(profile.lastTest)connection.appendChild(h('p',{class:'f-hint ai-test-time'},'Last connection check: '+profile.lastTest.at+' · '+profile.lastTest.message));
+  layout.append(connection,renderRouting());c.appendChild(layout);
+  const advanced=h('details',{class:'ai-hub-advanced'},h('summary',null,'Manual setup & assistant preferences'),
+    h('p',{class:'f-hint'},'Optional: custom gateway, API mode, language, permissions, presets and usage limits. Save settings below; this does not change your primary provider.'));
+  const advancedGrid=h('div',{class:'ai-grid'}), extras=h('div');
+  cards.slice(1).forEach(card=>{if(card!==providerCard && card!==keyCard && card!==modelCard && !(prov()==='OLLAMA' && card===endpointCard))extras.appendChild(card);});
+  advancedGrid.append(extras,right);advanced.appendChild(advancedGrid);c.appendChild(advanced);
+  const footer=legacy.querySelector('.ai-foot');if(footer)c.appendChild(footer);
+
+  /* v2.27.0 (W3.T2) — VISIBLE tree par shared system wire karo:
+     · provider field (hidden) yahan rakha jata hai taake Deps ise parent samajh sake,
+       kyunke hub ke saare controls detached `legacy` div se uthaye jate hain.
+     · ek hi call se provider → models cascade chalti hai aur [data-when] sections
+       (provider-specific) khud show/hide hote hain. */
+  try {
+    if (aiDeps()) {
+      c.appendChild(providerField(prov()));
+      Deps.apply(c);
+    }
+  } catch (e) { }
+}
+
+/* ============================ ASSISTANT TAB ================================ */
+function pushMsg(host, role, text, tools, info) {
+  const el = h('div', { class: 'ai-msg ' + (role === 'user' ? 'me' : 'bot') }, text);
+  if (tools && tools.length)
+    el.appendChild(h('div', { class: 'ai-msg-tools' }, 'tools: ' + tools.map(t => t.tool).join(', ') +
+      (tools.filter(t => t.result && t.result.error).length ? ' (' + tools.filter(t => t.result && t.result.error).length + ' error)' : '')));
+  if (info) el.appendChild(h('div', {class:'ai-msg-tools'}, 'Answered by ' + info.provider + ' · ' + info.model + (info.failover ? ' · fallback used' : '') + (info.provider === 'MOCK' ? ' · rule-based, not live AI' : '')));
+  host.appendChild(el); host.scrollTop = host.scrollHeight;
+  return el;
+}
+async function aiSend(text, host) {
+  if (ST.chatBusy || !text) return;
+  ST.chatBusy = true;
+  pushMsg(host, 'user', text);
+  ST.hist.push({ role: 'user', content: text });
+  const typing = h('div', { class: 'ai-msg bot' }, h('div', { class: 'typing' }, h('i'), h('i'), h('i')));
+  host.appendChild(typing); host.scrollTop = host.scrollHeight;
+  const btn = document.getElementById('aiSendBtn');
+  if (btn) { btn.disabled = true; btn.textContent = '…'; }
+  try {
+    const res = await API.call('ai.chat', { message: text, history: ST.hist.slice(0, -1).slice(-10), threadId: ST.tid || undefined },
+      { offlineFallback: () => null });
+    typing.remove();
+    if (!res) throw new Error('Backend jawab nahi de saka (offline?)');
+    if (res.threadId) ST.tid = res.threadId;
+    pushMsg(host, 'bot', res.reply || '(khaali jawab)', res.toolResults, res.config && Object.assign({}, res.config, {failover:res.routing && res.routing.failover}));
+    ST.hist.push({ role: 'assistant', content: res.reply || '' });
+    if (res.needsKey) {
+      host.appendChild(h('div', { class: 'ai-msg bot' },
+        'Set up karne ke liye:',
+        h('div', { style: { marginTop: '6px' } },
+          h('button', { class: 'btn sm', type: 'button', onclick: () => goTab('setup') }, 'AI Setup kholein'))));
+    }
+  } catch (e) {
+    typing.remove();
+    pushMsg(host, 'bot', 'Error: ' + e.message);
+  }
+  ST.chatBusy = false;
+  if (btn) { btn.disabled = false; btn.textContent = 'Bhejein'; }
+  const i0 = document.getElementById('aiAsk'); if (i0) i0.focus();
+}
+function renderAssistant(c) {
+  const cfg = ST.cfg;
+  if (!cfg) { c.appendChild(h('div', { class: 'empty', style: { padding: '26px' } }, 'AI load ho raha hai…')); return; }
+  const meta = provMeta(cfg.provider);
+  const wrap = h('div', { class: 'card ai-chat-card' });
+  wrap.appendChild(h('div', { class: 'card-head' },
+    h('h3', null, 'Haseeb Assistant'),
+    h('div', { style: { display: 'flex', gap: '6px', flexWrap: 'wrap' } },
+      h('span', { class: 'badge ' + (cfg.usable ? 'ok' : 'warn') },
+        cfg.provider === 'MOCK' ? 'Mock agent' : (cfg.usable ? 'Live · ' + (cfg.model || '') : 'Setup zaroori')),
+      h('button', { class: 'btn sm sec', onclick: () => {
+        ST.hist = []; ST.tid = ''; App.refresh(); } }, 'New chat'),
+      h('button', { class: 'btn sm ghost', onclick: () => goTab('setup') }, 'Setup'))));
+  const host = h('div', { class: 'ai-msgs', id: 'aiMsgs' });
+  if (!ST.hist.length)
+    pushMsg(host, 'bot', 'Assalam-o-Alaikum! Main aapka business agent hoon — ' +
+      (cfg.provider === 'MOCK' ? 'Mock mode mein aapke LIVE data par tools chala kar jawab deta hoon.' :
+        meta.label + ' (' + (cfg.model || 'model') + ') se munsalik.') +
+      '\nNeeche diye sawal aazmaayein, ya jo poochna ho likhein.');
+  else ST.hist.forEach(mm => pushMsg(host, mm.role === 'user' ? 'user' : 'bot', mm.content));
+  wrap.appendChild(host);
+  if (String(val('aiAutoSuggest') || 'true') !== 'false') {
+    const chips = h('div', { class: 'ai-chips2' });
+    (ST.suggestions.length ? ST.suggestions : ['Aaj ki sale kitni hui?', 'Low stock items batao', 'Inventory value kitni hai?'])
+      .slice(0, 6).forEach(s2 => chips.appendChild(h('button', { class: 'chip', type: 'button', onclick: () => aiSend(s2, host) }, s2)));
+    wrap.appendChild(chips);
+  }
+  const input = h('input', { class: 'f-input', id: 'aiAsk', type: 'text', autocomplete: 'off',
+    placeholder: 'Sawal likhein… (Enter se bhejein)', 'aria-label': 'AI sawal',
+    onkeydown: e => { if (e.key === 'Enter' && e.target.value.trim()) { const v = e.target.value.trim(); e.target.value = ''; aiSend(v, host); } } });
+  wrap.appendChild(h('div', { class: 'ai-inputrow' }, input,
+    h('button', { class: 'btn', id: 'aiSendBtn', type: 'button',
+      onclick: () => { if (input.value.trim()) { const v = input.value.trim(); input.value = ''; aiSend(v, host); } } }, 'Bhejein')));
+  if (ST.threads.length)
+    wrap.appendChild(h('div', { class: 'f-hint', style: { padding: '0 12px 8px' } },
+      'History: ' + ST.threads.length + ' chat (Activity tab mein)'));
+  c.appendChild(wrap);
+}
+
+/* ============================== TOOLS TAB ================================== */
+function renderTools(c) {
+  const cfg = ST.cfg;
+  if (!cfg) { c.appendChild(h('div', { class: 'empty', style: { padding: '26px' } }, 'AI load ho raha hai…')); return; }
+  const groups = {};
+  (cfg.tools || []).forEach(t => { const g = t.group || 'Other'; (groups[g] = groups[g] || []).push(t); });
+  c.appendChild(h('p', { class: 'f-hint', style: { marginBottom: '10px' } },
+    'Jo tool ON hai, model wahi istemal kar sakta hai. READ tools sirf parhte hain; WRITE drafts banate hain (post phir bhi insaan karta hai). Kuch bhatka hua lage to tools tab se band kar dein.'));
+  Object.keys(groups).forEach(g => {
+    const rows = h('div');
+    groups[g].forEach(t => {
+      const tg = UI2.toggle({ checked: t.enabled !== false });
+      tg.input.addEventListener('change', async () => {
+        t.enabled = tg.input.checked;
+        const old = tg.el.style.opacity; tg.el.style.opacity = '.55';
+        try {
+          const r = await API.call('ai.agentConfig.save', { tools: cfg.tools });
+          if (r) ST.cfg = r;
+          UI.toast(t.name + (t.enabled ? ' on' : ' off'), 'ok');
+        } catch (e) { t.enabled = !t.enabled; tg.input.checked = t.enabled; UI.toast(e.message, 'err'); }
+        tg.el.style.opacity = old;
+      });
+      rows.appendChild(h('div', { class: 'ai-tool' },
+        h('div', { class: 'ai-tool-main' },
+          h('b', { class: 'mono' }, t.name),
+          h('span', null, t.description || ''),
+          h('span', { class: 'badge ' + (t.risk === 'WRITE' ? 'warn' : 'info') }, t.risk)),
+        tg.el));
+    });
+    c.appendChild(aiSection(g, [rows]));
+  });
+}
+
+/* ============================= ACTIVITY TAB ================================ */
+function renderActivity(c) {
+  const cfg = ST.cfg || {};
+  const u = cfg.usage || { threads: 0, messages: 0, today: 0, limit: 200 };
+  const pct = u.limit ? Math.min(100, Math.round(u.today / u.limit * 100)) : 0;
+  c.appendChild(h('div', { class: 'ai-stats' },
+    h('div', { class: 'ai-stat' }, h('span', null, 'Aaj ke messages'), h('b', null, fmt.num(u.today || 0)),
+      h('div', { class: 'ai-meter' }, h('i', { style: { width: pct + '%' } })),
+      h('span', { class: 'f-hint' }, 'Limit: ' + fmt.num(u.limit || 0) + (u.limit ? ' (' + pct + '% used)' : ' (unlimited)'))),
+    h('div', { class: 'ai-stat' }, h('span', null, 'Kul messages'), h('b', null, fmt.num(u.messages || 0))),
+    h('div', { class: 'ai-stat' }, h('span', null, 'Chat threads'), h('b', null, fmt.num(u.threads || 0))),
+    h('div', { class: 'ai-stat' }, h('span', null, 'Provider'), h('b', null, provMeta(cfg.provider).label || cfg.provider || '—'))));
+  let threadList = h('div', { class: 'empty', style: { padding: '14px' } }, 'Abhi koi chat record nahi (pehla sawal poochein).');
+  if (ST.threads.length) {
+    threadList = h('div');
+    ST.threads.forEach(th => threadList.appendChild(h('div', { class: 'list-item' },
+      h('div', { class: 'li-main' }, h('b', null, th.title || 'Chat'),
+        h('span', null, String(th.updatedAt || '').slice(0, 16).replace('T', ' '))))));
+  }
+  const actBtns = h('div', { style: { display: 'flex', gap: '8px', marginTop: '10px', flexWrap: 'wrap' } });
+  actBtns.appendChild(h('button', { class: 'btn sm sec', onclick: async () => {
+    try {
+      const th = await API.call('ai.threads', {}, { offlineFallback: () => [] });
+      ST.threads = th || [];
+      App.refresh();
+    } catch (e) { UI.toast(e.message, 'err'); }
+  } }, 'Refresh'));
+  actBtns.appendChild(h('button', { class: 'btn sm danger', onclick: () => {
+    UI2.confirm('Saari AI chat history mit jaye gi? (Sheets ki AIThreads rows delete hongi.)', async () => {
+      try {
+        await API.call('ai.clear', {});
+        ST.threads = [];
+        UI.toast('History mita di gayi', 'ok');
+        App.refresh();
+      } catch (e) { UI.toast(e.message, 'err'); }
+    }, true);
+  } }, 'Clear history'));
+  c.appendChild(aiSection('Recent chats', [threadList, actBtns]));
+  c.appendChild(aiSection('Data aur hifazat', [
+    h('ul', { class: 'ai-safe' },
+      h('li', null, 'API key sirf Script Properties mein — spreadsheet cells ya browser storage mein kabhi nahi.'),
+      h('li', null, 'Jawab generate karne ke liye aapke hi data par AI apne tools chalata hai — provider ko raw rows nahi jaate; sirf sawal/jawab ka text jata hai (Redact on ho to phone naam masked).'),
+      h('li', null, 'Har chat user-wise AIThreads sheet mein mehfooz — Admin Audit log mein AI_CHAT entries nazar aati hain.'),
+      h('li', null, 'Writes default mein BAND hain; on karne par bhi sirf draft banta hai, post/approve insaan karta hai.'))
+  ]));
+}
+
+/* =============================== SCREEN ================================== */
+App.registerScreen('ai', {
+  title: 'AI Agent', icon: '✨', perm: 'ai.use',
+  subtitle: () => ST.cfg ? (provMeta(ST.cfg.provider).label || ST.cfg.provider) + ' · ' +
+    (ST.cfg.model || 'model') + ' · ' + (ST.cfg.hasKey ? 'key set' : (ST.cfg.usable ? 'mock mode' : 'setup zaroori')) : 'AI assistant',
+  render(body) {
+    const paint = function () {
+      if (!body.isConnected) return;
+      body.innerHTML = '';
+      if (ST.err && !ST.cfg) { paintErr(body, ST.err); return; }
+      UI2.tabs(body, {
+        level: 1, active: (App.params && App.params.tab) || 'assistant',
+        tabs: [
+          { id: 'assistant', label: 'Assistant', icon: '💬', render: c => renderAssistant(c) },
+          { id: 'setup', label: 'Setup', icon: '⚙', render: c => renderSetup(c) },
+          { id: 'tools', label: 'Tools', icon: '🔧', render: c => renderTools(c) },
+          { id: 'activity', label: 'Activity', icon: '📋', render: c => renderActivity(c) }
+        ]
+      });
+    };
+    paint();                                       /* shell foran — cache se */
+    if (!ST.loaded) loadCfg().then(paint, function (e) { ST.err = String(e && e.message || e); paint(); });
+  }
+});
+
+/* ── compatibility: purane links (Settings ▸ automation) ab tab par le jate hain ── */
+const AIC = {
+  ST: ST,
+  openModal: function () {
+    if (App.current === 'ai') goTab('setup');
+    else App.go('ai', { tab: 'setup' });
+  },
+  panel: function (host) {
+    host.appendChild(h('div', { class: 'ai-banner' },
+      h('div', null, h('b', null, 'AI Agent ka apna tab hai'),
+        h('div', { class: 'f-hint' }, 'Setup, assistant chat, tools aur usage — sab #AI Agent screen par (Settings se bahar, taake sab roles ko mile).')),
+      h('button', { class: 'btn sm', type: 'button', onclick: () => AIC.openModal() }, 'AI Agent kholein')));
+    return host;
+  }
+};
+window.AIConfig = AIC;
+})();
+</script>

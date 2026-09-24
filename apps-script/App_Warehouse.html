@@ -1,0 +1,423 @@
+<script>
+/* ==========================================================================
+   HASEEB AUTOS — WAREHOUSE APP (count · audit · inventory)
+   --------------------------------------------------------------------------
+   Dedicated warehouse module (v2.5):
+     • Inventory  — branch / category / search filters, value, low stock
+     • Count      — cycle-count sheets: create → blind entry → post
+     • Audit      — accuracy %, variance (over/short), adjustments ledger
+     • Movements  — har stock move ki poori kahani (in / out / balance)
+   Sab kuch backend APIs se chalta hai (warehouse.* / stock.*) — koi local
+   calculation nahi, taake app aur sheet mein hamesha ek hi number rahe.
+   ========================================================================== */
+(function () {
+  'use strict';
+
+  /* ------------------------------ Inventory -------------------------------- */
+  function renderWhInventory(c) {
+    const host = h('div');
+    const bar = h('div', { class: 'filters' });
+    const q = h('input', { class: 'st2-q', type: 'search', placeholder: '🔎 Code / name / brand…', 'aria-label': 'Search stock' });
+    const cat = h('select', { class: 'st2-f', 'aria-label': 'Category' }, h('option', { value: '' }, 'Category: All'));
+    const wh = h('select', { class: 'st2-f', 'aria-label': 'Warehouse' }, h('option', { value: '' }, 'Warehouse: All'));
+    const lowOnly = UI2.toggle({ label: 'Low stock only', hint: 'Sirf low stock',
+      onChange: () => load() }).el;
+    bar.append(q, cat, wh, lowOnly);
+    c.appendChild(bar);
+    c.appendChild(host);
+
+    Shared.raw('warehouse.list', {}, { ttl: 180000, offline: () => [] })
+      .then(list => (list || []).forEach(w => wh.appendChild(h('option', { value: w.id }, w.name))))
+      .catch(() => { });
+
+    let timer = null;
+    q.oninput = () => { clearTimeout(timer); timer = setTimeout(load, 220); };
+    cat.onchange = load; wh.onchange = load;
+
+    function load() {
+      host.innerHTML = '';
+      host.appendChild(UI2.skeleton ? UI2.skeleton(6) : h('div', null, '…'));
+      const p = { locationId: App.state.locationId, q: q.value.trim(),
+        category: cat.value, lowOnly: lowOnly.querySelector('input').checked };
+      API.call('stock.levels', p, { offlineFallback: () => [] }).then(rows => {
+        rows = rows || [];
+        /* warehouse filter client-side (bin → warehouse map) */
+        const filtered = wh.value
+          ? rows.filter(r => (window.__whBins || []).indexOf(r.rack) > -1 || (window.__whBinItems || {})[r.itemId] === wh.value)
+          : rows;
+        host.innerHTML = '';
+        const units = filtered.reduce((a, r) => a + Number(r.qty || 0), 0);
+        const value = filtered.reduce((a, r) => a + Number(r.value || 0), 0);
+        host.appendChild(UI2.kpiGrid([
+          { icon: '🔢', label: 'SKUs', value: filtered.length },
+          { icon: '📦', label: 'Units', value: fmt.num(units), cls: 'info' },
+          { icon: '💰', label: 'Stock value', value: fmt.money(value), cls: 'ok' },
+          { icon: '⚠', label: 'Low stock', value: filtered.filter(r => r.low).length, cls: 'warn' }
+        ], 4));
+        host.appendChild(UI2.table({
+          screen: 'wh_inventory', rows: filtered, height: '48vh', exportName: 'warehouse-inventory',
+          columns: [
+            { key: 'code', label: 'Code', render: r => h('b', null, r.code) },
+            { key: 'name', label: 'Item' },
+            { key: 'category', label: 'Category' },
+            { key: 'brand', label: 'Brand' },
+            { key: 'rack', label: 'Rack / bin' },
+            { key: 'qty', label: 'Qty', num: true, render: r => h('span', {
+              class: 'badge ' + (Number(r.qty) <= 0 ? 'err' : r.low ? 'warn' : 'ok') }, fmt.num(r.qty)) },
+            { key: 'avgCost', label: 'Avg cost', num: true, render: r => fmt.money(r.avgCost) },
+            { key: 'value', label: 'Value', num: true, render: r => fmt.money(r.value) }
+          ],
+          filters: [{ key: 'category', label: 'Category', type: 'select',
+            options: Array.from(new Set((rows || []).map(r => r.category).filter(Boolean))) }],
+          rowActions: r => [
+            { icon: '🧮', label: 'Count', onClick: () => quickCount(r) },
+            { icon: '👁', label: 'Item', onClick: () => App.go('items', { open: r.itemId }) }
+          ],
+          onRow: r => App.go('items', { open: r.itemId })
+        }));
+        /* category chart */
+        const byCat = {};
+        filtered.forEach(r => { byCat[r.category || 'Other'] = (byCat[r.category || 'Other'] || 0) + Number(r.value || 0); });
+        const cats = Object.keys(byCat).map(k => ({ label: k, value: byCat[k] }))
+          .sort((a, b) => b.value - a.value).slice(0, 8);
+        if (cats.length) {
+          host.appendChild(UI2.section('Value by category'));
+          host.appendChild(h('div', { class: 'card' }, h('div', { class: 'card-body' },
+            Chart.bars(cats, { height: 180 }))));
+        }
+      }).catch(e => { host.innerHTML = ''; host.appendChild(h('div', { class: 'empty' }, '⚠ ' + e.message)); });
+    }
+
+    /* category + warehouse → bin map (filter ke liye) */
+    Shared.raw('warehouse.bins', {}, { ttl: 180000, offline: () => [] }).then(bins => {
+      window.__whBins = (bins || []).map(b => b.code);
+    }).catch(() => { });
+    load();
+  }
+
+  function quickCount(row) {
+    const qty = h('input', { class: 'f-input', type: 'number', value: row.qty, 'aria-label': 'Counted quantity' });
+    UI2.modal({
+      title: '🧮 Quick count — ' + row.name, size: 'sm',
+      subtitle: 'System qty ' + fmt.num(row.qty) + ' · farq auto adjust ho jayega',
+      body: h('div', null, qty),
+      actions: [
+        { label: 'Cancel', cls: 'ghost', onClick: c => c() },
+        { label: 'Save count', cls: 'ok', onClick: async c => {
+          try {
+            await API.call('stock.count', { itemId: row.itemId, countedQty: Number(qty.value),
+              locationId: App.state.locationId, cost: row.avgCost });
+            UI.toast('Count saved ✅', 'ok'); c(); App.refresh();
+          } catch (e) { UI.toast(e.message, 'err'); }
+        } }
+      ]
+    });
+  }
+
+  /* --------------------------- Count sheets -------------------------------- */
+  function renderWhCounts(c) {
+    const host = h('div');
+    const bar = h('div', { class: 'filters' });
+    const status = h('select', { class: 'st2-f', 'aria-label': 'Status' },
+      h('option', { value: '' }, 'All sheets'),
+      ...['DRAFT', 'COUNTING', 'POSTED', 'CANCELLED'].map(s => h('option', { value: s }, s)));
+    const refresh = h('button', { class: 'btn sm sec' }, '↻ Refresh');
+    const create = h('button', { class: 'btn sm ok' }, '＋ New count sheet');
+    bar.append(status, refresh, create);
+    c.appendChild(bar);
+    c.appendChild(host);
+    status.onchange = load; refresh.onclick = load; create.onclick = () => countSheetForm(load);
+
+    function load() {
+      host.innerHTML = '';
+      host.appendChild(UI2.skeleton ? UI2.skeleton(4) : h('div', null, '…'));
+      API.call('warehouse.count.list', { status: status.value, locationId: App.state.locationId },
+        { offlineFallback: () => [] }).then(rows => {
+          host.innerHTML = '';
+          host.appendChild(UI2.table({
+            screen: 'wh_counts', rows: rows || [], height: '50vh', exportName: 'count-sheets',
+            columns: [
+              { key: 'sheetNo', label: 'Sheet', render: r => h('b', null, r.sheetNo) },
+              { key: 'date', label: 'Date', render: r => fmt.date(r.date) },
+              { key: 'scope', label: 'Scope' },
+              { key: 'lines', label: 'Lines', num: true },
+              { key: 'counted', label: 'Counted', num: true },
+              { key: 'diffLines', label: 'Diff', num: true, render: r => h('span', {
+                class: 'badge ' + (Number(r.diffLines) > 0 ? 'warn' : 'ok') }, r.diffLines || 0) },
+              { key: 'varianceValue', label: 'Variance', num: true, render: r => fmt.money(r.varianceValue) },
+              { key: 'status', label: 'Status', render: r => h('span', { class: 'badge ' +
+                (r.status === 'POSTED' ? 'ok' : r.status === 'CANCELLED' ? 'err' : 'warn') }, r.status) }
+            ],
+            rowActions: r => [
+              { icon: '🧮', label: 'Open', onClick: () => countEntry(r.id, load) },
+              ...(r.status === 'POSTED' ? [] : [{ icon: '✕', label: 'Cancel', onClick: () => {
+                UI2.confirm('Sheet ' + r.sheetNo + ' cancel karein?', ok => {
+                  if (!ok) return;
+                  API.call('warehouse.count.cancel', { id: r.id })
+                    .then(() => { UI.toast('Cancelled', 'ok'); load(); })
+                    .catch(e => UI.toast(e.message, 'err'));
+                });
+              } }])
+            ],
+            onRow: r => countEntry(r.id, load)
+          }));
+        }).catch(e => { host.innerHTML = ''; host.appendChild(h('div', { class: 'empty' }, '⚠ ' + e.message)); });
+    }
+    load();
+  }
+
+  /** Nayi count sheet ka wizard — scope chunein */
+  function countSheetForm(after) {
+    const warehouses = [];
+    const bins = [];
+    const cats = [];
+    Shared.raw('warehouse.list', {}, { ttl: 180000, offline: () => [] }).then(w => (w || []).forEach(x => warehouses.push(x))).catch(() => { });
+    Shared.raw('warehouse.bins', {}, { ttl: 180000, offline: () => [] }).then(b => (b || []).forEach(x => bins.push(x))).catch(() => { });
+    API.call('items.categories', {}, { offlineFallback: () => [] })
+      .then(c => (c || []).forEach(x => cats.push(typeof x === 'string' ? x : (x.name || x.code))))
+      .catch(() => { /* v2.7: route ab maujood hai; na ho to sirf ye filter khali rahega */ });
+
+    const f = UI2.form({
+      fields: [
+        { key: 'warehouseId', label: 'Warehouse', type: 'select', options: [{ value: '', label: 'All warehouses' }] },
+        { key: 'binId', label: 'Bin', type: 'select', options: [{ value: '', label: 'All bins' }] },
+        { key: 'category', label: 'Category', type: 'select', options: [{ value: '', label: 'All categories' }] },
+        { key: 'q', label: 'Search (code / name)', type: 'text' },
+        { key: 'zeroOnly', label: 'Sirf zero-stock items', type: 'switch' },
+        { key: 'lowStockOnly', label: 'Sirf low-stock items', type: 'switch' },
+        { key: 'assignedTo', label: 'Kis ne ginna hai (name)', type: 'text' },
+        { key: 'notes', label: 'Notes', type: 'textarea', rows: 2 }
+      ]
+    });
+    setTimeout(() => {
+      const ws = f.el.querySelector('#f_warehouseId'), bs = f.el.querySelector('#f_binId'), cs = f.el.querySelector('#f_category');
+      if (ws) warehouses.forEach(w => ws.appendChild(h('option', { value: w.id }, w.name)));
+      if (bs) bins.forEach(b => bs.appendChild(h('option', { value: b.id }, (b.code || '') + ' — ' + (b.name || ''))));
+      if (cs) cats.forEach(c => cs.appendChild(h('option', { value: c }, c)));
+    }, 60);
+
+    UI2.modal({
+      title: '🧮 Nayi count sheet', subtitle: 'Scope chunein — system qty freeze ho jayegi',
+      size: 'md', body: f.el,
+      actions: [
+        { label: 'Cancel', cls: 'ghost', onClick: c => c() },
+        { label: 'Create', cls: 'ok', onClick: async c => {
+          try {
+            const v = Object.assign({}, f.values(), { locationId: App.state.locationId });
+            const res = await API.call('warehouse.count.create', v);
+            UI.toast('Sheet ' + res.sheet.sheetNo + ' ban gayi (' + res.lines.length + ' lines)', 'ok');
+            c(); if (after) after(res);
+            countEntry(res.sheet.id, after);
+          } catch (e) { UI.toast(e.message, 'err', 4000); }
+        } }
+      ]
+    });
+  }
+
+  /** Count entry — blind counting, live diff, post */
+  function countEntry(sheetId, after) {
+    API.call('warehouse.count.get', { id: sheetId }, { offlineFallback: () => null }).then(res => {
+      if (!res) return UI.toast('Sheet load nahi hui', 'err');
+      const sheet = res.sheet;
+      const locked = sheet.status === 'POSTED' || sheet.status === 'CANCELLED';
+      const host = h('div');
+      const prog = h('div', { class: 'cnt-prog' });
+
+      function paintProgress(p) {
+        prog.innerHTML = '';
+        prog.appendChild(h('div', { class: 'cp-bar' },
+          h('div', { class: 'cp-fill', style: { width: (p.pct || 0) + '%' } })));
+        prog.appendChild(h('div', { class: 'cp-row' },
+          h('span', null, sheet.sheetNo + ' · ' + (sheet.scope || 'all stock')),
+          h('span', null, p.counted + '/' + p.total + ' (' + (p.pct || 0) + '%)'),
+          h('span', { class: 'badge warn' }, 'Diff ' + p.diffLines),
+          h('span', { class: 'badge ' + (p.varianceValue >= 0 ? 'ok' : 'err') },
+            'Variance ' + fmt.money(p.varianceValue))));
+      }
+
+      /* barcode / code jump box */
+      const jump = h('input', { class: 'st2-q', type: 'text',
+        placeholder: '🔫 Code scan ya type karein (Enter se count par jayein)…', 'aria-label': 'Scan code' });
+
+      const inputs = {};
+      const tableHost = h('div');
+
+      function paintLines(lines) {
+        tableHost.innerHTML = '';
+        tableHost.appendChild(UI2.table({
+          screen: 'wh_count_lines', rows: lines, height: '42vh', exportName: 'count-sheet-' + sheet.sheetNo,
+          columns: [
+            { key: 'code', label: 'Code', render: r => h('b', null, r.code) },
+            { key: 'name', label: 'Item' },
+            { key: 'binCode', label: 'Bin' },
+            { key: 'systemQty', label: 'System', num: true },
+            { key: 'countedQty', label: 'Counted', num: true, render: r => {
+              if (locked) return h('span', null, r.countedQty === '' ? '—' : fmt.num(r.countedQty));
+              const inp = h('input', { class: 'f-input', type: 'number', step: '1',
+                value: r.countedQty === '' ? '' : r.countedQty,
+                style: { width: '92px', textAlign: 'right' },
+                'aria-label': 'Counted quantity for ' + r.code });
+              inputs[r.id] = inp;
+              inp.addEventListener('keydown', ev => {
+                if (ev.key === 'Enter') { ev.preventDefault(); saveLine(r, inp.value); }
+              });
+              inp.addEventListener('blur', () => saveLine(r, inp.value));
+              return inp;
+            } },
+            { key: 'diff', label: 'Diff', num: true, render: r => h('span', {
+              class: 'badge ' + (Number(r.diff) === 0 ? 'ok' : Number(r.diff) > 0 ? 'info' : 'err') },
+              (Number(r.diff) > 0 ? '+' : '') + fmt.num(r.diff)) },
+            { key: 'varianceValue', label: 'Value', num: true, render: r => fmt.money(r.varianceValue) }
+          ]
+        }));
+      }
+
+      async function saveLine(line, val) {
+        if (locked) return;
+        if (val === '' || val === null || val === undefined) return;
+        if (String(val) === String(line.countedQty)) return;
+        try {
+          const upd = await API.call('warehouse.count.setQty', { id: line.id, countedQty: Number(val) });
+          Object.assign(line, upd);
+          const g = await API.call('warehouse.count.get', { id: sheetId });
+          paintProgress(g.progress);
+          jump.focus();
+        } catch (e) { UI.toast(e.message, 'err'); }
+      }
+
+      jump.addEventListener('keydown', ev => {
+        if (ev.key !== 'Enter') return;
+        const code = jump.value.trim().toUpperCase();
+        if (!code) return;
+        const line = (res.lines || []).find(l => String(l.code).toUpperCase() === code);
+        if (!line) return UI.toast('Is sheet mein ' + code + ' nahi hai', 'warn');
+        const inp = inputs[line.id];
+        if (inp) { inp.focus(); inp.select(); }
+        jump.value = '';
+      });
+
+      host.appendChild(prog);
+      if (!locked) host.appendChild(jump);
+      host.appendChild(tableHost);
+      paintProgress(res.progress);
+      paintLines(res.lines);
+
+      UI2.modal({
+        title: '🧮 Count sheet ' + sheet.sheetNo,
+        subtitle: (sheet.assignedTo ? 'Counted by ' + sheet.assignedTo + ' · ' : '') + sheet.date,
+        size: 'xl', body: host,
+        actions: [
+          { label: 'Close', cls: 'ghost', onClick: c => { c(); if (after) after(); } },
+          locked ? null : { label: '✅ Post & adjust stock', cls: 'ok', onClick: c => {
+            UI2.confirm('Count post karein? Farq ke hisaab se stock adjust ho jayega.', ok => {
+              if (!ok) return;
+              API.call('warehouse.count.post', { id: sheetId }).then(r => {
+                UI.toast('Posted — ' + r.lines + ' lines, variance ' + fmt.money(r.varianceValue), 'ok');
+                c(); if (after) after();
+              }).catch(e => UI.toast(e.message, 'err', 4000));
+            });
+          } }
+        ].filter(Boolean)
+      });
+    }).catch(e => UI.toast(e.message, 'err'));
+  }
+
+  /* ------------------------------- Audit ----------------------------------- */
+  function renderWhAudit(c) {
+    const host = h('div');
+    c.appendChild(host);
+    API.call('warehouse.audit', { locationId: App.state.locationId }, { offlineFallback: () => ({}) })
+      .then(a => {
+        host.innerHTML = '';
+        host.appendChild(UI2.kpiGrid([
+          { icon: '📋', label: 'Count sheets', value: a.sheets || 0 },
+          { icon: '✅', label: 'Posted', value: a.posted || 0, cls: 'ok' },
+          { icon: '⏳', label: 'Open', value: a.open || 0, cls: 'warn' },
+          { icon: '🎯', label: 'Accuracy', value: (a.accuracy || 0) + '%', cls: (a.accuracy || 0) >= 98 ? 'ok' : 'warn' },
+          { icon: '➕', label: 'Over', value: a.over || 0, cls: 'info' },
+          { icon: '➖', label: 'Short', value: a.short || 0, cls: 'err' },
+          { icon: '📊', label: 'Variance qty', value: fmt.num(a.varianceQty || 0) },
+          { icon: '💰', label: 'Variance value', value: fmt.money(a.varianceValue || 0), cls: 'err' }
+        ], 4));
+
+        host.appendChild(UI2.section('Bara farq (top variance)'));
+        host.appendChild(UI2.table({
+          screen: 'wh_audit_var', rows: a.topVariance || [], height: '26vh', exportName: 'stock-variance',
+          columns: [
+            { key: 'code', label: 'Code' }, { key: 'name', label: 'Item' },
+            { key: 'systemQty', label: 'System', num: true },
+            { key: 'countedQty', label: 'Counted', num: true },
+            { key: 'diff', label: 'Diff', num: true, render: r => h('span', {
+              class: 'badge ' + (Number(r.diff) > 0 ? 'info' : 'err') }, (Number(r.diff) > 0 ? '+' : '') + fmt.num(r.diff)) },
+            { key: 'varianceValue', label: 'Value', num: true, render: r => fmt.money(r.varianceValue) }
+          ], emptyText: 'Koi farq nahi — stock bilkul saaf hai ✅'
+        }));
+
+        host.appendChild(UI2.section('Adjustments ledger'));
+        host.appendChild(UI2.table({
+          screen: 'wh_audit_adj', rows: a.adjustments || [], height: '30vh', exportName: 'stock-adjustments',
+          columns: [
+            { key: 'adjNo', label: 'Voucher', render: r => h('b', null, r.adjNo) },
+            { key: 'date', label: 'Date', render: r => fmt.date(r.date) },
+            { key: 'reason', label: 'Reason' },
+            { key: 'status', label: 'Status', render: r => h('span', { class: 'badge ' +
+              (r.status === 'POSTED' ? 'ok' : r.status === 'REVERSED' ? 'err' : 'warn') }, r.status) }
+          ],
+          rowActions: r => [
+            r.status === 'POSTED' && App.can('stock.audit.post')
+              ? { icon: '↩', label: 'Reverse', onClick: () => UI2.confirm('Reverse ' + r.adjNo + '?', ok => {
+                if (!ok) return;
+                API.call('stock.adjust.reverse', { id: r.id })
+                  .then(() => { UI.toast('Reversed', 'ok'); App.refresh(); })
+                  .catch(e => UI.toast(e.message, 'err'));
+              }) } : null
+          ].filter(Boolean)
+        }));
+      }).catch(e => { host.innerHTML = ''; host.appendChild(h('div', { class: 'empty' }, '⚠ ' + e.message)); });
+  }
+
+  /* ----------------------------- Movements --------------------------------- */
+  function renderWhMoves(c) {
+    const host = h('div');
+    const bar = h('div', { class: 'filters' });
+    const q = h('input', { class: 'st2-q', type: 'search', placeholder: '🔎 Item / reference…', 'aria-label': 'Search movements' });
+    const type = h('select', { class: 'st2-f', 'aria-label': 'Movement type' },
+      h('option', { value: '' }, 'All types'),
+      ...['SALE', 'GRN', 'ADJUST', 'TRANSFER', 'RETURN', 'OPENING'].map(t => h('option', { value: t }, t)));
+    bar.append(q, type);
+    c.appendChild(bar); c.appendChild(host);
+    let timer = null;
+    q.oninput = () => { clearTimeout(timer); timer = setTimeout(load, 220); };
+    type.onchange = load;
+
+    function load() {
+      host.innerHTML = '';
+      host.appendChild(UI2.skeleton ? UI2.skeleton(5) : h('div', null, '…'));
+      API.call('stock.moves', { locationId: App.state.locationId, q: q.value.trim(), refType: type.value },
+        { offlineFallback: () => [] }).then(rows => {
+          host.innerHTML = '';
+          host.appendChild(UI2.table({
+            screen: 'wh_moves', rows: rows || [], height: '52vh', exportName: 'stock-movements',
+            columns: [
+              { key: 'date', label: 'Date', render: r => fmt.date(r.date) },
+              { key: 'itemId', label: 'Item', render: r => itemNameOf(r.itemId) },
+              { key: 'qtyIn', label: 'In', num: true, render: r => h('span', { class: 'badge ok' }, fmt.num(r.qtyIn)) },
+              { key: 'qtyOut', label: 'Out', num: true, render: r => h('span', { class: 'badge err' }, fmt.num(r.qtyOut)) },
+              { key: 'balance', label: 'Balance', num: true },
+              { key: 'refType', label: 'Type', render: r => h('span', { class: 'badge' }, r.refType || '—') },
+              { key: 'notes', label: 'Notes' }
+            ]
+          }));
+        }).catch(e => { host.innerHTML = ''; host.appendChild(h('div', { class: 'empty' }, '⚠ ' + e.message)); });
+    }
+    load();
+  }
+
+  function itemNameOf(id) {
+    const it = ((App.state.items || window.__items || []).find(i => i.id === id));
+    return it ? (it.code ? it.code + ' · ' + it.name : it.name) : (id || '—');
+  }
+
+  window.WhApp = { renderWhInventory, renderWhCounts, renderWhAudit, renderWhMoves, countSheetForm, countEntry, quickCount };
+})();
+</script>

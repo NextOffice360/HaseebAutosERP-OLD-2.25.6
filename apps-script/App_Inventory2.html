@@ -1,0 +1,493 @@
+<script>
+/* ==========================================================================
+   HASEEB AUTOS — INVENTORY & WAREHOUSE
+   Inventory: Stock · Movements · Adjustments · Transfers · Count sheets · Lots
+   Warehouse: Overview · Warehouses · Bins · Bin stock · Put-away · Transfers
+   ========================================================================== */
+(function () {
+'use strict';
+
+const locNameOf = id => { const l = (App.state.locations || []).find(x => x.id === id); return l ? l.name : id; };
+
+/* v2.8.3 — `loc` screen se FUNCTION aata hai (`() => App.state.tmpLoc || ''`).
+   Pehle wahi function seedha payload mein chala jata tha → google.script.run
+   serialize nahi kar pata tha → "illegal value in property: locationId".
+   Ab har jagah isi helper se value nikalte hain (function ho ya string). */
+const locId = v => (typeof v === 'function' ? v() : v) || '';
+
+/* =============================== INVENTORY ================================ */
+App.registerScreen('inventory', {
+  title: 'Inventory', icon: '🏬', perm: 'stock.view',
+  subtitle: () => 'Branch: ' + App.state.branchName,
+  actions() {
+    const a = [{ label: 'Refresh', icon: '↻', onClick: () => App.refresh() }];
+    if (App.can('stock.transfer')) a.unshift({ label: 'Transfer', icon: '🔄', onClick: transferForm });
+    if (App.can('stock.adjust')) a.unshift({ label: 'Adjustment', icon: '⚖', onClick: adjustmentForm });
+    return a;
+  },
+  render(body) {
+    const host = h('div');
+    body.appendChild(host);
+    const branchBar = h('div', { class: 'filters' },
+      h('label', { style: { fontSize: 'var(--fs-xs)', color: 'var(--muted)' } }, 'Branch'),
+      (function () { const s = h('select', { title: 'Warehouse select', 'aria-label': 'Warehouse' });
+        s.appendChild(h('option', { value: '' }, 'All branches'));
+        App.state.locations.forEach(l => s.appendChild(h('option', { value: l.id, selected: l.id === App.state.locationId }, l.name)));
+        s.value = App.state.locationId;
+        s.onchange = () => { App.state.tmpLoc = s.value; App.refresh(); }; return s; })());
+    body.insertBefore(branchBar, host);
+
+    const loc = () => App.state.tmpLoc || '';
+
+    UI2.tabs(host, {
+      level: 1, active: 'stock',
+      tabs: [
+        { id: 'stock', label: 'Stock levels', icon: '📦', render: c => renderStock(c, loc) },
+        { id: 'moves', label: 'Stock ledger', icon: '🔁', render: c => renderMoves(c, loc) },
+        { id: 'adjust', label: 'Adjustments', icon: '⚖', render: c => renderAdjust(c, loc) },
+        { id: 'transfer', label: 'Transfers', icon: '🔄', render: c => renderTransfers(c, loc) },
+        { id: 'count', label: 'Count sheet', icon: '🧮', render: c => renderCountSheet(c, loc) },
+        { id: 'lots', label: 'Lots / expiry', icon: '🏷', render: c => renderLots(c, loc) }
+      ]
+    });
+  }
+});
+
+function renderStock(c, loc) {
+  const host = h('div'); c.appendChild(host);
+  API.call('stock.levels', { locationId: locId(loc) }, { offlineFallback: () => [] }).then(rows => {
+    host.innerHTML = '';
+    host.appendChild(UI2.table({
+      screen: 'stock', rows: rows || [], height: '58vh', exportName: 'stock',
+      filters: [
+        { key: 'category', label: 'Category', type: 'select', options: Array.from(new Set((rows || []).map(r => r.category).filter(Boolean))) },
+        { key: 'low', label: 'Low stock only', type: 'switch' }
+      ],
+      columns: [
+        { key: 'code', label: 'Code' },
+        { key: 'name', label: 'Item', render: r => h('div', null, h('b', null, r.name),
+            h('div', { style: { fontSize: 'var(--fs-xs)', color: 'var(--muted)' } }, [r.brand, r.category].filter(Boolean).join(' · '))) },
+        { key: 'locationId', label: 'Branch', render: r => locNameOf(r.locationId) },
+        { key: 'rack', label: 'Rack' },
+        { key: 'qty', label: 'Qty', num: true, render: r => h('b', { style: { color: r.qty <= 0 ? 'var(--err)' : 'inherit' } }, r.qty) },
+        { key: 'avgCost', label: 'Avg cost', num: true, render: r => fmt.money(r.avgCost) },
+        { key: 'value', label: 'Value', num: true, render: r => fmt.money(r.value) },
+        { key: 'low', label: 'Alert', render: r => r.low ? h('span', { class: 'badge err' }, 'LOW') : '' }
+      ],
+      rowActions: r => {
+        const a = [{ icon: '🏷', label: 'Labels', onClick: () => Print.labelFlow([r.itemId]) }];
+        if (App.can('stock.adjust')) a.unshift({ icon: '⚖', label: 'Count', onClick: () => quickCount(r) });
+        return a;
+      },
+      onRow: r => App.go('items', { open: r.itemId })
+    }));
+    host.appendChild(h('div', { class: 'st2-foot' }, 'Total value: ' +
+      fmt.money((rows || []).reduce((a, r) => a + Number(r.value || 0), 0)) + ' · ' + (rows || []).length + ' rows'));
+  }).catch(e => host.appendChild(h('div', { class: 'empty' }, '⚠ ' + e.message)));
+}
+
+function renderMoves(c, loc) {
+  const host = h('div'); c.appendChild(host);
+  API.call('stock.moves', { locationId: locId(loc), limit: 400 }, { offlineFallback: () => [] }).then(rows => {
+    host.innerHTML = '';
+    host.appendChild(UI2.table({
+      screen: 'moves', rows: rows || [], height: '58vh', exportName: 'stock-movements',
+      columns: [
+        { key: 'date', label: 'Date', render: r => fmt.date(r.date) },
+        { key: 'code', label: 'Code' }, { key: 'name', label: 'Item' },
+        { key: 'qtyIn', label: 'In', num: true }, { key: 'qtyOut', label: 'Out', num: true },
+        { key: 'balance', label: 'Balance', num: true },
+        { key: 'refType', label: 'Reference' }, { key: 'notes', label: 'Notes' }
+      ]
+    }));
+  }).catch(e => host.appendChild(h('div', { class: 'empty' }, e.message)));
+}
+
+function renderAdjust(c, loc) {
+  const host = h('div'); c.appendChild(host);
+  API.call('stock.adjust.list', { locationId: locId(loc), limit: 100 }, { offlineFallback: () => [] }).then(rows => {
+    host.innerHTML = '';
+    host.appendChild(UI2.table({
+      screen: 'adjust', rows: rows || [], height: '58vh', exportName: 'adjustments',
+      columns: [
+        { key: 'adjNo', label: 'No.' },
+        { key: 'date', label: 'Date', render: r => fmt.date(r.date) },
+        { key: 'reason', label: 'Reason' },
+        { key: 'status', label: 'Status', render: r => h('span', { class: 'badge ' + (r.status === 'POSTED' ? 'ok' : r.status === 'REVERSED' ? 'err' : 'warn') }, r.status) },
+        { key: 'notes', label: 'Notes' }
+      ],
+      rowActions: r => [
+        r.status === 'DRAFT' && App.can('stock.audit.post') ? { icon: '✅', label: 'Post', onClick: async () => { await API.call('stock.adjust.post', { id: r.id }); UI.toast('Posted', 'ok'); App.refresh(); API.pullCatalog(true); } } : null,
+        r.status === 'POSTED' && App.can('stock.audit.post') ? { icon: '↩', label: 'Reverse', onClick: () => UI2.confirm('Reverse karein? Stock ulta ho jaye ga.', async () => { await API.call('stock.adjust.reverse', { id: r.id }); UI.toast('Reversed', 'ok'); App.refresh(); }, true) } : null
+      ].filter(Boolean)
+    }));
+  }).catch(e => host.appendChild(h('div', { class: 'empty' }, e.message)));
+}
+
+function renderTransfers(c, loc) {
+  const host = h('div'); c.appendChild(host);
+  API.call('stock.transfer.list', { locationId: locId(loc), limit: 100 }, { offlineFallback: () => [] }).then(rows => {
+    host.innerHTML = '';
+    host.appendChild(UI2.table({
+      screen: 'transfers', rows: rows || [], height: '58vh', exportName: 'transfers',
+      columns: [
+        { key: 'transferNo', label: 'No.' },
+        { key: 'date', label: 'Date', render: r => fmt.date(r.date) },
+        { key: 'fromLocationId', label: 'From', render: r => locNameOf(r.fromLocationId) },
+        { key: 'toLocationId', label: 'To', render: r => locNameOf(r.toLocationId) },
+        { key: 'status', label: 'Status', render: r => h('span', { class: 'badge ' + (r.status === 'RECEIVED' ? 'ok' : 'warn') }, r.status) }
+      ],
+      rowActions: r => r.status === 'IN_TRANSIT' ? [{ icon: '📥', label: 'Receive', onClick: async () => {
+        await API.call('stock.transfer.receive', { id: r.id }); UI.toast('Received ✅', 'ok'); App.refresh(); API.pullCatalog(true);
+      } }] : null
+    }));
+  }).catch(e => host.appendChild(h('div', { class: 'empty' }, e.message)));
+}
+
+function renderCountSheet(c, loc) {
+  const host = h('div');
+  c.append(UI2.section('Bin / branch count sheet'),
+    h('p', { style: { fontSize: 'var(--fs-sm)', color: 'var(--muted)', margin: '0 0 10px' } },
+      'Sheet generate karein, phir counted qty bharein aur Adjustment ke tor par post karein.'), host);
+  const f = UI2.form({ values: {}, fields: [
+    { key: 'warehouseId', label: 'Warehouse', type: 'select', options: [{ value: '', label: 'All' }] },
+    { key: 'binId', label: 'Bin', type: 'select', options: [{ value: '', label: 'All' }] }
+  ] });
+  c.appendChild(f.el);
+  const btn = h('button', { class: 'btn', style: { marginTop: '10px' }, onclick: async () => {
+    const v = f.values();
+    const sheet = await API.call('warehouse.countSheet', Object.assign({ locationId: locId(loc) || App.state.locationId }, v));
+    host.innerHTML = '';
+    host.appendChild(UI2.table({
+      screen: 'countsheet', rows: sheet.rows || [], height: '50vh', exportName: 'count-sheet',
+      columns: [
+        { key: 'code', label: 'Code' }, { key: 'name', label: 'Item' },
+        { key: 'binCode', label: 'Bin' },
+        { key: 'systemQty', label: 'System', num: true },
+        { key: 'countedQty', label: 'Counted', num: true, render: (r) => {
+          const inp = h('input', { type: 'number', value: r.countedQty, style: { width: '90px', textAlign: 'right' }, placeholder: '0', 'aria-label': 'Counted qty', title: 'Counted qty' });
+          inp.onchange = () => { r.countedQty = Number(inp.value || 0); };
+          return inp;
+        } }
+      ]
+    }));
+    host.appendChild(h('button', { class: 'btn ok', style: { marginTop: '10px' }, onclick: async () => {
+      const lines = (sheet.rows || []).filter(r => r.countedQty !== '' && Number(r.countedQty) !== Number(r.systemQty));
+      if (!lines.length) return UI.toast('Koi farq nahi mila', 'warn');
+      await API.call('stock.adjust.save', { adjustment: { locationId: locId(loc) || App.state.locationId, reason: 'PHYSICAL_COUNT',
+        notes: 'From count sheet', post: true,
+        items: lines.map(r => ({ itemId: r.itemId, countedQty: Number(r.countedQty), cost: r.avgCost })) } });
+      UI.toast(lines.length + ' lines posted ✅', 'ok'); App.refresh(); API.pullCatalog(true);
+    } }, '✅ Post differences as adjustment'));
+  } }, '🧮 Generate count sheet');
+  c.appendChild(btn);
+  // load warehouse/bin options
+  Shared.raw('warehouse.list', {}, { ttl: 180000, offline: () => [] }).then(ws => {   /* v2.27.0 W3.T3 */
+    const wsel = f.el.querySelector('#f_warehouseId');
+    (ws || []).forEach(w => wsel.appendChild(h('option', { value: w.id }, w.name)));
+  }).catch(() => { });
+  Shared.raw('warehouse.bins', {}, { ttl: 180000, offline: () => [] }).then(bs => {
+    const bsel = f.el.querySelector('#f_binId');
+    (bs || []).forEach(b => bsel.appendChild(h('option', { value: b.id }, b.code + ' — ' + (b.name || ''))));
+  }).catch(() => { });
+}
+
+function renderLots(c, loc) {
+  const host = h('div'); c.appendChild(host);
+  API.call('warehouse.lots', { locationId: locId(loc) }, { offlineFallback: () => [] }).then(rows => {
+    host.innerHTML = '';
+    if (!rows.length) {
+      host.appendChild(h('div', { class: 'empty' }, h('span', { class: 'big' }, '🏷'),
+        h('div', null, 'Koi lot nahi — Settings ▸ Inventory se lot/expiry tracking on karein')));
+      return;
+    }
+    host.appendChild(UI2.table({
+      screen: 'lots', rows, height: '54vh', exportName: 'lots',
+      columns: [
+        { key: 'code', label: 'Code' }, { key: 'name', label: 'Item' },
+        { key: 'lotNo', label: 'Lot' },
+        { key: 'expiry', label: 'Expiry', render: r => r.expiry ? fmt.date(r.expiry) : '—' },
+        { key: 'daysToExpiry', label: 'Days left', num: true, render: r => r.daysToExpiry === null ? '—' :
+          h('span', { class: 'badge ' + (r.daysToExpiry < 0 ? 'err' : r.daysToExpiry <= 30 ? 'warn' : 'ok') }, r.daysToExpiry) },
+        { key: 'qty', label: 'Qty', num: true }, { key: 'cost', label: 'Cost', num: true, render: r => fmt.money(r.cost) }
+      ]
+    }));
+  }).catch(e => host.appendChild(h('div', { class: 'empty' }, e.message)));
+}
+
+function quickCount(row) {
+  const f = UI2.form({ values: { countedQty: row.qty, notes: '' },
+    fields: [{ key: 'countedQty', label: 'Counted qty', type: 'number' }, { key: 'notes', label: 'Note', full: true }] });
+  UI2.modal({
+    title: '⚖ Quick count — ' + row.name, size: 'sm', body: f.el,
+    actions: [{ label: 'Save', cls: 'ok', onClick: async c => {
+      await API.call('stock.count', { itemId: row.itemId, locationId: row.locationId, countedQty: f.values().countedQty, notes: f.values().notes });
+      UI.toast('Stock updated ✅', 'ok'); c(); App.refresh(); API.pullCatalog(true);
+    } }]
+  });
+}
+
+/* ---------------------------- transfer / adjustment ----------------------- */
+function transferForm() {
+  const items = [];
+  const listEl = h('div');
+  /* v2.9.1 §7 — shared multi-select picker */
+  const picker = UI2.itemPicker({ lines: items, after: render,
+    icon: '📦', title: 'Transfer lines — scan ya search', hint: 'Scan → seedha line mein (qty merge, stock cap)',
+    commitLabel: 'Add to transfer',
+    map: (r, qty) => ({ itemId: r.id, code: r.code, name: r.name, qty: Math.max(0, Number(qty) || 1), stock: r.stock }) });
+  function render() {
+    listEl.innerHTML = '';
+    items.forEach((l, i) => {
+      const q = h('input', { class: 'f-input', type: 'number', value: l.qty, style: { width: '80px', textAlign: 'right' } });
+      q.onchange = () => { l.qty = Number(q.value); };
+      listEl.appendChild(h('div', { class: 'list-item' },
+        h('div', { class: 'li-main' }, h('b', null, l.name), h('span', null, l.code + ' · available ' + l.stock)),
+        q, h('button', { class: 'btn sm ghost', onclick: () => { items.splice(i, 1); render(); } }, '✕')));
+    });
+    if (!items.length) listEl.appendChild(h('div', { class: 'tbl-empty' }, 'Koi line nahi'));
+  }
+  render();
+  const f = UI2.form({ values: { fromLocationId: App.state.locationId },
+    fields: [
+      { key: 'fromLocationId', label: 'From branch', type: 'select', options: App.state.locations.map(l => ({ value: l.id, label: l.name })) },
+      { key: 'toLocationId', label: 'To branch', type: 'select', options: App.state.locations.map(l => ({ value: l.id, label: l.name })) },
+      { key: 'notes', label: 'Notes', full: true }
+    ] });
+  UI2.offcanvas({
+    title: '🔄 Branch transfer', size: 'md',
+    body: h('div', null, f.el, h('div', { class: 'f-col' }, h('label', null, 'Items'), picker), listEl),
+    footer: h('div', null, h('button', { class: 'btn', onclick: async () => {
+      const v = f.values();
+      if (!items.length) return UI.toast('Items add karein', 'warn');
+      try { await API.call('stock.transfer.save', { transfer: Object.assign(v, { items }) });
+        UI.toast('Transfer created ✅', 'ok');
+        document.querySelectorAll('.offcanvas').forEach(o => o.remove());
+        document.querySelectorAll('.oc-scrim').forEach(o => o.remove());
+        App.refresh();
+      } catch (e) { UI.toast(e.message, 'err'); }
+    } }, 'Send')) });
+}
+
+function adjustmentForm() {
+  const items = [];
+  const listEl = h('div');
+  const picker = UI2.itemPicker({ lines: items, after: render,
+    icon: '📦', title: 'Count lines — scan ya search', hint: 'Scan → seedha count line mein (system qty sath)',
+    commitLabel: 'Add to count',
+    sub: r => (r.code || '') + ' · system ' + r.stock,
+    map: r => ({ itemId: r.id, code: r.code, name: r.name, systemQty: r.stock, countedQty: r.stock }) });
+  function render() {
+    listEl.innerHTML = '';
+    items.forEach((l, i) => {
+      const q = h('input', { class: 'f-input', type: 'number', value: l.countedQty, style: { width: '90px', textAlign: 'right' } });
+      q.onchange = () => { l.countedQty = Number(q.value); render(); };
+      listEl.appendChild(h('div', { class: 'list-item' },
+        h('div', { class: 'li-main' }, h('b', null, l.name), h('span', null, l.code + ' · system ' + l.systemQty)),
+        q,
+        h('span', { class: 'badge ' + ((l.countedQty - l.systemQty) === 0 ? '' : (l.countedQty > l.systemQty ? 'ok' : 'err')) },
+          (l.countedQty - l.systemQty > 0 ? '+' : '') + (l.countedQty - l.systemQty)),
+        h('button', { class: 'btn sm ghost', onclick: () => { items.splice(i, 1); render(); } }, '✕')));
+    });
+    if (!items.length) listEl.appendChild(h('div', { class: 'tbl-empty' }, 'Koi line nahi'));
+  }
+  render();
+  const f = UI2.form({ values: { locationId: App.state.locationId },
+    fields: [
+      { key: 'reason', label: 'Reason', type: 'select', options: ['PHYSICAL_COUNT', 'DAMAGE', 'THEFT', 'EXPIRY', 'OPENING', 'CORRECTION', 'OTHER'] },
+      { key: 'locationId', label: 'Branch', type: 'select', options: App.state.locations.map(l => ({ value: l.id, label: l.name })) },
+      { key: 'notes', label: 'Notes', full: true }
+    ] });
+  UI2.offcanvas({
+    title: '⚖ Stock adjustment', size: 'md',
+    body: h('div', null, f.el, h('div', { class: 'f-col' }, h('label', null, 'Add items'), picker), listEl),
+    footer: h('div', null,
+      h('button', { class: 'btn sec', onclick: async () => {
+        const v = f.values();
+        await API.call('stock.adjust.save', { adjustment: Object.assign(v, { items }) });
+        UI.toast('Draft saved', 'ok');
+        document.querySelectorAll('.offcanvas').forEach(o => o.remove());
+        document.querySelectorAll('.oc-scrim').forEach(o => o.remove());
+        App.refresh();
+      } }, '💾 Save draft'),
+      App.can('stock.audit.post') ? h('button', { class: 'btn ok', onclick: async () => {
+        const v = f.values();
+        if (!items.length) return UI.toast('Items add karein', 'warn');
+        await API.call('stock.adjust.save', { adjustment: Object.assign(v, { items, post: true }) });
+        UI.toast('Posted ✅', 'ok');
+        document.querySelectorAll('.offcanvas').forEach(o => o.remove());
+        document.querySelectorAll('.oc-scrim').forEach(o => o.remove());
+        App.refresh(); API.pullCatalog(true);
+      } }, '✅ Save & Post') : '')
+  });
+}
+
+/* =============================== WAREHOUSE ================================ */
+App.registerScreen('warehouse', {
+  title: 'Warehouse', icon: '🏗', perm: 'stock.view',
+  subtitle: () => 'Bins · put-away · bin stock · transfers',
+  actions() {
+    const a = [{ label: 'Refresh', icon: '↻', onClick: () => App.refresh() }];
+    if (App.can('stock.adjust')) a.unshift({ label: 'New Bin', icon: '＋', onClick: binForm });
+    return a;
+  },
+  render(body) {
+    const host = h('div'); body.appendChild(host);
+    UI2.tabs(host, {
+      level: 1, active: 'overview',
+      tabs: [
+        { id: 'overview', label: 'Overview', icon: '📊', render: renderOverview },
+        /* v2.5: dedicated warehouse app — inventory · count · audit · movements */
+        { id: 'inventory', label: 'Inventory', icon: '📦', render: (window.WhApp ? WhApp.renderWhInventory : renderBinStock) },
+        { id: 'count', label: 'Count sheets', icon: '🧮', render: (window.WhApp ? WhApp.renderWhCounts : renderBinStock) },
+        { id: 'audit', label: 'Audit', icon: '🔍', render: (window.WhApp ? WhApp.renderWhAudit : renderBinStock) },
+        { id: 'moves', label: 'Movements', icon: '🔁', render: (window.WhApp ? WhApp.renderWhMoves : renderBinStock) },
+        { id: 'bins', label: 'Bins & racks', icon: '🗄', render: renderBins },
+        { id: 'binstock', label: 'Stock by bin', icon: '🗃', render: renderBinStock },
+        { id: 'putaway', label: 'Put-away / move', icon: '↔', render: renderPutaway }
+      ]
+    });
+  }
+});
+
+function renderOverview(c) {
+  const host = h('div'); c.appendChild(host);
+  API.call('warehouse.overview', { locationId: App.state.locationId }, { offlineFallback: () => ({}) }).then(o => {
+    host.innerHTML = '';
+    host.appendChild(UI2.kpiGrid([
+      { icon: '🏗', label: 'Warehouses', value: o.warehouses || 0 },
+      { icon: '🗄', label: 'Bins', value: o.bins || 0 },
+      { icon: '📦', label: 'Total units', value: fmt.num(o.totalQty || 0), cls: 'info' },
+      { icon: '💰', label: 'Stock value', value: fmt.money(o.totalValue || 0), cls: 'ok' },
+      { icon: '⚠', label: 'Low stock', value: o.lowStock || 0, cls: 'warn' },
+      { icon: '🚫', label: 'Out of stock', value: o.outOfStock || 0, cls: 'err' },
+      { icon: '📍', label: 'Without bin', value: o.unassigned || 0 },
+      { icon: '🏷', label: 'SKUs', value: (o.byWarehouse || []).reduce((a, w) => a + w.skus, 0) }
+    ]));
+    host.appendChild(UI2.section('By warehouse'));
+    host.appendChild(UI2.table({
+      screen: 'wh_overview', rows: o.byWarehouse || [], height: '34vh', exportName: 'warehouses',
+      columns: [
+        { key: 'name', label: 'Warehouse', render: r => h('b', null, r.name) },
+        { key: 'locationId', label: 'Branch', render: r => locNameOf(r.locationId) },
+        { key: 'bins', label: 'Bins', num: true },
+        { key: 'skus', label: 'SKUs', num: true },
+        { key: 'qty', label: 'Units', num: true },
+        { key: 'value', label: 'Value', num: true, render: r => fmt.money(r.value) }
+      ]
+    }));
+  }).catch(e => host.appendChild(h('div', { class: 'empty' }, e.message)));
+}
+
+function renderBins(c) {
+  const host = h('div'); c.appendChild(host);
+  Shared.raw('warehouse.bins', {}, { ttl: 180000, offline: () => [] }).then(rows => {
+    host.innerHTML = '';
+    host.appendChild(UI2.table({
+      screen: 'bins', rows: rows || [], height: '56vh', exportName: 'bins',
+      columns: [
+        { key: 'code', label: 'Bin code', render: r => h('b', null, r.code) },
+        { key: 'name', label: 'Description' },
+        { key: 'warehouseId', label: 'Warehouse', render: r => (window.__wh || []).find(w => w.id === r.warehouseId) ? ((window.__wh || []).find(w => w.id === r.warehouseId).name) : '—' },
+        { key: 'rack', label: 'Rack' }, { key: 'shelf', label: 'Shelf' }, { key: 'capacity', label: 'Capacity', num: true }
+      ],
+      rowActions: App.can('stock.adjust') ? r => [{ icon: '✎', onClick: () => binForm(r) }] : null
+    }));
+  }).catch(e => host.appendChild(h('div', { class: 'empty' }, e.message)));
+  Shared.raw('warehouse.list', {}, { ttl: 180000, offline: () => [] }).then(w => window.__wh = w || []).catch(() => { });
+}
+
+function renderBinStock(c) {
+  const host = h('div'); c.appendChild(host);
+  API.call('warehouse.stockByBin', { locationId: App.state.locationId }, { offlineFallback: () => [] }).then(rows => {
+    host.innerHTML = '';
+    host.appendChild(UI2.table({
+      screen: 'binstock', rows: rows || [], height: '56vh', exportName: 'stock-by-bin',
+      columns: [
+        { key: 'binCode', label: 'Bin', render: r => h('b', null, r.binCode) },
+        { key: 'code', label: 'Code' }, { key: 'name', label: 'Item' },
+        { key: 'qty', label: 'Qty', num: true },
+        { key: 'avgCost', label: 'Avg cost', num: true, render: r => fmt.money(r.avgCost) },
+        { key: 'value', label: 'Value', num: true, render: r => fmt.money(r.value) }
+      ],
+      rowActions: App.can('stock.adjust') ? r => [{ icon: '📍', label: 'Move', onClick: () => moveBin(r) }] : null
+    }));
+  }).catch(e => host.appendChild(h('div', { class: 'empty' }, e.message)));
+}
+
+function renderPutaway(c) {
+  const host = h('div');
+  c.appendChild(h('p', { style: { fontSize: 'var(--fs-sm)', color: 'var(--muted)' } },
+    'Item select karein aur target bin choose karein — placement turant update ho jayegi.'));
+  c.appendChild(host);
+  const pick = h('input', { class: 'st2-q', type: 'text', placeholder: 'Item dhoondain…' });
+  const results = h('div', { class: 'gs-results', style: { position: 'static', maxHeight: '200px' } });
+  /* v2.24.2 — scan-first: POS wali hi scan semantics (HID wedge, auto-clear,
+     invalid → warn). Scan ya type — dono ek hi lookup chalate hain. */
+  const scan = UI2.scanRow({
+    hint: 'Scan → item row + bin selector',
+    onScan: (code) => { pick.value = code; lookup(code); }
+  });
+  host.append(scan.el, pick, results);
+  pick.addEventListener('input', debounce(async () => {
+    const q = pick.value.trim(); if (!q) { results.hidden = true; return; }
+    lookup(q);
+  }, 200));
+  async function lookup(q) {
+    q = String(q || '').trim(); if (!q) return;
+    const rows = await Shared.items({ q, limit: 8 });   /* v2.27.0 W3.T3 */
+    const bins = await Shared.raw('warehouse.bins', {}, { ttl: 180000, offline: () => [] });
+    results.innerHTML = ''; results.hidden = false;
+    if (!rows.length) {
+      scan.setLast('⚠ Nahi mila: ' + q, 'warn');
+      results.appendChild(h('div', { class: 'empty' }, 'Koi item nahi mila — code/naam check karein'));
+      return;
+    }
+    scan.setLast('✅ ' + (rows[0].code || '') + ' → ' + rows[0].name + ' (stock ' + rows[0].stock + ')', 'ok');
+    rows.forEach(r => results.appendChild(h('div', { class: 'list-item' },
+      h('div', { class: 'li-main' }, h('b', null, r.name), h('span', null, r.code + ' · stock ' + r.stock)),
+      h('select', { class: 'f-input', title: 'Bin select', 'aria-label': 'Bin', style: { width: '150px' }, onchange: async e => {
+        if (!e.target.value) return;
+        await API.call('warehouse.putaway', { itemId: r.id, binId: e.target.value });
+        UI.toast('Bin assign ho gaya ✅', 'ok'); pick.value = ''; results.hidden = true; scan.clear();
+      } }, h('option', { value: '' }, 'Move to bin…'), bins.map(b => h('option', { value: b.id }, b.code + ' — ' + (b.name || '')))))));
+  }
+}
+
+function binForm(bin) {
+  const f = UI2.form({ values: bin || {},
+    fields: [
+      { key: 'code', label: 'Bin code', required: true, full: true },
+      { key: 'name', label: 'Description', full: true },
+      { key: 'warehouseId', label: 'Warehouse', type: 'select', options: (window.__wh || []).map(w => ({ value: w.id, label: w.name })) },
+      { key: 'rack', label: 'Rack' }, { key: 'shelf', label: 'Shelf' },
+      { key: 'capacity', label: 'Capacity', type: 'number' }
+    ] });
+  UI2.modal({
+    title: bin ? '✏ Bin ' + bin.code : '＋ Naya bin', size: 'sm', body: f.el,
+    actions: [{ label: 'Save', cls: 'ok', onClick: async close => {
+      const v = f.values();
+      if (!v.code) return UI.toast('Bin code zaroori hai', 'err');
+      await API.call('warehouse.bin.save', { bin: Object.assign(v, bin ? { id: bin.id } : {}) });
+      UI.toast('Saved ✅', 'ok'); close(); App.refresh();
+    } }]
+  });
+}
+
+function moveBin(row) {
+  const f = UI2.form({ values: { qty: row.qty }, fields: [
+    { key: 'qty', label: 'Quantity to move', type: 'number' },
+    { key: 'toBinId', label: 'Target bin', type: 'select', options: (window.__bins || []).map(b => ({ value: b.id, label: b.code })) }
+  ] });
+  Shared.raw('warehouse.bins', {}, { ttl: 180000, offline: () => [] }).then(b => window.__bins = b || []).catch(() => { });
+  UI2.modal({
+    title: '📍 Move stock — ' + row.name, size: 'sm', body: f.el,
+    actions: [{ label: 'Move', cls: 'ok', onClick: async close => {
+      const v = f.values();
+      await API.call('warehouse.binTransfer', { itemId: row.itemId, fromBinId: row.binId, toBinId: v.toBinId, qty: v.qty, locationId: row.locationId });
+      UI.toast('Moved ✅', 'ok'); close(); App.refresh();
+    } }]
+  });
+}
+})();
+</script>

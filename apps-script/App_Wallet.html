@@ -1,0 +1,304 @@
+<script>
+/* ==========================================================================
+   HASEEB AUTOS — WALLET PAYMENTS (EasyPaisa / JazzCash)
+   --------------------------------------------------------------------------
+   POS / recovery / supplier payment — har jagah ek hi component:
+     • asli gateway se payment request (Wallet.initiate)
+     • status polling (Wallet.inquire) — customer apne mobile par OTP/MPIN
+       confirm karta hai, yahan status khud update hota hai
+     • PAID hone par payment row mein txn ID / payer / receiver auto-fill
+     • gateway OFF ho to manual entry (txn ID) — kaam kabhi rukta nahi
+
+   Koi credential / endpoint yahan hardcoded nahi — sab Settings ▸ Trade ▸
+   Wallets se aata hai (Wallet.providers API).
+   ========================================================================== */
+(function () {
+  'use strict';
+
+  const WALLET_METHODS = ['EASYPAISA', 'JAZZCASH'];
+
+  const WalletUI = {
+
+    _providers: null,
+
+    /** Provider list (cached) — secrets kabhi frontend par nahi aate */
+    async providers(force) {
+      if (WalletUI._providers && !force) return WalletUI._providers;
+      try {
+        const list = await API.call('wallet.providers', {},
+          { offlineFallback: () => null });
+        WalletUI._providers = list || [];
+      } catch (e) { WalletUI._providers = []; }
+      return WalletUI._providers;
+    },
+
+    /** kya ye method wallet hai? */
+    isWallet(methodId) {
+      return WALLET_METHODS.indexOf(String(methodId || '').toUpperCase()) > -1;
+    },
+
+    providerFor(methodId) {
+      const id = String(methodId || '').toUpperCase();
+      return (WalletUI._providers || []).find(p => p.id === id || p.methodId === id) || null;
+    },
+
+    async settings() {
+      let s = (App.state && App.state.settings) || {};
+      if (!s.walletAutoPollSeconds) {
+        try { s = Object.assign({}, s, await Config2.all ? {} : {}); } catch (e) { }
+      }
+      return {
+        pollSeconds: Number(s.walletPollSeconds || s.walletAutoPollSeconds || 5),
+        attempts: Number(s.walletPollAttempts || 24)
+      };
+    },
+
+    badge(status) {
+      const map = {
+        INITIATED: ['info', 'Bhej diya'],
+        PENDING: ['warn', 'Customer se confirm ka intezar'],
+        PAID: ['ok', 'Paisa mil gaya'],
+        FAILED: ['err', 'Fail'],
+        EXPIRED: ['err', 'Expire ho gaya'],
+        REVERSED: ['err', 'Reverse ho gaya'],
+        BLOCKED: ['err', 'Blocked'],
+        MANUAL: ['info', 'Manual entry']
+      };
+      const m = map[String(status || '').toUpperCase()] || ['info', status || '—'];
+      return h('span', { class: 'badge ' + m[0] }, m[1]);
+    },
+
+    /**
+     * Wallet payment panel.
+     * opts: { method, amount, payment, note, onChange, onPaid }
+     *  - payment object par values save hoti hain (payerMobile, receiverMobile,
+     *    txnId, walletId, walletStatus)
+     */
+    async panel(opts) {
+      const o = opts || {};
+      const methodId = String(o.method || (o.payment && o.payment.method) || '').toUpperCase();
+      const payment = o.payment || {};
+      const wrap = h('div', { class: 'wallet-panel' });
+      if (!WalletUI.isWallet(methodId)) return wrap;
+
+      const providers = await WalletUI.providers();
+      const prov = WalletUI.providerFor(methodId);
+      const cfg = await WalletUI.settings();
+
+      if (!prov || !prov.ready) {
+        wrap.appendChild(h('div', { class: 'wallet-note' },
+          h('div', { style: { fontWeight: '700', marginBottom: '3px' } },
+            (prov ? prov.icon + ' ' + prov.label : '📲 Wallet') + ' — manual mode'),
+          h('div', { class: 'muted', style: { fontSize: 'var(--fs-sm)' } },
+            prov && prov.mode === 'OFF'
+              ? 'Wallet API off hai (Settings ▸ Trade ▸ Wallets ▸ mode = OFF). Customer ka mobile aur txn ID darj karein.'
+              : 'Gateway credentials adhoore hain. Customer ka mobile + txn ID darj karein, ya Settings ▸ Trade ▸ Wallets mein API on karein.')));
+        return wrap;
+      }
+
+      /* ---------------- live gateway flow ---------------- */
+      const state = { walletId: payment.walletId || '', status: payment.walletStatus || '', timer: null, tries: 0 };
+
+      const payer = h('input', {
+        class: 'f-input', type: 'tel', inputmode: 'numeric',
+        placeholder: 'Customer mobile (03xxxxxxxxx)', 'aria-label': 'Customer mobile number',
+        value: payment.payerMobile || '', style: { flex: '1 1 150px', minWidth: '150px' }
+      });
+      const recv = h('input', {
+        class: 'f-input', type: 'tel', inputmode: 'numeric',
+        placeholder: 'Merchant wallet (03xxxxxxxxx)', 'aria-label': 'Merchant wallet number',
+        value: payment.receiverMobile || prov.receiverMobile || '', style: { flex: '1 1 150px', minWidth: '150px' }
+      });
+      payer.oninput = () => { payment.payerMobile = payer.value; };
+      recv.oninput = () => { payment.receiverMobile = recv.value; };
+
+      const btn = h('button', { class: 'btn sm ok' }, '📲 Request bhejein');
+      const stopBtn = h('button', { class: 'btn sm sec', style: { display: 'none' } }, '⏹ Rok dein');
+      const statusBox = h('div', { class: 'wallet-status' });
+
+      function stop() {
+        if (state.timer) { clearInterval(state.timer); state.timer = null; }
+        btn.style.display = ''; stopBtn.style.display = 'none';
+      }
+
+      function setStatus(status, message, extra) {
+        payment.walletStatus = status;
+        statusBox.innerHTML = '';
+        statusBox.appendChild(h('div', { class: 'ws-row' },
+          WalletUI.badge(status),
+          h('span', { class: 'muted', style: { fontSize: 'var(--fs-sm)' } }, message || '')));
+        if (extra) statusBox.appendChild(h('div', { class: 'ws-row muted', style: { fontSize: 'var(--fs-sm)' } }, extra));
+      }
+
+      async function poll() {
+        if (!state.walletId) return;
+        state.tries++;
+        try {
+          const r = await API.call('wallet.inquire', { id: state.walletId });
+          setStatus(r.status, r.message, r.status === 'PENDING'
+            ? ('Check ' + state.tries + '… customer apne mobile par OTP/MPIN confirm karein')
+            : (r.providerRef ? 'Txn ID: ' + r.providerRef : ''));
+          if (r.status === 'PAID') {
+            stop();
+            payment.txnId = r.providerRef || payment.txnId || '';
+            payment.walletId = state.walletId;
+            UI.toast('Wallet payment confirm ✅', 'ok');
+            if (o.onPaid) o.onPaid(r);
+            if (o.onChange) o.onChange();
+            return;
+          }
+          if (r.status !== 'PENDING' && r.status !== 'INITIATED') {
+            stop();
+            UI.toast('Wallet payment: ' + r.status, 'err');
+            if (o.onChange) o.onChange();
+            return;
+          }
+        } catch (e) { /* network hiccup — agle tick par dubara */ }
+        if (state.tries >= cfg.attempts) {
+          stop();
+          setStatus('PENDING', 'Time khatam — "Check now" dabayein ya dobara request bhejein', '');
+        }
+      }
+
+      btn.onclick = async () => {
+        const amount = Number(o.amount || payment.amount || 0);
+        if (!amount || amount <= 0) return UI.toast('Pehle amount likhein', 'warn');
+        const payerMobile = (payer.value || '').trim();
+        if (!/^03\d{9}$/.test(payerMobile.replace(/[^\d]/g, '')) &&
+          !/^(03\d{9}|\+?92\d{10})$/.test(payerMobile.replace(/[\s-]/g, ''))) {
+          return UI.toast('Customer ka mobile sahi nahi (03xxxxxxxxx)', 'err');
+        }
+        btn.disabled = true;
+        try {
+          const r = await API.call('wallet.initiate', {
+            provider: prov.id, methodId: methodId, amount: amount,
+            payerMobile: payerMobile, receiverMobile: (recv.value || '').trim(),
+            refType: o.refType || '', refId: o.refId || '', note: o.note || ''
+          });
+          state.walletId = r.walletId; state.tries = 0;
+          payment.walletId = r.walletId;
+          payment.payerMobile = payerMobile;
+          payment.receiverMobile = (recv.value || '').trim();
+          if (r.providerRef) payment.txnId = r.providerRef;
+          if (r.manual) {
+            setStatus('MANUAL', r.message, 'Txn ID neeche darj karein');
+            btn.disabled = false;
+            if (o.onChange) o.onChange();
+            return;
+          }
+          setStatus(r.status, r.message || 'Request bhej di', 'Order: ' + r.orderId);
+          btn.style.display = 'none'; stopBtn.style.display = '';
+          state.timer = setInterval(poll, Math.max(2, cfg.pollSeconds) * 1000);
+        } catch (e) {
+          UI.toast(e.message || 'Wallet request fail', 'err');
+          setStatus('FAILED', e.message || 'Request fail', '');
+        } finally { btn.disabled = false; }
+      };
+
+      stopBtn.onclick = () => { stop(); setStatus('PENDING', 'Polling rok di — "Check now" se status dekhein', ''); };
+
+      const checkBtn = h('button', {
+        class: 'btn sm sec',
+        onclick: () => { if (!state.walletId) return UI.toast('Pehle request bhejein', 'warn'); state.tries = 0; poll(); }
+      }, '🔄 Check now');
+
+      wrap.appendChild(h('div', { class: 'wallet-head' },
+        h('span', { style: { fontWeight: '700' } }, (prov.icon || '📲') + ' ' + prov.label),
+        h('span', { class: 'badge ' + (prov.sandbox ? 'warn' : 'ok') }, prov.sandbox ? 'SANDBOX' : 'LIVE')));
+      wrap.appendChild(h('div', { class: 'wallet-keys' }, payer, recv));
+      wrap.appendChild(h('div', { class: 'wallet-keys' }, btn, stopBtn, checkBtn));
+      wrap.appendChild(statusBox);
+      wrap.appendChild(h('div', { class: 'muted', style: { fontSize: 'var(--fs-xs)', marginTop: '4px' } },
+        'Customer ke mobile par OTP / MPIN aata hai — confirm hote hi status khud "Paisa mil gaya" ho jayega.'));
+
+      wrap.__stop = stop;
+      return wrap;
+    },
+
+    /** Monitoring panel — Accounting ▸ Wallets tab */
+    async monitor() {
+      const host = h('div', { class: 'wallet-monitor' });
+      const bar = h('div', { class: 'filters', style: { marginBottom: '8px' } });
+      const provSel = h('select', { class: 'f-input', 'aria-label': 'Wallet provider', title: 'Wallet provider' },
+        h('option', { value: '' }, 'All providers'));
+      const statusSel = h('select', { class: 'f-input', 'aria-label': 'Status', title: 'Status' },
+        h('option', { value: '' }, 'All statuses'),
+        ...['PENDING', 'PAID', 'FAILED', 'EXPIRED', 'MANUAL'].map(s => h('option', { value: s }, s)));
+      const refresh = h('button', { class: 'btn sm sec' }, '↻ Refresh');
+      const pollBtn = h('button', { class: 'btn sm' }, '🔄 Pending check karein');
+      bar.append(provSel, statusSel, refresh, pollBtn);
+      host.appendChild(bar);
+
+      const sum = h('div', { class: 'kpis', style: { marginBottom: '8px' } });
+      const tableHost = h('div');
+      /* synchronous placeholder — tab kabhi blank nahi dikhta (audit + UX) */
+      sum.appendChild(h('div', { class: 'muted', style: { fontSize: 'var(--fs-xs)' } }, 'Wallet summary load ho raha hai…'));
+      tableHost.appendChild(h('div', { class: 'muted', style: { fontSize: 'var(--fs-xs)' } }, 'Requests load ho rahi hain…'));
+      host.append(sum, tableHost);
+
+      const providers = await WalletUI.providers();
+      providers.forEach(p => provSel.appendChild(h('option', { value: p.id },
+        (p.icon ? p.icon + ' ' : '') + p.label + ' (' + p.mode + ')')));
+
+      async function load() {
+        tableHost.innerHTML = ''; tableHost.appendChild(UI2.skeleton ? UI2.skeleton(5) : h('div', null, '...'));
+        const p = {};
+        if (provSel.value) p.provider = provSel.value;
+        if (statusSel.value) p.status = statusSel.value;
+        try {
+          const [list, summary] = await Promise.all([
+            API.call('wallet.list', p, { offlineFallback: () => ({ rows: [] }) }),
+            API.call('wallet.summary', {}, { offlineFallback: () => ({}) })
+          ]);
+          tableHost.innerHTML = '';
+          sum.innerHTML = '';
+          sum.appendChild(UI2.kpiGrid([
+            { icon: '📲', label: 'Requests', value: summary.total || 0 },
+            { icon: '⏳', label: 'Pending', value: summary.pending || 0, cls: 'warn' },
+            { icon: '✅', label: 'Paid', value: summary.paid || 0, cls: 'ok' },
+            { icon: '💰', label: 'Paid amount', value: fmt.money(summary.paidAmount || 0), cls: 'ok' }
+          ], 4));
+          tableHost.appendChild(UI2.table({
+            screen: 'wallet_txns', rows: list.rows || [], height: '46vh', exportName: 'wallet-requests',
+            columns: [
+              { key: 'date', label: 'Date', render: r => fmt.date(r.date) },
+              { key: 'provider', label: 'Wallet' },
+              { key: 'orderId', label: 'Order' },
+              { key: 'amount', label: 'Amount', num: true, render: r => fmt.money(r.amount) },
+              { key: 'payerMobile', label: 'From (payer)', render: r => fmt.phone(r.payerMobile) },
+              { key: 'receiverMobile', label: 'To (merchant)', render: r => fmt.phone(r.receiverMobile) },
+              { key: 'providerRef', label: 'Txn ID' },
+              { key: 'status', label: 'Status', render: r => WalletUI.badge(r.status) },
+              { key: 'id', label: '', render: r => h('button', {
+                class: 'btn sm sec',
+                onclick: e => {
+                  e.stopPropagation();
+                  API.call('wallet.inquire', { id: r.id }).then(res => {
+                    UI.toast('Status: ' + res.status, res.status === 'PAID' ? 'ok' : 'warn'); load();
+                  }).catch(err => UI.toast(err.message, 'err'));
+                }
+              }, '🔄 Check') }
+            ]
+          }));
+        } catch (e) {
+          tableHost.innerHTML = '';
+          tableHost.appendChild(h('div', { class: 'empty' }, '⚠ ' + e.message));
+        }
+      }
+
+      refresh.onclick = load;
+      provSel.onchange = load;
+      statusSel.onchange = load;
+      pollBtn.onclick = () => {
+        API.call('wallet.poll', { limit: 10 }).then(r => {
+          UI.toast('Checked ' + r.checked + ' · paid ' + r.paid + ' · pending ' + r.pending, 'ok'); load();
+        }).catch(e => UI.toast(e.message, 'err'));
+      };
+      load();
+      return host;
+    }
+  };
+
+  window.WalletUI = WalletUI;
+})();
+</script>

@@ -1,0 +1,110 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><title>INV-SDQ-01042</title><style>@page{size:210mm 297mm;margin:8mm}
+
+*,*::before,*::after{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{font-family:"Segoe UI",Tahoma,Arial,"Helvetica Neue",sans-serif;background:#eef1f6;color:#111;
+  -webkit-print-color-adjust:exact;print-color-adjust:exact}
+.doc{margin:0 auto;background:#fff;color:#111}
+
+/* =============================== THERMAL ================================ */
+.doc.thermal{width:var(--mw);font-family:"Cascadia Mono",Consolas,"Courier New",monospace;
+  font-size:var(--fz);padding:2mm;line-height:1.35}
+.thermal .hd{text-align:center}
+.thermal .logo{max-height:40px;display:block;margin:0 auto 3px}
+.thermal .biz{font-size:1.4em;font-weight:800;letter-spacing:.4px}
+.thermal .tagline{font-size:.78em;color:#444}
+.thermal .sub{font-size:.8em;color:#333}
+.thermal .title{text-align:center;font-weight:800;border-top:1px dashed #000;border-bottom:1px dashed #000;
+  padding:3px 0;margin:5px 0;letter-spacing:1px}
+.thermal .meta{display:flex;flex-direction:column;gap:1px;font-size:.82em;margin:4px 0}
+.thermal .meta>div{display:flex;justify-content:space-between;gap:6px}
+.thermal .sep{border-top:1px dashed #000;margin:5px 0}
+.thermal table.items td,.thermal table.items th{padding:1px 2px}
+.thermal .row{display:flex;justify-content:space-between;gap:8px;font-size:.9em}
+.thermal .row.grand{font-weight:800;border-top:1px dashed #000;margin-top:3px;padding-top:3px;font-size:1.05em}
+
+/* ================================ SHEET ================================= */
+.doc.sheet{width:var(--w);min-height:var(--h);font-size:var(--fz);padding:12mm 12mm 10mm;
+  position:relative;line-height:1.45}
+.sheet .hd{display:flex;gap:10px;align-items:flex-start}
+.sheet .logo{max-height:64px;max-width:110px;object-fit:contain}
+.sheet .hblock{flex:1}
+.sheet .biz{font-size:1.65em;font-weight:800;letter-spacing:.3px;line-height:1.15}
+.sheet .ur{direction:rtl;font-size:1.05em;color:#222}
+.sheet .tagline{font-size:.82em;color:#555;letter-spacing:.3px}
+.sheet .sub{font-size:.78em;color:#444}
+.sheet-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;
+  border-bottom:3px solid #111;padding-bottom:9px}
+.doc-type{font-weight:800;font-size:1.05em;border:2px solid #111;border-radius:4px;padding:5px 12px;
+  letter-spacing:1.2px;white-space:nowrap}
+.sheet-meta{display:flex;gap:12px;margin:11px 0 12px}
+.sheet-meta .box{flex:1;border:1px solid #d6dbe3;border-radius:6px;padding:8px 10px;background:#fbfcfe}
+.sheet-meta .pname{font-size:1.02em;font-weight:700;display:block;margin-bottom:2px}
+.blabel{font-size:.68em;text-transform:uppercase;letter-spacing:.8px;color:#6b7280;margin-bottom:4px;font-weight:700}
+.meta-box{display:flex;flex-direction:column;gap:3px}
+.kv{display:flex;justify-content:space-between;gap:10px;font-size:.82em;border-bottom:1px dotted #e3e7ee;padding-bottom:2px}
+.kv:last-child{border-bottom:none}
+.kv span{color:#6b7280}
+.kv b{font-weight:700}
+.meta{display:flex;flex-direction:column;gap:2px}
+.meta>div{display:flex;justify-content:space-between;gap:8px}
+
+/* ------------------------------ ITEMS TABLE ------------------------------ */
+table.items{width:100%;border-collapse:collapse;font-size:.85em;margin-top:2px}
+table.items thead{display:table-header-group}
+table.items th{background:#111;color:#fff;font-weight:700;text-align:left;padding:6px 7px;
+  font-size:.92em;letter-spacing:.3px;border:1px solid #111}
+table.items td{padding:5px 7px;border:1px solid #dfe3ea;vertical-align:top}
+table.items tbody tr:nth-child(even) td{background:#f8fafc}
+table.items .c{text-align:center}
+table.items .r{text-align:right;white-space:nowrap}
+table.items .iname{font-weight:600;color:#111}
+table.items .imeta{font-size:.82em;color:#6b7280;display:flex;gap:8px;flex-wrap:wrap;margin-top:1px}
+table.items tfoot td{font-weight:700;background:#f1f5f9}
+
+/* -------------------------------- WORDS ---------------------------------- */
+.words{display:flex;gap:10px;align-items:baseline;border:1px solid #d6dbe3;background:#f8fafc;
+  border-radius:6px;padding:7px 10px;margin-top:10px;font-size:.84em}
+.words span{color:#6b7280;text-transform:uppercase;letter-spacing:.7px;font-size:.85em;font-weight:700}
+.words b{font-weight:700;letter-spacing:.2px}
+
+/* ----------------------- FOOTER: payments + totals ----------------------- */
+.sheet-foot{display:flex;gap:14px;margin-top:12px;align-items:flex-start}
+.sheet-foot .col-left{flex:1;display:flex;flex-direction:column;gap:10px}
+.sheet-foot .col-right{width:47%;min-width:250px;display:flex;flex-direction:column;gap:8px}
+.totals,.balances,.bank{border:1px solid #d6dbe3;border-radius:6px;padding:8px 10px;background:#fff}
+.balances{background:#fbfcfe;border-color:#c9d3e3}
+.btitle{font-size:.68em;text-transform:uppercase;letter-spacing:.8px;color:#6b7280;font-weight:700;margin-bottom:5px}
+.row{display:flex;justify-content:space-between;gap:10px;font-size:.88em;padding:1px 0}
+.row span:first-child{color:#4b5563}
+.row.grand{border-top:2px solid #111;margin-top:5px;padding-top:5px;font-size:1.02em;font-weight:800}
+.row.grand.due b{color:#b91c1c}
+.row.grand.ok b{color:#047857}
+.pays .row{border-bottom:1px dotted #e3e7ee}
+.codes{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.bcode,.qr{text-align:center}
+.btext{font-size:.72em;letter-spacing:1.4px;margin-top:2px;color:#444}
+
+.sign{display:flex;justify-content:space-between;gap:24px;margin-top:22px}
+.sig{flex:1;max-width:44%;text-align:center;font-size:.72em;color:#4b5563;letter-spacing:.4px}
+.sigline{border-top:1px solid #111;margin-bottom:4px}
+.foot{text-align:center;margin-top:12px;font-size:.86em;color:#111}
+.terms{margin-top:10px;font-size:.72em;color:#374151;border:1px solid #e3e7ee;border-radius:6px;padding:7px 9px;background:#fafbfd}
+.terms b{display:block;margin-bottom:2px;text-transform:uppercase;letter-spacing:.6px;color:#6b7280}
+.power{text-align:center;font-size:.65em;color:#9ca3af;margin-top:10px;letter-spacing:.4px}
+.pays+.bank,.bank{margin-top:2px}
+
+/* ================================ PRINT ================================== */
+@media print{
+  body{background:#fff}
+  .doc{box-shadow:none;margin:0}
+  .doc.sheet{width:auto;min-height:0;padding:0;page-break-after:always}
+  .doc.thermal{width:auto;padding:0}
+  table.items tr,.words,.totals,.balances,.bank{break-inside:avoid;page-break-inside:avoid}
+  .sheet-foot{break-inside:avoid}
+  .sign{break-inside:avoid}
+}
+@media screen{
+  .doc.sheet{box-shadow:0 8px 26px rgba(15,23,42,.18)}
+}
+</style></head><body><div class="doc sheet" style="--w:210mm;--h:297mm;--fz:12px"><header class="sheet-head"><div class="hd"><div class="hblock"><div class="biz">Haseeb Autos</div><div class="ur">حسیب آٹوز</div><div class="tagline">Auto Parts • Car &amp; Bike Decoration</div><div class="sub">Sadiqabad City — Main Bazar, Sadiqabad</div><div class="sub">+92 300 1234567 · info@haseebautos.pk</div><div class="sub">NTN: 1234567-8 &nbsp;·&nbsp; STRN: 1234567-8</div></div></div><div class="doc-type">TAX INVOICE</div></header><section class="sheet-meta"><div class="box bill-to"><div class="blabel">Bill to</div><b class="pname">Muhammad Ramzan Autos</b><div class="sub">Katchery Road, Sadiqabad</div><div class="sub">NTN: 1234567-8</div></div><div class="box meta-box"><div class="meta"><div class="kv"><span>Invoice No.</span><b>INV-SDQ-01042</b></div><div class="kv"><span>Date</span><b>2026-09-16 22:57</b></div><div class="kv"><span>Reference / PO</span><b>PO-9931</b></div><div class="kv"><span>Payment terms</span><b>Net 15 days</b></div><div class="kv"><span>Branch</span><b>Sadiqabad City</b></div></div></div></section><table class="items"><thead><tr><th class="c">#</th><th>Item description</th><th class="c">HSN</th><th class="c">Qty</th><th class="c">Unit</th><th class="r">Rate</th><th class="r">Disc</th><th class="r">GST</th><th class="r">Amount</th></tr></thead><tbody><tr><td class="c">1</td><td><div class="iname">Brake Pad Set Front (Corolla 2009-2019)</div><div class="imeta">Part no. BRK-001</div></td><td class="c">8708.3010</td><td class="c">2</td><td class="c">Set</td><td class="r">Rs 800.00</td><td class="r">Rs 0.00</td><td class="r">Rs 0.00</td><td class="r">Rs 1,600.00</td></tr><tr><td class="c">2</td><td><div class="iname">Engine Oil 20W-50 1L (Caltex Havoline)</div><div class="imeta">Part no. OIL-001</div></td><td class="c">2710.1991</td><td class="c">3</td><td class="c">Ltr</td><td class="r">Rs 1,200.00</td><td class="r">Rs 100.00</td><td class="r">Rs 0.00</td><td class="r">Rs 3,600.00</td></tr><tr><td class="c">3</td><td><div class="iname">Oil Filter (Toyota OEM)</div><div class="imeta">Part no. FLT-118</div></td><td class="c">8421.2300</td><td class="c">1</td><td class="c">Pcs</td><td class="r">Rs 250.00</td><td class="r">Rs 0.00</td><td class="r">Rs 0.00</td><td class="r">Rs 250.00</td></tr></tbody></table><div class="words"><span>Amount in words</span><b>Rupees Five Thousand Four Hundred Forty and Fifty Paisa Only</b></div><section class="sheet-foot"><div class="col-left"><div class="btitle">Payment received</div><div class="pays"><div class="row"><span>Cash</span><b>Rs 2,500.00</b></div><div class="row"><span>JazzCash <span class="sub">· TXN 8842</span></span><b>Rs 2,000.00</b></div><div class="row sub"><span>Fee (2%) + FED</span><span>-Rs 40.00 · net Rs 1,960.00</span></div></div><div class="bank"><div class="btitle">Payment / bank details</div><div class="row"><span>Bank</span><b>Meezan Bank Ltd</b></div><div class="row"><span>Account title</span><b>Haseeb Autos</b></div><div class="row"><span>Account no.</span><b>0101-0101234567</b></div><div class="row"><span>IBAN</span><b>PK12MEZN0001010101234567</b></div></div><div class="codes"><div class="bcode"><svg xmlns="http://www.w3.org/2000/svg" width="257.50" height="40" viewBox="0 0 257.50 40" shape-rendering="crispEdges"><rect width="100%" height="100%" fill="#fff"/><g fill="#000"><rect x="7.50" y="0" width="1.25" height="40"/><rect x="11.25" y="0" width="1.25" height="40"/><rect x="13.75" y="0" width="2.50" height="40"/><rect x="17.50" y="0" width="2.50" height="40"/><rect x="21.25" y="0" width="1.25" height="40"/><rect x="23.75" y="0" width="1.25" height="40"/><rect x="26.25" y="0" width="2.50" height="40"/><rect x="30.00" y="0" width="1.25" height="40"/><rect x="33.75" y="0" width="2.50" height="40"/><rect x="37.50" y="0" width="1.25" height="40"/><rect x="40.00" y="0" width="1.25" height="40"/><rect x="42.50" y="0" width="1.25" height="40"/><rect x="45.00" y="0" width="2.50" height="40"/><rect x="48.75" y="0" width="1.25" height="40"/><rect x="52.50" y="0" width="2.50" height="40"/><rect x="56.25" y="0" width="1.25" height="40"/><rect x="60.00" y="0" width="2.50" height="40"/><rect x="63.75" y="0" width="1.25" height="40"/><rect x="66.25" y="0" width="1.25" height="40"/><rect x="68.75" y="0" width="2.50" height="40"/><rect x="72.50" y="0" width="1.25" height="40"/><rect x="76.25" y="0" width="1.25" height="40"/><rect x="78.75" y="0" width="1.25" height="40"/><rect x="81.25" y="0" width="2.50" height="40"/><rect x="85.00" y="0" width="2.50" height="40"/><rect x="88.75" y="0" width="1.25" height="40"/><rect x="91.25" y="0" width="2.50" height="40"/><rect x="95.00" y="0" width="1.25" height="40"/><rect x="97.50" y="0" width="2.50" height="40"/><rect x="102.50" y="0" width="1.25" height="40"/><rect x="105.00" y="0" width="1.25" height="40"/><rect x="107.50" y="0" width="1.25" height="40"/><rect x="110.00" y="0" width="2.50" height="40"/><rect x="115.00" y="0" width="1.25" height="40"/><rect x="117.50" y="0" width="2.50" height="40"/><rect x="121.25" y="0" width="1.25" height="40"/><rect x="123.75" y="0" width="1.25" height="40"/><rect x="126.25" y="0" width="1.25" height="40"/><rect x="128.75" y="0" width="2.50" height="40"/><rect x="133.75" y="0" width="2.50" height="40"/><rect x="137.50" y="0" width="1.25" height="40"/><rect x="141.25" y="0" width="1.25" height="40"/><rect x="143.75" y="0" width="1.25" height="40"/><rect x="146.25" y="0" width="2.50" height="40"/><rect x="150.00" y="0" width="2.50" height="40"/><rect x="153.75" y="0" width="1.25" height="40"/><rect x="156.25" y="0" width="1.25" height="40"/><rect x="160.00" y="0" width="2.50" height="40"/><rect x="163.75" y="0" width="2.50" height="40"/><rect x="167.50" y="0" width="1.25" height="40"/><rect x="170.00" y="0" width="2.50" height="40"/><rect x="173.75" y="0" width="1.25" height="40"/><rect x="177.50" y="0" width="1.25" height="40"/><rect x="180.00" y="0" width="1.25" height="40"/><rect x="182.50" y="0" width="2.50" height="40"/><rect x="186.25" y="0" width="1.25" height="40"/><rect x="188.75" y="0" width="1.25" height="40"/><rect x="192.50" y="0" width="2.50" height="40"/><rect x="196.25" y="0" width="2.50" height="40"/><rect x="200.00" y="0" width="1.25" height="40"/><rect x="202.50" y="0" width="1.25" height="40"/><rect x="205.00" y="0" width="1.25" height="40"/><rect x="208.75" y="0" width="2.50" height="40"/><rect x="212.50" y="0" width="1.25" height="40"/><rect x="215.00" y="0" width="2.50" height="40"/><rect x="218.75" y="0" width="1.25" height="40"/><rect x="221.25" y="0" width="2.50" height="40"/><rect x="226.25" y="0" width="1.25" height="40"/><rect x="228.75" y="0" width="1.25" height="40"/><rect x="231.25" y="0" width="2.50" height="40"/><rect x="235.00" y="0" width="1.25" height="40"/><rect x="238.75" y="0" width="1.25" height="40"/><rect x="241.25" y="0" width="2.50" height="40"/><rect x="245.00" y="0" width="2.50" height="40"/><rect x="248.75" y="0" width="1.25" height="40"/></g></svg><div class="btext">INV-SDQ-01042</div></div></div></div><div class="col-right"><div class="totals"><div class="row"><span>Subtotal</span><b>Rs 4,700.00</b></div><div class="row"><span>Discount</span><b>-Rs 50.00</b></div><div class="row"><span>GST @ 17%</span><b>Rs 790.50</b></div><div class="row grand"><span>TOTAL</span><b>Rs 5,440.50</b></div></div><div class="balances"><div class="btitle">Account summary</div><div class="row"><span>Previous balance</span><b>Rs 2,500.00</b></div><div class="row"><span>This invoice</span><b>Rs 5,440.50</b></div><div class="row"><span>Paid now</span><b>-Rs 4,500.00</b></div><div class="row grand due"><span>Closing balance</span><b>Rs 3,440.50</b></div><div class="row sub"><span>Credit limit</span><span>Rs 50,000.00</span></div></div></div></section><div class="foot">Shukriya! Phir aayein.</div><div class="sign"><div class="sig"><div class="sigline"></div><div>Customer signature</div></div><div class="sig"><div class="sigline"></div><div>Authorised signatory</div></div></div><div class="power">Powered by Haseeb Autos ERP · INV-SDQ-01042</div></div></body></html>

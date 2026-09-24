@@ -1,0 +1,1222 @@
+<script>
+/* =============================================================================
+   HASEEB AUTOS — v2.9.2 SALESMAN — 8 TAB OVERHAUL
+   ------------------------------------------------------------------
+   Tabs:
+    1) Stock Issued          — issue list + new enriched issue (reason/purpose/tour/area/customer/reference + lines)
+    2) Current Stock         — salesman on-hand stock, value, retail, filterable
+    3) Tours / Routes        — route mgmt (name/salesman/customers/days/target)
+    4) Cust/Area Alloc       — allocation grouped by customer/area/route
+    5) Sales / Delivery      — salesman sales history (source=SALESMAN)
+    6) Returns               — return via original issue (remaining guard)
+    7) Ledger / History      — unified timeline + Wasooli payments + collect
+    8) Performance           — metrics + rating + breakdown
+
+   Dark-mode safe, responsive (390/1024/1440), no truncation, tactile 44/48px,
+   bilingual hints, traceability issued→sold→returned→remaining throughout.
+   ============================================================================= */
+
+function smEsc(v){ return String(v==null?'':v).replace(/[&<>"]/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m];}); }
+function smEmpty(m){ return h('div',{class:'tbl-empty'}, m); }
+/* v2.27.0 (W3.T3) — jo routes poore app mein share hote hain (customers/items/sales/
+   suppliers) woh Shared.raw se guzarte hain: same query = 1 request + write par
+   auto-invalidate. Salesman-specific routes (salesman.*) seedha API par rehte hain
+   (unka data screen-specific hai — cache ka faida nahi, stale ka risk hai). */
+var SM_SHARED_ROUTES = { 'customers.list': 1, 'items.search': 1, 'sales.list': 1, 'suppliers.list': 1 };
+async function smCall(action, payload, fallback){
+  try{
+    var r = SM_SHARED_ROUTES[action]
+      ? await Shared.raw(action, payload || {}, { offline: function(){ return fallback; } })
+      : await API.call(action, payload, {offlineFallback:function(){return fallback;}});
+    return r==null?fallback:r;
+  }catch(e){ return fallback; }
+}
+function smBranchSelect(onChange, includeAll){
+  var sel=h('select',{class:'st2-f', onchange:function(){ onChange(sel.value); }, 'aria-label':'Branch'});
+  if(includeAll) sel.appendChild(h('option',{value:''},'All branches'));
+  (App.state.locations||[]).forEach(function(l){ sel.appendChild(h('option',{value:l.id}, l.name)); });
+  sel.value=App.state.locationId||'';
+  try{ sel.value=App.state.tmpLoc||App.state.locationId||''; }catch(e){}
+  return sel;
+}
+function smDebounce(fn, ms){ var t; return function(){ var a=arguments,ctx=this; clearTimeout(t); t=setTimeout(function(){fn.apply(ctx,a);}, ms); }; }
+function smSeg(items, cur, onPick){
+  // Senior: horizontally scrollable, 48px min tap, no truncation, keyboard nav
+  return h('div',{class:'tabbar-l1 sm-tabbar', style:{flexWrap:'nowrap', overflowX:'auto', scrollbarWidth:'thin', WebkitOverflowScrolling:'touch', gap:'6px', paddingBottom:'2px'}},
+    ...items.map(function(it){
+      return h('button',{
+        class:'tab'+(it.id===cur?' on':''),
+        title: it.label,
+        'aria-label': it.label,
+        'aria-selected': String(it.id===cur),
+        role:'tab',
+        style:{minHeight:'48px', whiteSpace:'nowrap', flex:'0 0 auto'},
+        onclick:function(){onPick(it.id);}
+      },
+        h('span',{class:'ti', 'aria-hidden':'true'}, it.icon||''), h('span',null,it.label));
+    }));
+}
+
+/* === SENIOR PHASE2 v2.9.4 — remaining tabs ERP polish === */
+/* === SENIOR POLISH v2.9.3 — injected style (390/1024/1440, dark-safe, no truncation) === */
+(function injectSalesmanStyle(){
+  if(document.getElementById('sm-senior-style')) return;
+  var css = `
+  .sm-tabbar{ scrollbar-width:thin; }
+  .sm-tabbar::-webkit-scrollbar{ height:6px; }
+  .sm-hero{ display:flex; gap:10px; flex-wrap:wrap; align-items:stretch; }
+  .sm-hero .kpi{ min-height:92px; }
+  .sm-filters{ display:flex; gap:8px; flex-wrap:wrap; align-items:end; }
+  .sm-filters .f-col{ min-width:180px; flex:1 1 180px; }
+  @media (max-width:480px){
+    .sm-filters .f-col{ min-width:100%; flex:1 1 100%; }
+    .grid.g4{ grid-template-columns:1fr 1fr !important; }
+    .grid.g3{ grid-template-columns:1fr !important; }
+    .grid.g2{ grid-template-columns:1fr !important; }
+  }
+  .sm-badge{ font-variant-numeric:tabular-nums; }
+  .sm-empty{ padding:28px 18px; text-align:center; background:var(--panel-2, #f8fafc); border:1px dashed var(--line); border-radius:14px; }
+  .sm-empty b{ display:block; font-size:var(--fs-md); margin-bottom:6px; }
+  .sm-empty p{ color:var(--muted); font-size:var(--fs-sm); line-height:1.5; margin:0; }
+  .sm-card-head{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .sm-card-head h3{ margin:0; font-size:var(--fs-md); display:flex; align-items:center; gap:8px; }
+  .sm-hint{ font-size:11px; color:var(--muted); background:var(--panel-2); padding:6px 10px; border-radius:10px; }
+  `;
+  var el=document.createElement('style'); el.id='sm-senior-style'; el.textContent=css; document.head.appendChild(el);
+})();
+App.registerScreen('salesman',{
+  title:'Salesman Stock', icon:'🧑', perm:'sales.view',
+  subtitle:function(){ return 'Issue → Tour/Area/Customer → Sale → Collection → Return → Stock → Ledger → Rating'; },
+  actions:function(){ return [{label:'Refresh', icon:'↻', onClick:function(){ App.refresh(); }}]; },
+
+  render:function(body){
+    var TABS=[
+      {id:'issued', icon:'📦', label:'Stock Issued'},
+      {id:'stock', icon:'📊', label:'Current Stock'},
+      {id:'tours', icon:'🗺', label:'Tours / Routes'},
+      {id:'alloc', icon:'🗂', label:'Cust / Area Alloc'},
+      {id:'sales', icon:'🧾', label:'Sales / Delivery'},
+      {id:'returns', icon:'📥', label:'Returns'},
+      {id:'ledger', icon:'📒', label:'Ledger / History'},
+      {id:'perf', icon:'⭐', label:'Performance'}
+    ];
+    var tab='issued';
+    var salesmen=[]; var smId=''; var locTmp='';
+    var host=h('div',{class:'fade-in'});
+    var tabsBar=h('div');
+    var topFilters=h('div',{class:'sm-filters', style:{padding:'12px', background:'var(--panel)', border:'1px solid var(--line)', borderRadius:'12px'}});
+    var selSm=h('select',{class:'f-input', 'aria-label':'Salesman — salesman select karein', title:'Salesman select karein', style:{minHeight:'44px'}, onchange:function(e){ smId=e.target.value; draw(); }});
+    var selLoc=smBranchSelect(function(v){ locTmp=v; App.state.tmpLoc=v; draw(); }, true);
+    // ensure branch select also meets 44px
+    try{ selLoc.style.minHeight='44px'; selLoc.classList.add('f-input'); }catch(e){}
+    selSm.appendChild(h('option',{value:''},'— Salesman select karein —'));
+    var refreshBtn=h('button',{class:'btn sm sec', title:'Refresh data', 'aria-label':'Refresh', style:{minHeight:'44px', minWidth:'48px'}},'↻ Refresh');
+    refreshBtn.onclick=function(){ draw(); };
+    var ctxChip=h('span',{class:'badge brand sm-badge', style:{display:'none'}});
+    // Build labelled filters for a11y + senior clarity
+    var colSm=h('div',{class:'f-col'}, h('label',null,'Salesman *'), selSm, h('div',{class:'hint', style:{fontSize:'11px'}},'Field / van salesman — har tab isi salesman ka data dikhayega'));
+    var colLoc=h('div',{class:'f-col'}, h('label',null,'Branch / Location'), selLoc, h('div',{class:'hint', style:{fontSize:'11px'}},'Branch filter — empty = all'));
+    var colAct=h('div',{class:'f-col', style:{minWidth:'auto', flex:'0 0 auto', justifyContent:'flex-end'}}, h('label',null,' '), h('div',{style:{display:'flex', gap:'8px', alignItems:'center'}}, refreshBtn, ctxChip));
+    topFilters.appendChild(colSm); topFilters.appendChild(colLoc); topFilters.appendChild(colAct);
+
+    // KPI strip for salesman overview (always visible below filters)
+    var kpiHost=h('div',{style:{marginTop:'12px'}});
+
+    body.appendChild(h('div',null, tabsBar, h('div',{class:'card', style:{marginTop:'10px'}}, topFilters, h('div',{style:{padding:'10px'}},kpiHost)), host));
+    // role-aware lock: salesman can only see self
+    function applyRoleLock(){
+      try{
+        var me=App.state.session && App.state.session.userId;
+        var myRole=(App.state.session && App.state.session.role)||'';
+        var isSalesman=(myRole==='salesman'|| myRole==='SALESMAN');
+        if(isSalesman && me){
+          // lock salesman picker to self
+          selSm.value=me; smId=me; selSm.disabled=true; selSm.title='Aap salesman hain — sirf apna data';
+          ctxChip.textContent='👤 '+ (curSalesmanName()||me) + ' · salesman view (locked)';
+          ctxChip.style.display='inline-flex';
+        } else {
+          selSm.disabled=false; ctxChip.style.display='none';
+        }
+      }catch(e){}
+    }
+
+    function loc(){ return locTmp || ''; }
+    function curSalesmanName(){ var f=salesmen.filter(function(x){return x.id===smId;})[0]; return f?f.name:''; }
+
+    function drawTabs(){
+      tabsBar.innerHTML='';
+      tabsBar.appendChild(smSeg(TABS, tab, function(t){ tab=t; drawTabs(); draw(); }));
+    }
+    function requireSm(){
+      if(!smId){
+        host.innerHTML='';
+        var emp=h('div',{class:'sm-empty'},
+          h('b',null,'👤 Salesman select karna zaruri hai'),
+          h('p',null,'Pehle upar se salesman choose karein — phir har tab (Issued / Stock / Tours / Ledger …) ka data nazar aayega. / Select a salesman above to view Stock, Issues, Tours and Ledger.'),
+          h('div',{style:{marginTop:'12px', display:'flex', gap:'8px', justifyContent:'center', flexWrap:'wrap'}},
+            h('button',{class:'btn sm', style:{minHeight:'44px'}, onclick:function(){ selSm.focus(); try{selSm.showPicker&&selSm.showPicker();}catch(e){} }},'Salesman choose karein →'),
+            h('button',{class:'btn sm sec', style:{minHeight:'44px'}, onclick:function(){ App.refresh(); }},'↻ Refresh')
+          )
+        );
+        host.appendChild(emp);
+        return false;
+      }
+      return true;
+    }
+
+    /* -------------------- KPI overview (issued/sold/returned/remaining) -------------------- */
+    async function refreshKpi(){
+      if(!smId){ kpiHost.innerHTML=''; return; }
+      try{
+        var perf=await smCall('salesman.performance',{salesmanId:smId, locationId:loc()}, null);
+        if(!perf || !perf.totals){ kpiHost.innerHTML=''; return; }
+        var t=perf.totals;
+        kpiHost.innerHTML='';
+        kpiHost.appendChild(h('div',{class:'grid g4 sm-hero'},
+          h('div',{class:'kpi', title:'Total issued qty/value (period)'}, h('div',{class:'k-label'},'📦 Issued'), h('div',{class:'k-value'}, fmt.num(t.issuedQty)), h('div',{class:'k-exact'}, fmt.money(t.issuedValue))),
+          h('div',{class:'kpi ok', title:'Sold / delivered'}, h('div',{class:'k-label'},'✅ Sold'), h('div',{class:'k-value'}, fmt.num(t.soldQty)), h('div',{class:'k-exact'}, fmt.money(t.soldValue))),
+          h('div',{class:'kpi warn', title:'Returned to stock'}, h('div',{class:'k-label'},'↩ Returned'), h('div',{class:'k-value'}, fmt.num(t.returnedQty)), h('div',{class:'k-exact'}, fmt.money(t.returnedValue))),
+          h('div',{class:'kpi info', title:'Remaining in hand (issued - sold - returned)'}, h('div',{class:'k-label'},'📊 In hand'), h('div',{class:'k-value'}, fmt.num(t.remainingQty)), h('div',{class:'k-exact'}, fmt.money(t.remainingValue)))
+        ));
+        kpiHost.appendChild(h('div',{style:{marginTop:'8px', display:'flex',gap:'6px',flexWrap:'wrap', alignItems:'center'}},
+          h('span',{class:'badge brand sm-badge', title:'Salesman rating'},'⭐ '+perf.rating.score+'/5 · '+perf.rating.label),
+          h('span',{class:'badge sm-badge', title:'Collection rate'},'💵 Collection '+perf.collection.rate+'%'),
+          h('span',{class:'badge sm-badge', title:'Return rate — lower is better'},'↩ Return '+perf.returns.rate+'%'),
+          h('span',{class:'badge sm-badge', title:'Invoices in period'},'🧾 '+perf.totals.invoices+' inv · Avg '+fmt.money(perf.totals.avgInvoice))
+        ));
+      }catch(e){ kpiHost.innerHTML=''; }
+    }
+
+    /* ========================= SHARED PICKERS & FORMS ========================= */
+
+    // Customer picker with search (returns id + name)
+    function customerPicker(initialId, onPick){
+      var inp=h('input',{class:'f-input', placeholder:'Search customer (name/phone)…'});
+      var resBox=h('div',{style:{maxHeight:'160px',overflow:'auto',border:'1px solid var(--line)',borderRadius:'10px',marginTop:'6px', display:'none'}});
+      var selId=initialId||''; var selName='';
+      var wrap=h('div',null, inp, resBox);
+      var debounce=smDebounce(function(){
+        var q=inp.value.trim(); if(q.length<1){ resBox.style.display='none'; return; }
+        resBox.innerHTML=''; resBox.style.display='block'; resBox.appendChild(h('div',{style:{padding:'8px',color:'var(--muted)'}},'Searching…'));
+        smCall('customers.list',{q:q, limit:10},{rows:[]}).then(function(r){
+          var rows=(r&&r.rows)||r||[];
+          resBox.innerHTML='';
+          if(!rows.length){ resBox.appendChild(h('div',{style:{padding:'8px',color:'var(--muted)'}},'No match')); return; }
+          rows.slice(0,10).forEach(function(c){
+            var row=h('div',{class:'gs-item', style:{cursor:'pointer'}, onclick:function(){
+              selId=c.id; selName=c.name; inp.value=c.name+(c.phone?' · '+c.phone:'');
+              resBox.style.display='none'; onPick&&onPick(selId, selName);
+            }}, h('span',null,'👤'), h('div',{class:'t'}, h('b',null,c.name), h('span',null,(c.phone||'')+' · '+fmt.money(c.balance||c.bal||0))));
+            resBox.appendChild(row);
+          });
+        });
+      },300);
+      inp.addEventListener('input',debounce);
+      // if initial id, preload name
+      if(initialId){
+        smCall('customers.list',{q:'', limit:1}, {rows:[]}).then(function(){ /* keep */ });
+      }
+      return { el:wrap, input:inp, get:function(){return {id:selId,name:selName||inp.value};}, set:function(id,name){ selId=id; selName=name; inp.value=name||''; } };
+    }
+
+    // Route dropdown loader
+    async function loadRoutesForSelect(sel){
+      sel.innerHTML=''; sel.appendChild(h('option',{value:''},'— No tour/route —'));
+      var routes=await smCall('salesman.routes',{locationId: loc(), activeOnly:true}, []);
+      (routes||[]).forEach(function(r){ sel.appendChild(h('option',{value:r.id}, r.name+' · '+r.salesman)); });
+      return routes;
+    }
+    // Area datalist (from issues distinct)
+    async function loadAreas(){
+      var issues=await smCall('salesman.issues',{salesmanId:smId, locationId:loc(), limit:200}, []);
+      var s=new Set(); (issues||[]).forEach(function(r){ if(r.area) s.add(r.area); });
+      return Array.from(s);
+    }
+
+    /* -------------------- ITEM LINE EDITOR (with per-line allocation) -------------------- */
+    function lineEditor(lines, onChange){
+      var listEl=h('div');
+      var totalEl=h('div',{class:'po-total'});
+      function updateTotal(){
+        var qty=lines.reduce(function(a,l){return a+Number(l.qty||0);},0);
+        var val=lines.reduce(function(a,l){return a+Number(l.qty||0)*Number(l.cost||0);},0);
+        totalEl.innerHTML=''; totalEl.appendChild(h('span',null,'Lines: '+lines.length+' · Qty: '+fmt.num(qty)));
+        totalEl.appendChild(h('b',null,'Value: '+fmt.money(val)));
+      }
+      var customBtn=h('button',{class:'btn sm sec', onclick:function(){ openCustom(); }},'＋ Custom');
+      function openCustom(){
+        var cf=UI2.form({values:{qty:1,cost:0}, fields:[
+          {key:'name', label:'Product name *', required:true, placeholder:'Product ka naam', full:true},
+          {key:'code', label:'Code', placeholder:'Code'},
+          {key:'qty', label:'Qty *', type:'number', value:1},
+          {key:'cost', label:'Cost', type:'number', value:0}
+        ]});
+        UI2.modal({title:'＋ Custom product', size:'sm', body:cf.el,
+          actions:[{label:'Add',cls:'ok',onClick:function(c){
+            var v=cf.values(); if(!v.name) return UI.toast('Name zaruri','err');
+            lines.push({itemId:'', code:v.code||'CUSTOM', name:v.name, qty:Number(v.qty)||1, cost:Number(v.cost)||0});
+            paint(); c(); UI.toast('Custom add ✅','ok');
+          }},{label:'Cancel',onClick:function(c){c();}}]});
+      }
+      var picker=UI2.itemPicker({lines: lines, after:function(){ paint(); onChange&&onChange();},
+        icon:'📦', title:'Issue lines — scan ya search',
+        hint:'Scan → seedha line mein add (qty merge, stock cap) · ya 📋 list se multi-select',
+        commitLabel:'Add to issue lines',
+        sub:function(r){ return (r.code||'')+' · cost '+fmt.money(r.costPrice)+' · stock '+fmt.num(r.stock||0); },
+        search:function(q){ return smCall('items.search',{q:q, limit: q?12:40},[]); },
+        map:function(r, qty){ return {itemId:r.id, code:r.code, name:r.name, qty:Math.max(0,Number(qty)||1), cost:Number(r.costPrice)||0}; }
+      });
+      var pickerWrap=h('div',{class:'picker-field'}, picker);
+      function paint(){
+        listEl.innerHTML='';
+        lines.forEach(function(l,i){
+          var q=h('input',{type:'number', value:l.qty, class:'f-input', style:{width:'78px', textAlign:'right'}, onchange:function(e){ l.qty=Number(e.target.value); updateTotal(); onChange&&onChange(); }});
+          var c=h('input',{type:'number', value:l.cost, class:'f-input', style:{width:'92px', textAlign:'right'}, onchange:function(e){ l.cost=Number(e.target.value); updateTotal(); onChange&&onChange(); }});
+          var row=h('div',{class:'po-line'},
+            h('div',{class:'pl-name'}, h('b',null,l.name||l.code||'Item'), h('span',{class:'pl-sub'}, l.code||'—')),
+            q, c,
+            h('b',{class:'pl-num'}, fmt.money(Number(l.qty||0)*Number(l.cost||0))),
+            h('button',{class:'icon-btn', style:{width:'28px',height:'28px',border:'0'}, onclick:function(){ lines.splice(i,1); paint(); updateTotal(); onChange&&onChange(); }},'✕')
+          );
+          listEl.appendChild(row);
+        });
+        if(!lines.length) listEl.appendChild(smEmpty('Items add karein — search upar + qty/cost set karein'));
+        updateTotal();
+      }
+      paint();
+      return { el:h('div',null, pickerWrap, listEl, totalEl), refresh:paint, pickerWrap:pickerWrap, customBtn:customBtn };
+    }
+
+    /* ========================= TAB: STOCK ISSUED ========================= */
+    async function drawIssued(){
+      if(!requireSm()) return;
+      host.innerHTML=''; host.appendChild(UI.skeleton(4));
+      var filters={ salesmanId:smId, locationId:loc() };
+      var rows=await smCall('salesman.issues', filters, []);
+      host.innerHTML='';
+      var searchInp=h('input',{class:'st2-q', placeholder:'Search issueNo / ref / customer / area…', style:{minWidth:'180px'}});
+      var purposeSel=h('select',{class:'st2-f'}, h('option',{value:''},'All purposes'), ...['TOUR_SUPPLY','AREA_SUPPLY','CUSTOMER_ORDER','SAMPLE','REPLENISHMENT','OTHER'].map(function(p){ return h('option',{value:p}, p); }));
+      var dateFrom=h('input',{type:'date', class:'st2-f'}); var dateTo=h('input',{type:'date', class:'st2-f'});
+      var filterBar=h('div',{class:'st2-bar', style:{flexWrap:'wrap', gap:'8px', padding:'10px'}},
+        h('div',{style:{display:'flex', gap:'8px', flexWrap:'wrap', flex:'1 1 auto'}},
+          (function(){ searchInp.className='f-input'; searchInp.style.minHeight='44px'; searchInp.style.minWidth='200px'; searchInp.title='Search issue'; return searchInp; })(),
+          (function(){ purposeSel.className='f-input'; purposeSel.style.minHeight='44px'; purposeSel.title='Filter by purpose'; return purposeSel; })(),
+          (function(){ dateFrom.className='f-input'; dateFrom.style.minHeight='44px'; dateFrom.title='From date'; return dateFrom; })(),
+          (function(){ dateTo.className='f-input'; dateTo.style.minHeight='44px'; dateTo.title='To date'; return dateTo; })(),
+          h('button',{class:'btn sm', title:'Apply filters', style:{minHeight:'44px'}, onclick:function(){ doFilter(); }},'🔍 Filter')
+        ),
+        h('span',{class:'sp', style:{display:'flex', gap:'8px'}},
+          h('button',{class:'btn sm sec', title:'Export list', style:{minHeight:'44px'}, onclick:function(){ exportIssued(rows); }},'⬇ Export'),
+          h('button',{class:'btn sm ok', title:'Create new stock issue', style:{minHeight:'44px'}, onclick:function(){ openIssueModal(); }},'＋ New Issue')
+        )
+      );
+      var tableWrap=h('div');
+      host.appendChild(h('div',{class:'st2'},
+        h('div',{class:'st2-bar', style:{background:'var(--panel)',borderBottom:'1px solid var(--line)', flexWrap:'wrap', gap:'8px'}},
+          h('div',{class:'sm-card-head'}, h('b',null,'📦 Stock Issued — '+curSalesmanName()), h('span',{class:'badge brand sm-badge', title:'Total issues'}, (rows||[]).length+' docs')),
+          h('span',{class:'hint', style:{fontSize:'11px'}},'Issue → Tour/Area/Customer traceable — har issue ka sold/returned Trace se dekhein'),
+          h('span',{class:'sp'}, h('span',{class:'hint', style:{fontSize:'11px'}},'Use filters below ↔'))
+        ),
+        filterBar, tableWrap
+      ));
+      function renderRows(list){
+        tableWrap.innerHTML='';
+        if(!list.length){ tableWrap.appendChild(smEmpty('No issues for this salesman / filter')); return; }
+        tableWrap.appendChild(UI2.table({
+          screen:'salesman-issued', pageSize:25, exportName:'salesman-issued',
+          columns:[
+            {key:'issueNo', label:'Issue No', render:function(r){ return h('b',null,r.issueNo); }},
+            {key:'date', label:'Date', render:function(r){ return fmt.date(r.date); }},
+            {key:'purpose', label:'Purpose', render:function(r){ return h('span',{class:'badge brand'}, r.purpose||'—'); }},
+            {key:'routeName', label:'Tour/Route', render:function(r){ return r.routeName||'—'; }},
+            {key:'area', label:'Area', render:function(r){ return r.area||'—'; }},
+            {key:'customerName', label:'Customer', render:function(r){ return r.customerName? h('span',null, r.customerName, h('div',{class:'cell-sub'}, r.customerId||'')) : '—'; }},
+            {key:'reference', label:'Ref', render:function(r){ return r.reference||'—'; }},
+            {key:'total', label:'Value', num:true, render:function(r){ return fmt.money(r.total); }},
+            {key:'lines', label:'Lines', num:true},
+            {key:'x', label:'', nos:true, render:function(r){
+              return h('div',{style:{display:'flex',gap:'6px'}},
+                h('button',{class:'btn sm sec', onclick:function(){ viewIssueTrace(r.id); }},'Trace'),
+                h('button',{class:'btn sm', onclick:function(){ viewIssueDetail(r.id); }},'View')
+              );
+            }}
+          ], rows: list
+        }));
+      }
+      function doFilter(){
+        var q=searchInp.value.trim().toLowerCase(); var purp=purposeSel.value; var f=dateFrom.value, t=dateTo.value;
+        var filtered=(rows||[]).filter(function(r){
+          if(purp && r.purpose!==purp) return false;
+          if(f && r.date < f) return false;
+          if(t && r.date > t) return false;
+          if(q){
+            var hay=(r.issueNo+' '+(r.reference||'')+' '+(r.customerName||'')+' '+(r.area||'')+' '+(r.routeName||'')+' '+(r.purpose||'')).toLowerCase();
+            if(hay.indexOf(q)<0) return false;
+          }
+          return true;
+        });
+        renderRows(filtered);
+      }
+      searchInp.oninput=smDebounce(doFilter,300);
+      renderRows(rows||[]);
+
+      // issue trace modal
+      async function viewIssueTrace(issueId){
+        var box=h('div',null, UI.skeleton(3));
+        var m=UI2.modal({title:'🔍 Issue trace — issued → sold → returned → remaining', size:'lg', body:box,
+          actions:[{label:'Close',onClick:function(c){c();}}]});
+        var trace=await smCall('salesman.trace',{issueId:issueId},{items:[], totals:{}});
+        box.innerHTML='';
+        if(!trace || !trace.issue){ box.appendChild(smEmpty('Trace not available')); return; }
+        var it=trace.issue;
+        box.appendChild(h('div',{class:'kv-strip'},
+          h('span',{class:'kv'}, h('b',{class:'k'},'Issue'), h('b',{class:'v'}, it.issueNo)),
+          h('span',{class:'kv'}, h('b',{class:'k'},'Date'), h('b',{class:'v'}, fmt.date(it.date))),
+          h('span',{class:'kv'}, h('b',{class:'k'},'Purpose'), h('b',{class:'v fin'}, it.purpose||'—')),
+          h('span',{class:'kv'}, h('b',{class:'k'},'Area'), h('b',{class:'v'}, it.area||'—')),
+          h('span',{class:'kv'}, h('b',{class:'k'},'Ref'), h('b',{class:'v'}, it.reference||'—'))
+        ));
+        var t=trace.totals||{};
+        box.appendChild(h('div',{class:'grid g4', style:{margin:'10px 0'}},
+          h('div',{class:'kpi'}, h('div',{class:'k-label'},'Issued'), h('div',{class:'k-value'}, fmt.num(t.issued)), h('div',{class:'k-exact'}, fmt.money(t.issuedValue))),
+          h('div',{class:'kpi ok'}, h('div',{class:'k-label'},'Sold'), h('div',{class:'k-value'}, fmt.num(t.sold)), h('div',{class:'k-exact'}, fmt.money(t.soldValue))),
+          h('div',{class:'kpi warn'}, h('div',{class:'k-label'},'Returned'), h('div',{class:'k-value'}, fmt.num(t.returned)), h('div',{class:'k-exact'}, fmt.money(t.returnedValue))),
+          h('div',{class:'kpi info'}, h('div',{class:'k-label'},'Remaining'), h('div',{class:'k-value'}, fmt.num(t.remaining)), h('div',{class:'k-exact'}, fmt.money(t.remainingValue)))
+        ));
+        var items=trace.items||[];
+        box.appendChild(h('div',{class:'st2'},
+          h('div',{class:'st2-bar'}, h('b',null,'Per-item breakdown'), h('span',{class:'badge'}, items.length+' items')),
+          h('div',{class:'st2-body', style:{maxHeight:'40vh'}},
+            UI2.table({screen:'trace-items', pageSize:50, exportName:'issue-trace-'+it.issueNo,
+              columns:[
+                {key:'code', label:'Code'}, {key:'name', label:'Item'},
+                {key:'issued', label:'Issued', num:true, render:function(r){return fmt.num(r.issued);}},
+                {key:'sold', label:'Sold', num:true, render:function(r){return fmt.num(r.sold);}},
+                {key:'returned', label:'Returned', num:true, render:function(r){return fmt.num(r.returned);}},
+                {key:'remaining', label:'Remaining', num:true, render:function(r){ return h('b',{style:{color: r.remaining>0?'var(--ok)':'var(--muted)'}}, fmt.num(r.remaining)); }},
+                {key:'cost', label:'Cost', num:true, render:function(r){return fmt.money(r.cost);}}
+              ], rows: items
+            })
+          )
+        ));
+      }
+      async function viewIssueDetail(issueId){
+        var data=await smCall('salesman.issue.get',{id:issueId},{});
+        var box=h('div');
+        if(!data||!data.id){ box.appendChild(smEmpty('Not found')); UI2.modal({title:'Issue', body:box, actions:[{label:'Close',onClick:function(c){c();}}]}); return; }
+        box.appendChild(h('div',{class:'kv-strip'},
+          h('span',{class:'kv'}, h('b',{class:'k'},'Issue'), h('b',{class:'v'}, data.issueNo)),
+          h('span',{class:'kv'}, h('b',{class:'k'},'Date'), h('b',{class:'v'}, fmt.date(data.date))),
+          h('span',{class:'kv'}, h('b',{class:'k'},'Salesman'), h('b',{class:'v'}, data.salesman)),
+          h('span',{class:'kv'}, h('b',{class:'k'},'Purpose'), h('b',{class:'v'}, data.purpose||'—'))
+        ));
+        box.appendChild(h('div',{style:{marginTop:'8px',fontSize:'var(--fs-xs)',color:'var(--muted)'}},
+          'Route: '+(data.routeName||'—')+' · Area: '+(data.area||'—')+' · Customer: '+(data.customerName||'—')+' · Ref: '+(data.reference||'—')+(data.reason? ' · Reason: '+data.reason:'')
+        ));
+        box.appendChild(h('div',{style:{marginTop:'10px'}},
+          UI2.table({screen:'issue-detail', columns:[
+            {key:'code',label:'Code'},{key:'name',label:'Item'},{key:'qty',label:'Qty',num:true},{key:'cost',label:'Cost',num:true,render:function(r){return fmt.money(r.cost);}},{key:'lineTotal',label:'Total',num:true,render:function(r){return fmt.money(r.lineTotal);}}
+          ], rows: data.items||[]})
+        ));
+        UI2.modal({title:'Issue '+data.issueNo, size:'lg', body:box, actions:[{label:'Trace',cls:'sec',onClick:function(c){c(); viewIssueTrace(issueId);}},{label:'Close',onClick:function(c){c();}}]});
+      }
+      function exportIssued(list){
+        var rows=list.map(function(r){return {issueNo:r.issueNo, date:r.date, purpose:r.purpose, route:r.routeName, area:r.area, customer:r.customerName, ref:r.reference, total:r.total};});
+        Exports.sheet(rows, ['issueNo','date','purpose','route','area','customer','ref','total'], 'salesman-issued'); // fallback to UI2 export
+        UI.toast('Export ready — check download','ok');
+      }
+
+      async function openIssueModal(){
+       try {
+        var lines=[];
+        var selPurpose=h('select',{class:'f-input'}, ...SalesmanPurposes().map(function(p){ return h('option',{value:p}, p); }));
+        var inpReason=h('input',{class:'f-input', placeholder:'Reason / note (e.g. weekly tour supply)'});
+        var selRoute=h('select',{class:'f-input'});
+        var inpArea=h('input',{class:'f-input', placeholder:'Area / territory (e.g. Model Town)'});
+        var inpRef=h('input',{class:'f-input', placeholder:'Reference / PO no. (optional)'});
+        var inpDate=h('input',{type:'date', class:'f-input', value:new Date().toISOString().slice(0,10)});
+        var custPick=customerPicker('', function(){});
+        var totalBox=h('div',{class:'po-total'});
+        var editor=lineEditor(lines, function(){ updateSummary(); });
+        function updateSummary(){
+          var qty=lines.reduce(function(a,l){return a+Number(l.qty||0);},0);
+          var val=lines.reduce(function(a,l){return a+Number(l.qty||0)*Number(l.cost||0);},0);
+          totalBox.innerHTML=''; totalBox.appendChild(h('span',null,'Qty '+fmt.num(qty))); totalBox.appendChild(h('b',null,fmt.money(val)));
+        }
+        /* v2.24.0 — MODAL PEHLE KHULE, DATA BAAD MEIN.
+           Pehle ye async API calls (routes/areas) modal se pehle await hoti thin;
+           agar API slow/offline ho to button dabane par kuch bhi nahi hota tha
+           ("button kaam nahi karta"). Ab UI foran khulti hai, data fill hota rehta hai. */
+        loadRoutesForSelect(selRoute);
+        /* v2.24.0 — Stock Issue modal ab sections mein: details alag, scan+lines alag */
+        var formEl=h('div',{class:'mod-stack'},
+          UI2.section('📋 Issue details', null, 'fin'),
+          h('div',{class:'f-grid'},
+            h('div',{class:'f-col'}, h('label',null,'Date'), inpDate),
+            h('div',{class:'f-col'}, h('label',null,'Purpose *'), selPurpose),
+            h('div',{class:'f-col'}, h('label',null,'Tour / Route'), selRoute),
+            h('div',{class:'f-col'}, h('label',null,'Area / Territory'), inpArea),
+            h('div',{class:'f-col'}, h('label',null,'Reference'), inpRef),
+            h('div',{class:'f-col'}, h('label',null,'Reason'), inpReason),
+            h('div',{class:'f-col full'}, h('label',null,'Customer allocation (optional) — sab lines par lagega, line-level override ho sakta hai'), custPick.el)
+          ),
+          UI2.section('📦 Items — scan ya search', [editor.customBtn], 'inv'),
+          h('div',{class:'f-grid'},
+            h('div',{class:'f-col full'}, editor.el, totalBox)
+          )
+        );
+        /* modal khulne ke BAAD: area suggestions (datalist) attach karein */
+        Promise.resolve().then(function(){ return loadAreas(); }).then(function(list){
+          if(list && list.length){
+            var dl=h('datalist',{id:'areaListIss'}); list.forEach(function(a){ dl.appendChild(h('option',{value:a})); });
+            document.body.appendChild(dl); inpArea.setAttribute('list','areaListIss');
+          }
+        }).catch(function(){});
+        var issueModal = UI2.modal({title:'📤 New Stock Issue — '+curSalesmanName(), size:'xl', body:formEl,
+          subtitle:'Details + items ek hi jagah · scan karein ya 📋 list se add karein · F9 = Issue (F2 = scan field)',
+          actions:[
+            {label:'Issue Stock (F9)',cls:'ok', onClick:async function(c){
+              if(!lines.length) return UI.toast('Pehle items add karein (scan ya 📋 list se)','warn');
+              var zero=lines.filter(function(l){ return !(Number(l.qty)>0); });
+              if(zero.length) return UI.toast(zero.length+' line ki qty 0 hai — theek karein','warn');
+              var cust=custPick.get();
+              var payload={
+                salesmanId: smId, locationId: loc(), date: inpDate.value,
+                purpose: selPurpose.value, reason: inpReason.value.trim(),
+                routeId: selRoute.value, area: inpArea.value.trim(),
+                customerId: cust.id, customerName: cust.name, reference: inpRef.value.trim(),
+                items: lines.map(function(l){return {itemId:l.itemId, code:l.code, name:l.name, qty:Number(l.qty), cost:Number(l.cost)};})
+              };
+              try{
+                await API.call('salesman.issue', payload);
+                UI.toast('Issue ho gaya ✅','ok'); c(); refreshKpi(); drawIssued();
+              }catch(e){ UI.toast(e.message||'Failed','err'); }
+            }},
+            {label:'Cancel',cls:'ghost',onClick:function(c){c();}}
+          ]});
+        /* v2.25.0 (req 4/6) — GRN/PO jaisa hi keyboard pattern (ek hi design system):
+           F2 = scan/search field, F9 = Issue. Modal band hone par listener khud hat jata hai. */
+        (function(){
+          function onKey(e){
+            if(!document.body.contains(issueModal.el)){ document.removeEventListener('keydown', onKey); return; }
+            if(e.key==='F2'){
+              e.preventDefault();
+              var q=formEl.querySelector('.ipk-q'); if(q){ q.focus(); if(q.select) q.select(); }
+            } else if(e.key==='F9'){
+              e.preventDefault();
+              var btn=[].slice.call(document.querySelectorAll('.modal2 .m-foot button')).filter(function(b){return /F9/.test(b.textContent||'');})[0];
+              if(btn) btn.click();
+            }
+          }
+          document.addEventListener('keydown', onKey);
+        })();
+       } catch(err){ UI.toast('Stock Issue form error: '+(err.message||err),'err',6000); }
+      }
+      function SalesmanPurposes(){ return ['TOUR_SUPPLY','AREA_SUPPLY','CUSTOMER_ORDER','SAMPLE','REPLENISHMENT','OTHER']; }
+    }
+
+    /* ========================= TAB: CURRENT STOCK ========================= */
+    async function drawStock(){
+      if(!requireSm()) return;
+      host.innerHTML=''; host.appendChild(UI.skeleton(4));
+      var q=''; var stockRes=await smCall('salesman.stock',{salesmanId:smId, locationId:loc(), all:false, q:q},{rows:[],summary:{}});
+      var rows=(stockRes&&stockRes.rows)||[]; var sum=(stockRes&&stockRes.summary)||{};
+      host.innerHTML='';
+      var search=h('input',{class:'f-input', placeholder:'🔍 Search code / item name…', title:'Search item', style:{minHeight:'44px', minWidth:'180px'}});
+      var bar=h('div',{class:'st2-bar', style:{gap:'8px', flexWrap:'wrap'}},
+        h('div',{class:'sm-card-head'}, h('b',null,'📊 Current Stock — '+curSalesmanName()), h('span',{class:'badge brand sm-badge'}, fmt.num(sum.items||0)+' items'), h('span',{class:'badge sm-badge'}, fmt.money(sum.value||0))),
+        h('span',{class:'sp'}, search),
+        h('button',{class:'btn sm sec', title:'Refresh stock', 'aria-label':'Refresh', style:{minHeight:'44px'}, onclick:function(){ drawStock(); }},'↻ Refresh')
+      );
+      host.insertBefore(h('div',{class:'sm-hint'},'Tip: Stock yahan salesman ke paas maujood items dikhata hai — issue ke baad sold/returned se auto-update.'), host.firstChild && host.firstChild.nextSibling ? host.firstChild.nextSibling : null);
+      /* v2.25.0 (req 4) — health KPIs: out/low stock (click kar ke table filter ho jata hai) */
+      var outN=rows.filter(function(r){ return Number(r.qty)<=0; }).length;
+      var lowN=rows.filter(function(r){ return Number(r.qty)>0 && Number(r.qty)<5; }).length;
+      function kpiHealth(){
+        host.querySelectorAll('.kpi').forEach(function(k){ k.classList.remove('on'); });
+      }
+      host.appendChild(h('div',{class:'grid g5', style:{marginBottom:'10px'}},
+        h('div',{class:'kpi'}, h('div',{class:'k-label'},'Items'), h('div',{class:'k-value'}, fmt.num(sum.items||0))),
+        h('div',{class:'kpi ok'}, h('div',{class:'k-label'},'Qty in hand'), h('div',{class:'k-value'}, fmt.num(sum.qty||0))),
+        h('div',{class:'kpi info'}, h('div',{class:'k-label'},'Value (cost)'), h('div',{class:'k-value'}, fmt.moneyCompact(sum.value||0)), h('div',{class:'k-exact'}, fmt.money(sum.value||0))),
+        (function(){ var k=h('div',{class:'kpi '+(outN?'err':''), role:'button', tabindex:'0', title:'Sirf out-of-stock items dikhayein', style:{cursor:'pointer'},
+            onclick:function(){ applyFilter('out'); }},
+            h('div',{class:'k-label'},'Out of stock'), h('div',{class:'k-value'}, fmt.num(outN)), h('div',{class:'k-exact'},'click = filter')); return k; })(),
+        (function(){ var k=h('div',{class:'kpi '+(lowN?'warn':''), role:'button', tabindex:'0', title:'Sirf low stock (<5) items dikhayein', style:{cursor:'pointer'},
+            onclick:function(){ applyFilter('low'); }},
+            h('div',{class:'k-label'},'Low (<5)'), h('div',{class:'k-value'}, fmt.num(lowN)), h('div',{class:'k-exact'},'click = filter')); return k; })()
+      ));
+      var tblWrap=h('div');
+      host.appendChild(h('div',{class:'st2'}, bar, h('div',{class:'st2-body'}, tblWrap)));
+      var healthFilter = '';
+      function render(list){
+        tblWrap.innerHTML='';
+        if(!list.length){
+          /* v2.25.0 (req 4) — pehle har khaali list par "stock issue nahi hua" likha
+             aata tha, chahe filter/search ki wajah se khaali ho (confusing). */
+          var filtered = !!(healthFilter || (search.value||'').trim());
+          tblWrap.appendChild(filtered
+            ? h('div',{class:'sm-empty'}, h('b',null,'Is filter par kuch nahi mila'), h('p',null,'Search khali karein ya "Out of stock / Low" KPI dobara dabayein. / Nothing matches this filter.'),
+              h('div',{style:{marginTop:'10px'}}, h('button',{class:'btn sm sec', type:'button', onclick:function(){ search.value=''; healthFilter=''; runFilter(); }},'✕ Filter clear karein')))
+            : h('div',{class:'sm-empty'}, h('b',null,'No stock in hand'), h('p',null,'Is salesman ko abhi koi stock issue nahi hua — Stock Issued tab se naya issue banayein. / No items issued to this salesman yet. Create an issue from Stock Issued tab.')));
+          return;
+        }
+        tblWrap.appendChild(UI2.table({screen:'salesman-stock', pageSize:50, exportName:'salesman-stock',
+          columns:[
+            {key:'code',label:'Code', render:function(r){return h('b',{title:r.code||''},r.code||'—');}},
+            {key:'name',label:'Item', render:function(r){ return h('div',null, h('b',{title:r.name, style:{display:'block',maxWidth:'280px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}, r.name), h('span',{class:'cell-sub'}, r.unit||'')); }},
+            {key:'qty',label:'Qty',num:true, render:function(r){ var q=r.qty; return h('span',{title:'Qty in hand: '+fmt.num(q), style:{fontWeight:'800', color:q<=0?'var(--err)': q<5?'var(--warn)':'var(--ok)'}}, fmt.num(q)); }},
+            {key:'avgCost',label:'Avg Cost',num:true, render:function(r){return h('span',{title:'Weighted avg cost'}, fmt.money(r.avgCost));}},
+            {key:'value',label:'Value',num:true, render:function(r){return h('span',{title:'Cost value (qty × avgCost)'}, fmt.money(r.value));}},
+            {key:'retailValue',label:'Retail',num:true, render:function(r){return h('span',{title:'Retail value'}, fmt.money(r.retailValue));}}
+          ], rows:list
+        }));
+      }
+      function applyFilter(mode){
+        healthFilter = (healthFilter === mode) ? '' : mode;
+        runFilter();
+        if(healthFilter) UI.toast(healthFilter==='out' ? 'Out of stock items' : 'Low stock (<5) items', 'info');
+      }
+      function runFilter(){
+        var qq=search.value.trim().toLowerCase();
+        var filtered=rows.filter(function(r){
+          if(healthFilter==='out' && Number(r.qty)>0) return false;
+          if(healthFilter==='low' && !(Number(r.qty)>0 && Number(r.qty)<5)) return false;
+          if(qq && (r.code+' '+r.name).toLowerCase().indexOf(qq)<0) return false;
+          return true;
+        });
+        render(filtered);
+      }
+      render(rows);
+      search.addEventListener('input', smDebounce(runFilter,250));
+      /* v2.24.2 — yahi box ab scan-aware hai (shared UI2.attachScan): barcode
+         scan karte hi stock us item par filter ho jata hai (POS jaisa). */
+      if (UI2.attachScan) UI2.attachScan(search, function(code){
+        var lc = String(code).toLowerCase();
+        var hit = rows.filter(function(r){ return String(r.code||'').toLowerCase()===lc || String(r.barcode||'').toLowerCase()===lc; })[0];
+        search.value = hit ? hit.code : code;
+        render(hit ? [hit] : rows.filter(function(r){ return (r.code+' '+r.name).toLowerCase().indexOf(lc)>-1; }));
+        UI.toast(hit ? ('📷 ' + hit.code + ' — ' + hit.name) : ('Is salesman ke paas nahi: ' + code), hit ? 'ok' : 'warn');
+      });
+    }
+
+    /* ========================= TAB: TOURS / ROUTES ========================= */
+    async function drawTours(){
+      host.innerHTML=''; host.appendChild(UI.skeleton(3));
+      var routes=await smCall('salesman.routes',{locationId:loc(), activeOnly:false}, []);
+      var custRes=await smCall('customers.list',{limit:800}, {rows:[]});
+      var allCust=(custRes&&custRes.rows)||custRes||[];
+      host.innerHTML='';
+      var headBar=h('div',{class:'st2-bar', style:{flexWrap:'wrap', gap:'8px'}},
+        h('div',{class:'sm-card-head'}, h('b',null,'🗺 Tours / Routes'), h('span',{class:'badge brand sm-badge', title:'Active routes'}, (routes||[]).filter(function(r){return r.active;}).length+' active'), h('span',{class:'badge sm-badge'}, (routes||[]).length+' total')),
+        h('span',{class:'sp', style:{display:'flex', gap:'8px', flexWrap:'wrap'}},
+          h('button',{class:'btn sm sec', title:'Refresh routes', style:{minHeight:'44px'}, onclick:function(){ drawTours(); }},'↻'),
+          h('button',{class:'btn sm ok', title:'Create new tour/route', style:{minHeight:'44px'}, onclick:function(){ openRouteForm(null, allCust, function(){drawTours(); refreshKpi();}); }},'＋ New Route')
+        )
+      );
+      var tblWrap=h('div');
+      host.appendChild(h('div',{class:'st2'}, headBar, h('div',{class:'st2-body'}, tblWrap)));
+      function render(list){
+        tblWrap.innerHTML='';
+        if(!list.length){ tblWrap.appendChild(smEmpty('No routes yet — create Tour / Area route')); return; }
+        tblWrap.appendChild(UI2.table({screen:'routes', pageSize:25, exportName:'routes',
+          columns:[
+            {key:'routeNo',label:'Route No'}, {key:'name',label:'Tour / Route', render:function(r){return h('b',null,r.name);}},
+            {key:'salesman',label:'Salesman'},
+            {key:'days',label:'Days', render:function(r){ return (r.days||[]).join(', ')||'Daily'; }},
+            {key:'customers',label:'Customers',num:true},
+            {key:'targetValue',label:'Target',num:true,render:function(r){return r.targetValue? fmt.money(r.targetValue):'—';}},
+            {key:'active',label:'Active', render:function(r){ return r.active? h('span',{class:'badge ok'},'Active'):h('span',{class:'badge err'},'Inactive'); }},
+            {key:'x',label:'', nos:true, render:function(r){
+              return h('div',{style:{display:'flex',gap:'6px'}},
+                h('button',{class:'btn sm sec', onclick:function(){ openRouteForm(r, allCust, function(){drawTours();}); }},'Edit'),
+                h('button',{class:'btn sm sec', onclick:function(){ viewRouteCustomers(r, allCust); }},'Customers'),
+                r.active? h('button',{class:'btn sm danger', onclick:function(){ disableRoute(r); }},'Disable'):''
+              );
+            }}
+          ], rows:list
+        }));
+      }
+      var filtered=(routes||[]).slice(); filtered.sort(function(a,b){return (b.updatedAt||'').localeCompare(a.updatedAt||'');});
+      render(filtered);
+      async function disableRoute(r){
+        /* v2.25.0 (req 4/6) — native confirm() ki jagah shared dialog (sandboxed
+           preview mein native confirm block hota hai → button kuch nahi karta tha) */
+        if(!(await UI2.confirm('Disable route "'+r.name+'"? History safe rahegi.', null, true))) return;
+        try{ await API.call('salesman.route.delete',{id:r.id}); UI.toast('Disabled','ok'); drawTours(); }catch(e){ UI.toast(e.message,'err'); }
+      }
+      function viewRouteCustomers(r, all){
+        var ids=new Set(r.customerIds||[]); var custList=all.filter(function(c){return ids.has(c.id);});
+        var box=h('div');
+        box.appendChild(h('div',{class:'kv-strip'},
+          h('span',{class:'kv'}, h('b',{class:'k'},'Route'), h('b',{class:'v'}, r.name)),
+          h('span',{class:'kv'}, h('b',{class:'k'},'Salesman'), h('b',{class:'v'}, r.salesman)),
+          h('span',{class:'kv'}, h('b',{class:'k'},'Days'), h('b',{class:'v'}, (r.days||[]).join(', ')||'Daily'))
+        ));
+        box.appendChild(h('div',{style:{marginTop:'10px'}},
+          custList.length? UI2.table({screen:'route-customers', columns:[
+            {key:'name',label:'Customer'}, {key:'phone',label:'Phone'}, {key:'balance',label:'Due',num:true,render:function(x){return fmt.money(x.balance||x.bal||0);}}
+          ], rows:custList.slice(0,100)}) : smEmpty('No customers linked')
+        ));
+        UI2.modal({title:'Route — '+r.name, size:'lg', body:box, actions:[{label:'Close',onClick:function(c){c();}}]});
+      }
+    }
+
+    function openRouteForm(existing, allCust, after){
+      var DAYS=['MON','TUE','WED','THU','FRI','SAT','SUN'];
+      var daySet=new Set((existing&&existing.days)||[]); var sel=new Set((existing&&existing.customerIds)||[]);
+      var nameEl=h('input',{class:'f-input', value:(existing&&existing.name)||'', placeholder:'e.g. Cantt Market / Model Town A'});
+      var smSel=h('select',{class:'f-input'});
+      smSel.appendChild(h('option',{value:''},'— salesman —'));
+      (salesmen||[]).forEach(function(u){ var opt=h('option',{value:u.id}, u.name+' ('+u.role+')'); if(existing && existing.salesmanId===u.id) opt.selected=true; else if(smId && !existing) { if(u.id===smId) opt.selected=true; } smSel.appendChild(opt); });
+      var daysBox=h('div',{class:'chk-grid'}, DAYS.map(function(d){ return h('label',{class:'chk'+(daySet.has(d)?' on':'' )},
+        h('input',{type:'checkbox', checked:daySet.has(d), onchange:function(e){ e.target.checked? daySet.add(d):daySet.delete(d); e.target.closest('.chk').classList.toggle('on', e.target.checked); }}), d); }));
+      var searchEl=h('input',{class:'f-input', placeholder:'Customer search…', style:{marginBottom:'6px'}});
+      var listEl=h('div',{class:'cust-pick'}); var countEl=h('span',{class:'count-pill'}, sel.size+' selected');
+      function paintCust(){
+        var q=searchEl.value.trim().toLowerCase();
+        listEl.innerHTML='';
+        var src=allCust.filter(function(c){ return !q || (c.name+' '+(c.phone||'')).toLowerCase().indexOf(q)>-1; }).slice(0,120);
+        src.forEach(function(c){
+          var isOn=sel.has(c.id);
+          var lab=h('label',{class:'chk'+(isOn?' on':'')},
+            h('input',{type:'checkbox', checked:isOn, onchange:function(e){
+              e.target.checked? sel.add(c.id): sel.delete(c.id);
+              countEl.textContent=sel.size+' selected';
+              e.target.closest('.chk').classList.toggle('on', e.target.checked);
+            }}),
+            h('span',null, c.name+(c.phone?' · '+c.phone:''))
+          );
+          listEl.appendChild(lab);
+        });
+        if(!src.length) listEl.appendChild(h('div',{style:{padding:'8px',color:'var(--muted)'}},'No match'));
+      }
+      searchEl.addEventListener('input', smDebounce(paintCust,200)); paintCust();
+      var tgt=h('input',{class:'f-input', type:'number', value:(existing&&existing.targetValue)||0});
+      var notesEl=h('textarea',{class:'f-input', rows:2, placeholder:'Notes (optional)'}, existing?existing.notes||'':'');
+      var body=h('div',{class:'f-grid'},
+        h('div',{class:'f-col'}, h('label',null,'Route / Tour name *'), nameEl),
+        h('div',{class:'f-col'}, h('label',null,'Salesman *'), smSel),
+        h('div',{class:'f-col'}, h('label',null,'Target value'), tgt),
+        h('div',{class:'f-col full'}, h('label',null,'Visit days (empty = daily)'), daysBox),
+        h('div',{class:'f-col full'}, h('label',null,'Customers ', countEl), searchEl, listEl),
+        h('div',{class:'f-col full'}, h('label',null,'Notes'), notesEl)
+      );
+      UI2.modal({title: existing? '✎ Edit Route':'＋ New Route', size:'lg', body:body,
+        actions:[
+          {label:'Save Route',cls:'ok', onClick:async function(c){
+            if(!nameEl.value.trim()) return UI.toast('Route name likhein','warn');
+            if(!smSel.value) return UI.toast('Salesman select karein','warn');
+            try{
+              await API.call('salesman.route.save',{ route:{
+                id: existing&&existing.id, name:nameEl.value.trim(), salesmanId:smSel.value,
+                days: Array.from(daySet), customerIds: Array.from(sel), targetValue:Number(tgt.value||0),
+                notes: notesEl.value, locationId: loc()
+              }});
+              UI.toast('Route saved ✅','ok'); c(); after&&after();
+            }catch(e){ UI.toast(e.message,'err'); }
+          }},
+          {label:'Close',onClick:function(c){c();}}
+        ]});
+    }
+
+    /* ========================= TAB: CUSTOMER / AREA ALLOCATION ========================= */
+    async function drawAlloc(){
+      if(!requireSm()) return;
+      host.innerHTML=''; host.appendChild(UI.skeleton(3));
+      var perf=await smCall('salesman.performance',{salesmanId:smId, locationId:loc()}, null);
+      if(!perf){ host.innerHTML=''; host.appendChild(h('div',{class:'sm-empty'}, h('b',null,'No allocation data'), h('p',null,'Issue nahi mila — pehle Stock Issued se tour/area/customer ke sath issue banayein. / No issued stock to group yet.'))); return; }
+      host.innerHTML='';
+      host.appendChild(h('div',{class:'sm-hint', style:{marginBottom:'10px'}},'Allocation dikhata hai ke issued stock kis customer / tour / area ko gaya — har group ka issued value. Neeche recent issues ki list bhi hai.'));
+      host.appendChild(h('div',{class:'card'},
+        h('div',{class:'card-head sm-card-head'}, h('h3',null,'🗂 Allocation Overview — '+curSalesmanName()), h('div',{class:'actions', style:{display:'flex',gap:'8px',flexWrap:'wrap',alignItems:'center'}}, h('span',{class:'badge brand sm-badge', title:'Grouped by allocation'},'Customer · Tour · Area'), h('button',{class:'btn sm sec', title:'Refresh allocation', style:{minHeight:'44px'}, onclick:function(){drawAlloc();}},'↻ Refresh'))),
+        h('div',{class:'card-body'},
+          h('div',{class:'grid g3'},
+            h('div',null, h('h4',null,'👤 By Customer (Top 20)'),
+              (perf.byCustomer && perf.byCustomer.length)? UI2.table({screen:'alloc-cust', pageSize:8, columns:[
+                {key:'label',label:'Customer', render:function(r){ return h('span',{title:r.label}, r.label); }}, {key:'issuedValue',label:'Issued Value',num:true,render:function(r){return h('span',{title:fmt.money(r.issuedValue)}, fmt.money(r.issuedValue));}}
+              ], rows:perf.byCustomer}) : h('div',{class:'sm-empty'}, h('b',null,'No customer-tagged'), h('p',null,'Customer ke naam se issue nahi hua — next issue me customer choose karein.'))),
+            h('div',null, h('h4',null,'🗺 By Tour / Route'),
+              (perf.byRoute && perf.byRoute.length)? UI2.table({screen:'alloc-route', pageSize:8, columns:[
+                {key:'label',label:'Route', render:function(r){ return h('span',{title:r.label}, r.label); }}, {key:'issuedValue',label:'Issued Value',num:true,render:function(r){return h('span',{title:fmt.money(r.issuedValue)}, fmt.money(r.issuedValue));}}
+              ], rows:perf.byRoute}) : h('div',{class:'sm-empty'}, h('b',null,'No route-tagged'), h('p',null,'Route/tour ke sath issue nahi — Tours tab me route banayein.'))),
+            h('div',null, h('h4',null,'📍 By Area / Territory'),
+              (perf.byArea && perf.byArea.length)? UI2.table({screen:'alloc-area', pageSize:8, columns:[
+                {key:'label',label:'Area', render:function(r){ return h('span',{title:r.label}, r.label); }}, {key:'issuedValue',label:'Issued Value',num:true,render:function(r){return h('span',{title:fmt.money(r.issuedValue)}, fmt.money(r.issuedValue));}}
+              ], rows:perf.byArea}) : h('div',{class:'sm-empty'}, h('b',null,'No area-tagged'), h('p',null,'Area likh kar issue karein to yahan nazar aayega.')))
+          )
+        )
+      ));
+      // Detailed issues grouped table
+      var issues=await smCall('salesman.issues',{salesmanId:smId, locationId:loc(), limit:100},[]);
+      host.appendChild(h('div',{class:'card', style:{marginTop:'12px'}},
+        h('div',{class:'card-head'}, h('h3',null,'Recent Allocations (Issues)')),
+        h('div',{class:'card-body tight'},
+          (issues&&issues.length)? UI2.table({screen:'alloc-issues', pageSize:15, exportName:'allocations',
+            columns:[
+              {key:'date',label:'Date', render:function(r){return fmt.date(r.date);}},
+              {key:'issueNo',label:'Issue'}, {key:'purpose',label:'Purpose'}, {key:'routeName',label:'Route'}, {key:'area',label:'Area'},
+              {key:'customerName',label:'Customer', render:function(r){return r.customerName||'—';}},
+              {key:'reference',label:'Ref'}, {key:'total',label:'Value',num:true,render:function(r){return fmt.money(r.total);}}
+            ], rows:issues
+          }) : smEmpty('No issues to show allocation')
+        )
+      ));
+    }
+
+    /* ========================= TAB: SALES / DELIVERY ========================= */
+    async function drawSales(){
+      if(!requireSm()) return;
+      host.innerHTML=''; host.appendChild(UI.skeleton(3));
+      var res=await smCall('sales.list',{q:'', pageSize:100}, {rows:[]});
+      var rows=(res&&res.rows)||res||[];
+      var filtered=rows.filter(function(r){ return !smId || r.salespersonId===smId; });
+      if(loc()) filtered=filtered.filter(function(r){ return !r.locationId || r.locationId===loc(); });
+      var visits=await smCall('salesman.visits',{salesmanId:smId, limit:100}, []);
+      var totVal = filtered.reduce(function(a,r){return a+Number(r.total||0);},0);
+      var totDue = filtered.reduce(function(a,r){return a+Number(r.due||0);},0);
+      host.innerHTML='';
+      host.appendChild(h('div',{class:'sm-hint', style:{marginBottom:'10px'}},'Sales yahan salesman ki invoices + visits (delivery) dikhata hai. Due \u003E 0 wali rows me \u201CWasooli\u201D ledger me jayegi.'));
+      host.appendChild(h('div',{class:'st2'},
+        h('div',{class:'st2-bar', style:{flexWrap:'wrap', gap:'8px'}},
+          h('div',{class:'sm-card-head'}, h('b',null,'🧾 Sales / Delivery — '+curSalesmanName()), h('span',{class:'badge brand sm-badge', title:'Invoices for this salesman'}, filtered.length+' invoices'), h('span',{class:'badge sm-badge', title:'Total value'}, fmt.money(totVal)), totDue>0? h('span',{class:'badge err sm-badge', title:'Total due'}, 'Due '+fmt.money(totDue)) : ''),
+          h('span',{class:'sp', style:{display:'flex', gap:'8px', flexWrap:'wrap'}}, h('button',{class:'btn sm sec', title:'Refresh sales', style:{minHeight:'44px'}, onclick:function(){drawSales();}},'↻ Refresh'), h('button',{class:'btn sm', title:'Export sales', style:{minHeight:'44px'}, onclick:function(){ try{ Exports.sheet(filtered, ['invoiceNo','date','customerName','total','paid','due','status'], 'salesman-sales'); }catch(e){ UI.toast('Export failed','err'); } }},'⬇ Export'))
+        ),
+        h('div',{class:'st2-body'},
+          filtered.length? UI2.table({screen:'salesman-sales', pageSize:25, exportName:'salesman-sales',
+            columns:[
+              {key:'invoiceNo',label:'Invoice', render:function(r){ return h('b',{title:r.invoiceNo}, r.invoiceNo); }}, {key:'date',label:'Date', render:function(r){return h('span',{title:r.date}, fmt.date(r.date));}},
+              {key:'customerName',label:'Customer', render:function(r){ return h('span',{title:r.customerName||''}, r.customerName||'—'); }}, {key:'total',label:'Total',num:true,render:function(r){return h('span',{title:fmt.money(r.total)}, fmt.money(r.total));}},
+              {key:'paid',label:'Paid',num:true,render:function(r){return h('span',{title:fmt.money(r.paid)}, fmt.money(r.paid));}},
+              {key:'due',label:'Due',num:true,render:function(r){return r.due>0? h('b',{title:'Due '+fmt.money(r.due), style:{color:'var(--err)'}},fmt.money(r.due)) : h('span',{title:'Settled'}, '—');}},
+              {key:'status',label:'Status', render:function(r){ return h('span',{class:'badge '+(r.status==='VOID'?'err':'ok'), title:r.status}, r.status||'POSTED'); }}
+            ], rows: filtered
+          }) : h('div',{class:'sm-empty'}, h('b',null,'No sales yet'), h('p',null,'Is salesman ki koi sale nahi — POS se sale karein ya PWA Field se order banayein. / No invoices for this salesman yet.'))
+        )
+      ));
+      host.appendChild(h('div',{class:'card', style:{marginTop:'12px'}},
+        h('div',{class:'card-head sm-card-head'}, h('h3',null,'🚚 Delivery / Visits (recent) — '+filtered.length+' sales · '+visits.length+' visits'), h('span',{class:'badge sm-badge'}, visits.length+' visits')),
+        h('div',{class:'card-body tight'},
+          (visits&&visits.length)? UI2.table({screen:'sales-visits-delivery', pageSize:10,
+            columns:[
+              {key:'date',label:'Date', render:function(r){ return h('span',{title:r.date}, fmt.date(r.date)); }}, {key:'customerName',label:'Customer', render:function(r){ return h('span',{title:r.customerName||''}, r.customerName||'—'); }}, {key:'purpose',label:'Purpose', render:function(r){ return h('span',{class:'badge', title:r.purpose}, r.purpose||'—'); }}, {key:'outcome',label:'Outcome', render:function(r){ return h('span',{class:'badge '+(r.outcome==='COLLECTED'?'ok':''), title:r.outcome}, r.outcome||'—'); }},
+              {key:'orderValue',label:'Order',num:true,render:function(r){return h('span',{title:fmt.money(r.orderValue)}, fmt.money(r.orderValue));}},
+              {key:'collected',label:'Collected',num:true,render:function(r){return h('span',{title:fmt.money(r.collected)}, fmt.money(r.collected));}}
+            ], rows: visits
+          }) : h('div',{class:'sm-empty'}, h('b',null,'No visits logged'), h('p',null,'Tour/visit koi record nahi — PWA Field ya Wasooli se visit log hota hai.'))
+        )
+      ));
+    }
+
+    /* ========================= TAB: RETURNS (linked to issue) ========================= */
+    async function drawReturns(){
+      if(!requireSm()) return;
+      host.innerHTML=''; host.appendChild(UI.skeleton(3));
+      var rows=await smCall('salesman.returns',{salesmanId:smId, locationId:loc()}, []);
+      host.innerHTML='';
+      host.appendChild(h('div',{class:'sm-hint', style:{marginBottom:'10px'}},'Returns hamesha original Issue se hoti hai — remaining qty guard (+ trace) se auto-clamp. Stock + ledger auto-update.'));
+      host.appendChild(h('div',{class:'st2'},
+        h('div',{class:'st2-bar', style:{flexWrap:'wrap', gap:'8px'}},
+          h('div',{class:'sm-card-head'}, h('b',null,'📥 Returns — linked to Issue — '+curSalesmanName()), h('span',{class:'badge brand sm-badge'}, (rows||[]).length+' docs'), h('span',{class:'badge sm-badge', title:'Linked to original issue'}, 'trace guarded')),
+          h('span',{class:'sp', style:{display:'flex', gap:'8px'}}, h('button',{class:'btn sm sec', title:'Refresh', style:{minHeight:'44px'}, onclick:function(){ drawReturns(); }},'↻'), h('button',{class:'btn sm ok', title:'New return via issue', style:{minHeight:'44px'}, onclick:function(){ openReturnModal(); }},'＋ New Return (via Issue)'))
+        ),
+        h('div',{class:'st2-body'},
+          (rows&&rows.length)? UI2.table({screen:'salesman-returns', pageSize:25, exportName:'returns',
+            columns:[
+              {key:'returnNo',label:'Return No'}, {key:'date',label:'Date',render:function(r){return fmt.date(r.date);}},
+              {key:'issueNo',label:'From Issue', render:function(r){ return r.issueNo? h('span',{class:'badge brand'}, r.issueNo) : '—'; }},
+              {key:'total',label:'Value',num:true,render:function(r){return fmt.money(r.total);}},
+              {key:'reason',label:'Reason'}, {key:'x',label:'', nos:true, render:function(r){ return h('button',{class:'btn sm sec', onclick:function(){ viewReturnDetail(r.id); }},'View'); }}
+            ], rows: rows
+          }) : h('div',{class:'sm-empty'}, h('b',null,'No returns'), h('p',null,'Koi wapsi nahi hui — jab salesman ke paas bacha stock wapas aayega to yahan nazar aayega. / No returns yet.'))
+        )
+      ));
+      async function viewReturnDetail(id){
+        var data=await smCall('salesman.return.get',{id:id},{});
+        var box=h('div');
+        if(!data||!data.id){ box.appendChild(smEmpty('Not found')); } else {
+          box.appendChild(h('div',{class:'kv-strip'},
+            h('span',{class:'kv'}, h('b',{class:'k'},'Return'), h('b',{class:'v'}, data.returnNo)),
+            h('span',{class:'kv'}, h('b',{class:'k'},'Date'), h('b',{class:'v'}, fmt.date(data.date))),
+            h('span',{class:'kv'}, h('b',{class:'k'},'From Issue'), h('b',{class:'v'}, data.issueNo||'—')),
+            h('span',{class:'kv'}, h('b',{class:'k'},'Value'), h('b',{class:'v'}, fmt.money(data.total)))
+          ));
+          if(data.reason) box.appendChild(h('div',{style:{margin:'8px 0',fontSize:'var(--fs-sm)'}}, h('b',null,'Reason: '), data.reason));
+          box.appendChild(UI2.table({screen:'return-items', columns:[
+            {key:'code',label:'Code'},{key:'name',label:'Item'},{key:'qty',label:'Qty',num:true},{key:'cost',label:'Cost',num:true,render:function(r){return fmt.money(r.cost);}},{key:'lineTotal',label:'Total',num:true,render:function(r){return fmt.money(r.lineTotal);}}
+          ], rows:data.items||[]}));
+        }
+        UI2.modal({title:'Return '+(data?data.returnNo:''), size:'lg', body:box, actions:[{label:'Close',onClick:function(c){c();}}]});
+      }
+
+      async function openReturnModal(){
+        // Step1: pick issue with remaining
+        var issues=await smCall('salesman.issuesForReturn',{salesmanId:smId, locationId:loc(), onlyWithRemaining:true, limit:100}, []);
+        if(!issues||!issues.length) return UI.toast('No issued stock with remaining to return','warn');
+        var selIssueId=issues[0].id;
+        var selIssueBox=h('select',{class:'f-input'});
+        issues.forEach(function(is){ selIssueBox.appendChild(h('option',{value:is.id}, is.issueNo+' · '+fmt.date(is.date)+' · '+ (is.reference||'')+' · Rem '+fmt.money(is.remainingValue))); });
+        selIssueBox.value=selIssueId;
+        var reasonEl=h('input',{class:'f-input', placeholder:'Reason (e.g. unsold / expiry / damage)'});
+        var dateEl=h('input',{type:'date', class:'f-input', value:new Date().toISOString().slice(0,10)});
+        var itemsHost=h('div',{style:{marginTop:'10px'}});
+        var lines=[]; // {itemId, code,name, maxRemaining, qty, cost}
+        async function loadIssueItems(issueId){
+          itemsHost.innerHTML=''; itemsHost.appendChild(h('div',{style:{padding:'8px',color:'var(--muted)'}},'Loading trace…'));
+          var trace=await smCall('salesman.trace',{issueId:issueId},{items:[]});
+          var items=trace.items||[];
+          itemsHost.innerHTML='';
+          if(!items.length){ itemsHost.appendChild(smEmpty('No trace items')); return; }
+          lines=items.map(function(it){ return {itemId:it.itemId, code:it.code, name:it.name, max:it.remaining, cost:it.cost, qty:0, issued:it.issued, sold:it.sold, returned:it.returned, remaining:it.remaining}; });
+          // header
+          itemsHost.appendChild(h('div',{style:{fontSize:'var(--fs-xs)',color:'var(--muted)',marginBottom:'6px'}},'Trace — issued→sold→returned→remaining (qty clamped to remaining). Sold est. proportional.'));
+          var table=h('div');
+          lines.forEach(function(ln){
+            var qtyInp=h('input',{type:'number', class:'f-input', value:0, min:0, max:ln.max, step:'0.001', style:{width:'90px',textAlign:'right'}});
+            var maxBadge=h('span',{class:'badge'}, 'Rem '+fmt.num(ln.max));
+            qtyInp.addEventListener('input',function(){
+              var v=Number(qtyInp.value||0); if(v>ln.max) {v=ln.max; qtyInp.value=v; UI.toast('Clamped to remaining '+fmt.num(ln.max),'warn');}
+              if(v<0) v=0; ln.qty=v;
+            });
+            var row=h('div',{class:'po-line'},
+              h('div',{class:'pl-name'}, h('b',null, ln.name), h('span',{class:'pl-sub'}, ln.code+' · Iss '+fmt.num(ln.issued)+' Sold '+fmt.num(ln.sold)+' Ret '+fmt.num(ln.returned)+' · Cost '+fmt.money(ln.cost))),
+              maxBadge,
+              qtyInp,
+              h('span',{class:'pl-num'}, fmt.money(ln.cost))
+            );
+            table.appendChild(row);
+          });
+          itemsHost.appendChild(table);
+          itemsHost.appendChild(h('div',{style:{marginTop:'8px',fontSize:'var(--fs-xs)',color:'var(--muted)'}},'Tip: only remaining qty can be returned — exceeding will auto-clamp.'));
+        }
+        await loadIssueItems(selIssueId);
+        selIssueBox.addEventListener('change',function(){ loadIssueItems(selIssueBox.value); });
+        var formBody=h('div',null,
+          h('div',{class:'f-grid'},
+            h('div',{class:'f-col'}, h('label',null,'From Issue *'), selIssueBox),
+            h('div',{class:'f-col'}, h('label',null,'Return date'), dateEl),
+            h('div',{class:'f-col full'}, h('label',null,'Reason'), reasonEl)
+          ),
+          itemsHost
+        );
+        UI2.modal({title:'📥 Return Stock — via Original Issue (remaining guard)', size:'xl', body:formBody,
+          actions:[
+            {label:'Return Selected',cls:'ok', onClick:async function(c){
+              var payloadLines=lines.filter(function(l){return Number(l.qty)>0;}).map(function(l){return {itemId:l.itemId, code:l.code, name:l.name, qty:Number(l.qty), cost:Number(l.cost)};});
+              if(!payloadLines.length) return UI.toast('Return qty >0 chahiye','warn');
+              try{
+                await API.call('salesman.return',{salesmanId:smId, locationId:loc(), issueId: selIssueBox.value, date: dateEl.value, reason: reasonEl.value, items: payloadLines});
+                UI.toast('Return posted ✅ — stock & ledger updated','ok'); c(); refreshKpi(); drawReturns();
+              }catch(e){ UI.toast(e.message,'err'); }
+            }},
+            {label:'Close',onClick:function(c){c();}}
+          ]});
+      }
+    }
+
+    /* ========================= TAB: LEDGER / HISTORY + WASOOLI ========================= */
+    async function drawLedger(){
+      if(!requireSm()) return;
+      host.innerHTML=''; host.appendChild(UI.skeleton(4));
+      var mode='timeline'; // timeline | payments | visits
+      var dateFrom=h('input',{type:'date',class:'st2-f'}); var dateTo=h('input',{type:'date',class:'st2-f', value:new Date().toISOString().slice(0,10)});
+      var qInp=h('input',{class:'st2-q', placeholder:'Search ref / note…'});
+      var container=h('div');
+
+      var segBar=h('div',{class:'chips', style:{marginBottom:'10px', display:'flex', gap:'6px', flexWrap:'wrap'}},
+        h('button',{class:'chip2 on', id:'segTimeline', title:'Unified timeline: issued→sold→returned→collected', style:{minHeight:'44px'}, onclick:function(){ setMode('timeline'); }},'📒 Timeline (Issue→Sale→Return→Payment)'),
+        h('button',{class:'chip2', id:'segPay', title:'Wasooli payments only', style:{minHeight:'44px'}, onclick:function(){ setMode('payments'); }},'💵 Wasooli Payments'),
+        h('button',{class:'chip2', id:'segVisit', title:'Field visits only', style:{minHeight:'44px'}, onclick:function(){ setMode('visits'); }},'🚶 Visits')
+      );
+      host.innerHTML='';
+      host.appendChild(h('div',{class:'sm-hint', style:{marginBottom:'10px'}},'Ledger har issue / sale / return / wasooli ko ek timeline me jorta hai — search + date filter se reconciliation aasaan.'));
+      host.appendChild(h('div',{class:'card'},
+        h('div',{class:'card-head sm-card-head'}, h('h3',null,'📒 Ledger / History — '+curSalesmanName()), h('span',{class:'badge brand sm-badge', title:'Unified traceable ledger'},'reconcile'),
+          h('div',{class:'actions', style:{display:'flex', gap:'8px', flexWrap:'wrap'}}, h('button',{class:'btn sm sec', title:'Refresh ledger', style:{minHeight:'44px'}, onclick:function(){ refresh(); }},'↻ Refresh'), h('button',{class:'btn sm ok', title:'Record udhar wasooli (ledger auto-update)', style:{minHeight:'44px'}, onclick:function(){ openCollectModal(); }},'＋ Record Collection'))),
+        h('div',{class:'card-body'},
+          h('div',{class:'st2-bar', style:{flexWrap:'wrap'}},
+            dateFrom, dateTo, qInp,
+            h('button',{class:'btn sm', onclick:function(){ refresh(); }},'Filter'),
+            h('button',{class:'btn sm sec', onclick:function(){ exportLedger(); }},'Export')
+          ),
+          segBar, container
+        )
+      ));
+      function setMode(m){
+        mode=m;
+        segBar.querySelectorAll('.chip2').forEach(function(b){ b.classList.remove('on'); });
+        if(m==='timeline') segBar.querySelector('#segTimeline').classList.add('on');
+        if(m==='payments') segBar.querySelector('#segPay').classList.add('on');
+        if(m==='visits') segBar.querySelector('#segVisit').classList.add('on');
+        refresh();
+      }
+      async function refresh(){
+        container.innerHTML=''; container.appendChild(UI.skeleton(3));
+        if(mode==='timeline'){
+          var res=await smCall('salesman.ledger',{salesmanId:smId, locationId:loc(), from:dateFrom.value, to:dateTo.value, q:qInp.value.trim(), limit:200}, {rows:[]});
+          var rows=(res&&res.rows)||[];
+          container.innerHTML='';
+          if(!rows.length){ container.appendChild(smEmpty('No ledger entries for this filter')); return; }
+          container.appendChild(UI2.table({screen:'ledger-timeline', pageSize:25, exportName:'ledger-timeline',
+            columns:[
+              {key:'date',label:'Date', render:function(r){return fmt.date(r.date);}},
+              {key:'type',label:'Type', render:function(r){
+                var cls=r.type==='ISSUE'?'brand': r.type==='SALE'?'ok': r.type==='RETURN'?'warn': r.type==='PAYMENT'?'info':'';
+                return h('span',{class:'badge '+cls}, r.type);
+              }},
+              {key:'refNo',label:'Doc / Ref'},
+              {key:'amount',label:'Amount',num:true, render:function(r){
+                var a=r.amount; var col=a>=0?'var(--ok)':'var(--err)';
+                return h('b',{style:{color:col}}, (a>=0?'+':'')+fmt.money(a) + (r.paid!==undefined?' / paid '+fmt.money(r.paid):''));
+              }},
+              {key:'note',label:'Detail', render:function(r){ return h('span',{style:{maxWidth:'240px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',display:'inline-block'}}, r.note||'—'); }},
+              {key:'balance',label:'Run Bal',num:true, render:function(r){ return fmt.money(r.balance); }}
+            ], rows: rows
+          }));
+        } else if(mode==='payments'){
+          var pays=await smCall('salesman.payments',{salesmanId:smId, locationId:loc(), from:dateFrom.value, to:dateTo.value, q:qInp.value.trim(), limit:200}, []);
+          container.innerHTML='';
+          var list=pays||[];
+          if(!list.length){ container.appendChild(smEmpty('No collection payments — use “Record Collection” to add Wasooli')); return; }
+          container.appendChild(UI2.table({screen:'ledger-payments', pageSize:25, exportName:'payments',
+            columns:[
+              {key:'voucherNo',label:'Voucher'}, {key:'date',label:'Date', render:function(r){return fmt.date(r.date);}},
+              {key:'partyName',label:'Customer'},
+              {key:'amount',label:'Amount',num:true,render:function(r){return fmt.money(r.amount);}},
+              {key:'method',label:'Method', render:function(r){return h('span',{class:'badge brand'}, r.method||'CASH');}},
+              {key:'reference',label:'Bank/Txn/Ref', render:function(r){ return (r.reference||r.txnId||'') + (r.bankName? ' · '+r.bankName:''); }},
+              {key:'prevBalance',label:'Prev Bal',num:true,render:function(r){return fmt.money(r.prevBalance);} },
+              {key:'newBalance',label:'New Bal',num:true,render:function(r){return fmt.money(r.newBalance);} },
+              {key:'collectorName',label:'Collector'},
+              {key:'invoiceNos',label:'Invoices'}
+            ], rows:list
+          }));
+        } else if(mode==='visits'){
+          var visits=await smCall('salesman.visits',{salesmanId:smId, from:dateFrom.value, to:dateTo.value, limit:200}, []);
+          container.innerHTML='';
+          var vrows=visits||[];
+          if(!vrows.length){ container.appendChild(smEmpty('No visits')); return; }
+          container.appendChild(UI2.table({screen:'ledger-visits', pageSize:25,
+            columns:[
+              {key:'date',label:'Date'}, {key:'customerName',label:'Shop / Customer'}, {key:'purpose',label:'Purpose'}, {key:'outcome',label:'Outcome'},
+              {key:'orderValue',label:'Order',num:true,render:function(r){return fmt.money(r.orderValue);}},
+              {key:'collected',label:'Collected',num:true,render:function(r){return fmt.money(r.collected);}}
+            ], rows:vrows
+          }));
+        }
+      }
+      function exportLedger(){
+        UI.toast('Export: use table ▸ Export','ok');
+      }
+      // Wasooli collect modal
+      async function openCollectModal(){
+        var custPick=customerPicker('', async function(id,name){
+          // auto fetch prev balance
+          if(!id) return;
+          prevEl.value='…';
+          try{
+            var cr=await smCall('customers.ledger',{id:id},{});
+            // Not; use party balance API
+          }catch(e){}
+          try{
+            var balRes=await smCall('parties.balance',{partyType:'CUSTOMER', id:id},{});
+            var bal=balRes && (balRes.balance!=null?balRes.balance: balRes.bal);
+            if(bal!=null) prevEl.value=String(Math.round(Number(bal)*100)/100);
+            else prevEl.value='';
+            calcNew();
+          }catch(e){ prevEl.value=''; }
+        });
+        var prevEl=h('input',{type:'number', class:'f-input', placeholder:'Auto from customer ledger'});
+        var amtEl=h('input',{type:'number', class:'f-input', placeholder:'e.g. 5000'});
+        var newEl=h('input',{type:'number', class:'f-input', placeholder:'Auto = prev - amt', readonly:true, style:{background:'var(--panel-2)'}});
+        var methodEl=h('select',{class:'f-input'},
+          h('option',{value:'CASH'},'CASH'),
+          h('option',{value:'BANK'},'BANK'), h('option',{value:'JAZZCASH'},'JAZZCASH'), h('option',{value:'EASYPAISA'},'EASYPAISA'),
+          h('option',{value:'RAAST'},'RAAST'), h('option',{value:'CHEQUE'},'CHEQUE'), h('option',{value:'CARD'},'CARD')
+        );
+        var bankEl=h('input',{class:'f-input', placeholder:'Bank name (if BANK/CHEQUE)'});
+        var accEl=h('input',{class:'f-input', placeholder:'Account / Wallet number'});
+        var txnEl=h('input',{class:'f-input', placeholder:'Txn ID / Cheque No.'});
+        var dateEl=h('input',{type:'date', class:'f-input', value:new Date().toISOString().slice(0,10)});
+        var invEl=h('input',{class:'f-input', placeholder:'Related invoice nos (comma, optional)'});
+        var notesEl=h('input',{class:'f-input', placeholder:'Notes (optional)'});
+        function calcNew(){ var p=Number(prevEl.value||0), a=Number(amtEl.value||0); var n=Math.max(0, p-a); newEl.value=String(Math.round(n*100)/100); }
+        prevEl.addEventListener('input',calcNew); amtEl.addEventListener('input',calcNew);
+        var form=h('div',{class:'f-grid'},
+          h('div',{class:'f-col full'}, h('label',null,'Customer *'), custPick.el),
+          h('div',{class:'f-col'}, h('label',null,'Previous balance'), prevEl),
+          h('div',{class:'f-col'}, h('label',null,'Amount received *'), amtEl),
+          h('div',{class:'f-col'}, h('label',null,'Balance after (auto)'), newEl),
+          h('div',{class:'f-col'}, h('label',null,'Payment method'), methodEl),
+          h('div',{class:'f-col'}, h('label',null,'Bank / Wallet'), bankEl),
+          h('div',{class:'f-col'}, h('label',null,'Account / Wallet No.'), accEl),
+          h('div',{class:'f-col'}, h('label',null,'Txn / Cheque No.'), txnEl),
+          h('div',{class:'f-col'}, h('label',null,'Receipt date'), dateEl),
+          h('div',{class:'f-col full'}, h('label',null,'Related invoices'), invEl),
+          h('div',{class:'f-col full'}, h('label',null,'Notes'), notesEl)
+        );
+        UI2.modal({title:'💵 Udhar Wasooli — Record Collection (ledger auto-update)', size:'lg', body:form,
+          actions:[
+            {label:'Save Collection',cls:'ok', onClick:async function(c){
+              var cust=custPick.get();
+              if(!cust.id) return UI.toast('Customer select karein','warn');
+              if(!(Number(amtEl.value)>0)) return UI.toast('Amount >0','warn');
+              var payload={
+                customerId: cust.id, customerName: cust.name,
+                amount: Number(amtEl.value), prevBalance: Number(prevEl.value||0), newBalance: Number(newEl.value||0),
+                method: methodEl.value, bankName: bankEl.value.trim(), accountNo: accEl.value.trim(), txnId: txnEl.value.trim(),
+                date: dateEl.value, invoiceNos: invEl.value.trim(), notes: notesEl.value.trim(),
+                collectorId: smId || (App.state.session&&App.state.session.userId)||'', locationId: loc()
+              };
+              try{
+                await API.call('salesman.collect',{payment:payload});
+                UI.toast('Collection saved ✅ — ledger updated','ok'); c(); refreshKpi(); refresh();
+              }catch(e){ UI.toast(e.message,'err'); }
+            }},
+            {label:'Close',onClick:function(c){c();}}
+          ]});
+      }
+      // initial
+      refresh();
+      qInp.addEventListener('input', smDebounce(refresh,400));
+    }
+
+    /* ========================= TAB: PERFORMANCE ========================= */
+    async function drawPerf(){
+      if(!requireSm()) return;
+      host.innerHTML=''; host.appendChild(UI.skeleton(4));
+      var fromEl=h('input',{type:'date',class:'f-input', title:'From date', style:{minHeight:'44px'}}); var toEl=h('input',{type:'date',class:'f-input', title:'To date', style:{minHeight:'44px'}, value:new Date().toISOString().slice(0,10)});
+      try{ var d=new Date(); d.setDate(d.getDate()-30); fromEl.value=d.toISOString().slice(0,10); }catch(e){}
+      var perf=await smCall('salesman.performance',{salesmanId:smId, locationId:loc(), from:fromEl.value, to:toEl.value}, null);
+      host.innerHTML='';
+      host.appendChild(h('div',{class:'sm-hint', style:{marginBottom:'10px'}},'Performance rating: issued/sold/returned/remaining + collection % + return % + sales avg — period filter se compare karein.'));
+      host.appendChild(h('div',{class:'st2-bar', style:{flexWrap:'wrap', gap:'8px'}},
+        h('div',{class:'sm-card-head'}, h('b',null,'⭐ Performance — '+curSalesmanName()), h('span',{class:'badge brand sm-badge', title:'Overall rating'}, perf? perf.rating.label+' · '+perf.rating.score+'/5' : '—'), h('span',{class:'badge sm-badge'}, perf? perf.rating.percent+'%' : '')),
+        h('span',{class:'sp', style:{display:'flex', gap:'8px', flexWrap:'wrap', alignItems:'center'}},
+          h('span',{style:{fontSize:'11px', color:'var(--muted)'}},'Period:'), fromEl, toEl,
+          h('button',{class:'btn sm', title:'Apply period', style:{minHeight:'44px'}, onclick:function(){ drawPerf(); }},'Apply')
+        )
+      ));
+      if(!perf){ host.appendChild(smEmpty('No performance data — issue/sale karein')); return; }
+      var t=perf.totals;
+      host.appendChild(h('div',{class:'grid g4', style:{marginBottom:'12px'}},
+        h('div',{class:'kpi'}, h('div',{class:'k-label'},'Issued (period)'), h('div',{class:'k-value'}, fmt.num(t.issuedQty)), h('div',{class:'k-exact'}, fmt.money(t.issuedValue))),
+        h('div',{class:'kpi ok'}, h('div',{class:'k-label'},'Sold'), h('div',{class:'k-value'}, fmt.num(t.soldQty)), h('div',{class:'k-exact'}, fmt.money(t.soldValue))),
+        h('div',{class:'kpi warn'}, h('div',{class:'k-label'},'Returned'), h('div',{class:'k-value'}, fmt.num(t.returnedQty)), h('div',{class:'k-exact'}, fmt.money(t.returnedValue))),
+        h('div',{class:'kpi info'}, h('div',{class:'k-label'},'Remaining'), h('div',{class:'k-value'}, fmt.num(t.remainingQty)), h('div',{class:'k-exact'}, fmt.money(t.remainingValue)))
+      ));
+      // rating + collection bar
+      var ratingBar=h('div',{class:'card', style:{marginBottom:'12px'}},
+        h('div',{class:'card-body'},
+          h('div',{style:{display:'flex',gap:'10px',alignItems:'center',flexWrap:'wrap'}},
+            h('span',{class:'badge brand', style:{fontSize:'14px',padding:'6px 12px'}}, '⭐ '+perf.rating.score+'/5 — '+perf.rating.label+' ('+perf.rating.percent+'%)'),
+            h('span',null, 'Collection '+perf.collection.rate+'% · Paid '+fmt.money(perf.collection.collected)+' · Due '+fmt.money(perf.collection.due)),
+            h('span',null, 'Return '+perf.returns.rate+'%')
+          ),
+          h('div',{class:'prog-track', style:{marginTop:'8px',height:'10px'}},
+            h('div',{class:'prog-fill', style:{width:perf.rating.percent+'%', background: perf.rating.percent>=70?'var(--ok)': perf.rating.percent>=40?'var(--warn)':'var(--err)'}}, perf.rating.percent+'%')
+          )
+        )
+      );
+      host.appendChild(ratingBar);
+      // Sales performance
+      host.appendChild(h('div',{class:'grid g2'},
+        h('div',{class:'card'},
+          h('div',{class:'card-head'}, h('h3',null,'Sales Performance')),
+          h('div',{class:'card-body'},
+            h('div',{class:'kv-strip'},
+              h('span',{class:'kv'}, h('b',{class:'k'},'Invoices'), h('b',{class:'v'}, fmt.num(perf.sales.invoices))),
+              h('span',{class:'kv'}, h('b',{class:'k'},'Avg Invoice'), h('b',{class:'v'}, fmt.money(perf.sales.avgInvoice))),
+              h('span',{class:'kv'}, h('b',{class:'k'},'Cash'), h('b',{class:'v'}, fmt.money(perf.sales.cashCollected))),
+              h('span',{class:'kv'}, h('b',{class:'k'},'Due'), h('b',{class:'v err'}, fmt.money(perf.sales.due)))
+            ),
+            h('div',{style:{marginTop:'10px'}},
+              (perf.sales.topItems&&perf.sales.topItems.length)? UI2.table({screen:'perf-top', pageSize:5, columns:[
+                {key:'code',label:'Code'},{key:'name',label:'Top Items'},{key:'qty',label:'Qty',num:true},{key:'value',label:'Value',num:true,render:function(r){return fmt.money(r.value);}}
+              ], rows:perf.sales.topItems}) : smEmpty('No top items')
+            )
+          )
+        ),
+        h('div',{class:'card'},
+          h('div',{class:'card-head'}, h('h3',null,'Collection Performance')),
+          h('div',{class:'card-body'},
+            h('div',{class:'kv-strip'},
+              h('span',{class:'kv'}, h('b',{class:'k'},'Collected'), h('b',{class:'v ok'}, fmt.money(perf.collection.collected))),
+              h('span',{class:'kv'}, h('b',{class:'k'},'Due'), h('b',{class:'v err'}, fmt.money(perf.collection.due))),
+              h('span',{class:'kv'}, h('b',{class:'k'},'Rate'), h('b',{class:'v'}, perf.collection.rate+'%'))
+            ),
+            h('div',{style:{marginTop:'10px'}},
+              h('div',{class:'prog-track'}, h('div',{class:'prog-fill', style:{width:perf.collection.rate+'%', background:'var(--ok)'}}, perf.collection.rate+'%')),
+              h('div',{style:{marginTop:'8px',fontSize:'var(--fs-xs)',color:'var(--muted)'}}, perf.collection.payments+' payments in period')
+            ),
+            h('div',{style:{marginTop:'12px'}},
+              h('b',null,'Returns'), h('span',{style:{marginLeft:'8px'}}, fmt.num(perf.returns.qty)+' qty · '+fmt.money(perf.returns.value)+' · '+perf.returns.rate+'%'),
+              h('div',{class:'prog-track', style:{marginTop:'6px'}}, h('div',{class:'prog-fill', style:{width: Math.min(100, perf.returns.rate*2)+'%', background:'var(--warn)'}}, perf.returns.rate+'%'))
+            )
+          )
+        )
+      ));
+      // By customer/route/area breakdown already shown in alloc tab but repeat compact
+      host.appendChild(h('div',{class:'grid g3', style:{marginTop:'12px'}},
+        h('div',{class:'card'},
+          h('div',{class:'card-head'}, h('h3',null,'By Customer')),
+          h('div',{class:'card-body tight'},
+            (perf.byCustomer&&perf.byCustomer.length)? UI2.table({screen:'perf-cust', pageSize:6, columns:[{key:'label',label:'Customer'},{key:'issuedValue',label:'Issued',num:true,render:function(r){return fmt.money(r.issuedValue);}}], rows:perf.byCustomer}) : smEmpty('No data')
+          )
+        ),
+        h('div',{class:'card'},
+          h('div',{class:'card-head'}, h('h3',null,'By Tour / Route')),
+          h('div',{class:'card-body tight'},
+            (perf.byRoute&&perf.byRoute.length)? UI2.table({screen:'perf-route', pageSize:6, columns:[{key:'label',label:'Route'},{key:'issuedValue',label:'Issued',num:true,render:function(r){return fmt.money(r.issuedValue);}}], rows:perf.byRoute}) : smEmpty('No data')
+          )
+        ),
+        h('div',{class:'card'},
+          h('div',{class:'card-head'}, h('h3',null,'By Area')),
+          h('div',{class:'card-body tight'},
+            (perf.byArea&&perf.byArea.length)? UI2.table({screen:'perf-area', pageSize:6, columns:[{key:'label',label:'Area'},{key:'issuedValue',label:'Issued',num:true,render:function(r){return fmt.money(r.issuedValue);}}], rows:perf.byArea}) : smEmpty('No data')
+          )
+        )
+      ));
+    }
+
+    /* ========================= MAIN DRAW ========================= */
+    async function draw(){
+      try{ if(smId && ctxChip){ ctxChip.textContent='👤 '+curSalesmanName(); ctxChip.style.display='inline-flex'; } }catch(e){}
+      refreshKpi();
+      if(tab==='issued') return drawIssued();
+      if(tab==='stock') return drawStock();
+      if(tab==='tours') return drawTours();
+      if(tab==='alloc') return drawAlloc();
+      if(tab==='sales') return drawSales();
+      if(tab==='returns') return drawReturns();
+      if(tab==='ledger') return drawLedger();
+      if(tab==='perf') return drawPerf();
+    }
+
+    // init salesmen
+    (async function init(){
+      drawTabs();
+      try{
+        salesmen=await smCall('salesman.list',{},[]);
+        if(!Array.isArray(salesmen)) salesmen=[];
+        // also fallback to App.state.salesmen?
+        selSm.innerHTML=''; selSm.appendChild(h('option',{value:''},'— Salesman select karein —'));
+        salesmen.forEach(function(u){
+          selSm.appendChild(h('option',{value:u.id}, u.name+' ('+u.role+')'));
+        });
+        // default pick first salesman or current user if salesman
+        if(!smId){
+          var me=App.state.session&&App.state.session.userId;
+          var meIsSalesman=salesmen.some(function(x){return x.id===me;});
+          if(meIsSalesman){ smId=me; selSm.value=me; }
+          else if(salesmen.length){ smId=salesmen[0].id; selSm.value=smId; }
+        }
+        applyRoleLock();
+        // reflect current salesman in chip
+        try{ if(smId){ ctxChip.textContent='👤 '+curSalesmanName(); ctxChip.style.display='inline-flex'; }}catch(e){}
+      }catch(e){ salesmen=[]; }
+      draw();
+    })();
+  }
+});
+</script>

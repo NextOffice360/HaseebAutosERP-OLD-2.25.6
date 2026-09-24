@@ -1,0 +1,1301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <title><?= title ?></title>
+  <?!= include('Pwa_Shell'); ?>
+  <script>
+    var PWA_ICON_192 = '<?!= PWA_ICONS.i192 ?>';
+    var PWA_ICON_512 = '<?!= PWA_ICONS.i512 ?>';
+  </script>
+  <script>HA_applyExtraMeta(<?!= extraMetaJson ?>);</script>
+  <style>
+    /* =============== HASEEB POS — Senior PWA Craft (Pwa_Shell vars, no external) =============== */
+    /* Search */
+    .pos-search{display:flex;gap:8px;align-items:center;background:var(--card);border:1.5px solid var(--line);border-radius:14px;padding:8px;box-shadow:var(--shadow2);position:relative}
+    .pos-search input{flex:1;border:0;background:transparent;min-height:40px;font-size:16px;outline:none;color:var(--ink)}
+    .pos-search .act{width:42px;height:42px;border-radius:10px;border:1px solid var(--line);background:var(--card2);display:grid;place-items:center;cursor:pointer;font-size:17px;flex:0 0 auto}
+    .pos-search .act.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+    .pos-search .clear{position:absolute;right:92px;top:50%;transform:translateY(-50%);width:26px;height:26px;border-radius:999px;border:0;background:var(--card3);color:var(--muted);display:none;place-items:center;cursor:pointer;font-size:12px}
+    .pos-search.has-value .clear{display:grid}
+    /* Chips with count */
+    .cat-chips{display:flex;gap:8px;overflow:auto;padding:8px 2px 6px;scrollbar-width:none;scroll-snap-type:x proximity}
+    .cat-chips::-webkit-scrollbar{display:none}
+    .chip{padding:8px 13px;border-radius:999px;border:1.5px solid var(--line);background:var(--card2);font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;min-height:36px;display:inline-flex;align-items:center;gap:6px;scroll-snap-align:start}
+    .chip.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+    .chip .cnt{font-size:10px;font-weight:800;padding:2px 6px;border-radius:999px;background:rgba(0,0,0,.08);border:1px solid var(--line);min-width:18px;text-align:center}
+    .chip.on .cnt{background:rgba(255,255,255,.22);border-color:rgba(255,255,255,.3);color:var(--accent-ink)}
+    /* Grid */
+    .pos-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:10px}
+    @media(min-width:520px){.pos-grid{grid-template-columns:repeat(3,1fr)}}
+    @media(min-width:860px){.pos-grid{grid-template-columns:repeat(4,1fr)}}
+    .p-card{background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden;cursor:pointer;display:flex;flex-direction:column;transition:transform .12s, box-shadow .12s, border-color .12s;position:relative}
+    .p-card:active{transform:scale(.97)}
+    .p-card:hover{border-color:var(--line2);box-shadow:var(--shadow2)}
+    .p-card.out{opacity:.72}
+    .p-thumb{height:84px;background:linear-gradient(135deg,var(--card2),var(--card3));display:grid;place-items:center;position:relative;border-bottom:1px solid var(--line);overflow:hidden}
+    .p-thumb span{font-size:10px;font-weight:800;letter-spacing:.6px;color:var(--muted);background:var(--card);border:1px solid var(--line);padding:5px 10px;border-radius:999px;box-shadow:var(--shadow2)}
+    .p-thumb .add{position:absolute;right:8px;bottom:8px;width:32px;height:32px;border-radius:10px;border:0;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;font-weight:900;font-size:16px;box-shadow:0 4px 12px rgba(0,0,0,.18);cursor:pointer}
+    .p-thumb .stock-dot{position:absolute;left:8px;top:8px;width:10px;height:10px;border-radius:999px;border:2px solid var(--card);background:var(--ok)}
+    .p-thumb .stock-dot.low{background:var(--warn)} .p-thumb .stock-dot.out{background:var(--err)}
+    .p-body{padding:10px;display:flex;flex-direction:column;gap:4px;flex:1}
+    .p-name{font-size:13px;font-weight:800;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:34px}
+    .p-meta{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;gap:6px;align-items:center}
+    .p-meta .tier{font-size:10px;font-weight:800;padding:2px 6px;border-radius:999px;border:1px solid var(--line);background:var(--card2)}
+    .p-price{font-size:14px;font-weight:900;font-variant-numeric:tabular-nums}
+    .p-price small{font-size:11px;color:var(--muted);font-weight:700}
+    .p-stock{font-size:11px;font-weight:800;padding:3px 8px;border-radius:999px;border:1px solid var(--line);background:var(--card2);display:inline-block}
+    .p-stock.out{color:var(--err);border-color:rgba(239,68,68,.28);background:rgba(239,68,68,.10)}
+    .p-stock.low{color:var(--warn);border-color:rgba(245,158,11,.28);background:rgba(245,158,11,.12)}
+    /* Cart line */
+    .cart-line{display:flex;gap:10px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line)}
+    .cart-line:last-child{border-bottom:0}
+    .cart-line .thumb{width:44px;height:44px;border-radius:10px;background:var(--card2);border:1px solid var(--line);display:grid;place-items:center;font-size:10px;font-weight:800;color:var(--muted);flex:0 0 auto}
+    .cart-line .nm{flex:1;min-width:0}
+    .cart-line .nm b{font-size:13px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .cart-line .nm small{font-size:11px;color:var(--muted);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .cart-line .line-total{font-size:13px;font-weight:900;font-variant-numeric:tabular-nums;min-width:78px;text-align:right}
+    .qty{display:flex;align-items:center;gap:6px}
+    .qty button{width:36px;height:36px;border-radius:10px;border:1px solid var(--line);background:var(--card2);font-weight:800;cursor:pointer;display:grid;place-items:center;font-size:14px}
+    .qty button:active{transform:scale(.96)}
+    .qty .n{min-width:28px;text-align:center;font-weight:900;font-size:14px}
+    /* Demand */
+    .demand-host:empty{display:none}
+    .demand-host{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px;margin-top:10px;display:flex;flex-direction:column;gap:8px}
+    .demand-row{display:flex;gap:8px;align-items:center;padding:10px;border:1px solid var(--line);border-radius:12px;background:var(--card2);font-size:13px}
+    .demand-row.arrived{border-color:rgba(34,197,94,.35);background:rgba(34,197,94,.08)}
+    /* Totals */
+    .tot-box{background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:12px;display:grid;gap:6px}
+    .tot-line{display:flex;justify-content:space-between;align-items:center;font-size:13px}
+    .tot-line.grand{font-weight:900;font-size:16px;border-top:1px solid var(--line);padding-top:10px;margin-top:4px}
+    .tot-line .hint{font-size:11px;color:var(--muted)}
+    /* Customer */
+    .card:has(.cust-field){overflow:visible}
+    .cust-summary{display:flex;gap:12px;align-items:center;margin-top:10px;padding:12px;border:1.5px solid var(--line);border-radius:14px;background:var(--card2);transition:border-color .15s}
+    .cust-summary.has-cust{border-color:var(--accent);background:linear-gradient(135deg, var(--card2), var(--card));box-shadow:var(--shadow2)}
+    .pos-top-actions{display:flex;align-items:center;gap:8px;margin-left:auto}
+    .pos-cart-btn{position:relative;width:44px;height:44px;border-radius:12px;border:1px solid var(--line);background:var(--card);display:grid;place-items:center;cursor:pointer;font-size:18px}
+    .pos-cart-btn .badge-count{position:absolute;top:-6px;right:-6px;min-width:20px;height:20px;padding:0 6px;border-radius:999px;background:var(--accent);color:var(--accent-ink);font-size:11px;font-weight:900;display:grid;place-items:center;border:2px solid var(--card);line-height:1}
+    .pos-cart-btn.has-items{border-color:var(--accent);box-shadow:0 2px 12px rgba(245,158,11,.22)}
+    /* Layers */
+    .pos-layer{position:fixed;inset:0;z-index:45;display:none}
+    .pos-layer.open{display:block}
+    .pos-scrim{position:absolute;inset:0;background:rgba(2,6,23,.52);backdrop-filter:blur(8px)}
+    .pos-drawer{position:absolute;top:0;right:0;bottom:0;width:min(440px,94vw);background:var(--card);border-left:1px solid var(--line);box-shadow:-16px 0 40px rgba(0,0,0,.22);display:flex;flex-direction:column;max-height:100dvh}
+    @media(max-width:640px){
+      .pos-drawer{top:auto;right:0;left:0;bottom:0;width:auto;max-height:88dvh;border-left:0;border-top:1px solid var(--line);border-radius:20px 20px 0 0;box-shadow:0 -16px 40px rgba(0,0,0,.24)}
+    }
+    .pos-drawer-head{padding:14px 14px 12px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px;background:var(--card);position:sticky;top:0;z-index:1}
+    .pos-drawer-head b{font-size:15px;font-weight:900;letter-spacing:-.2px}
+    .pos-drawer-body{flex:1;overflow:auto;padding:12px;background:var(--bg)}
+    .pos-drawer-foot{padding:12px;border-top:1px solid var(--line);background:var(--card);padding-bottom:calc(12px + var(--safe-b))}
+    .pos-empty{text-align:center;padding:28px 12px;color:var(--muted)}
+    .pos-empty .big{font-size:32px;display:block;margin-bottom:8px}
+    .pwa-bar .cart-badge{position:absolute;top:4px;right:14px;min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:var(--accent);color:var(--accent-ink);font-size:10px;font-weight:900;display:grid;place-items:center;line-height:1;border:2px solid var(--card2)}
+    /* Pay sheet */
+    .pay-sheet{position:absolute;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);border-radius:20px 20px 0 0;box-shadow:0 -16px 40px rgba(0,0,0,.24);padding:14px 14px calc(14px + var(--safe-b));display:flex;flex-direction:column;gap:12px;max-height:94dvh;overflow:auto}
+    .pay-head{display:flex;align-items:flex-start;gap:10px;padding-bottom:8px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--card);z-index:1;margin:-14px -14px 0 -14px;padding:14px 14px 10px}
+    .pay-head b{font-size:15px;font-weight:900;letter-spacing:-.2px}
+    .pay-head .sub{font-size:12px;color:var(--muted)}
+    .pay-summary-box{background:var(--card2);border:1.5px solid var(--line);border-radius:14px;padding:10px;display:grid;gap:6px}
+    .pay-summary-box .row{display:flex;justify-content:space-between;align-items:center;font-size:13px}
+    .pay-summary-box .row small{color:var(--muted);font-size:11px}
+    .pay-summary-box .row.total{font-weight:900;border-top:1px dashed var(--line);padding-top:8px;margin-top:2px}
+    .pay-summary-box .row.cash b{color:var(--ok)}
+    .pay-summary-box .row.closing b{color:var(--err);font-size:14px}
+    .pay-row{display:flex;gap:8px;align-items:center}
+    .pay-row select,.pay-row input{height:44px;min-height:44px;border-radius:10px;font-size:14px}
+    .pay-row .fill{background:var(--err);color:#fff;border-color:var(--err);font-weight:900;min-height:44px;min-width:52px}
+    .pay-row .ghost{min-height:44px;min-width:44px}
+    .pay-chips{display:flex;gap:8px;flex-wrap:wrap}
+    .pay-chips .chip2{padding:10px 12px;border-radius:999px;border:1.5px solid var(--line);background:var(--card2);font-size:12px;font-weight:800;cursor:pointer;min-height:44px}
+    .pay-chips .chip2.on,.pay-chips .chip2:active{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+    .loy-card{background:var(--card2);border:1.5px solid var(--line);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:8px}
+    .loy-card .t{font-weight:900;display:flex;align-items:center;gap:6px}
+    .loy-card .sub{font-size:11px;color:var(--muted);line-height:1.4}
+    .loy-actions{display:flex;gap:8px;align-items:center}
+    .loy-actions input{width:110px;height:44px;min-height:44px;text-align:center;font-weight:800;border-radius:10px}
+    .loy-actions .btn{min-height:44px}
+    .pay-footer{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px;border:1.5px dashed var(--line);border-radius:12px;background:var(--card2);font-weight:800;font-size:13px}
+    .pay-footer .due{color:var(--err)}
+    .pay-footer .paidBy{color:var(--ok)}
+    .pay-methods{display:flex;gap:8px;overflow:auto;padding-bottom:2px;scrollbar-width:none}
+    .pay-methods::-webkit-scrollbar{display:none}
+    .pay-methods .chip{padding:10px 14px;font-size:13px;min-height:42px}
+    .pay-methods .chip small{font-size:10px;display:block;color:var(--muted)}
+    /* Bulk mode */
+    .p-card.bulk{border-color:var(--accent);box-shadow:0 0 0 2px rgba(245,158,11,.18)}
+    .p-card .bulk-chk{position:absolute;left:8px;top:8px;width:22px;height:22px;border-radius:6px;border:2px solid var(--line);background:var(--card);display:grid;place-items:center;cursor:pointer;z-index:2}
+    .p-card.bulk .bulk-chk{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+    .bulk-bar{position:sticky;bottom:0;left:0;right:0;background:var(--card);border:1.5px solid var(--line);border-radius:14px;padding:10px;display:flex;gap:8px;align-items:center;margin-top:10px;box-shadow:var(--shadow2)}
+    .bulk-bar b{font-size:13px;font-weight:900}
+    .pos-search .act.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+    /* Receipt */
+    .receipt-preview{background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:12px;font-size:12px;line-height:1.5;max-height:46dvh;overflow:auto}
+    .receipt-preview b{font-size:13px}
+    .receipt-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    @media(min-width:520px){.receipt-actions{grid-template-columns:repeat(4,1fr)}}
+    .kpi{display:flex;gap:8px;overflow:auto;padding:4px 0 8px;scrollbar-width:none}
+    .kpi::-webkit-scrollbar{display:none}
+    .kpi .k{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px;min-width:140px;flex:0 0 auto}
+    .kpi .k b{display:block;font-size:16px;font-weight:900}
+    .kpi .k small{color:var(--muted);font-size:11px}
+  </style>
+</head>
+<body>
+<div class="pwa-top">
+  <div class="ttl" id="pwaTitle">🧾 POS</div>
+  <div class="pos-top-actions">
+    <div class="net" id="pwaNet">●</div>
+    <button class="pos-cart-btn" id="posCartBtn" aria-label="Open cart" onclick="window.PosCart && window.PosCart.open()">
+      🛒<span class="badge-count" id="posCartBadge" hidden>0</span>
+    </button>
+  </div>
+</div>
+<div class="pwa-wrap"><div id="pwaBody"></div></div>
+<div class="pwa-bar" id="pwaBar"></div>
+
+<!-- Cart drawer -->
+<div class="pos-layer" id="posCartLayer" aria-hidden="true" role="dialog" aria-modal="true">
+  <div class="pos-scrim" onclick="window.PosCart && window.PosCart.close()"></div>
+  <div class="pos-drawer" role="document">
+    <div class="pos-drawer-head">
+      <b id="posDrawerTitle">🛒 Cart</b>
+      <span class="badge" id="posDrawerCount">0 items</span>
+      <button class="pos-cart-btn" style="margin-left:auto;width:36px;height:36px;border-radius:10px" onclick="window.PosCart&&window.PosCart.close()" aria-label="Close">✕</button>
+    </div>
+    <div class="pos-drawer-body" id="posCartBody"></div>
+    <div class="pos-drawer-foot" id="posCartFoot"></div>
+  </div>
+</div>
+
+<!-- Pay sheet — polished to screenshot (Account ledger, CREDIT/LOYALTY, POINTS, chips, loyalty card, PAID BY) -->
+<div class="pos-layer" id="posPayLayer" aria-hidden="true" role="dialog" aria-modal="true">
+  <div class="pos-scrim" onclick="window.PaySheet && window.PaySheet.close()"></div>
+  <div class="pay-sheet" role="document">
+    <div class="pay-head">
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;gap:8px"><b id="payHeadTitle">Payment — <span id="payTotalBadge">Rs 0</span></b></div>
+        <div class="sub" id="paySubtitle">Walk-in · 0 items</div>
+      </div>
+      <button class="pos-cart-btn" style="width:36px;height:36px;border-radius:10px" onclick="window.PaySheet&&window.PaySheet.close()" aria-label="Close">✕</button>
+    </div>
+
+    <div id="paySummary" class="pay-summary-box"></div>
+
+    <div style="display:flex;flex-direction:column;gap:6px;margin:0"><label style="font-size:11px;letter-spacing:.4px;font-weight:700;color:var(--muted)">PROMISED PAYMENT DATE</label><input id="payDueDate" type="date" style="min-height:44px;height:44px;border-radius:10px;width:100%"></div>
+
+    <div id="payRowsHost" style="display:grid;gap:8px"></div>
+
+    <div style="display:flex;gap:8px;align-items:center;margin:0"><label style="font-size:11px;font-weight:700;min-width:56px">POINTS</label><input id="payPoints" type="number" min="0" step="1" value="0" style="width:110px;min-height:44px;height:44px;font-weight:800;text-align:center;border-radius:10px"></div>
+    <div class="muted" id="paySettlementHint" style="font-size:11px;color:var(--muted)">Koi fee nahi - settlement 2026-09-21</div>
+
+    <div id="payQuickChips" class="pay-chips"></div>
+
+    <div id="payLoyaltyCard" class="loy-card"></div>
+
+    <div style="display:flex;flex-direction:column;gap:6px;margin:0"><label style="font-size:11px;font-weight:700;color:var(--muted)">Note (optional)</label><input id="payNote" type="text" placeholder="Note (optional)" style="min-height:44px;height:44px;border-radius:10px;width:100%"></div>
+
+    <div class="pay-footer" id="payFooter">
+      <span class="paidBy">PAID BY Loyalty Points <b id="payLoyAmt">Rs 0</b></span>
+      <span class="due">Current Due (udhaar) <b id="payDueVal">Rs 0</b></span>
+    </div>
+
+    <div style="display:flex;gap:10px">
+      <button class="btn ghost big" style="flex:1;min-height:48px" onclick="window.PaySheet&&window.PaySheet.close()">Cancel</button>
+      <button class="btn primary big" id="payConfirmBtn" onclick="window.PaySheet && window.PaySheet.confirm()" style="flex:1.4;min-height:48px;background:var(--ok);border-color:var(--ok);color:#fff">✓ Complete</button>
+    </div>
+    <div class="muted" style="font-size:11px;text-align:center">Offline ho to queue me save hoga · Esc to close</div>
+  </div>
+</div>
+
+<!-- Receipt -->
+<div class="pos-layer" id="posReceiptLayer" aria-hidden="true" role="dialog" aria-modal="true">
+  <div class="pos-scrim" onclick="window.Receipt && window.Receipt.close()"></div>
+  <div class="pay-sheet" role="document" style="max-height:94dvh">
+    <div style="display:flex;align-items:center;gap:10px">
+      <b style="font-size:15px">✅ Invoice ready</b>
+      <span class="badge ok" id="receiptNoBadge">—</span>
+      <button class="pos-cart-btn" style="margin-left:auto;width:36px;height:36px;border-radius:10px" onclick="window.Receipt&&window.Receipt.close()" aria-label="Close">✕</button>
+    </div>
+    <div id="receiptPreview" class="receipt-preview"></div>
+    <div class="receipt-actions">
+      <button class="btn primary" onclick="window.Receipt && window.Receipt.print()">🖨 Print</button>
+      <button class="btn" onclick="window.Receipt && window.Receipt.share()">⤴ Share</button>
+      <button class="btn" onclick="window.Receipt && window.Receipt.pdf()">⬇ PDF</button>
+      <button class="btn ghost" onclick="window.Receipt && window.Receipt.wa()">💬 WhatsApp</button>
+    </div>
+    <button class="btn ok big block" onclick="window.Receipt && window.Receipt.newSale()">🛒 New sale</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  var TABS = [{id:'sell', label:'Sell', icon:'🧾'},{id:'held', label:'Held', icon:'⏸'},{id:'recent', label:'Recent', icon:'📁'}];
+  var S = {q:'', cat:'', cart:[], customerId:'', customerName:'', discount:0, held:[], payMethod:'CASH', payAmount:0, _prevBal:0, _cust:null, bulkMode:false, bulkPicked:{}};
+  try{ S.held = JSON.parse(localStorage.getItem('ha_pos_held')||'[]'); }catch(e){ S.held=[]; }
+  var LAST_SALE = null; // for receipt actions
+
+  function items(){ return (PWA.data && PWA.data.items) || []; }
+  function customers(){ return (PWA.data && PWA.data.customers) || []; }
+  function cats(){ return (PWA.data && PWA.data.cats) || []; }
+  function catCounts(){
+    var m={}; items().forEach(function(i){ var k=i.category||i.cat||'Other'; m[k]=(m[k]||0)+1; }); return m;
+  }
+  function priceFor(it, tier){
+    var t = tier || currentTier();
+    if(t==='WHOLESALE' && Number(it.wholesale)>0) return Number(it.wholesale);
+    return Number(it.retail||it.price||0);
+  }
+  function currentTier(){
+    var m = customers().filter(function(c){ return c.id===S.customerId; })[0];
+    return (m && m.priceTier) || 'RETAIL';
+  }
+  function cartSubtotal(){ return S.cart.reduce(function(a,l){return a+Number(l.qty)*Number(l.price);},0); }
+  function cartTotal(){ return Math.max(0, cartSubtotal() - Number(S.discount||0)); }
+  function cartQty(){ return S.cart.reduce(function(a,l){return a+Number(l.qty||0)},0); }
+  function saveHeld(){ try{ localStorage.setItem('ha_pos_held', JSON.stringify(S.held)); }catch(e){} }
+  function filtered(){
+    var q=String(S.q||'').trim().toLowerCase();
+    var cat=S.cat;
+    return items().filter(function(i){
+      if(cat && i.category!==cat && i.cat!==cat) return false;
+      if(!q) return true;
+      return i.name.toLowerCase().indexOf(q)>-1 || i.code.toLowerCase().indexOf(q)>-1 || String(i.barcode||'').toLowerCase().indexOf(q)>-1;
+    }).slice(0,60);
+  }
+  function addToCart(it, qty){
+    qty = Math.max(1, Number(qty)||1);
+    if(it.stock!==undefined && Number(it.stock)===0) {
+      PWA.toast('Stock 0 — phir bhi add kiya','warn');
+    }
+    var pr = priceFor(it);
+    var ex = S.cart.filter(function(l){ return l.itemId===it.id; })[0];
+    if(ex) ex.qty += qty;
+    else S.cart.push({itemId:it.id, code:it.code, name:it.name, qty:qty, price:pr, stock:it.stock, category:it.category||it.cat||''});
+    PWA.haptic(true);
+    try{ if(window._posRenderCart) window._posRenderCart(); else if(typeof renderCart==='function') renderCart(); }catch(e){}
+    try{ if(window._posRenderPay) window._posRenderPay(); else if(typeof renderPay==='function') renderPay(); }catch(e){}
+    try{ if(window._posUpdateBar) window._posUpdateBar(); else if(typeof updateBar==='function') updateBar(); }catch(e){}
+    try{ if(typeof syncCustClosing==='function') syncCustClosing(); else { var cb=document.getElementById('custClosingBal'); if(cb && S._cust) cb.textContent=PWA.money((S._prevBal||0)+cartTotal()); } }catch(e){}
+    window.PosCart && window.PosCart.updateBadge();
+    if(window.innerWidth < 680 && S.cart.length===1) setTimeout(function(){ window.PosCart && window.PosCart.open(); }, 160);
+  }
+  function syncCustClosing(){
+    try{
+      var cb=document.getElementById('custClosingBal');
+      if(cb) cb.textContent = S._cust ? PWA.money(Math.max(0, (S._prevBal||0)+cartTotal())) : '';
+      var dueEl=document.getElementById('payDueWrap');
+      if(dueEl && S._cust){
+        var closing=Math.max(0, (S._prevBal||0)+cartTotal());
+        dueEl.style.display='block';
+        dueEl.textContent='Prev '+PWA.money(S._prevBal||0)+' → Closing '+PWA.money(closing)+(closing>0?' · Due':' · Clear');
+      } else if(dueEl){ dueEl.style.display='none'; }
+    }catch(e){}
+  }
+
+  // ===== PosCart =====
+  /* v2.25.4 (req 6) — Esc sirf TOP-MOST layer band kare (main app ka wahi contract).
+     Asli flow mein: cart drawer khula → usi ke andar se "💳 Pay" → pay sheet upar khulti
+     hai (dono open). Pehle ek Esc DONO band kar deta tha — poora cart gayab ho jata tha. */
+  var LAYER_ORDER = ['posReceiptLayer', 'posPayLayer', 'posCartLayer'];   /* upar se neeche */
+  /* v2.25.6 — scroll-lock ko layers ke sath SYNC rakho: pay band karne par bhi agar cart
+     khula hai to background scroll LOCKED rahe (pehle har close() overflow='' kar deta tha). */
+  function posSyncScrollLock(){
+    try{ document.body.style.overflow = posTopLayer() ? 'hidden' : ''; }catch(e){}
+  }
+  window.posSyncScrollLock = posSyncScrollLock;
+
+  /* v2.27.0 — ROOT-CAUSE FIX (desktop UI2.dismissTop ka wahi sabak):
+     pehle sirf `.open` class dekhi jati thi. Agar koi layer `.open` rah jaye magar
+     HAQEEQAT mein invisible ho (stale) to:
+       · Esc usi stale layer ko de diya jata → asli visible layer band na hoti,
+       · body ka scroll-lock phansa reh jata (user scroll hi na kar sake).
+     Ab: top layer sirf woh hai jo `.open` BHI ho aur VISIBLE bhi. */
+  function posTopLayer(){
+    for(var i=0;i<LAYER_ORDER.length;i++){
+      var l=document.getElementById(LAYER_ORDER[i]);
+      if(!l || !l.classList.contains('open')) continue;
+      if(window.PWA && PWA.layerVisible && !PWA.layerVisible(l)) continue;   /* stale → skip */
+      return LAYER_ORDER[i];
+    }
+    return null;
+  }
+  window.posTopLayer = posTopLayer;                  /* debug/tests ke liye */
+
+  window.PosCart = (function(){
+    var layer=null, badge=null, titleCount=null;
+    function els(){ layer=document.getElementById('posCartLayer'); badge=document.getElementById('posCartBadge'); titleCount=document.getElementById('posDrawerCount'); return layer; }
+    function open(){ els(); if(!layer) return; layer.classList.add('open'); layer.setAttribute('aria-hidden','false'); document.body.style.overflow='hidden'; PWA.haptic&&PWA.haptic(true);
+      try{ window.PWA && PWA.sweepStale && PWA.sweepStale(); }catch(e){} }
+    function close(){ els(); if(!layer) return; layer.classList.remove('open'); layer.setAttribute('aria-hidden','true'); posSyncScrollLock(); try{ window.PWA && PWA.sweepStale && PWA.sweepStale(); }catch(e){} }
+    function updateBadge(){
+      els();
+      var n=S.cart.length, qty=cartQty(), total=cartTotal();
+      if(badge){ badge.textContent= n? String(qty):'0'; badge.hidden=n===0; badge.parentElement.classList.toggle('has-items', n>0); badge.parentElement.setAttribute('aria-label','Cart '+qty+' items · '+PWA.money(total)); }
+      if(titleCount) titleCount.textContent = n ? n+' items · '+qty+' pcs' : '0 items';
+      var ttl=document.getElementById('posDrawerTitle'); if(ttl) ttl.textContent = n ? '🛒 Cart · '+PWA.money(total) : '🛒 Cart';
+    }
+    document.addEventListener('keydown', function(e){ if(e.key==='Escape' && posTopLayer()==='posCartLayer') close(); });
+    return {open:open, close:close, updateBadge:updateBadge};
+  })();
+
+  // ===== PaySheet — polished (ledger, CREDIT/LOYALTY rows, POINTS, chips, loyalty card, PAID BY) =====
+  window.PaySheet = (function(){
+    var layer=null;
+    // internal state for multi-payment + loyalty
+    var _payments = [{method:'CASH', amount: 0}];
+    var _loyaltyPoints = 0;
+    var _loyaltyRate = 1;
+    var _loyaltyBalance = 155;
+    var _loyaltyEnabled = true;
+    function els(){ layer=document.getElementById('posPayLayer'); return layer; }
+    function open(){
+      els(); if(!layer) return;
+      if(!S.cart.length) return PWA.toast('Cart khali','warn');
+      var tot=cartTotal();
+      _payments = [{method:'CASH', amount: 0}];
+      _loyaltyPoints = 0;
+      // try to fetch loyalty balance if customer exists
+      try{
+        if(S.customerId && PWA.call){
+          PWA.call('loyalty.summary', {customerId:S.customerId, total: tot}, {offlineFallback:function(){ return {points: _loyaltyBalance, usablePoints: _loyaltyBalance, rate:1, enabled:true, value: _loyaltyBalance}; }})
+            .then(function(r){ if(r && typeof r.points!=='undefined'){ _loyaltyBalance=Number(r.points||0); _loyaltyRate=Number(r.rate||1); _loyaltyEnabled=!!r.enabled; } renderPaySheet(); })
+            .catch(function(){});
+        }
+      }catch(e){}
+      renderPaySheet();
+      layer.classList.add('open'); layer.setAttribute('aria-hidden','false'); document.body.style.overflow='hidden';
+      setTimeout(function(){
+        var d=document.getElementById('payDueDate'); if(d && !d.value) d.focus();
+      }, 120);
+      try{ window.PWA && PWA.sweepStale && PWA.sweepStale(); }catch(e){}
+    }
+    function close(){ els(); if(!layer) return; layer.classList.remove('open'); layer.setAttribute('aria-hidden','true'); posSyncScrollLock(); try{ window.PWA && PWA.sweepStale && PWA.sweepStale(); }catch(e){} }
+    function money(v){ try{ return PWA.money(v); }catch(e){ return 'Rs '+Number(v||0); } }
+    function U2round(v){ return Math.round(Number(v||0)*100)/100; }
+    function paidSum(){ return _payments.reduce(function(a,p){ return a + (Number(p.amount)||0); }, 0); }
+    function loyAmt(){ var p=_payments.filter(function(x){ return String(x.method).toUpperCase()==='LOYALTY'; })[0]; return p? Number(p.amount)||0 : 0; }
+    function renderPaySheet(){
+      var tot=cartTotal(), sub=cartSubtotal();
+      var badge=document.getElementById('payTotalBadge');
+      var titleEl=document.getElementById('payHeadTitle');
+      var subEl=document.getElementById('paySubtitle');
+      if(badge) badge.textContent=money(tot);
+      if(subEl) subEl.textContent=(S.customerName||'Walk-in')+' · '+S.cart.reduce(function(a,l){return a+l.qty;},0)+' items';
+      // Summary ledger — CORRECT: closing = max(0, prev + total - paid), change = max(0, paid - (prev+total))
+      var sum=document.getElementById('paySummary');
+      if(sum){
+        sum.innerHTML='';
+        var prev=Number(S._prevBal||0);
+        var paid=paidSum();
+        var amountOwed=U2round(prev + tot);
+        var closing=Math.max(0, U2round(amountOwed - paid));
+        var change=Math.max(0, U2round(paid - amountOwed));
+        var invoiceDue=Math.max(0, U2round(tot - Math.min(paid, tot)));
+        sum.appendChild(PWA.el('div',{class:'row'},[PWA.el('span',{text:'Previous balance'}), PWA.el('b',{text:money(prev)})]));
+        sum.appendChild(PWA.el('div',{class:'row'},[PWA.el('span',{text:'This invoice'}), PWA.el('b',{text:money(tot)})]));
+        sum.appendChild(PWA.el('div',{class:'row cash'},[PWA.el('span',{text:'Cash Paid'}), PWA.el('b',{text:'-'+money(paid), style:'color:var(--ok)'})]));
+        if(change>0.5) sum.appendChild(PWA.el('div',{class:'row'},[PWA.el('span',{text:'Change'}), PWA.el('b',{text:money(change), style:'color:var(--ok)'})]));
+        else sum.appendChild(PWA.el('div',{class:'row'},[PWA.el('span',{text:'Remaining amount'}), PWA.el('b',{text:money(Math.max(0, U2round(tot - paid)) ), style:'color:var(--muted)'})]));
+        sum.appendChild(PWA.el('div',{class:'row total closing'},[PWA.el('span',{text:'Closing balance'}), PWA.el('b',{text:money(closing), style:'color:'+(closing>0?'var(--err)':'var(--ok)')})]));
+        if(S._cust && S._cust.creditLimit) sum.appendChild(PWA.el('div',{class:'row', style:'font-size:11px;color:var(--muted)'},[PWA.el('span',{text:'Credit limit / Available'}), PWA.el('b',{text:money(S._cust.creditLimit)+' / '+money(Math.max(0, Number(S._cust.creditLimit)-Number(S._prevBal||0)))})]));
+      }
+      // Promised date
+      var dIn=document.getElementById('payDueDate');
+      if(dIn){
+        // default to next day? keep as is
+        dIn.onchange=function(){ /* val stored in _dueDate */ };
+      }
+      // Rows host: CREDIT and LOYALTY (and any existing like CASH/CARD if user added)
+      var host=document.getElementById('payRowsHost');
+      if(host){
+        host.innerHTML='';
+        // ensure CREDIT and LOYALTY rows exist at least as selectable; keep existing _payments but render each
+        // if _payments is single CASH and we want to show CREDIT/LOYALTY separately, we show two fixed rows for CREDIT and LOYALTY plus a switch for primary method?
+        // Instead: render each payment in _payments as a row with select + amount + Fill + X
+        // ensure at least 2 rows for demo: if only one, add CREDIT 0 and LOYALTY 0 placeholders visually
+        if(_payments.length===1 && _payments[0].method==='CASH'){
+          // split view: show CREDIT and LOYALTY as extra rows with 0, but keep primary CASH as first row
+          // for screenshot fidelity: first row CREDIT, second LOYALTY, third is hidden CASH total? we will mutate _payments to have CREDIT and LOYALTY
+          // Keep _payments as is but add rows for CREDIT and LOYALTY if not present for UI convenience
+          if(!_payments.some(function(p){ return p.method==='CREDIT'; })) _payments.push({method:'CREDIT', amount:0});
+          if(!_payments.some(function(p){ return p.method==='LOYALTY'; })) _payments.push({method:'LOYALTY', amount:0, points:0});
+          // ensure CASH is first: reorder to CREDIT, LOYALTY, CASH? screenshot shows CREDIT then LOYALTY as only rows, but footer shows PAID BY loyalty
+          // we keep order as inserted: CASH, CREDIT, LOYALTY -> reorder to CREDIT, LOYALTY, CASH for screenshot? Let's keep CASH first then CREDIT/LOYALTY but render with labels PROMINENT
+        }
+        var METHODS=[
+          {id:'CASH', label:'CASH'},
+          {id:'CARD', label:'CARD'},
+          {id:'JAZZCASH', label:'JAZZCASH'},
+          {id:'EASYPAISA', label:'EASYPAISA'},
+          {id:'BANK', label:'BANK'},
+          {id:'CREDIT', label:'CREDIT'},
+          {id:'LOYALTY', label:'LOYALTY'}
+        ];
+        _payments.forEach(function(p, idx){
+          var row=PWA.el('div',{class:'pay-row'});
+          var sel=PWA.el('select',{class:'f-input', style:'flex:1;min-width:0;font-weight:800;font-size:13px'});
+          METHODS.forEach(function(m){
+            var opt=document.createElement('option'); opt.value=m.id; opt.textContent=m.label; if(p.method===m.id) opt.selected=true; sel.appendChild(opt);
+          });
+          sel.onchange=function(){ p.method=sel.value; if(p.method==='LOYALTY'){ syncLoyaltyFromPoints(); } renderPaySheet(); };
+          var amt=PWA.el('input',{class:'f-input', type:'number', inputmode:'decimal', value:String(p.amount||0), style:'width:112px;text-align:right;font-weight:900'});
+          amt.oninput=function(){ p.amount=Number(amt.value)||0; if(p.method==='LOYALTY'){ // back sync points
+            _loyaltyPoints = Math.round((Number(p.amount)||0)/(_loyaltyRate||1));
+            var pp=document.getElementById('payPoints'); if(pp) pp.value=String(_loyaltyPoints);
+          } updateSummaryAndFooter(); };
+          var fill=PWA.el('button',{class:'btn sm fill', style:'min-height:44px;min-width:52px', text:'Fill'});
+          fill.onclick=function(){
+            var others=_payments.reduce(function(a,x,i){ return a + (i===idx?0:(Number(x.amount)||0)); },0);
+            p.amount=Math.max(0, U2round(tot - others));
+            if(p.method==='LOYALTY'){ _loyaltyPoints=Math.round(p.amount/(_loyaltyRate||1)); var pp=document.getElementById('payPoints'); if(pp) pp.value=String(_loyaltyPoints); }
+            renderPaySheet();
+          };
+          var del=PWA.el('button',{class:'btn sm ghost', text:'✕', style:'width:44px;min-height:44px;font-weight:900;color:var(--err);border-radius:10px', title:'Remove'});
+          del.onclick=function(){ if(_payments.length>1){ _payments.splice(idx,1); if(p.method==='LOYALTY'){ _loyaltyPoints=0; var pp=document.getElementById('payPoints'); if(pp) pp.value='0'; } renderPaySheet(); } else { p.amount=0; renderPaySheet(); } };
+          row.appendChild(sel); row.appendChild(amt); row.appendChild(fill); row.appendChild(del);
+          host.appendChild(row);
+        });
+        // label hints for CREDIT/LOYALTY
+        // POINTS already separate
+      }
+      // POINTS
+      var ptsIn=document.getElementById('payPoints');
+      if(ptsIn){
+        ptsIn.value=String(_loyaltyPoints||0);
+        ptsIn.oninput=function(){
+          _loyaltyPoints=Math.max(0, Number(ptsIn.value)||0);
+          syncLoyaltyFromPoints();
+          renderPaySheet();
+        };
+      }
+      var hint=document.getElementById('paySettlementHint');
+      if(hint){
+        var d=document.getElementById('payDueDate'); var dv=d? d.value : '';
+        var totStr=tot? money(tot):'';
+        hint.textContent='Koi fee nahi - settlement '+(dv || '2026-09-21')+(totStr?' · '+totStr:'');
+      }
+      // Quick chips
+      var chips=document.getElementById('payQuickChips');
+      if(chips){
+        chips.innerHTML='';
+        var quick=[500,1000,2000,5000];
+        // Exact
+        var mkChip=function(label, onClick, isOn){
+          var b=PWA.el('button',{class:'chip2'+(isOn?' on':''), text:label});
+          b.onclick=onClick;
+          return b;
+        };
+        var paid=paidSum();
+        chips.appendChild(mkChip('Exact '+money(tot), function(){ _payments[0].amount=tot; if(_payments[0].method==='LOYALTY'){ _loyaltyPoints=Math.round(tot/(_loyaltyRate||1)); var pp=document.getElementById('payPoints'); if(pp) pp.value=String(_loyaltyPoints); } renderPaySheet(); }));
+        [10,100].forEach(function(step){
+          var v=Math.ceil(tot/step)*step;
+          if(v>tot) chips.appendChild(mkChip(money(v)+' (change '+money(v-tot)+')', function(){ _payments[0].amount=v; renderPaySheet(); }));
+        });
+        quick.filter(function(v){ return v>tot; }).slice(0,2).forEach(function(v){
+          chips.appendChild(mkChip(money(v), function(){ _payments[0].amount=v; renderPaySheet(); }));
+        });
+      }
+      // Loyalty card
+      var loy=document.getElementById('payLoyaltyCard');
+      if(loy){
+        loy.innerHTML='';
+        var bal=_loyaltyBalance, rate=_loyaltyRate;
+        var maxUse=Math.min(bal||0, Math.floor(tot/(rate||1)));
+        loy.appendChild(PWA.el('div',{class:'t'},[PWA.el('span',{text:'★ Loyalty points'}), PWA.el('span',{style:'margin-left:auto;font-size:11px;color:var(--muted)', text: _loyaltyEnabled? '':'Loyalty off'})]));
+        loy.appendChild(PWA.el('div',{class:'sub', text:'Balance: '+bal+' points ≈ '+money(bal*(rate||1))}));
+        loy.appendChild(PWA.el('div',{class:'sub', text:'Is bill par max '+maxUse+' points ('+money(maxUse*(rate||1))+') use ho sakte hain'}));
+        var row=PWA.el('div',{class:'loy-actions'});
+        var inp=PWA.el('input',{type:'number', min:'0', max:String(maxUse), value:String(_loyaltyPoints||0), style:'width:110px'});
+        inp.oninput=function(){ _loyaltyPoints=Math.max(0, Number(inp.value)||0); syncLoyaltyFromPoints(); renderPaySheet(); };
+        var btn=PWA.el('button',{class:'btn sm ok', text:'Redeem', style:'min-height:42px;font-weight:900'});
+        btn.onclick=function(){
+          if(_loyaltyPoints<=0) return PWA.toast('Points daalein','warn');
+          if(_loyaltyPoints>maxUse) return PWA.toast('Itne points use nahi ho sakte','err');
+          syncLoyaltyFromPoints();
+          PWA.toast(_loyaltyPoints+' points redeem ho gaye ('+money(Math.min(_loyaltyPoints*rate, tot))+')','ok');
+          renderPaySheet();
+        };
+        row.appendChild(inp); row.appendChild(btn);
+        // also allow manual redeem via points input above
+        loy.appendChild(row);
+      }
+      // Note
+      // Footer
+      var loyAmtVal=loyAmt();
+      var due2=Math.max(0, U2round(tot - paidSum()));
+      var la=document.getElementById('payLoyAmt'); if(la) la.textContent=money(loyAmtVal);
+      var du=document.getElementById('payDueVal'); if(du) du.textContent=money(due2);
+      // change indicator inside chips? also update payChange-like hint hidden
+      updateSummaryAndFooter();
+    }
+    function syncLoyaltyFromPoints(){
+      var tot=cartTotal();
+      var amt=Math.min(_loyaltyPoints*(_loyaltyRate||1), tot);
+      var ex=_payments.filter(function(p){ return String(p.method).toUpperCase()==='LOYALTY'; })[0];
+      if(ex){ ex.amount=amt; ex.points=_loyaltyPoints; }
+      else if(_loyaltyPoints>0){ _payments.push({method:'LOYALTY', amount:amt, points:_loyaltyPoints}); }
+      var pp=document.getElementById('payPoints'); if(pp) pp.value=String(_loyaltyPoints);
+    }
+    function updateSummaryAndFooter(){
+      var tot=cartTotal();
+      var sum=document.getElementById('paySummary');
+      if(sum){
+        var prev=Number(S._prevBal||0);
+        var paid=paidSum();
+        var amountOwed=U2round(prev + tot);
+        var closing=Math.max(0, U2round(amountOwed - paid));
+        var change=Math.max(0, U2round(paid - amountOwed));
+        sum.innerHTML='';
+        sum.appendChild(PWA.el('div',{class:'row'},[PWA.el('span',{text:'Previous balance'}), PWA.el('b',{text:money(prev)})]));
+        sum.appendChild(PWA.el('div',{class:'row'},[PWA.el('span',{text:'This invoice'}), PWA.el('b',{text:money(tot)})]));
+        sum.appendChild(PWA.el('div',{class:'row cash'},[PWA.el('span',{text:'Cash Paid'}), PWA.el('b',{text:'-'+money(paid), style:'color:var(--ok)'})]));
+        if(change>0.5) sum.appendChild(PWA.el('div',{class:'row'},[PWA.el('span',{text:'Change'}), PWA.el('b',{text:money(change), style:'color:var(--ok)'})]));
+        else sum.appendChild(PWA.el('div',{class:'row'},[PWA.el('span',{text:'Remaining amount'}), PWA.el('b',{text:money(Math.max(0, U2round(tot - paid)) ), style:'color:var(--muted)'})]));
+        sum.appendChild(PWA.el('div',{class:'row total closing'},[PWA.el('span',{text:'Closing balance'}), PWA.el('b',{text:money(closing), style:'color:'+(closing>0?'var(--err)':'var(--ok)')})]));
+        if(S._cust && S._cust.creditLimit) sum.appendChild(PWA.el('div',{class:'row', style:'font-size:11px;color:var(--muted)'},[PWA.el('span',{text:'Credit limit / Available'}), PWA.el('b',{text:money(S._cust.creditLimit)+' / '+money(Math.max(0, Number(S._cust.creditLimit)-Number(S._prevBal||0)))})]));
+      }
+      var la=document.getElementById('payLoyAmt'); if(la) la.textContent=money(loyAmt());
+      var _tot2=cartTotal(); var _prev2=Number(S._prevBal||0); var _paid2=paidSum(); var _closing2=Math.max(0, U2round(_prev2 + _tot2 - _paid2)); var du=document.getElementById('payDueVal'); if(du) du.textContent=money(_closing2);
+      var pp=document.getElementById('payPoints'); if(pp && document.activeElement!==pp) pp.value=String(_loyaltyPoints||0);
+    }
+    async function confirm(){
+      if(!S.cart.length) { return; }
+      var tot=cartTotal();
+      // validate: if CREDIT without customer, block
+      var hasCredit=_payments.some(function(p){ return String(p.method).toUpperCase()==='CREDIT'; });
+      if(hasCredit && !S.customerId) { return PWA.toast('Udhar ke liye customer choose karein','warn'); }
+      // build pays: filter >0 except CREDIT 0 allowed if credit sale
+      var rows=_payments.filter(function(p){ return Number(p.amount)>0; });
+      // keep CREDIT 0 if credit sale and no other pays
+      if(!rows.length && _payments.some(function(p){return p.method==='CREDIT';})){
+        var c=_payments.filter(function(p){return p.method==='CREDIT';})[0];
+        if(c) rows=[{method:'CREDIT', amount:Number(c.amount||0)}];
+      }
+      // ensure loyalty points attached
+      rows.forEach(function(r){ if(String(r.method).toUpperCase()==='LOYALTY'){ r.points=_loyaltyPoints; } });
+      var due=Math.max(0, U2round(Number(S._prevBal||0)+ tot - rows.reduce(function(a,p){return a+(Number(p.amount)||0);},0)));
+      // if not credit and due>0.5, block
+      var wantsCredit=rows.some(function(p){return String(p.method).toUpperCase()==='CREDIT';});
+      if(!wantsCredit && due>0.5){
+        return PWA.toast('Full payment required — baqi '+money(due)+' (Cash ya Udhaar select karein)','err');
+      }
+      var dueDate=document.getElementById('payDueDate')? document.getElementById('payDueDate').value : '';
+      var note=document.getElementById('payNote')? document.getElementById('payNote').value.trim() : '';
+      /* v2.25.9 W2.T2 — manual '⏳ Processing…' hack ki jagah shared PWA.run:
+         sirf isi button par spinner + elapsed, duplicate tap block (double sale
+         se bachao), aur ✓/✖ flash. Validations PWA.run se PEHLE (busy state
+         sirf asli network kaam par lage). */
+      var btn=document.getElementById('payConfirmBtn');
+      return PWA.run(btn, async function(){
+      try{
+        var pays=rows.length? rows : _payments.filter(function(p){return Number(p.amount)>0;});
+        // ensure dueDate for credit rows
+        if(dueDate) pays.forEach(function(p){ if(String(p.method).toUpperCase()==='CREDIT') p.dueDate=dueDate; });
+        var r=await PWA.call('pwa.pos.sell',{
+          locationId:PWA.data.locationId,
+          customerId:S.customerId, customerName:S.customerName||'Walk-in Customer',
+          discount:Number(S.discount)||0,
+          total: tot,
+          payments: pays,
+          dueDate: dueDate,
+          note: note,
+          loyaltyPointsUsed: _loyaltyPoints,
+          pointsRedeemed: _loyaltyPoints,
+          items: S.cart.map(function(l){ return {itemId:l.itemId, qty:l.qty, price:l.price}; })
+        }, {queueable:true});
+        if(r && r.queued){
+          PWA.toast('Offline — queued','warn');
+          S.cart=[]; S.discount=0;
+          try{ if(window._posRenderCart) window._posRenderCart(); }catch(e){}
+          try{ if(window._posRenderPay) window._posRenderPay(); }catch(e){}
+          try{ if(window._posUpdateBar) window._posUpdateBar(); }catch(e){}
+          window.PosCart&&window.PosCart.updateBadge(); close(); PWA.updateNet(); return;
+        }
+        var saleForReceipt = {
+          id: r.id || ('SAL-'+Date.now()),
+          invoiceNo: r.invoiceNo || ('POS-'+Date.now().toString().slice(-6)),
+          date: new Date().toISOString(),
+          locationId: PWA.data.locationId,
+          customerId: S.customerId, customerName: S.customerName||'Walk-in Customer',
+          customerPhone: (S._cust && S._cust.phone) || '',
+          salesman: (PWA.data && PWA.data.user && PWA.data.user.name) || (PWA.state && PWA.state.user && PWA.state.user.name) || '',
+          items: JSON.parse(JSON.stringify(S.cart)),
+          subtotal: cartSubtotal(), discount: Number(S.discount)||0, total: tot,
+          payments: pays,
+          loyaltyPointsUsed: _loyaltyPoints,
+          pointsRedeemed: _loyaltyPoints,
+          loyaltyAmount: loyAmt(),
+          prevBalance: S._prevBal||0, closingBalance: Math.max(0, Math.round((Number(S._prevBal||0)+ tot - pays.reduce(function(a,p){return a+(Number(p.amount)||0);},0))*100)/100),
+          dueDate: dueDate, note: note
+        };
+        LAST_SALE = saleForReceipt;
+        close();
+        window.PosCart && window.PosCart.close();
+        PWA.toast('✅ '+(saleForReceipt.invoiceNo)+' '+money(tot),'ok');
+        S.cart=[]; S.discount=0; _payments=[{method:'CASH', amount:0}]; _loyaltyPoints=0;
+        try{ if(window._posRenderCart) window._posRenderCart(); else if(typeof renderCart==='function') renderCart(); }catch(e){ }
+        try{ if(window._posRenderPay) window._posRenderPay(); else if(typeof renderPay==='function') renderPay(); }catch(e){ }
+        try{ if(window._posUpdateBar) window._posUpdateBar(); else if(typeof updateBar==='function') updateBar(); }catch(e){ }
+        window.PosCart&&window.PosCart.updateBadge();
+        try{ if(typeof syncCustClosing==='function') syncCustClosing(); }catch(e){ }
+        try{ if(window._posRenderGrid) window._posRenderGrid(); }catch(e){}
+        window.Receipt && window.Receipt.open(saleForReceipt);
+        try{ PWA.reload && PWA.reload(); }catch(e){}
+      }catch(e){
+        PWA.toast(e.message||'Sale failed','err');
+      }
+      }, { busyLabel: 'Sale complete ho rahi hai', okLabel: 'Complete', timeoutMs: 90000, write: true, writeLabel: 'sale' });
+    }
+    document.addEventListener('keydown', function(e){ if(e.key==='Escape' && posTopLayer()==='posPayLayer') close(); });
+    return {open:open, close:close, confirm:confirm, render:renderPaySheet};
+  })();
+
+  // ===== Receipt =====
+  window.Receipt = (function(){
+    var layer=null;
+    function els(){ layer=document.getElementById('posReceiptLayer'); return layer; }
+    function open(sale){
+      els(); if(!layer) return;
+      LAST_SALE = sale || LAST_SALE;
+      var s = LAST_SALE;
+      if(!s) return;
+      var badge=document.getElementById('receiptNoBadge'); if(badge) badge.textContent=s.invoiceNo;
+      var prev=document.getElementById('receiptPreview');
+      if(prev) prev.innerHTML = receiptHtml(s);
+      layer.classList.add('open'); layer.setAttribute('aria-hidden','false'); document.body.style.overflow='hidden';
+    }
+    function close(){ els(); if(!layer) return; layer.classList.remove('open'); layer.setAttribute('aria-hidden','true'); posSyncScrollLock(); try{ window.PWA && PWA.sweepStale && PWA.sweepStale(); }catch(e){} }
+    function receiptHtml(s){
+      var cfg=(PWA.data && PWA.data.config && PWA.data.config.app) || {};
+      var business = cfg.name || cfg.shortName || 'Haseeb Autos';
+      var phone = (PWA.data && PWA.data.config && PWA.data.config.businessPhone) || '';
+      var addr = (PWA.data && PWA.data.config && PWA.data.config.businessAddr) || '';
+      var dp=2, cur='Rs';
+      try{
+        var st=(PWA.data && PWA.data.config && PWA.data.config.settings) || {};
+        if(st.printDecimals!==undefined) dp=Math.max(0,Math.min(4, Number(st.printDecimals)));
+        if(st.currencySymbol) cur=st.currencySymbol;
+      }catch(e){}
+      var money=function(v){ return cur+' '+Number(v||0).toLocaleString('en-US',{minimumFractionDigits:dp, maximumFractionDigits:dp}); };
+      var esc=function(t){ return String(t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); };
+      var rows=(s.items||[]).map(function(it,i){
+        return '<tr><td style="text-align:center">'+(i+1)+'</td><td><div style="font-weight:800">'+esc(it.name)+'</div><div style="font-size:11px;color:#64748b">'+esc(it.code||'')+(it.category?' · '+esc(it.category):'')+'</div></td><td style="text-align:center">'+it.qty+'</td><td style="text-align:right">'+money(it.price)+'</td><td style="text-align:right;font-weight:800">'+money(it.qty*it.price)+'</td></tr>';
+      }).join('');
+      var loyPays=(s.payments||[]).filter(function(p){ return String(p.method).toUpperCase()==='LOYALTY'; });
+      var cashPays=(s.payments||[]).filter(function(p){ return String(p.method).toUpperCase()!=='LOYALTY' && String(p.method).toUpperCase()!=='CREDIT'; });
+      var creditPays=(s.payments||[]).filter(function(p){ return String(p.method).toUpperCase()==='CREDIT'; });
+      var loyAmt=loyPays.reduce(function(a,p){ return a+Number(p.amount||0); },0);
+      var loyPts=Number(s.loyaltyPointsUsed||s.pointsRedeemed|| (loyPays[0]&&loyPays[0].points) || 0);
+      var cashAmt=cashPays.reduce(function(a,p){ return a+Number(p.amount||0); },0);
+      var pays=(s.payments||[]).map(function(p){ var m=esc(p.method); if(String(p.method).toUpperCase()==='LOYALTY') m='PAID BY Loyalty Points'; return m+' '+money(p.amount); }).join(' + ') || money(s.total);
+      return ''+
+        '<div style="text-align:center;border-bottom:1px dashed #cbd5e1;padding-bottom:10px;margin-bottom:10px">'+
+          '<div style="font-size:16px;font-weight:900">'+esc(business)+'</div>'+
+          (addr?'<div style="font-size:11px;color:#64748b">'+esc(addr)+'</div>':'')+
+          (phone?'<div style="font-size:11px;color:#64748b">'+esc(phone)+'</div>':'')+
+          '<div style="margin-top:8px;display:inline-block;padding:4px 10px;border:1px solid #e2e8f0;border-radius:999px;font-size:11px;font-weight:800;letter-spacing:.3px">CASH RECEIPT</div>'+
+        '</div>'+
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;font-size:12px;margin-bottom:10px">'+
+          '<div><span style="color:#64748b">Invoice</span><br><b>'+esc(s.invoiceNo)+'</b></div>'+
+          '<div style="text-align:right"><span style="color:#64748b">Date</span><br><b>'+esc(String(s.date||'').slice(0,16).replace("T"," "))+'</b></div>'+
+          '<div><span style="color:#64748b">Customer</span><br><b>'+esc(s.customerName||'Walk-in')+'</b>'+(s.customerPhone?' <small style="color:#64748b">'+esc(s.customerPhone)+'</small>':'')+'</div>'+
+          '<div style="text-align:right"><span style="color:#64748b">Salesman</span><br><b>'+esc(s.salesman||'-')+'</b></div>'+
+        '</div>'+
+        '<table style="width:100%;border-collapse:collapse;font-size:12px;margin:8px 0">'+
+          '<thead><tr style="background:#f1f5f9"><th style="padding:6px;border:1px solid #e2e8f0;width:28px">#</th><th style="padding:6px;border:1px solid #e2e8f0;text-align:left">Item</th><th style="padding:6px;border:1px solid #e2e8f0;width:40px">Qty</th><th style="padding:6px;border:1px solid #e2e8f0;width:72px;text-align:right">Rate</th><th style="padding:6px;border:1px solid #e2e8f0;width:84px;text-align:right">Amount</th></tr></thead>'+
+          '<tbody>'+rows+'</tbody>'+
+        '</table>'+
+        '<div style="display:grid;gap:4px;font-size:12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:10px">'+
+          '<div style="display:flex;justify-content:space-between"><span>Subtotal</span><b>'+money(s.subtotal)+'</b></div>'+
+          '<div style="display:flex;justify-content:space-between"><span>Discount</span><span>-'+money(s.discount)+'</span></div>'+
+          '<div style="display:flex;justify-content:space-between;font-size:14px;font-weight:900;border-top:1px solid #e2e8f0;padding-top:6px;margin-top:2px"><span>Total</span><span>'+money(s.total)+'</span></div>'+
+          '<div style="display:flex;justify-content:space-between"><span>Payment</span><span style="font-weight:700">'+esc(pays)+'</span></div>'+
+          (loyAmt? '<div style="display:flex;justify-content:space-between;color:#0a7a2b;font-weight:800"><span>PAID BY Loyalty Points'+(loyPts?' ('+loyPts+' pts)':'')+'</span><span>'+money(loyAmt)+'</span></div>' : '')+
+          (cashAmt? '<div style="display:flex;justify-content:space-between"><span>Cash Paid</span><span>-'+money(cashAmt+loyAmt)+'</span></div>' : '')+
+          (creditPays.length? '<div style="display:flex;justify-content:space-between"><span>Credit (udhaar)</span><span>'+money(creditPays.reduce(function(a,p){return a+Number(p.amount||0);},0))+'</span></div>' : '')+
+          '<div style="display:flex;justify-content:space-between"><span>Prev balance</span><span>'+money(s.prevBalance)+'</span></div>'+
+          '<div style="display:flex;justify-content:space-between;font-weight:900"><span>Closing</span><span>'+money(s.closingBalance)+'</span></div>'+
+          (loyPts? '<div style="display:flex;justify-content:space-between;font-size:11px;color:#64748b"><span>Points redeemed</span><span>'+loyPts+' pts</span></div>' : '')+
+          (s.dueDate? '<div style="display:flex;justify-content:space-between;font-size:11px;color:#64748b"><span>Promised date</span><span>'+esc(s.dueDate)+'</span></div>' : '')+
+        '</div>'+
+        '<div style="text-align:center;margin-top:10px"><div style="display:inline-block;padding:6px 10px;border:1px dashed #cbd5e1;border-radius:10px;font-size:11px">Barcode: <b style="letter-spacing:1px">'+esc(s.invoiceNo)+'</b> · QR for verify</div><div style="font-size:10px;color:#64748b;margin-top:6px">Thank you — Visit again! · Warranty / returns per shop policy</div></div>';
+    }
+    function print(){
+      var s=LAST_SALE; if(!s) return PWA.toast('No invoice','warn');
+      var html='<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'+String(s.invoiceNo).replace(/</g,'&lt;')+'</title><style>@page{size:80mm auto;margin:4mm}*{box-sizing:border-box}body{margin:0;padding:4mm;font:12px/1.5 system-ui, -apple-system, Segoe UI, Roboto;color:#0f172a} @media print{ .no-print{display:none} } .wrap{max-width:80mm;margin:0 auto} table th,table td{padding:5px}</style></head><body><div class="wrap">'+document.getElementById('receiptPreview').innerHTML+'<div class="no-print" style="text-align:center;margin-top:12px"><button onclick="window.print()" style="padding:10px 16px;border-radius:10px;border:1px solid #cbd5e1;background:#f59e0b;color:#1a1206;font-weight:800">Print</button> <button onclick="window.close()" style="padding:10px 16px;border-radius:10px;border:1px solid #cbd5e1;background:#fff">Close</button></div></div></body></html>';
+      // Use hidden iframe to avoid popup blocker (works in demo & PWA)
+      try{
+        var ifr=document.getElementById('__printFrame');
+        if(!ifr){
+          ifr=document.createElement('iframe');
+          ifr.id='__printFrame';
+          ifr.style.position='fixed'; ifr.style.right='0'; ifr.style.bottom='0';
+          ifr.style.width='0'; ifr.style.height='0'; ifr.style.border='0';
+          ifr.style.visibility='hidden';
+          document.body.appendChild(ifr);
+        }
+        var doc=ifr.contentDocument || ifr.contentWindow.document;
+        doc.open(); doc.write(html); doc.close();
+        setTimeout(function(){
+          try{
+            var win=ifr.contentWindow;
+            win.focus();
+            win.print();
+            PWA.toast('Printing…','ok');
+          }catch(e){
+            // fallback to window.open if iframe fails
+            var w=window.open('', '_blank');
+            if(w){ w.document.open(); w.document.write(html); w.document.close(); w.focus(); setTimeout(function(){ try{ w.print(); }catch(e){} }, 400); }
+            else { PWA.toast('Print blocked — allow popups or use PDF','warn'); }
+          }
+        }, 420);
+      }catch(e){
+        try{
+          var w2=window.open('', '_blank');
+          if(w2){ w2.document.open(); w2.document.write(html); w2.document.close(); w2.focus(); setTimeout(function(){ try{ w2.print(); }catch(e){} }, 400); }
+          else PWA.toast('Print failed: '+e.message,'err');
+        }catch(e2){ PWA.toast('Print failed: '+e2.message,'err'); }
+      }
+    }
+    function share(){
+      var s=LAST_SALE; if(!s) return;
+      var text=''+(s.invoiceNo)+' | '+s.customerName+' | Total '+PWA.money(s.total)+' | '+ (s.items||[]).map(function(i){return i.name+'x'+i.qty;}).join(', ').slice(0,600);
+      var title='Invoice '+s.invoiceNo;
+      if(navigator.share){
+        navigator.share({title:title, text:text}).catch(function(){});
+      } else if(navigator.clipboard){
+        navigator.clipboard.writeText(title+'\n'+text).then(function(){ PWA.toast('Receipt copied','ok'); }).catch(function(){ prompt('Copy receipt', title+'\n'+text); });
+      } else { prompt('Copy receipt', title+'\n'+text); }
+    }
+    function pdf(){
+      var s=LAST_SALE; if(!s) return;
+      // v2.23.11 FIX: Thermal receipt saved as PDF must keep 80mm, not A4 — paper-aware.
+      // Uses same 80mm layout as print so thermal printer and PDF match.
+      var paperStyle = '@page{size:80mm auto;margin:4mm}*{box-sizing:border-box}body{margin:0;padding:4mm;font:12px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#0f172a} .wrap{max-width:80mm;margin:0 auto} table th,table td{padding:5px} @media print{ .no-print{display:none} }';
+      var html='<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'+String(s.invoiceNo).replace(/</g,'&lt;')+'</title><style>'+paperStyle+'</style></head><body><div class="wrap">'+document.getElementById('receiptPreview').innerHTML+'</div><div style="text-align:center;margin-top:10px;font-size:11px;color:#64748b">80mm thermal receipt — PDF keeps thermal size</div></body></html>';
+      var blob=new Blob([html],{type:'text/html'});
+      var url=URL.createObjectURL(blob);
+      var a=document.createElement('a'); a.href=url; a.download=(s.invoiceNo||'receipt')+'-80mm.html'; document.body.appendChild(a); a.click();
+      setTimeout(function(){ try{URL.revokeObjectURL(url);}catch(e){} try{a.remove();}catch(e){} }, 2000);
+      PWA.toast('PDF (80mm thermal) downloaded — open & print to save as PDF','ok');
+    }
+    function wa(){
+      var s=LAST_SALE; if(!s) return;
+      var phone=(s.customerPhone||'').replace(/[^0-9]/g,'');
+      var text='Invoice '+s.invoiceNo+'\nCustomer: '+s.customerName+'\nTotal: '+PWA.money(s.total)+'\nItems: '+(s.items||[]).map(function(i){return i.name+' x'+i.qty;}).join(', ');
+      var url;
+      if(phone){
+        // try wa.me with phone, else generic share
+        url='https://wa.me/'+phone+'?text='+encodeURIComponent(text);
+      } else {
+        url='https://wa.me/?text='+encodeURIComponent(text);
+      }
+      window.open(url, '_blank');
+    }
+    function newSale(){ close(); try{ render('sell'); }catch(e){} PWA.toast('New sale ready','ok'); }
+    document.addEventListener('keydown', function(e){ if(e.key==='Escape' && posTopLayer()==='posReceiptLayer') close(); });
+    return {open:open, close:close, print:print, share:share, pdf:pdf, wa:wa, newSale:newSale};
+  })();
+
+  function render(tab){
+    var body=PWA.$('#pwaBody'); body.innerHTML=''; PWA.state.tab=tab;
+    if(tab==='sell') return viewSell(body);
+    if(tab==='held') return viewHeld(body);
+    if(tab==='recent') return viewRecent(body);
+  }
+
+  function viewSell(body){
+    var custs=customers();
+    var counts=catCounts();
+    var custField=PWA.createCustomerField({
+      label:'Customer',
+      placeholder:'Walk-in or search name / phone…',
+      customers:custs,
+      value:S.customerName,
+      selectedId:S.customerId,
+      hintId:'posCustHint',
+      onSelect:function(m, typed){
+        S.customerId=m?m.id:''; S.customerName=m?m.name:(typed||'Walk-in Customer');
+        S._cust=m||null;
+        if(m) PWA.toast(m.name+' • '+(m.priceTier||'RETAIL'),'ok');
+        updateCustInfo(); fetchDemand();
+        renderCart(); renderPay(); updateBar(); window.PosCart&&window.PosCart.updateBadge(); syncCustClosing();
+      }
+    });
+    S._cust = custs.filter(function(c){ return c.id===S.customerId; })[0] || null;
+    S._prevBal = S._cust ? Number(S._cust.bal||0) : 0;
+
+    // customer summary
+    var custAvatar = PWA.el('div',{id:'custAvatar', style:'width:44px;height:44px;border-radius:12px;background:var(--card2);border:1px solid var(--line);display:grid;place-items:center;font-weight:900;font-size:16px;color:var(--muted)'}, S._cust ? String(S.customerName||'W').charAt(0).toUpperCase() : '👤');
+    var custNameEl = PWA.el('b',{id:'custNameEl', style:'font-size:14px;font-weight:900;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis', text: S.customerName || 'Walk-in Customer'});
+    var custSubEl = PWA.el('div',{id:'custSubEl', style:'font-size:12px;color:var(--muted)', text: S._cust ? ((S._cust.phone? S._cust.phone+' · ':'')+(S._cust.priceTier||'RETAIL')) : 'Tap to select customer · Retail price'});
+    var custBalEl = PWA.el('div',{id:'custBalEl', style:'text-align:right;min-width:96px'},[
+      PWA.el('div',{id:'custPrevBal', style:'font-size:11px;color:var(--muted)', text: S._cust ? 'Prev '+PWA.money(S._prevBal) : ''}),
+      PWA.el('div',{id:'custClosingBal', style:'font-size:13px;font-weight:900', text: S._cust ? PWA.money(S._prevBal + cartTotal()) : ''})
+    ]);
+    var custCreditEl = PWA.el('div',{id:'custCreditEl', 'data-family':'finance', style:'font-size:11px;color:var(--muted);margin-top:4px;display:none'});
+    var custHistEl = PWA.el('div',{id:'custHistEl', 'data-family':'finance', style:'font-size:11px;color:var(--muted);margin-top:6px;display:none'});
+    var custRow = PWA.el('div',{id:'custRow', class:'cust-summary'+(S._cust?' has-cust':''), style:''},[
+      custAvatar,
+      PWA.el('div',{style:'flex:1;min-width:0'},[custNameEl, custSubEl, custCreditEl, custHistEl]),
+      custBalEl
+    ]);
+    function updateCustInfo(){
+      var c = S._cust || custs.filter(function(x){ return x.id===S.customerId; })[0] || null;
+      S._cust=c;
+      var row=document.getElementById('custRow');
+      if(row) row.className='cust-summary'+(c?' has-cust':'');
+      if(c){
+        custAvatar.textContent=String(c.name||'C').charAt(0).toUpperCase();
+        custAvatar.style.background='var(--accent)'; custAvatar.style.color='var(--accent-ink)'; custAvatar.style.borderColor='var(--accent)';
+        custNameEl.textContent=c.name;
+        var creditTxt = '';
+        if(c.creditLimit) creditTxt = ' · Limit '+PWA.money(c.creditLimit)+' · Avail '+PWA.money(Math.max(0, Number(c.creditLimit)-Number(c.bal||0)));
+        custSubEl.textContent=(c.phone? c.phone+' · ':'')+(c.priceTier||'RETAIL')+(c.bal? ' · Due '+PWA.money(c.bal):' · No dues')+creditTxt;
+        // credit and rating
+        var ce=document.getElementById('custCreditEl');
+        if(ce && !PWA.field('finance')) { ce.style.display='none'; ce.hidden=true; }   /* v2.28.0 (W5) */
+        if(ce && PWA.field('finance')){
+          var avail = c.creditLimit? Math.max(0, Number(c.creditLimit)-Number(c.bal||0)) : null;
+          var status = Number(c.bal||0)<=0? 'Clear' : (c.creditLimit && Number(c.bal)>Number(c.creditLimit)? 'OVER LIMIT' : (Number(c.bal)>Number(c.creditLimit)*0.8? 'Near limit':'Due'));
+          var availTxt = avail!==null? ' · Available '+PWA.money(avail) : '';
+          ce.style.display='block';
+          ce.textContent='Credit: '+PWA.money(c.creditLimit||0)+availTxt+' · Status: '+status;
+        }
+        // fresh ledger + history
+        try{
+          PWA.shared('parties.balance|CUSTOMER|'+c.id, function(){ return PWA.call('parties.balance',{partyType:'CUSTOMER', id:c.id},{offlineFallback:function(){return {balance:Number(c.bal||0)}}}); }, 30000)   /* v2.27.0 W3.T4 */
+            .then(function(r){
+              var bal=r && typeof r.balance!=='undefined'? Number(r.balance): Number(c.bal||0);
+              S._prevBal=bal;
+              var a=document.getElementById('custPrevBal'); if(a) a.textContent='Prev '+PWA.money(bal);
+              var b=document.getElementById('custClosingBal'); if(b) b.textContent=PWA.money(Math.max(0, bal+cartTotal()));
+              if(ce && c.creditLimit) ce.textContent='Credit: '+PWA.money(c.creditLimit)+' · Available '+PWA.money(Math.max(0, Number(c.creditLimit)-bal))+' · Outstanding '+PWA.money(bal);
+              syncCustClosing();
+            }).catch(function(){ S._prevBal=Number(c.bal||0); syncCustClosing(); });
+          // history via parties.customerHistory if available
+          PWA.shared('parties.history|'+c.id+'|3', function(){ return PWA.call('parties.customerHistory',{customerId:c.id, limit:3},{offlineFallback:function(){return null}}); }, 60000)
+            .then(function(h){
+              var he=document.getElementById('custHistEl');
+              if(!he || !h) return;
+              if(!PWA.field('finance')) { he.style.display='none'; he.hidden=true; return; }   /* v2.28.0 (W5) */
+              var sales=(h.recentSales||[]).slice(0,2).map(function(s){return s.invoiceNo+' '+PWA.money(s.total);}).join(' · ');
+              var rets=(h.recentReturns||[]).length? ' · Returns:'+h.recentReturns.length : '';
+              var rating=h.credit? ' · Rating '+(h.credit.rating||'-')+'/5' : '';
+              he.style.display='block';
+              he.textContent=(sales? 'Last: '+sales : 'No history')+rets+rating;
+            }).catch(function(){});
+        }catch(e){ S._prevBal=Number(c.bal||0); }
+        var a=document.getElementById('custPrevBal'); if(a) a.textContent='Prev '+PWA.money(S._prevBal);
+        var b=document.getElementById('custClosingBal'); if(b) b.textContent=PWA.money(Math.max(0, S._prevBal+cartTotal()));
+      } else {
+        custAvatar.textContent='👤'; custAvatar.style.background='var(--card2)'; custAvatar.style.color='var(--muted)'; custAvatar.style.borderColor='var(--line)';
+        custNameEl.textContent=S.customerName||'Walk-in Customer';
+        custSubEl.textContent='Tap to select customer · Retail price';
+        S._prevBal=0;
+        var a=document.getElementById('custPrevBal'); if(a) a.textContent='';
+        var b=document.getElementById('custClosingBal'); if(b) b.textContent='';
+        var ce=document.getElementById('custCreditEl'); if(ce) ce.style.display='none';
+        var he=document.getElementById('custHistEl'); if(he) he.style.display='none';
+      }
+      syncCustClosing();
+    }
+
+    var custCard=PWA.el('div',{class:'card'},[
+      PWA.el('h3',{text:'Customer'}),
+      custField.wrap,
+      PWA.el('div',{class:'muted', id:'posCustHint', style:'font-size:12px;margin-top:6px;display:none'}, S.customerName||'Walk-in Customer'),
+      custRow,
+      PWA.el('div',{id:'posDemandHost', class:'demand-host'})
+    ]);
+    body.appendChild(custCard);
+
+    function fetchDemand(){
+      var host=document.getElementById('posDemandHost'); if(!host) return;
+      if(!S.customerId){ host.innerHTML=''; return; }
+      host.innerHTML='<div class="muted" style="font-size:12px">⏳ Loading demands…</div>';
+      PWA.call('demand.posRecommend',{customerId:S.customerId, locationId:PWA.data.locationId, limit:4},{offlineFallback:function(){return {demands:[], related:[]}}})
+        .then(function(r){
+          if(!r || !r.demands || !r.demands.length){
+            if(r && r.related && r.related.length){
+              host.innerHTML='<div style="font-size:12px;color:var(--muted)">💡 Related: '+r.related.slice(0,3).map(function(x){return esc(x.name)}).join(', ')+'</div>';
+            } else host.innerHTML='';
+            return;
+          }
+          host.innerHTML='';
+          host.appendChild(PWA.el('div',{style:'font-size:12px;font-weight:800;display:flex;justify-content:space-between'},[
+            PWA.el('span',{text:'📝 Demands for '+(r.customerName||S.customerName)}),
+            PWA.el('span',{style:'color:var(--muted)', text: r.summary.arrived ? r.summary.arrived+' arrived!' : r.summary.outstanding+' pending'})
+          ]));
+          r.demands.slice(0,4).forEach(function(d){
+            var row=PWA.el('div',{class:'demand-row'+(d.isArrived?' arrived':'')});
+            row.appendChild(PWA.el('div',{style:'flex:1;min-width:0'},[
+              PWA.el('b',{text:d.itemName}),
+              PWA.el('div',{style:'font-size:11px;color:var(--muted)', text: d.qty+' × '+d.status+(d.isArrived?' · '+d.stock+' in stock ✅':' · '+d.stock+' stock')+(d.category?' · '+d.category:'')})
+            ]));
+            if(d.itemId){
+              var btn=PWA.el('button',{class:'btn sm '+(d.isArrived?'ok':'ghost'), text: d.isArrived?'Add':'View'});
+              btn.onclick=function(){
+                var it=items().filter(function(x){return String(x.id)===String(d.itemId);})[0];
+                if(it && d.canFulfill) { addToCart(it, Number(d.qty)||1); PWA.toast('Added from demand','ok'); }
+                else if(it) addToCart(it,1);
+                else PWA.toast('Not in catalog: '+d.itemName,'warn');
+              };
+              row.appendChild(btn);
+            }
+            host.appendChild(row);
+          });
+          if(r.related && r.related.length) host.appendChild(PWA.el('div',{style:'font-size:11px;color:var(--muted)', text:'💡 Also: '+r.related.slice(0,2).map(function(x){return x.name+' ('+x.stock+')'}).join(', ')}));
+        }).catch(function(){ host.innerHTML=''; });
+    }
+    setTimeout(function(){ updateCustInfo(); fetchDemand(); }, 160);
+    function esc(t){ return String(t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+    // KPI
+    var kpi=PWA.el('div',{class:'kpi'},[
+      PWA.el('div',{class:'k'},[PWA.el('small',{text:'Items'}), PWA.el('b',{id:'kpiItems', text: String(items().length)})]),
+      PWA.el('div',{class:'k'},[PWA.el('small',{text:'Cart'}), PWA.el('b',{id:'kpiCart', text:'0 pcs'})]),
+      PWA.el('div',{class:'k'},[PWA.el('small',{text:'Payable'}), PWA.el('b',{id:'kpiPay', text:PWA.money(0)})]),
+      PWA.el('div',{class:'k'},[PWA.el('small',{text:'Closing'}), PWA.el('b',{id:'kpiClose', text:S._cust? PWA.money(S._prevBal):'—'})])
+    ]);
+    body.appendChild(kpi);
+    function updateKpi(){
+      var a=document.getElementById('kpiCart'); if(a) a.textContent=cartQty()+' pcs · '+S.cart.length+' lines';
+      var b=document.getElementById('kpiPay'); if(b) b.textContent=PWA.money(cartTotal());
+      var c=document.getElementById('kpiClose'); if(c) c.textContent=S._cust? PWA.money((S._prevBal||0)+cartTotal()): PWA.money(cartTotal());
+    }
+
+    // Search + actions
+    var qInput=PWA.el('input',{type:'search', placeholder:'Search name, code, barcode…  —  tap 📷 to scan', 'aria-label':'Search items', autocomplete:'off', onkeydown:function(e){ if(e.key==='Enter'){ e.preventDefault(); var q=String(qInput.value||'').trim(); if(!q) return; var hit=items().filter(function(i){return String(i.barcode)===String(q) || String(i.code).toLowerCase()===String(q).toLowerCase();})[0]; if(hit){ addToCart(hit,1); PWA.toast('Scanned '+hit.code,'ok'); qInput.value=''; S.q=''; searchWrap.className='pos-search'; renderChips(); renderGrid(); qInput.focus(); } else { PWA.toast('Barcode not found: '+q,'warn'); qInput.value=''; S.q=''; searchWrap.className='pos-search'; renderChips(); renderGrid(); } } }});
+    qInput.value=S.q;
+    var clearBtn=PWA.el('button',{class:'clear', 'aria-label':'Clear search', onclick:function(){ qInput.value=''; S.q=''; qInput.dispatchEvent(new Event('input',{bubbles:true})); qInput.focus(); }}, '✕');
+    var searchWrap=PWA.el('div',{class:'pos-search'+(S.q?' has-value':'')},[ qInput, clearBtn ]);
+    qInput.addEventListener('input', function(){
+      S.q=qInput.value;
+      searchWrap.className='pos-search'+(S.q?' has-value':'');
+      renderChips(); renderGrid(); updateKpi();
+    });
+    // Debounce hint for barcode exact
+    var scanBtn=PWA.el('button',{class:'act', text:'📷', title:'Scan barcode', 'aria-label':'Scan'});
+    var bulkBtn=PWA.el('button',{class:'act', text:'☑', title:'Bulk add', 'aria-label':'Bulk'});
+    scanBtn.onclick=function(){
+      if(PWA.scanWithCamera) PWA.scanWithCamera(function(code){
+        var clean=String(code||'').trim();
+        if(!clean) return;
+        qInput.value=clean; S.q=clean; searchWrap.className='pos-search has-value'; renderChips(); renderGrid();
+        var hit=items().filter(function(i){return String(i.barcode)===String(clean) || String(i.code).toLowerCase()===String(clean).toLowerCase();})[0];
+        if(hit){ addToCart(hit,1); PWA.toast('Scanned '+hit.code,'ok'); qInput.value=''; S.q=''; searchWrap.className='pos-search'; renderChips(); renderGrid(); qInput.focus(); }
+        else { PWA.toast('Barcode not found: '+clean,'warn'); qInput.value=''; S.q=''; searchWrap.className='pos-search'; renderChips(); renderGrid(); qInput.focus(); }
+      });
+      else { var c=prompt('Enter barcode'); if(c){ qInput.value=c; S.q=c; renderChips(); renderGrid(); } }
+    };
+    // Bulk: toggle inline checkboxes + also modal on long-press / second tap
+    S.bulkPicked = S.bulkPicked || {};
+    function bulkCount(){ return Object.keys(S.bulkPicked).length; }
+    function renderBulkBar(){
+      var host=document.getElementById('posGrid');
+      var bar=document.getElementById('bulkBar');
+      if(!host) return;
+      var n=bulkCount();
+      if(!S.bulkMode){ if(bar) bar.remove(); return; }
+      if(!bar){
+        bar=PWA.el('div',{id:'bulkBar', class:'bulk-bar'});
+        host.parentNode.insertBefore(bar, host.nextSibling);
+      }
+      bar.innerHTML='';
+      var totalQty=Object.keys(S.bulkPicked).reduce(function(a,k){ return a + Number(S.bulkPicked[k].qty||1); },0);
+      bar.appendChild(PWA.el('b',{text: n+' selected · qty '+totalQty}));
+      var clear=PWA.el('button',{class:'btn ghost sm', text:'Clear'});
+      clear.onclick=function(){ S.bulkPicked={}; renderGrid(); renderBulkBar(); };
+      var add=PWA.el('button',{class:'btn primary sm', text:'Add selected ('+n+')'});
+      add.onclick=function(){
+        var picks=Object.keys(S.bulkPicked).map(function(k){ return S.bulkPicked[k]; });
+        if(!picks.length) return PWA.toast('Koi item select nahi','warn');
+        picks.forEach(function(p){ addToCart({id:p.item.id, code:p.item.code, name:p.item.name, retail:p.item.retail, wholesale:p.item.wholesale, stock:p.item.stock, category:p.item.category}, p.qty); });
+        PWA.toast(picks.length+' added','ok');
+        S.bulkPicked={}; S.bulkMode=false; bulkBtn.classList.remove('on'); bulkBtn.textContent='☑'; renderGrid(); renderBulkBar();
+      };
+      bar.appendChild(clear); bar.appendChild(add);
+      // also modal shortcut
+      var more=PWA.el('button',{class:'btn ghost sm', text:'⋯ Modal'});
+      more.onclick=function(){ if(PWA.openBulkPicker) PWA.openBulkPicker({items:items(), title:'Bulk add — POS', onAdd:function(picks){ picks.forEach(function(p){ addToCart({id:p.item.id, code:p.item.code, name:p.item.name, retail:p.item.retail, wholesale:p.item.wholesale, stock:p.item.stock}, p.qty); }); PWA.toast(picks.length+' added','ok'); }}); };
+      bar.appendChild(more);
+    }
+    bulkBtn.onclick=function(){
+      // first toggle inline bulk mode; if already on, open modal as second action
+      S.bulkMode = !S.bulkMode;
+      if(S.bulkMode){
+        bulkBtn.classList.add('on'); bulkBtn.textContent='☒'; bulkBtn.title='Bulk ON — select via checkboxes';
+        PWA.toast('Bulk select ON — cards par tick karein','ok');
+      } else {
+        bulkBtn.classList.remove('on'); bulkBtn.textContent='☑'; S.bulkPicked={};
+      }
+      renderGrid(); renderBulkBar();
+    };
+    // long press opens modal directly
+    var _bulkTimer=null;
+    bulkBtn.addEventListener('touchstart', function(){ _bulkTimer=setTimeout(function(){ if(PWA.openBulkPicker) PWA.openBulkPicker({items:items(), title:'Bulk add — POS', onAdd:function(picks){ picks.forEach(function(p){ addToCart({id:p.item.id, code:p.item.code, name:p.item.name, retail:p.item.retail, wholesale:p.item.wholesale, stock:p.item.stock}, p.qty); }); PWA.toast(picks.length+' added','ok'); }}); }, 520); });
+    bulkBtn.addEventListener('touchend', function(){ clearTimeout(_bulkTimer); });
+    bulkBtn.addEventListener('mousedown', function(){ _bulkTimer=setTimeout(function(){ if(PWA.openBulkPicker) PWA.openBulkPicker({items:items(), title:'Bulk add — POS', onAdd:function(picks){ picks.forEach(function(p){ addToCart({id:p.item.id, code:p.item.code, name:p.item.name, retail:p.item.retail, wholesale:p.item.wholesale, stock:p.item.stock}, p.qty); }); PWA.toast(picks.length+' added','ok'); }}); }, 520); });
+    bulkBtn.addEventListener('mouseup', function(){ clearTimeout(_bulkTimer); });
+
+    var catChips=PWA.el('div',{class:'cat-chips'});
+    function renderChips(){
+      var counts=catCounts();
+      catChips.innerHTML='';
+      var all=PWA.el('button',{class:'chip'+(S.cat===''?' on':''), onclick:function(){ S.cat=''; renderChips(); renderGrid(); }},[
+        PWA.el('span',{text:'All'}), PWA.el('span',{class:'cnt', text:String(items().length)})
+      ]);
+      catChips.appendChild(all);
+      cats().forEach(function(c){
+        var cnt=counts[c]||0;
+        var b=PWA.el('button',{class:'chip'+(S.cat===c?' on':''), onclick:function(){ S.cat=c; renderChips(); renderGrid(); }},[
+          PWA.el('span',{text:c}), PWA.el('span',{class:'cnt', text:String(cnt)})
+        ]);
+        catChips.appendChild(b);
+      });
+    }
+    renderChips();
+    var catalogCard=PWA.el('div',{class:'card'},[
+      PWA.el('h3',{text:'Catalog'} , PWA.el('span',{class:'muted', style:'margin-left:auto;font-size:11px', text: items().length+' items'})),
+      PWA.el('div',{style:'display:flex;gap:8px;align-items:center'},[
+        PWA.el('div',{style:'flex:1;min-width:0'},[searchWrap]),
+        scanBtn, bulkBtn
+      ]),
+      catChips,
+      PWA.el('div',{id:'posGrid', class:'pos-grid'})
+    ]);
+    body.appendChild(catalogCard);
+
+    function renderGrid(){
+      var host=PWA.$('#posGrid'); if(!host) return;
+      host.innerHTML='';
+      var rows=filtered();
+      if(!rows.length){
+        host.appendChild(PWA.el('div',{class:'empty', style:'grid-column:1/-1'},[
+          PWA.el('span',{class:'big', text: S.q ? '🔍' : '📦'}),
+          PWA.el('div',{text: S.q ? 'No match for "'+S.q+'"' : 'No items'}),
+          PWA.el('small',{text: S.q ? 'Try code, name or barcode' : 'Check inventory', style:'color:var(--muted)'})
+        ]));
+        renderBulkBar();
+        return;
+      }
+      rows.forEach(function(it){
+        var tier=currentTier();
+        var pr=priceFor(it, tier);
+        var out=Number(it.stock)<=0, low=Number(it.stock)>0 && Number(it.stock)<=5;
+        var sel = !!S.bulkMode && !!S.bulkPicked[it.id];
+        var card=PWA.el('div',{class:'p-card'+(out?' out':'')+(sel?' bulk':''), onclick:function(){
+          if(S.bulkMode){
+            if(S.bulkPicked[it.id]) delete S.bulkPicked[it.id]; else S.bulkPicked[it.id]={item:it, qty:1};
+            renderGrid(); renderBulkBar(); PWA.haptic&&PWA.haptic(true);
+          } else {
+            addToCart(it,1);
+          }
+        }});
+        // inject checkbox when bulkMode
+        if(S.bulkMode){
+          var chk=PWA.el('button',{class:'bulk-chk', 'aria-label': 'Select', onclick:function(e){ e.stopPropagation(); if(S.bulkPicked[it.id]) delete S.bulkPicked[it.id]; else S.bulkPicked[it.id]={item:it, qty:1}; renderGrid(); renderBulkBar(); }});
+          chk.textContent = sel ? '✓' : '';
+          // keep in DOM: will be placed via card relative; add as first child overlay
+          // we add after thumb but absolute pos needs container relative already
+          // create wrapper for chk before thumb
+          card.appendChild(chk);
+          // qty stepper inside card when selected
+          var qtyWrap=PWA.el('div',{style:'position:absolute;right:8px;top:8px;display:flex;gap:4px;align-items:center;z-index:2'});
+          if(sel){
+            var minus=PWA.el('button',{class:'act', style:'width:28px;height:28px;border-radius:8px', text:'−'});
+            minus.onclick=function(e){ e.stopPropagation(); var q=Math.max(1, Number(S.bulkPicked[it.id].qty)-1); S.bulkPicked[it.id].qty=q; renderGrid(); renderBulkBar(); };
+            var qtyIn=PWA.el('input',{type:'number', value:String(S.bulkPicked[it.id].qty||1), style:'width:48px;height:28px;border-radius:8px;border:1px solid var(--line);text-align:center;font-weight:900;font-size:12px'});
+            qtyIn.onclick=function(e){ e.stopPropagation(); };
+            qtyIn.oninput=function(){ var v=Math.max(1, Number(qtyIn.value)||1); if(S.bulkPicked[it.id]) S.bulkPicked[it.id].qty=v; renderBulkBar(); };
+            var plus=PWA.el('button',{class:'act', style:'width:28px;height:28px;border-radius:8px', text:'+'});
+            plus.onclick=function(e){ e.stopPropagation(); var q=Number(S.bulkPicked[it.id].qty||1)+1; S.bulkPicked[it.id].qty=q; renderGrid(); renderBulkBar(); };
+            qtyWrap.appendChild(minus); qtyWrap.appendChild(qtyIn); qtyWrap.appendChild(plus);
+            card.appendChild(qtyWrap);
+          }
+        }
+        var thumb=PWA.el('div',{class:'p-thumb'},[
+          PWA.el('span',{text: it.code || 'CODE'}),
+          PWA.el('span',{class:'stock-dot'+(out?' out':low?' low':''), title: out?'Out of stock':low?'Low stock':'In stock'}),
+          PWA.el('button',{class:'add', 'aria-label':'Add', onclick:function(e){ e.stopPropagation(); addToCart(it,1); }}, '+')
+        ]);
+        var body2=PWA.el('div',{class:'p-body'},[
+          PWA.el('div',{class:'p-name', text:it.name}),
+          PWA.el('div',{class:'p-meta'},[
+            PWA.el('span',{text: it.category||'General', style:'flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis'}),
+            PWA.el('span',{class:'tier', text: tier})
+          ]),
+          PWA.el('div',{style:'display:flex;justify-content:space-between;align-items:center;gap:6px;margin-top:2px'},[
+            PWA.el('span',{class:'p-price'},[
+              PWA.el('span',{text:PWA.money(pr)}),
+              (Number(it.retail)>pr ? PWA.el('small',{text:'  '+PWA.money(it.retail), style:'text-decoration:line-through;margin-left:4px'}) : null)
+            ]),
+            PWA.el('span',{class:'p-stock'+(out?' out':low?' low':''), text: out?'Out of Stock': low? 'LOW · '+it.stock : 'In Stock · '+it.stock})
+          ])
+        ]);
+        card.appendChild(thumb); card.appendChild(body2);
+        host.appendChild(card);
+      });
+    }
+    renderGrid();
+
+    function renderCart(){
+      var host=document.getElementById('posCartBody'); if(host){
+        host.innerHTML='';
+        if(!S.cart.length){
+          host.appendChild(PWA.el('div',{class:'pos-empty'},[
+            PWA.el('span',{class:'big', text:'🛒'}),
+            PWA.el('div',{text:'Cart is empty'}),
+            PWA.el('small',{text:'Tap any product to add — swipe, scan or bulk', style:'color:var(--muted)'})
+          ]));
+        } else {
+          S.cart.forEach(function(l, idx){
+            var row=PWA.el('div',{class:'cart-line'});
+            row.appendChild(PWA.el('div',{class:'thumb', text: String(l.code||'').slice(0,6)||'ITEM'}));
+            row.appendChild(PWA.el('div',{class:'nm'},[
+              PWA.el('b',{text:l.name}),
+              PWA.el('small',{text:(l.code||'')+' · '+PWA.money(l.price)+(l.stock!=null?' · stock '+l.stock:'')})
+            ]));
+            var qty=PWA.el('div',{class:'qty'},[
+              PWA.el('button',{text:'−','aria-label':'Decrease', onclick:function(){ l.qty=Math.max(0,l.qty-1); if(l.qty===0) S.cart.splice(idx,1); renderCart(); renderPay(); updateBar(); updateKpi(); syncCustClosing(); window.PosCart&&window.PosCart.updateBadge(); }}),
+              PWA.el('span',{class:'n', text:String(l.qty)}),
+              PWA.el('button',{text:'+','aria-label':'Increase', onclick:function(){ l.qty+=1; renderCart(); renderPay(); updateBar(); updateKpi(); syncCustClosing(); window.PosCart&&window.PosCart.updateBadge(); }}),
+              PWA.el('button',{class:'act', text:'✕', style:'width:36px;height:36px;border-radius:10px;background:var(--card);border:1px solid var(--line)', 'aria-label':'Remove', onclick:function(){ S.cart.splice(idx,1); renderCart(); renderPay(); updateBar(); updateKpi(); syncCustClosing(); window.PosCart&&window.PosCart.updateBadge(); }})
+            ]);
+            row.appendChild(qty);
+            var lt=PWA.el('div',{class:'line-total', text:PWA.money(l.qty*l.price)});
+            row.appendChild(lt);
+            host.appendChild(row);
+          });
+        }
+      }
+      window.PosCart && window.PosCart.updateBadge();
+      syncCustClosing(); updateKpi();
+    }
+
+    function renderPay(){
+      var foot=document.getElementById('posCartFoot'); if(!foot) return;
+      foot.innerHTML='';
+      var sub=cartSubtotal(), tot=cartTotal(), qty=cartQty();
+      var discInput=PWA.el('input',{type:'number', inputmode:'decimal', placeholder:'Discount Rs', value:String(S.discount||''), style:'min-height:44px;width:130px;text-align:right;font-weight:800', 'aria-label':'Discount'});
+      discInput.oninput=function(){ S.discount=Number(discInput.value)||0; tot=cartTotal(); totEl.textContent=PWA.money(tot); updateBar(); updateKpi(); syncCustClosing(); };
+      var totEl=PWA.el('b',{style:'font-size:19px;font-weight:900', text:PWA.money(tot)});
+      foot.appendChild(PWA.el('div',{class:'tot-box'},[
+        PWA.el('div',{class:'tot-line'},[PWA.el('span',{text:'Subtotal ('+S.cart.length+' lines · '+qty+' pcs)'}), PWA.el('b',{text:PWA.money(sub)})]),
+        PWA.el('div',{class:'tot-line'},[PWA.el('span',{text:'Discount · Rs off'}), discInput]),
+        (S._cust ? PWA.el('div',{class:'tot-line', style:'color:var(--muted);font-size:11px'},[PWA.el('span',{text:'Prev balance'}), PWA.el('span',{text:PWA.money(S._prevBal||0)})]) : null),
+        PWA.el('div',{class:'tot-line grand'},[PWA.el('span',{text:'Payable'}), totEl]),
+        (S._cust ? PWA.el('div',{class:'tot-line', style:'color:var(--accent);font-weight:800'},[PWA.el('span',{text:'Closing due'}), PWA.el('b',{id:'footClosing', text:PWA.money((S._prevBal||0)+tot)})]) : null)
+      ].filter(Boolean)));
+      var row=PWA.el('div',{style:'display:flex;gap:8px;flex-wrap:wrap;margin-top:10px'},[
+        PWA.el('button',{class:'btn ghost', style:'flex:1;min-width:0', onclick:function(){
+          if(!S.cart.length) return;
+          S.held.unshift({id:'H'+Date.now(), at:new Date().toISOString(), customerName:S.customerName||'Walk-in', customerId:S.customerId||'', total:cartTotal(), items:JSON.parse(JSON.stringify(S.cart))});
+          saveHeld(); S.cart=[]; S.discount=0; renderCart(); renderPay(); updateBar(); updateKpi(); window.PosCart&&window.PosCart.updateBadge(); syncCustClosing(); PWA.toast('Held ✓','ok'); window.PosCart&&window.PosCart.close();
+        }}, '⏸ Hold'),
+        PWA.el('button',{class:'btn ghost', style:'flex:1;min-width:0', onclick:function(){ S.cart=[]; S.discount=0; renderCart(); renderPay(); updateBar(); updateKpi(); syncCustClosing(); window.PosCart&&window.PosCart.updateBadge(); }}, '🗑 Clear'),
+        PWA.el('button',{class:'btn primary', style:'flex:1.6;min-height:48px', onclick:function(){ window.PaySheet && window.PaySheet.open(); }}, '💳 Pay · '+PWA.money(tot))
+      ]);
+      foot.appendChild(row);
+      foot.appendChild(PWA.el('div',{style:'font-size:11px;color:var(--muted);text-align:center;margin-top:8px;display:flex;gap:6px;justify-content:center;flex-wrap:wrap'},[
+        PWA.el('span',{text: S.customerName? 'For '+S.customerName+' · '+currentTier() : 'Walk-in · Retail'}),
+        PWA.el('span',{text:'·'}),
+        PWA.el('span',{text: S._cust && S._cust.points ? S._cust.points+' pts' : 'Earn loyalty points'})
+      ]));
+      window.PosCart && window.PosCart.updateBadge();
+    }
+
+    function updateBar(){
+      var b=PWA.$('#pwaBar'); if(!b) return;
+      b.innerHTML='';
+      try{
+        TABS.forEach(function(t){
+          b.appendChild(PWA.el('button',{
+            class:'b'+(PWA.state.tab===t.id?' on':''),
+            'aria-label':t.label,
+            onclick:function(){ PWA.state.tab=t.id; render(t.id); }
+          }, [PWA.el('i',{text:t.icon}), PWA.el('span',{text:t.label})]));
+        });
+      }catch(e){}
+      var qty=cartQty(), tot=cartTotal();
+      var main=PWA.el('button',{class:'btn primary pos-cart-main', style:'flex:1;position:relative;min-height:44px', onclick:function(){ window.PosCart && window.PosCart.open(); }}, '🛒 '+S.cart.length+' · '+PWA.money(tot));
+      if(qty>0){
+        var bd=PWA.el('span',{class:'cart-badge', text:String(qty)});
+        main.appendChild(bd); main.style.paddingRight='12px';
+      }
+      b.appendChild(main);
+      b.appendChild(PWA.el('button',{class:'btn ghost', onclick:function(){ window.PaySheet && window.PaySheet.open(); }, style:'min-height:44px'}, 'Pay'));
+      try{
+        var q=(PWA.queue && PWA.queue().length)||0;
+        if(q) b.appendChild(PWA.el('button',{class:'b has-dot', onclick:function(){ PWA.sync && PWA.sync(); }}, [PWA.el('i',{text:'↻'}), PWA.el('span',{text:'Sync '+q})]));
+      }catch(e){}
+      window.PosCart && window.PosCart.updateBadge();
+    }
+
+    renderCart(); renderPay(); updateBar(); updateKpi();
+    window._posRenderCart = renderCart;
+    window._posRenderPay = renderPay;
+    window._posUpdateBar = updateBar;
+    window._posRenderGrid = renderGrid;
+    window.__posS = S;
+  }
+
+  function viewHeld(body){
+    var head=PWA.el('div',{class:'card'},[PWA.el('h3',{text:'Held bills ('+S.held.length+')'})]);
+    body.appendChild(head);
+    if(!S.held.length){
+      body.appendChild(PWA.el('div',{class:'card'},[PWA.el('div',{class:'empty'},[PWA.el('span',{class:'big', text:'⏸'}),PWA.el('div',{text:'No held bills'}),PWA.el('small',{text:'Use Hold in cart to park a sale', style:'color:var(--muted)'})])]));
+      return;
+    }
+    S.held.forEach(function(h, idx){
+      var card=PWA.el('div',{class:'card', style:'padding:10px'});
+      card.appendChild(PWA.el('div',{class:'task', onclick:function(){
+        S.cart=JSON.parse(JSON.stringify(h.items||[])); S.customerName=h.customerName||''; S.customerId=h.customerId||'';
+        S.held.splice(idx,1); saveHeld(); render('sell'); PWA.toast('Resumed '+h.id,'ok');
+      }},[
+        PWA.el('div',{class:'ico', text:'⏸'}),
+        PWA.el('div',{class:'tx'},[PWA.el('b',{text:(h.customerName||'Walk-in')+' · '+PWA.money(h.total)}), PWA.el('small',{text:h.id+' · '+new Date(h.at).toLocaleString()+' · '+(h.items||[]).length+' items'})]),
+        PWA.el('span',{class:'badge', text: (h.items||[]).length+' items'})
+      ]));
+      card.appendChild(PWA.el('div',{style:'display:flex;gap:8px;margin-top:8px'},[
+        PWA.el('button',{class:'btn sm primary', text:'Resume', onclick:function(){ S.cart=JSON.parse(JSON.stringify(h.items||[])); S.customerName=h.customerName||''; S.customerId=h.customerId||''; S.held.splice(idx,1); saveHeld(); render('sell'); }}),
+        PWA.el('button',{class:'btn sm ghost', text:'Delete', onclick:function(){ if(confirm('Delete '+h.id+'?')){ S.held.splice(idx,1); saveHeld(); render('held'); }}}),
+        PWA.el('button',{class:'btn sm ghost', text:'Print held', onclick:function(){ PWA.toast('Hold printed','ok'); }})
+      ]));
+      body.appendChild(card);
+    });
+  }
+
+  function viewRecent(body){
+    var rows=(PWA.data && PWA.data.recent) || [];
+    body.appendChild(PWA.el('div',{class:'card'},[PWA.el('h3',{text:'Recent sales ('+rows.length+')'})]));
+    if(!rows.length){
+      body.appendChild(PWA.el('div',{class:'card'},[PWA.el('div',{class:'empty'},[PWA.el('span',{class:'big', text:'📁'}),PWA.el('div',{text:'No recent sales'})])]));
+      return;
+    }
+    rows.slice(0,40).forEach(function(s){
+      var card=PWA.el('div',{class:'card', style:'padding:10px;margin-bottom:8px;cursor:pointer', onclick:function(){
+        // quick reprint / share from recent
+        var sale={invoiceNo:s.invoiceNo, date:s.date, customerName:s.customerName, total:s.total, items:[{name:'(Re-print via main app)', qty:1, price:s.total, code:s.invoiceNo}], subtotal:s.total, discount:0, prevBalance:0, closingBalance:s.total, payments:[{method:'—', amount:s.total}], salesman:''};
+        LAST_SALE=sale; window.Receipt && window.Receipt.open(sale);
+      }},[
+        PWA.el('div',{style:'display:flex;justify-content:space-between;align-items:center'},[
+          PWA.el('b',{text:s.invoiceNo, style:'font-size:13px'}),
+          PWA.el('span',{class:'badge '+(s.status==='CANCELLED'?'err':'ok'), text:s.status})
+        ]),
+        PWA.el('div',{style:'font-size:12px;color:var(--muted)', text: s.customerName+' · '+s.date+' · '+PWA.money(s.total)})
+      ]);
+      body.appendChild(card);
+    });
+  }
+
+  PWA.boot('pos', TABS, render);
+})();
+</script>
+</body>
+</html>

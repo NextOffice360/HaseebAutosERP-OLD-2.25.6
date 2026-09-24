@@ -1,0 +1,622 @@
+<script>
+/* ==========================================================================
+   HASEEB AUTOS — BARCODE / QR / PRINTING
+   100% dependency-free Code39 encoder (works offline, scans on every scanner).
+   QR uses a lightweight online renderer with cache + graceful offline fallback.
+   ========================================================================== */
+(function () {
+'use strict';
+
+/* ------------------------------ CODE 39 -------------------------------- */
+const C39 = {
+  '0':'101001101101','1':'110100101011','2':'101100101011','3':'110110010101','4':'101001101011',
+  '5':'110100110101','6':'101100110101','7':'101001011011','8':'110100101101','9':'101100101101',
+  'A':'110101001011','B':'101101001011','C':'110110100101','D':'101011001011','E':'110101100101',
+  'F':'101101100101','G':'101010011011','H':'110101001101','I':'101101001101','J':'101011001101',
+  'K':'110101010011','L':'101101010011','M':'110110101001','N':'101011010011','O':'110101101001',
+  'P':'101101101001','Q':'101010110011','R':'110101011001','S':'101101011001','T':'101011011001',
+  'U':'110010101011','V':'100110101011','W':'110011010101','X':'100101101011','Y':'110010110101',
+  'Z':'100110110101','-':'100101011011','.':'110010101101',' ':'100110101101','$':'100100100101',
+  '/':'100100101001','+':'100101001001','%':'101001001001','*':'100101101101'
+};
+
+const Barcode = {
+  /** sanitize to Code39 charset */
+  clean(str) {
+    return String(str || '').toUpperCase().replace(/[^0-9A-Z\-\.\ \$\/\+%]/g, '-').trim() || 'NOCODE';
+  },
+
+  /** → module bit string (1 = bar, 0 = space) */
+  modules(str) {
+    const s = '*' + Barcode.clean(str) + '*';
+    let out = '';
+    for (let i = 0; i < s.length; i++) {
+      const p = C39[s[i]];
+      if (!p) continue;
+      out += (i ? '0' : '') + p;      // narrow gap between characters
+    }
+    return out;
+  },
+
+  /** → SVG string */
+  svg(str, opts) {
+    opts = opts || {};
+    const bits = Barcode.modules(str);
+    const hPx = opts.height || 44;
+    const quiet = opts.quiet === undefined ? 6 : opts.quiet;
+    const modW = opts.module || 1.6;
+    const total = (bits.length + quiet * 2) * modW;
+    let rects = '', x = quiet * modW;
+    let run = 1;
+    for (let i = 1; i <= bits.length; i++) {
+      if (i < bits.length && bits[i] === bits[i - 1]) { run++; continue; }
+      if (bits[i - 1] === '1') rects += '<rect x="' + x.toFixed(2) + '" y="0" width="' + (run * modW).toFixed(2) + '" height="' + hPx + '"/>';
+      x += run * modW; run = 1;
+    }
+    return '<svg xmlns="http://www.w3.org/2000/svg" width="' + total.toFixed(2) + '" height="' + hPx +
+      '" viewBox="0 0 ' + total.toFixed(2) + ' ' + hPx + '" shape-rendering="crispEdges">' +
+      '<rect width="100%" height="100%" fill="#fff"/><g fill="#000">' + rects + '</g></svg>';
+  },
+
+  /** → inline SVG element */
+  el(str, opts) {
+    const d = document.createElement('div');
+    d.innerHTML = Barcode.svg(str, opts);
+    return d.firstChild;
+  },
+
+  /** → data URI (for <img> in print/export) */
+  dataUrl(str, opts) {
+    return 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(Barcode.svg(str, opts))));
+  }
+};
+
+/* -------------------------------- QR ----------------------------------- */
+const QR = {
+  cache: Store.get('qrcache', {}),
+
+  async dataUrl(text, size) {
+    size = size || 160;
+    const key = size + '|' + text;
+    if (QR.cache[key]) return QR.cache[key];
+    // 1) offline encoder (App_QR.html) — PWA me internet ke baghir bhi chalta hai
+    try {
+      const off = window.QR2 || (typeof QR2 !== 'undefined' ? QR2 : null);
+      if (off) { QR.cache[key] = off.dataUrl(text, { size: size, margin: 0 }); QR._save(); return QR.cache[key]; }
+    } catch (e) {}
+    // 2) fallback: online service
+    if (!navigator.onLine) return null;
+    const url = 'https://api.qrserver.com/v1/create-qr-code/?size=' + size + 'x' + size +
+      '&margin=0&format=png&data=' + encodeURIComponent(text);
+    try {
+      const res = await fetch(url, { mode: 'cors' });
+      if (!res.ok) throw new Error('qr fail');
+      const blob = await res.blob();
+      const dataUrl = await new Promise(r => { const fr = new FileReader(); fr.onload = () => r(fr.result); fr.readAsDataURL(blob); });
+      QR.cache[key] = dataUrl;
+      QR._save();
+      return dataUrl;
+    } catch (e) { return null; }
+  },
+
+  /** simple QR-ish placeholder when offline (draws a frame with text) */
+  /** cache trim + persist */
+  _save() {
+    const keys = Object.keys(QR.cache);
+    if (keys.length > 120) { keys.slice(0, 40).forEach(k => delete QR.cache[k]); }
+    try { Store.set('qrcache', QR.cache); } catch (e) {}
+  },
+
+  placeholder(text, size) {
+    size = size || 160;
+    return 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(
+      '<svg xmlns="http://www.w3.org/2000/svg" width="' + size + '" height="' + size + '">' +
+      '<rect width="100%" height="100%" fill="#fff"/><rect x="2" y="2" width="' + (size - 4) + '" height="' + (size - 4) +
+      '" fill="none" stroke="#999" stroke-dasharray="4 3"/>' +
+      '<text x="50%" y="50%" font-size="9" text-anchor="middle" fill="#666" font-family="monospace">QR offline</text></svg>')));
+  }
+};
+
+/* ------------------------------ PRINTING -------------------------------- */
+const Print = {
+  /* v2.14.0 — paper-aware: pehle @page mein size nahi tha, is liye browser
+     print dialog sirf A4/A5 offer karta tha aur thermal width ignore hoti thi.
+     Ab 58/80/110mm true `size:XXmm auto` (continuous roll) par print/download
+     hote hain; sheet sizes exact page lete hain. Toolbar se size badla ja
+     sakta hai — PDF chahiye to print dialog mein "Save as PDF". */
+  PAPERS: { '58mm': { w: 58, t: true }, '80mm': { w: 80, t: true }, '110mm': { w: 110, t: true },
+    'A4': { w: 210, t: false }, 'A5': { w: 148, t: false } },
+  /* v2.25.0 — Label CSS ab EK jagah (single source): print popup aur designer
+     preview dono yahi use karte hain, is liye "jo preview mein dikhta hai
+     wahi print hota hai". Pehle ye CSS sirf print popup mein thi — designer
+     ka preview bilkul alag dikhta tha (user ki shikayat: preview != output). */
+  LABEL_CSS: (
+      /* sheet + frame */
+      '.label-sheet{display:flex;flex-wrap:wrap;gap:5px;padding:4mm}' +
+      '.label{border:1px dashed #bbb;padding:3px;text-align:center;page-break-inside:avoid;' +
+        'box-sizing:border-box;background:#fff;overflow:hidden;display:flex;flex-direction:column;' +
+        'justify-content:center;align-items:center;gap:1px;min-height:0}' +
+      '.label>*{flex:0 0 auto;max-width:100%}' +
+      /* text blocks — sab frame ke andar (overflow guard har block par) */
+      '.label .lhead{font-size:calc(7.5px * var(--lfs,1));font-weight:800;letter-spacing:.2px;text-transform:uppercase;' +
+        'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}' +
+      '.label .lname{font-size:9px;font-weight:700;line-height:1.1;max-height:22px;overflow:hidden;max-width:100%}' +
+      '.label .lcode{font-size:calc(8px * var(--lfs,1));color:#444;max-width:100%;overflow:hidden;' +
+        'text-overflow:ellipsis;white-space:nowrap}' +
+      '.label .lprice{font-size:calc(9px * var(--lfs,1))}' +
+      '.label .lpricebig{font-size:calc(15px * var(--lfs,1));font-weight:800}' +
+      '.label .lx{font-size:calc(7px * var(--lfs,1));color:#222;line-height:1.25;overflow:hidden;max-width:100%}' +
+      '.label .lfoot{font-size:calc(7px * var(--lfs,1));color:#333;white-space:nowrap;overflow:hidden;' +
+        'text-overflow:ellipsis;max-width:100%}' +
+      /* barcode band + quiet zone + human-readable line (GS1) */
+      '.label .lbc{text-align:center;line-height:0;max-width:100%;min-width:0;min-height:0;' +
+        'display:flex;flex-direction:column;justify-content:center;align-items:center;overflow:hidden;flex:1 1 auto}' +
+      '.label .lbc svg{max-width:100%;max-height:100%;width:auto;height:auto;margin:1px auto;display:block;flex:0 0 auto}' +
+      '.label .lhr{font:700 7.5px/1.25 "Courier New",monospace;letter-spacing:1.4px;color:#000;' +
+        'font-size:calc(7.5px * var(--lfs,1));max-width:100%;overflow:hidden;flex:0 0 auto}' +
+      /* QR + logo — QR ho to bars ke saath EK row (kuch label se bahar na jaye) */
+      '.label .lrow{display:flex;align-items:center;justify-content:center;gap:3px;width:100%;' +
+        'max-width:100%;min-height:0;flex:1 1 auto}' +
+      '.label .lqr{display:flex;justify-content:center;align-items:center;margin-top:1px;' +
+        'max-width:100%;min-width:0;min-height:0}' +
+      /* v2.25.7 — jab bars ko poori chaurai chahiye (printable floor), QR apni row mein */
+      '.label .lsym{display:flex;flex-direction:column;align-items:center;justify-content:center;' +
+        'width:100%;max-width:100%;min-width:0;min-height:0;gap:1px;flex:1 1 auto}' +
+      /* QR <img> ke width/height ATTRIBUTES hi chalte hain (JS ne label ke hisaab se
+         size nikali hai) — CSS width:auto unhe override kar deti thi aur QR intrinsic
+         (bara) size par phail kar frame se bahar nikal jata tha. */
+      '.label .lqr img{max-width:100%;max-height:100%}' +
+      '.label svg,.label img{display:block;margin:1px auto;max-width:100%}'
+  ),
+
+  baseCss(paper) {
+    const m = this.PAPERS[paper] || this.PAPERS['80mm'];
+    const page = m.t
+      ? '@page{size:' + m.w + 'mm auto;margin:2mm}'
+      : '@page{size:' + (paper === 'A4' ? 'A4 portrait' : 'A5 portrait') + ';margin:8mm}';
+    const inner = m.t ? m.w - 6 : (paper === 'A4' ? 194 : 132);
+    return 'body{font-family:monospace;background:#fff;color:#000;margin:0}' +
+      page +
+      '.receipt{width:' + inner + 'mm;padding:3mm}' +
+      '.receipt h4{margin:0 0 2px;font-size:15px;text-align:center}' +
+      '.receipt .center{text-align:center;font-size:11px}' +
+      '.receipt hr{border:0;border-top:1px dashed #000;margin:5px 0}' +
+      '.receipt table{width:100%;font-size:11.5px;border-collapse:collapse}' +
+      '.receipt td{padding:1px 0;vertical-align:top}' +
+      '.receipt .r{text-align:right}.receipt .b{font-weight:700}' +
+      this.LABEL_CSS +
+      '.ha-ptool{position:sticky;top:0;display:flex;gap:8px;align-items:center;padding:8px 10px;' +
+      'background:#0b1220;color:#fff;font:13px system-ui}' +
+      '.ha-ptool select{padding:6px 8px;border-radius:8px;border:1px solid #555;background:#fff;color:#000}' +
+      '.ha-ptool button{padding:8px 14px;border-radius:8px;border:0;background:#ff6a00;color:#fff;font-weight:700;cursor:pointer}' +
+      '@media print{.ha-ptool{display:none!important}}';
+  },
+  open(html, title, paper) {
+    paper = paper || '80mm';
+    const root = $('#printRoot');
+    root.innerHTML = html;
+    const w = window.open('', '_blank', 'width=430,height=760');
+    if (!w) { UI.toast('Popup block ho gaya — browser ki setting allow karein', 'warn'); return; }
+    const opts = Object.keys(this.PAPERS).map(function (id) {
+      return '<option value="' + id + '"' + (id === paper ? ' selected' : '') + '>' + id + '</option>';
+    }).join('');
+    w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>' + (title || 'Print') + '</title>' +
+      '<style id="pgstyle">' + Print.baseCss(paper) + '</style></head><body>' +
+      '<div class="ha-ptool"><b>Printer</b><select id="psz">' + opts + '</select>' +
+      '<button id="pgo">🖨 Print / Save PDF</button></div>' + html + '</body></html>');
+    w.document.close();
+    try {
+      w.document.getElementById('psz').onchange = function (e) {
+        w.document.getElementById('pgstyle').textContent = Print.baseCss(e.target.value);
+      };
+      w.document.getElementById('pgo').onclick = function () { w.focus(); w.print(); };
+    } catch (err) { }
+    setTimeout(() => { try { w.focus(); w.print(); } catch (err) { } }, 450);
+    return w;
+  },
+
+  /** Professional receipt — thermal & A4 ready, with balances, QR/barcode, created-by */
+  receiptHtml(sale, settings, branchName) {
+    settings = settings || {};
+    const cur = settings.currencySymbol || 'Rs';
+    const dt = fmt.date(sale.date, true);
+    const inv = sale.invoiceNo || sale.id || '—';
+    const custName = sale.customerName || 'Walk-in Customer';
+    const custPhone = sale.customerPhone || sale.phone || '';
+    const custAddr = sale.customerAddress || sale.address || '';
+    const createdBy = sale.createdByName || sale.cashierName || sale.createdBy || (App && App.state && App.state.session ? (App.state.session.fullName||App.state.session.username||'') : '') || '—';
+    const branch = branchName || sale.branchName || (App && App.state ? App.state.branchName : '') || '';
+    const prevBal = (sale.prevBalance!=null? Number(sale.prevBalance): (sale.openingBalance!=null? Number(sale.openingBalance): 0));
+    const closing = (sale.closingBalance!=null? Number(sale.closingBalance): (prevBal + Number(sale.total||0) - Number(sale.paid||0)) );
+    const paid = Number(sale.paid||0);
+    const due = Number(sale.due!=null? sale.due : Math.max(0, Number(sale.total||0)-paid));
+    // Try to generate QR dataUrl synchronously if QR2 available (offline)
+    let qrImg = '';
+    try {
+      const txt = 'INV:'+inv+'|TOTAL:'+fmt.num(sale.total)+'|DUE:'+fmt.num(due)+'|CUST:'+custName;
+      if (window.QR2 && QR2.dataUrl) { qrImg = '<img src="'+QR2.dataUrl(txt,{size:110,margin:0})+'" width="72" height="72" style="display:block;margin:0 auto" alt="QR"/>'; }
+      else if (window.QR && QR.cache) { /* async not possible here - fallback */ qrImg = '<div style="width:72px;height:72px;border:1.5px dashed #999;display:grid;place-items:center;font-size:8px;color:#666;margin:0 auto">QR<br/>'+esc(inv)+'</div>'; }
+      else { qrImg = '<div style="width:72px;height:72px;border:1.5px dashed #999;display:grid;place-items:center;font-size:8px;color:#666;margin:0 auto">QR<br/>'+esc(inv)+'</div>'; }
+    } catch(e){ qrImg = ''; }
+    const logo = settings.logoUrl ? '<div class="center" style="margin-bottom:6px"><img src="'+esc(settings.logoUrl)+'" style="max-height:46px;max-width:140px;object-fit:contain" alt="Logo"/></div>' : '';
+    // Items: professional table with # | Item | Qty | Rate | Amount
+    let idx=0;
+    const rows = (sale.items || []).map(i => {
+      idx++;
+      const code = i.code ? '<span style="font-size:9.5px;color:#555">['+esc(i.code)+']</span> ' : '';
+      const disc = i.discount ? '<br/><span style="font-size:9px;color:#b91c1c">Disc: -'+fmt.money(i.discount)+'</span>' : '';
+      return '<tr>'+
+        '<td style="text-align:center">'+idx+'</td>'+
+        '<td>'+code+esc(i.name)+disc+'<br/><span style="font-size:9.5px;color:#666">Qty '+fmt.num(i.qty)+' × '+fmt.money(i.price)+'</span></td>'+
+        '<td class="r" style="white-space:nowrap">'+fmt.num(i.qty)+'</td>'+
+        '<td class="r" style="white-space:nowrap">'+fmt.money(i.price)+'</td>'+
+        '<td class="r"><b>'+fmt.money(i.lineTotal!=null? i.lineTotal : (i.qty*i.price))+'</b></td>'+
+        '</tr>';
+    }).join('');
+    const payRows = (sale.paymentList || []).map(p =>
+      '<tr><td colspan="4" style="text-align:right">Paid via '+esc(p.method||'')+(p.reference? ' <span style="font-size:9px;color:#666">('+esc(p.reference)+')</span>':'' )+'</td><td class="r">'+fmt.money(p.amount)+'</td></tr>').join('');
+    // Summary box
+    const balBox = '<div style="margin:6px 0;border:1.5px solid #111;border-radius:8px;overflow:hidden;font-size:11px">'+
+      '<div style="display:grid;grid-template-columns:1fr auto;padding:4px 8px;border-bottom:1px dashed #111"><span>Previous balance (پچھلا بقایا)</span><b>'+fmt.money(prevBal)+'</b></div>'+
+      '<div style="display:grid;grid-template-columns:1fr auto;padding:4px 8px;border-bottom:1px dashed #111"><span>This bill</span><b>'+fmt.money(sale.total)+'</b></div>'+
+      '<div style="display:grid;grid-template-columns:1fr auto;padding:4px 8px;border-bottom:1px dashed #111"><span>Paid now</span><b>'+fmt.money(paid)+'</b></div>'+
+      '<div style="display:grid;grid-template-columns:1fr auto;padding:6px 8px;background:#0f172a;color:#fff"><span>Closing balance (کل بقایا)</span><b style="font-size:12px">'+fmt.money(closing)+'</b></div>'+
+      (sale.creditLimit? '<div style="padding:4px 8px;font-size:9.5px;color:#555;text-align:center">Credit limit: '+fmt.money(sale.creditLimit)+'</div>' : '')+
+      '</div>';
+    return '<div class="receipt" style="font-family:monospace,system-ui;padding:4mm">'+
+      logo+
+      '<h4 style="margin:0 0 2px;font-size:16px;text-align:center;letter-spacing:.2px">'+esc(settings.receiptHeader || settings.businessName || 'HASEEB AUTOS')+'</h4>' +
+      '<div class="center" style="font-weight:700;color:#334155">'+esc(settings.tagline || 'Spare Parts • Service • Wholesale')+'</div>' +
+      '<div class="center" style="margin-top:2px">'+(branch? esc(branch):'')+(settings.phone ? ' • '+esc(settings.phone):'')+(settings.address? '<br/>'+esc(settings.address):'')+'</div>' +
+      (settings.showUrduOnReceipt === 'true' && settings.businessNameUr ? '<div class="center" style="direction:rtl;font-size:12px;margin-top:2px">'+esc(settings.businessNameUr)+'</div>' : '') +
+      '<hr style="border:0;border-top:1.5px dashed #000;margin:7px 0"/>' +
+      '<table style="width:100%;font-size:11px;border-collapse:collapse"><tr>'+
+        '<td style="vertical-align:top;width:50%">'+
+          '<div><b>Invoice:</b> '+esc(inv)+'</div>'+
+          '<div>Date: '+esc(dt)+'</div>'+
+          '<div>Branch: '+esc(branch||'-')+'</div>'+
+          '<div>Cashier: '+esc(createdBy)+'</div>'+
+        '</td>'+
+        '<td style="vertical-align:top;width:50%;text-align:right">'+
+          '<div><b>Customer:</b> '+esc(custName)+'</div>'+
+          (custPhone? '<div>'+esc(fmt.phone? fmt.phone(custPhone): custPhone)+'</div>':'')+
+          (custAddr? '<div style="font-size:10px;white-space:normal;word-break:break-word">'+esc(custAddr)+'</div>':'')+
+          (custPhone||custAddr? '':'<div style="font-size:10px;color:#666">Walk-in</div>')+
+        '</td>'+
+      '</tr></table>'+
+      '<hr style="border:0;border-top:1px dashed #000;margin:6px 0"/>'+
+      '<table style="width:100%;font-size:10.5px;border-collapse:collapse;border:1px solid #000">'+
+        '<thead><tr style="background:#f1f5f9">'+
+          '<th style="padding:4px 3px;border:1px solid #000;width:22px">#</th>'+
+          '<th style="padding:4px 3px;border:1px solid #000;text-align:left">Item</th>'+
+          '<th style="padding:4px 3px;border:1px solid #000;text-align:right">Qty</th>'+
+          '<th style="padding:4px 3px;border:1px solid #000;text-align:right">Rate</th>'+
+          '<th style="padding:4px 3px;border:1px solid #000;text-align:right">Amount</th>'+
+        '</tr></thead><tbody>' + (rows || '<tr><td colspan="5" style="text-align:center;padding:12px;color:#666">No items</td></tr>') + '</tbody></table>'+
+      '<table style="width:100%;font-size:11px;border-collapse:collapse;margin-top:6px">'+
+        '<tr><td style="width:60%"></td><td style="padding:2px 0;text-align:right">Subtotal</td><td class="r" style="text-align:right;width:90px">'+fmt.money(sale.subtotal!=null? sale.subtotal: sale.total)+'</td></tr>'+
+        (sale.discount? '<tr><td></td><td style="text-align:right;color:#b91c1c">Discount</td><td class="r" style="color:#b91c1c">-'+fmt.money(sale.discount)+'</td></tr>':'')+
+        (sale.tax? '<tr><td></td><td style="text-align:right">'+esc(settings.taxLabel||'Tax')+'</td><td class="r">'+fmt.money(sale.tax)+'</td></tr>':'')+
+        '<tr style="font-weight:800;border-top:1.5px solid #000"><td></td><td style="text-align:right">TOTAL</td><td class="r" style="font-size:12px">'+cur+' '+fmt.money(sale.total)+'</td></tr>'+
+        (payRows||'')+
+        (sale.change? '<tr><td></td><td style="text-align:right">Change returned</td><td class="r">'+fmt.money(sale.change)+'</td></tr>':'')+
+        (due>0? '<tr style="font-weight:800;background:#fef2f2"><td></td><td style="text-align:right;color:#b91c1c">DUE (udhaar)</td><td class="r" style="color:#b91c1c">'+fmt.money(due)+'</td></tr>':'<tr><td></td><td style="text-align:right;color:#15803d">PAID ✓</td><td class="r" style="color:#15803d;font-weight:700">'+fmt.money(paid)+'</td></tr>')+
+      '</table>'+
+      balBox+
+      '<div style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;margin-top:8px;padding:6px;border:1px dashed #000;border-radius:8px">'+
+        '<div style="text-align:center">'+Barcode.svg(inv, { height: 28, module: 1.1 })+'<div style="font-size:9px;letter-spacing:1.5px;margin-top:2px">'+esc(inv)+'</div></div>'+
+        '<div style="text-align:center">'+qrImg+'<div style="font-size:7.5px;color:#555;margin-top:2px">Scan to verify</div></div>'+
+      '</div>'+
+      (sale.notes? '<div style="margin-top:6px;padding:6px 8px;background:#f8fafc;border:1px solid #e5e9f0;border-radius:6px;font-size:10px"><b>Note:</b> '+esc(sale.notes)+'</div>':'')+
+      '<div style="margin-top:8px;padding:6px 8px;background:#f1f5f9;border-radius:6px;font-size:9.5px;line-height:1.4">'+
+        esc(settings.receiptFooter || 'Goods once sold will not be taken back. Warranty as per supplier. Thank you for shopping with us!')+
+      '</div>'+
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:12px;font-size:10px;text-align:center">'+
+        '<div style="border-top:1px solid #000;padding-top:4px">Customer signature</div>'+
+        '<div style="border-top:1px solid #000;padding-top:4px">For '+esc(settings.businessName||'Haseeb Autos')+'<br/><span style="font-size:9px;color:#555">('+esc(createdBy)+')</span></div>'+
+      '</div>'+
+      '<div class="center" style="margin-top:10px;font-size:8.5px;color:#64748b">Powered by Haseeb Autos ERP • '+esc(dt)+' • '+esc(branch)+' • No: '+esc(inv)+'</div>'+
+      '</div>';
+  },
+
+  /**
+   * Barcode label sheet — v2.23.20. GS1-conscious rendering:
+   *   • white field, black symbol, no decoration over the bars
+   *   • quiet zone computed per symbol width (>=2.2mm, up to 6mm per side)
+   *   • bar band height >= 15% of label height (we use 42%)
+   *   • human-readable line under the symbol (print legibility)
+   * rows: {name, code, barcode, price, salePrice, currency, unit, category, brand,
+   *        stock, batch, expiry, supplier, warehouse, qr, id} — all optional.
+   * template: { json: cfgJSON, width, height } (legacy shape still accepted;
+   *           a plain cfg object with .style also works).
+   */
+  async labelsHtml(rows, template) {
+    template = template || { json: '{}' };
+    let cfg = {};
+    try {
+      if (typeof template.json === 'string') cfg = JSON.parse(template.json || '{}');
+      else if (template.json) cfg = template.json;
+      else if (template.cfg) cfg = template.cfg;
+      else cfg = template || {};
+    } catch (e) { cfg = {}; }
+    const wmm = Number(template.width) || 50, hmm = Number(template.height) || 30;
+    const quiet = Math.max(2.2, Math.min(6, wmm * 0.09)).toFixed(1);   // mm per side
+    const band = Math.max(15, Math.round(hmm * 0.42));                 // >= 15% rule
+    const style = cfg.style || 'retail';
+    const big = style === 'price' || style === 'warehouse';
+    const parts = [];
+    for (const r of (rows || [])) {
+      const val = String(r.barcode || r.code || '').trim();
+      /* v2.25.0 — symbol ko label ki ASAL chaurai mein fit karein.
+         Pehle module width fix thi (1.15px) → 50mm label par symbol ~258px ban
+         jata tha (187px ke frame mein) aur bars + human-readable line KAT jati
+         thi (barcode scan hi nahi hota tha). Ab modules gina kar module width
+         nikaali jati hai, aur height bhi baaqi content ke liye jagah chhor kar
+         cap hoti hai. */
+      const MM2PX = 3.7795;
+      const availWpx = Math.max(60, (wmm - quiet * 2 - 0.6) * MM2PX);
+      const availHpx = Math.max(40, hmm * MM2PX - 8);          /* padding 3px*2 + safety */
+      /* (symbol ka size neeche compute hota hai — jab text blocks tay ho jayein,
+         kyunke baaqi jagah unhi ke hisaab se chhorni hai) */
+      const _has = (v) => !!(v && String(v).trim());
+      /* v2.25.0 — TARTEEB: pehle poora TEXT tay hota hai, phir symbol ko sirf
+         BAAQI jagah milti hai. (Pehle symbol/text ek doosre ke baad ban rahe thay
+         aur chhote label par bars + human-readable line frame se bahar chale jate
+         thay.) */
+      let lwarnFlag = false;
+      let priceStr = '';
+      if (r.price != null && cfg.showPrice !== false) {
+        const cur = esc(r.currency || 'Rs');
+        priceStr = '<div class="' + (big ? 'lpricebig' : 'lprice') + '">' + cur + ' ' + fmt.num(r.price) +
+          (cfg.showSalePrice && r.salePrice ? ' <s style="opacity:.6">' + cur + ' ' + fmt.num(r.salePrice) + '</s> <b>SALE</b>' : '') +
+          '</div>';
+      }
+      const metaBits = [
+        cfg.showUnit && r.unit ? esc(r.unit) : '',
+        cfg.showStock && r.stock != null ? 'Stock: ' + fmt.num(r.stock) : '',
+        cfg.showBatch && r.batch ? 'Lot: ' + esc(r.batch) : '',
+        cfg.showExpiry && r.expiry ? 'Exp: ' + esc(r.expiry) : ''
+      ].filter(Boolean).join(' \u00b7 ');
+      const footBits = [
+        cfg.showSupplier && r.supplier ? esc(r.supplier) : '',
+        cfg.showWarehouse && r.warehouse ? 'WH: ' + esc(r.warehouse) : '',
+        cfg.showCategory && r.category ? esc(r.category) : '',
+        cfg.showBrand && r.brand ? esc(r.brand) : ''
+      ].filter(Boolean).join(' \u00b7 ');
+      const fsRaw = Number(cfg.fontSize);
+      const fsScale = Math.max(0.7, Math.min(1.8, (isFinite(fsRaw) && fsRaw > 0 ? fsRaw : 12) / 12));
+      const headTxt = (cfg.showTitle === false || !cfg.title) ? '' : esc(cfg.title);
+      const footTxt = [cfg.footer ? esc(cfg.footer) : '', cfg.terms ? esc(cfg.terms) : ''].filter(Boolean).join(' \u00b7 ');
+      const customBits = (cfg.customFields || []).map(function (cf) {
+        const v = cf.value != null && cf.value !== '' ? cf.value : (r[cf.source] != null ? r[cf.source] : '');
+        return (cf.label || cf.key) ? ((cf.label || cf.key) + ': ' + esc(String(v))) : '';
+      }).filter(Boolean);
+      const nameFs0 = Math.min(12, Math.max(8, Math.round(wmm * 0.18)));
+      const showName = cfg.showName !== false && _has(r.name);
+      const showCode = cfg.showCode !== false && _has(r.code);
+      const showPrice = _has(priceStr);
+      const priceFs = (big ? 15 : 9) * (cfg.showSalePrice && r.salePrice ? 1.25 : 1);
+      /* vertical budget: har block ki apni line height (1.3 + 1px) */
+      const lineH = function (fs) { return fs * 1.3 + 1; };
+      const needAt = function (k) {
+        let n = 0;
+        if (headTxt) n += lineH(7.5 * k);
+        if (showName) n += lineH(nameFs0 * k);
+        if (showCode) n += lineH(8 * k);
+        if (showPrice) n += lineH(priceFs * k);
+        if (_has(metaBits)) n += lineH(7 * k);
+        if (_has(footBits)) n += lineH(7 * k);
+        if (customBits.length) n += lineH(7 * k);
+        if (footTxt) n += lineH(7 * k);
+        return n;
+      };
+      const wantBars = cfg.barcode !== false && _has(val);
+      const wantQR = !!cfg.qr;
+      /* Priority: (1) user ka TEXT / font-size, (2) barcode band — symbol sirf
+         baaqi jagah leta hai. Band ka minimum = bars 11px + human-readable 11px. */
+      const barFloor = 11, hrH = 11;
+      const symMin = wantBars ? (cfg.humanReadable !== false ? barFloor + hrH : barFloor) : (wantQR ? 16 : 0);
+      /* flex gap + safety: label ke blocks ke darmiyan 1px gap bhi budget mein */
+      const gapAllow = 8;
+      /* text kabhi overflow na kare: agar zaroorat se zyada ho to font compress */
+      let k = fsScale;
+      for (let i = 0; i < 30 && (needAt(k) + symMin + gapAllow) > availHpx && k > 0.55; i++) k = Math.round((k - 0.03) * 100) / 100;
+      const need = needAt(k);
+      const symH = Math.max(symMin, Math.min(availHpx - need - gapAllow, availHpx * 0.55));
+      /* symbol(s): barcode + (agar chahiye) QR — QR ho to bars ke SAATH ek row mein
+         (50x30 par QR + bars + text ek doosre ko bahar dhakel dete thay) */
+      let symOut = '', qr = '';
+      if (wantQR) {
+        const d = await QR.dataUrl(r.qr || ('CODE:' + (r.code || '') + ';SKU:' + (r.id || '')), 90);
+        if (d) qr = d;
+      }
+      if (wantBars) {
+        /* v2.25.7 — PRINTABLE FLOOR (ANSI/GS1: Code 39 ka minimum narrow module 0.19mm).
+           Pehle floor 0.25px (~0.066mm) tha: 50x30 label + QR + 13-digit barcode par
+           bars 0.07mm ho jate thay, chhapne par mil jate thay aur 203dpi par scan fail
+           hota tha (300dpi raster decode test ne pakra). Ab: agar aaj ka layout floor se
+           neeche utarta ho to (a) QR apni alag row mein jaata hai (bars ko poori chaurai),
+           (b) quiet zone spec minimum (>=10X) par aata hai, (c) module width kabhi floor
+           se neeche nahi jaati. Jo label tab bhi na fit ho uspar data-lw="1" mark hota
+           hai (designer preview warning dikhata hai) — chup-chaap unscannable label nahi. */
+        const FLOOR_MM = 0.19, FLOOR_PX = FLOOR_MM * MM2PX;
+        const quietMin = Math.max(10 * FLOOR_MM, 1.5).toFixed(1);   /* >=10X ya 1.5mm */
+        const innerWpx = Math.max(60, (wmm - 0.6) * MM2PX);          /* label ki asli chaurai */
+        const hr = cfg.humanReadable !== false ? '<div class="lhr">' + esc(val) + '</div>' : '';
+        let nMod = 0;
+        try { nMod = Barcode.modules(val).length + 12; } catch (e) { nMod = 0; }
+        const barMax = Math.max(12, Math.round(band * 3.4));
+        let qrPx = 0;
+        if (qr) qrPx = Math.round(Math.max(16, Math.min(symH - (hr ? 11 : 0), hmm * MM2PX * 0.34, availWpx * 0.36)));
+        const fitMod = function (quietMm, qx) {
+          const bw = Math.max(30, innerWpx - (parseFloat(quietMm) * MM2PX * 2) - (qx ? qx + 6 : 0));
+          return { bw: bw, modW: nMod ? Math.min(2.4, bw / nMod) : 1.15 };
+        };
+        const A = fitMod(quiet, qrPx);            /* aaj ka layout (QR saath) */
+        const C = fitMod(quietMin, 0);            /* QR apni row + spec quiet zone */
+        const useC = nMod > 0 && A.modW < FLOOR_PX && C.modW > A.modW;
+        const stacked = useC && qrPx > 0;
+        const quietUse = useC ? quietMin : quiet;
+        const capW = nMod ? (useC ? C.bw : A.bw) / nMod : 0;
+        const modW = nMod ? Math.min(2.4, capW) : 1.15;
+        const lwarn = nMod > 0 && capW < FLOOR_PX;   /* physically spec se patla */
+        let barH = Math.max(barFloor, Math.min(Math.round(symH - (hr ? hrH : 0)), barMax));
+        let qrPx2 = 0;
+        if (stacked) {
+          qrPx2 = Math.round(Math.max(16, Math.min(Math.round(symH * 0.42), innerWpx * 0.5)));
+          barH = Math.max(barFloor, Math.min(Math.round(symH - qrPx2 - (hr ? hrH : 0) - 2), barMax));
+        }
+        const bars = Barcode.svg(val, { height: barH, module: modW });
+        const box = '<div class="lbc" style="padding:0 ' + quietUse + 'mm">' + bars + hr + '</div>';
+        if (stacked) {
+          symOut = '<div class="lsym">' + box + '<div class="lqr"><img src="' + qr + '" width="' + qrPx2 +
+            '" height="' + qrPx2 + '" loading="lazy" decoding="async" alt="QR"/></div></div>';
+          qr = '';
+        } else if (qrPx) {
+          symOut = '<div class="lrow">' + box + '<div class="lqr"><img src="' + qr + '" width="' + qrPx +
+            '" height="' + qrPx + '" loading="lazy" decoding="async" alt="QR"/></div></div>';
+          qr = '';
+        } else {
+          symOut = box;
+        }
+        if (lwarn) lwarnFlag = true;
+      } else if (cfg.humanReadable !== false && _has(val)) {
+        symOut = '<div class="lbc" style="padding:0 ' + quiet + 'mm"><div class="lhr">' + esc(val) + '</div></div>';
+      }
+      const lnameFs = Math.round(nameFs0 * k * 10) / 10;
+      parts.push('<div class="label"' + (lwarnFlag ? ' data-lw="1"' : '') +
+        ' style="width:' + wmm + 'mm;height:' + hmm + 'mm;--lfs:' + k.toFixed(2) + '">' +
+        (headTxt ? '<div class="lhead">' + headTxt + '</div>' : '') +
+        (showName ? '<div class="lname" style="font-size:' + lnameFs + 'px">' + esc(r.name || '') + '</div>' : '') +
+        (showCode ? '<div class="lcode">' + esc(r.code || '') + '</div>' : '') +
+        priceStr +
+        symOut +
+        (qr ? '<div class="lqr"><img src="' + qr + '" width="' + Math.round(Math.max(18, Math.min(availWpx * 0.5, availHpx * 0.5))) + '" loading="lazy" decoding="async" alt="QR"/></div>' : '') +
+        (metaBits ? '<div class="lx">' + metaBits + '</div>' : '') +
+        (footBits ? '<div class="lx">' + footBits + '</div>' : '') +
+        (customBits.length ? '<div class="lx">' + customBits.join(' \u00b7 ') + '</div>' : '') +
+        (footTxt ? '<div class="lfoot">' + footTxt + '</div>' : '') +
+        '</div>');
+    }
+    return '<div class="label-sheet">' + parts.join('') + '</div>';
+  },
+
+  /* Six professional presets — single source of truth (App_Print designer +
+     Print.labelFlow read this list; do NOT copy these elsewhere). */
+  LABEL_TEMPLATES: [
+    { id: 'compact', name: 'Compact — 30×20mm', size: '30x20', wmm: 30, hmm: 20, style: 'compact',
+      desc: 'Code + barcode only — small shelf tag, quiet zone kept',
+      fields: { code: true, barcode: true, humanReadable: true },
+      cfg: { showName: false, showCode: true, showPrice: false, barcode: true, humanReadable: true, style: 'compact' } },
+    { id: 'retail_std', name: 'Standard retail — 50×30mm', size: '50x30', wmm: 50, hmm: 30, style: 'retail',
+      desc: 'Name + price + barcode — the retail classic',
+      fields: { name: true, code: true, price: true, barcode: true, humanReadable: true },
+      cfg: { style: 'retail' } },
+    { id: 'price_focus', name: 'Price focus — 50×25mm', size: '50x25', wmm: 50, hmm: 25, style: 'price',
+      desc: 'Price prominent, sale price struck-through, barcode below',
+      fields: { name: true, code: true, price: true, salePrice: true, barcode: true, humanReadable: true },
+      cfg: { showUnit: false, showSalePrice: true, style: 'price' } },
+    { id: 'inventory', name: 'Inventory — 60×40mm', size: '60x40', wmm: 60, hmm: 40, style: 'inventory',
+      desc: 'Barcode-focused with stock count — racks & bins',
+      fields: { name: true, code: true, barcode: true, humanReadable: true, stock: true },
+      cfg: { showPrice: false, showStock: true, style: 'inventory' } },
+    { id: 'qr_combo', name: 'QR + Barcode — 50×30mm', size: '50x30', wmm: 50, hmm: 30, style: 'combined',
+      desc: 'QR (warranty/link) plus EAN bars with human-readable',
+      fields: { name: true, code: true, price: true, barcode: true, humanReadable: true, qr: true },
+      cfg: { qr: true, style: 'combined' } },
+    { id: 'warehouse', name: 'Warehouse — 80×50mm', size: '80x50', wmm: 80, hmm: 50, style: 'warehouse',
+      desc: 'Full data: lot, expiry, supplier, warehouse — receiving bay',
+      fields: { name: true, code: true, price: true, barcode: true, humanReadable: true, stock: true, batch: true, expiry: true, supplier: true, warehouse: true, category: true },
+      cfg: { showStock: true, showBatch: true, showExpiry: true, showSupplier: true, showWarehouse: true, showCategory: true, style: 'warehouse' } }
+  ],
+  labelTemplate(t, overCfg) {
+    t = t || Print.LABEL_TEMPLATES[1];
+    const cfg = Object.assign({}, t.cfg, overCfg || {});
+    return { json: JSON.stringify(cfg), width: t.wmm, height: t.hmm };
+  },
+
+  /**
+   * The one label flow every screen uses: resolve items (server items.labels,
+   * cached-catalog fallback), pick template + copies with LIVE preview, then
+   * Print.open an A4 sheet. v2.23.20 — replaces the dead Print.labelHtml call.
+   */
+  async labelFlow(ids) {
+    ids = (ids || []).map(String).filter(Boolean);
+    if (!ids.length) { UI.toast('Pehle items select karein / No items selected', 'warn'); return; }
+    let rows = null;
+    try { const d = await API.call('items.labels', { ids }); rows = (d && d.rows) || null; } catch (e) { rows = null; }
+    if (!rows || !rows.length) {
+      const cat = (App.state.catalog && App.state.catalog.items) || [];
+      const cur = (App.state.settings && App.state.settings.currencySymbol) || 'Rs';
+      rows = [];
+      ids.forEach(id => {
+        const it = cat.find(i => String(i.id) === id || String(i.code) === id);
+        if (it) rows.push({ id: it.id, name: it.name, code: it.code, barcode: it.barcode || '',
+          price: Number(it.retailPrice != null ? it.retailPrice : it.rp) || 0,
+          salePrice: Number(it.wholesalePrice != null ? it.wholesalePrice : it.wp) || 0,
+          unit: it.unit || it.uom || 'PCS', category: it.category || it.cat || '', brand: it.brand || '',
+          stock: Number(it.qty != null ? it.qty : it.stock) || 0, currency: cur });
+      });
+    }
+    if (!rows.length) { UI.toast('Items nahi mile — page refresh karke dobara koshish karein (Items not found)', 'err'); return; }
+    let tSel = Print.LABEL_TEMPLATES[1], copies = 1;
+    const prev = h('div', { class: 'lbl-preview', style: 'background:#eef1f6;border:1px solid var(--line);border-radius:12px;padding:10px;max-height:46vh;overflow:auto' });
+    const tpl = () => {
+      const cfg = Object.assign({}, tSel.cfg);
+      if (tSel.fields && tSel.fields.price) cfg.showPrice = true;
+      return { json: JSON.stringify(cfg), width: tSel.wmm, height: tSel.hmm };
+    };
+    async function paint() {
+      prev.innerHTML = '<div class="hint">⏳ Preview ban rahi hai…</div>';
+      try {
+        const one = rows.slice(0, 6);
+        /* v2.25.0 — preview mein print wali LABEL_CSS inject karein, warna
+           preview be-styled dikhta tha aur print se match nahi karta tha. */
+        prev.innerHTML = '<style>' + Print.LABEL_CSS + '</style>' + await Print.labelsHtml(one, tpl());
+        /* v2.25.7 — barcode agar spec floor (0.19mm) se patla reh jaye to chhapne par
+           bars mil jate hain aur scanner padh nahi pata — pehle se saaf warning. */
+        const warnN = prev.querySelectorAll('.label[data-lw]').length;
+        if (warnN) {
+          prev.insertBefore(h('div', { class: 'hint', id: 'lblWarn',
+            style: 'background:#fff4e5;border:1px solid #f0b46b;color:#7a4a06;border-radius:8px;padding:6px 8px;margin:0 0 6px' },
+            '⚠ ' + warnN + ' label par barcode bohot lamba hai — is size par chhap kar scan nahi hoga. Bara label chunein ya koi chhota code/13-digit barcode istemal karein.'),
+            prev.firstChild);
+        }
+      } catch (e) { prev.innerHTML = '<div class="hint">⚠ ' + (e.message || e) + '</div>'; }
+    }
+    const chips = h('div', { class: 'chips', style: 'margin:2px 0 8px' });
+    Print.LABEL_TEMPLATES.forEach((t, i) => chips.appendChild(h('button', {
+      class: 'chip2' + (t === tSel ? ' on' : ''), title: t.desc || '',
+      onclick: e => { tSel = t; Array.from(chips.querySelectorAll('.chip2')).forEach(b => b.classList.remove('on')); e.target.classList.add('on'); paint(); }
+    }, t.name)));
+    const copiesIn = h('input', { class: 'f-input', type: 'number', value: '1', min: '1', max: '240', style: 'width:96px',
+      onchange: e => { copies = Math.max(1, Math.min(240, Number(e.target.value) || 1)); e.target.value = copies; } });
+    const body = h('div', null,
+      h('div', { class: 'hint', style: 'margin:0 0 6px' }, rows.length + ' item(s) selected · GS1: quiet zone + human-readable line on har label par'),
+      h('div', { class: 'sec-title', style: 'margin:2px 0 4px' }, 'Template'),
+      chips,
+      h('div', { class: 'row', style: 'gap:10px;align-items:center;margin:2px 0 8px' },
+        h('label', { class: 'lbl' }, 'Copies per item'), copiesIn),
+      h('div', { class: 'sec-title', style: 'margin:2px 0 4px' }, 'Preview (pehle 6)'),
+      prev);
+    UI2.modal({
+      title: '🏷 Print labels — template & preview', size: 'lg', body,
+      actions: [
+        { label: 'Cancel', cls: 'ghost', onClick: c => c() },
+        { label: '🖨 Print sheet', cls: 'ok', onClick: async c => {
+            try {
+              const many = []; for (let i = 0; i < copies; i++) rows.forEach(r => many.push(r));
+              const html = await Print.labelsHtml(many, tpl());
+              Print.open(html, 'Labels — ' + rows.length + ' item(s)', 'A4');
+              c();
+            } catch (e) { UI.toast('Label print fail: ' + (e.message || e), 'err'); }
+          } }
+      ]
+    });
+    paint();
+  }
+};
+
+window.Barcode = Barcode; window.QR = QR; window.Print = Print;
+})();
+</script>

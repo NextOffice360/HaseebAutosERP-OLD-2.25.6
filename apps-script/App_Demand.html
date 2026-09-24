@@ -1,0 +1,828 @@
+<script>
+/* ==========================================================================
+   HASEEB AUTOS — CUSTOMER DEMAND & AI RECOMMENDATION
+   Record unavailable product demands → sourcing → PO → GRN → notify → sale
+   PO suggest · best vendor (price/reliability/lead) · POS recommend · dashboards
+   ========================================================================== */
+(function () {
+'use strict';
+
+const DM = { rows: [], filter: { status: '', priority: '', q: '' }, dash: null };
+
+App.registerScreen('demands', {
+  title: 'Customer Demands', icon: '📝', perm: 'demand.view',
+  subtitle: () => App.state.branchName + ' · customer requests & AI sourcing',
+  actions() {
+    const a = [{ label: 'Refresh', icon: '↻', onClick: () => App.refresh() }];
+    if (App.can('demand.create')) a.unshift({ label: 'New Demand', icon: '➕', cls: 'ok', onClick: openCreate });
+    if (App.can('demand.reports')) a.push({ label: 'AI Monitor', icon: '🤖', onClick: runMonitor });
+    return a;
+  },
+  render(body) {
+    const host = h('div'); body.appendChild(host);
+    UI2.tabs(host, {
+      level: 1, active: 'list',
+      tabs: [
+        { id: 'list', label: 'Demands', icon: '📋', render: renderList },
+        { id: 'dashboard', label: 'Dashboard', icon: '📊', render: renderDashboard },
+        { id: 'poSuggest', label: 'PO Suggestions', icon: '📦', render: renderPOSuggest },
+        { id: 'reports', label: 'Reports', icon: '📈', render: renderReports }
+      ]
+    });
+  }
+});
+
+/* ============================== LIST ==================================== */
+function renderList(c) {
+  const host = h('div'); c.appendChild(host);
+  host.appendChild(UI.skeleton(5));
+  const bar = h('div', { class: 'f-grid', style: { marginBottom: '8px' } });
+  const qInput = h('input', { class: 'f-input', placeholder: 'Search customer / product / demand no…', type: 'search' });
+  const statusSel = h('select', { class: 'f-input' }, h('option', { value: '' }, 'All status'),
+    ['ACTIVE','OPEN','SOURCED','ORDERED','ARRIVED','NOTIFIED','FULFILLED','CANCELLED'].map(v => h('option', { value: v }, v)));
+  const prioSel = h('select', { class: 'f-input' }, h('option', { value: '' }, 'All priority'),
+    ['URGENT','HIGH','MEDIUM','LOW'].map(v => h('option', { value: v }, v)));
+  const searchBtn = h('button', { class: 'btn sm', onclick: () => loadList() }, 'Search');
+  bar.append(qInput, statusSel, prioSel, searchBtn);
+  // live search
+  let tmr;
+  [qInput, statusSel, prioSel].forEach(el => el.addEventListener('input', () => { clearTimeout(tmr); tmr = setTimeout(loadList, 400); }));
+  qInput.addEventListener('keydown', e => { if (e.key === 'Enter') loadList(); });
+
+  function loadList() {
+    host.innerHTML = ''; host.appendChild(bar); host.appendChild(UI.skeleton(4));
+    const opts = { q: qInput.value.trim(), status: statusSel.value, priority: prioSel.value, limit: 100, locationId: App.state.locationId };
+    API.call('demand.list', opts, { offlineFallback: () => ({ rows: [], total: 0, totals: {} }) }).then(res => {
+      DM.rows = res.rows || [];
+      host.innerHTML = ''; host.appendChild(bar);
+      // KPIs
+      const t = res.totals || {};
+      const byS = t.byStatus || {};
+      host.appendChild(UI2.kpiGrid([
+        { icon: '📝', label: 'Total', value: t.total || 0, cls: 'brand' },
+        { icon: '⏳', label: 'Outstanding', value: t.outstanding || ((byS.OPEN||0)+(byS.SOURCED||0)+(byS.ORDERED||0)+(byS.ARRIVED||0)+(byS.NOTIFIED||0)), cls: 'warn' },
+        { icon: '✅', label: 'Fulfilled', value: byS.FULFILLED || 0, cls: 'ok' },
+        { icon: '🚚', label: 'Ordered', value: byS.ORDERED || 0 },
+        { icon: '📬', label: 'Arrived', value: byS.ARRIVED || 0, cls: 'info' },
+        { icon: '🔔', label: 'Notified', value: byS.NOTIFIED || 0 }
+      ]));
+      if (!DM.rows.length) {
+        host.appendChild(h('div', { class: 'empty' }, h('span', { class: 'big' }, '😕'), h('div', null, 'Koi demand nahi mili'),
+          App.can('demand.create') ? h('button', { class: 'btn sm ok', style: { marginTop: '10px' }, onclick: openCreate }, '➕ New Demand') : ''));
+        return;
+      }
+      host.appendChild(UI2.table({
+        screen: 'demands', rows: DM.rows, height: '58vh', exportName: 'customer-demands',
+        filters: [
+          { key: 'status', label: 'Status', type: 'select', options: ['OPEN','SOURCED','ORDERED','ARRIVED','NOTIFIED','FULFILLED','CANCELLED'] },
+          { key: 'priority', label: 'Priority', type: 'select', options: ['URGENT','HIGH','MEDIUM','LOW'] }
+        ],
+        columns: [
+          { key: 'demandNo', label: 'Demand #', render: r => h('b', null, r.demandNo) },
+          { key: 'date', label: 'Date', render: r => fmt.date(r.date) },
+          { key: 'customerName', label: 'Customer', render: r => h('div', null, h('b', null, r.customerName), h('div', { style: { fontSize: '11px', color: 'var(--muted)' } }, r.customerPhone || '')) },
+          { key: 'itemName', label: 'Product', render: r => h('div', null, h('b', null, r.itemName), h('div', { style: { fontSize: '11px', color: 'var(--muted)' } }, (r.itemCode ? r.itemCode + ' · ' : '') + (r.category || '') + (r.brand ? ' · ' + r.brand : ''))) },
+          { key: 'qty', label: 'Qty', num: true, render: r => h('b', null, String(r.qty)) },
+          { key: 'priority', label: 'Priority', render: r => h('span', { class: 'badge ' + (r.priority === 'URGENT' ? 'err' : r.priority === 'HIGH' ? 'warn' : r.priority === 'MEDIUM' ? 'info' : '') }, r.priority) },
+          { key: 'status', label: 'Status', render: r => {
+            const cls = r.status === 'FULFILLED' ? 'ok' : r.status === 'CANCELLED' ? 'err' : r.status === 'ARRIVED' ? 'info' : r.status === 'NOTIFIED' ? 'brand' : r.status === 'ORDERED' ? 'warn' : '';
+            return h('span', { class: 'badge ' + cls }, r.status);
+          }},
+          { key: 'daysOpen', label: 'Age', num: true, render: r => (r.daysOpen || 0) + 'd' + (r.isOverdue ? ' ⚠' : '') },
+          { key: 'expectedDate', label: 'Expected', render: r => r.expectedDate ? fmt.date(r.expectedDate) : '—' }
+        ],
+        rowActions: r => [
+          { icon: '👁', label: 'View', onClick: () => openDetail(r.id) },
+          ...(App.can('demand.create') ? [{ icon: '🔁', label: 'Repeat', onClick: () => openRepeat(r) }] : []),
+          ...(r.status !== 'FULFILLED' && r.status !== 'CANCELLED' && App.can('demand.manage') ? [{ icon: '✎', label: 'Status', onClick: () => openStatus(r) }] : []),
+          ...(App.can('demand.manage') ? [{ icon: '🏭', label: 'Vendors', onClick: () => vendorSuggest(r) }] : [])
+        ],
+        onRow: r => openDetail(r.id),
+        emptyAction: { label: '➕ New Demand', onClick: openCreate }
+      }));
+    }).catch(e => { host.innerHTML = ''; host.appendChild(bar); host.appendChild(h('div', { class: 'empty err' }, '⚠ ' + e.message)); });
+  }
+  loadList();
+}
+
+/* ============================ DETAIL =================================== */
+async function openDetail(id) {
+  let data;
+  try { data = await API.call('demand.get', { id }); } catch (e) { UI.toast(e.message, 'err'); return; }
+  const d = data.demand || {};
+  const hist = data.history || [];
+  const pos = data.pos || [];
+  const body = h('div', null);
+
+  // header
+  body.appendChild(h('div', { class: 'card', style: { marginBottom: '8px' } },
+    h('div', { class: 'card-head' }, h('h4', null, '📝 ' + (d.demandNo || '') + ' · ' + (d.status || '')),
+      h('span', { class: 'badge ' + (d.priority === 'URGENT' ? 'err' : d.priority === 'HIGH' ? 'warn' : 'info') }, d.priority)),
+    h('div', { class: 'card-body' },
+      h('div', { class: 'f-grid' },
+        h('div', { class: 'f-col' }, h('label', null, 'Customer'), h('b', null, d.customerName || '—'), h('span', { style: { fontSize: '11px', color: 'var(--muted)' } }, d.customerPhone || '')),
+        h('div', { class: 'f-col' }, h('label', null, 'Product'), h('b', null, d.itemName || '—'), h('span', { style: { fontSize: '11px', color: 'var(--muted)' } }, (d.itemCode || '') + (d.category ? ' · ' + d.category : '') + (d.brand ? ' · ' + d.brand : ''))),
+        h('div', { class: 'f-col' }, h('label', null, 'Qty / Status'), h('b', null, d.qty + ' · ' + d.status), h('span', { style: { fontSize: '11px', color: 'var(--muted)' } }, 'Age ' + (d.daysOpen||0) + 'd' + (d.isOverdue ? ' · overdue ⚠' : ''))),
+        h('div', { class: 'f-col' }, h('label', null, 'Dates'), h('span', null, 'Demand: ' + fmt.date(d.date)), h('span', { style: { fontSize: '11px' } }, 'Expected: ' + (d.expectedDate ? fmt.date(d.expectedDate) : '—') + (d.notifiedAt ? ' · Notified: ' + fmt.date(d.notifiedAt) : '') + (d.fulfilledAt ? ' · Fulfilled: ' + fmt.date(d.fulfilledAt) : '')))
+      ),
+      d.notes ? h('div', { style: { marginTop: '8px', padding: '8px', background: 'var(--panel-2)', borderRadius: '8px', fontSize: '13px' } }, '🗒 ' + d.notes) : ''
+    )));
+
+  // linked POs
+  body.appendChild(h('div', { class: 'card', style: { marginBottom: '8px' } },
+    h('div', { class: 'card-head' }, h('h4', null, '🚚 Linked Purchase Orders'), pos.length ? h('span', { class: 'badge' }, pos.length + ' PO') : ''),
+    h('div', { class: 'card-body tight' }, pos.length
+      ? pos.map(p => h('div', { class: 'list-item' }, h('div', { class: 'li-main' }, h('b', null, p.poNo || p.id), h('span', null, p.supplierName + ' · ' + p.status)), h('button', { class: 'btn sm sec', onclick: () => App.go('purchase', { open: p.id }) }, 'Open')))
+      : h('div', { class: 'empty', style: { padding: '12px' } }, 'Koi PO link nahi — sourcing pending'))));
+
+  // status history
+  body.appendChild(h('div', { class: 'card' },
+    h('div', { class: 'card-head' }, h('h4', null, '📜 Status history')),
+    h('div', { class: 'card-body tight' },
+      hist.length ? UI2.table({
+        screen: 'demand_hist', rows: hist, height: '22vh', exportName: 'demand-history',
+        columns: [
+          { key: 'ts', label: 'When', render: r => fmt.date(r.ts) },
+          { key: 'fromStatus', label: 'From' },
+          { key: 'toStatus', label: 'To', render: r => h('span', { class: 'badge' }, r.toStatus || '—') },
+          { key: 'note', label: 'Note' }
+        ]
+      }) : h('div', { class: 'empty', style: { padding: '10px' } }, 'No history'))));
+
+  const actions = [];
+  if (d.status !== 'FULFILLED' && d.status !== 'CANCELLED' && App.can('demand.manage')) {
+    if (d.status === 'OPEN' || d.status === 'SOURCED') actions.push({ label: '🚚 Mark ORDERED', onClick: c => { c(); changeStatus(d.id, 'ORDERED'); } });
+    if (d.status === 'ORDERED' || d.status === 'PARTIAL') actions.push({ label: '📦 Mark ARRIVED', onClick: c => { c(); changeStatus(d.id, 'ARRIVED'); } });
+    if (d.status === 'ARRIVED') actions.push({ label: '🔔 Mark NOTIFIED', cls: 'ok', onClick: c => { c(); changeStatus(d.id, 'NOTIFIED'); } });
+    if (d.status === 'ARRIVED' || d.status === 'NOTIFIED') actions.push({ label: '✅ Mark FULFILLED', cls: 'ok', onClick: c => { c(); changeStatus(d.id, 'FULFILLED'); } });
+    actions.push({ label: '✎ Update', onClick: c => { c(); openEdit(d); } });
+    actions.push({ label: '🏭 Vendors', onClick: c => { c(); vendorSuggest(d); } });
+    actions.push({ label: '✕ Cancel', cls: 'danger', onClick: c => {
+      c();
+      /* v2.25.0 — native confirm() ki jagah shared dialog (blocking popup nahi) */
+      UI2.confirm('Demand ' + (d.demandNo || '') + ' cancel karein? Stock/PO par asar nahi hoga, sirf demand band ho gi.', null, true)
+        .then(ok => { if (ok) changeStatus(d.id, 'CANCELLED'); });
+    } });
+  }
+  actions.push({ label: 'Close', onClick: c => c() });
+
+  UI2.modal({ title: 'Demand ' + (d.demandNo || ''), size: 'lg', body, actions });
+}
+
+/* v2.25.0 (req 3) — native prompt() hata diya (kai browsers/iframe mein block
+   hota hai aur design system se bahar hai). Ab chhota modal: note optional,
+   warna seedha Apply. */
+function changeStatus(id, status) {
+  const noteI = h('input', { class: 'f-input', placeholder: 'Note (optional) — e.g. supplier ko order de diya',
+    'aria-label': 'Status note' });
+  UI2.modal({
+    title: 'Status → ' + status, size: 'sm',
+    body: h('div', null,
+      h('div', { style: { fontSize: '13px', marginBottom: '8px' } }, 'Demand ka status ', h('b', null, status), ' ho jaye ga.'),
+      noteI),
+    actions: [
+      { label: 'Back', cls: 'ghost', onClick: c => c() },
+      { label: 'Apply', cls: 'ok', onClick: c => {
+        const note = (noteI.value || '').trim();
+        API.call('demand.setStatus', { id: id, status: status, note: note }).then(() => {
+          UI.toast('Status ' + status + ' update ho gaya', 'ok');
+          c(); App.refresh();
+        }).catch(e => UI.toast(e.message, 'err'));
+      } }
+    ]
+  });
+}
+
+function openStatus(row) {
+  const choices = ['SOURCED','ORDERED','ARRIVED','NOTIFIED','FULFILLED','CANCELLED'].filter(s => s !== row.status);
+  const sel = h('select', { class: 'f-input' }, ...choices.map(c => h('option', { value: c }, c)));
+  const noteI = h('input', { class: 'f-input', placeholder: 'Note (optional)', style: { marginTop: '8px' } });
+  UI2.modal({
+    title: 'Change status — ' + row.demandNo, size: 'sm',
+    body: h('div', null, h('div', null, 'Current: ', h('span', { class: 'badge' }, row.status)), h('label', null, 'New status'), sel, noteI),
+    actions: [
+      { label: 'Cancel', cls: 'ghost', onClick: c => c() },
+      { label: 'Update', cls: 'ok', onClick: c => {
+        API.call('demand.setStatus', { id: row.id, status: sel.value, note: noteI.value.trim() }).then(() => { UI.toast('Updated ✅', 'ok'); c(); App.refresh(); }).catch(e => UI.toast(e.message, 'err'));
+      }}
+    ]
+  });
+}
+
+/* ============================ CREATE ==================================== */
+/* =════════════════════ v2.24.0 — DEMAND FORM (create + edit) ════════════════
+ *  Purane form mein sab fields plain text boxes the (UI2.form mein type:'search'
+ *  support hi nahi tha) aur customer/product ka koi data-aware flow nahi tha.
+ *  Ab: section cards, customer/product catalog pickers (scan support), live
+ *  intelligence panels (balance, credit limit, stock, price, history, duplicate
+ *  open-demand guard), quick date/qty chips, aur Advanced section (internal
+ *  notes, follow-up, budget, partial/substitute policy, notify channel, tags).
+ * ==========================================================================*/
+const DEMAND_SOURCES = [
+  { value: 'WALK_IN', label: '🚶 Walk-in (counter)' },
+  { value: 'PHONE', label: '📞 Phone call' },
+  { value: 'WHATSAPP', label: '💬 WhatsApp' },
+  { value: 'SMS', label: '✉ SMS' },
+  { value: 'FIELD', label: '🚚 Field / salesman' },
+  { value: 'POS', label: '🛒 POS' },
+  { value: 'ONLINE', label: '🌐 Online / social' },
+  { value: 'MANUAL', label: '✍ Manual entry' }
+];
+const DEMAND_NOTIFY = [
+  { value: 'NONE', label: 'NONE — sirf app notification' },
+  { value: 'SMS', label: 'SMS customer ko' },
+  { value: 'WHATSAPP', label: 'WhatsApp customer ko' },
+  { value: 'BOTH', label: 'SMS + WhatsApp (dono)' }
+];
+
+function demandTodayPlus(n) {
+  const t = new Date(); t.setDate(t.getDate() + n);
+  return t.toISOString().slice(0, 10);
+}
+
+/* --------------------------------- FORM ---------------------------------- */
+function demandForm(existing) {
+  const d = existing || {};
+  const isEdit = !!d.id;
+  let cust = null, item = null, openRows = [], dupHit = null;
+
+  /* live, data-aware panels (form ke andar jagah inhi ki hai) */
+  const custNote = h('div', { class: 'f-note brand' },
+    h('span', { class: 'f-note-i' }, '👤'),
+    h('div', { class: 'f-note-t' }, h('b', null, 'Customer intelligence'),
+      h('span', null, 'Customer list se select karein — balance, credit limit aur open demands foran yahan aa jayengi.')));
+  const itemNote = h('div', { class: 'f-note' },
+    h('span', { class: 'f-note-i' }, '📦'),
+    h('div', { class: 'f-note-t' }, h('b', null, 'Stock & price awareness'),
+      h('span', null, 'Product pick karein — current stock, price aur pichhli demands ka summary milega.')));
+  const dupNote = h('div', { class: 'f-note warn', hidden: true });
+  const walkNote = h('div', { class: 'f-note', hidden: true },
+    h('span', { class: 'f-note-i' }, '➕'),
+    h('div', { class: 'f-note-t' }, h('b', null, 'Naya / walk-in customer'),
+      h('span', null, 'Customer list se select nahi kiya — Save par naam + phone se naya customer record khud ban jayega.')));
+
+  const advKeys = ['advNote', 'make', 'model', 'customerPo', 'budgetPrice', 'partialOk', 'substituteOk',
+    'followUpDate', 'notifyChannel', 'assignedSupplierId', 'tags', 'internalNote'];
+  const advOn = isEdit ? true : false;
+
+  const dateChips = (target, list) => h('div', { class: 'row', style: { gap: '6px', flexWrap: 'wrap', marginTop: '4px' } },
+    list.map(([lbl, days]) => h('button', {
+      type: 'button', class: 'btn sm ghost', style: { fontSize: '10.8px' },
+      onclick: () => F.set(target, days === null ? '' : demandTodayPlus(days))
+    }, lbl)));
+  const qtyChips = h('div', { class: 'row', style: { gap: '6px', flexWrap: 'wrap', marginTop: '4px' } },
+    [1, 2, 3, 5, 10, 25].map(n => h('button', {
+      type: 'button', class: 'btn sm ghost', style: { fontSize: '10.8px' },
+      onclick: () => F.set('qty', n)
+    }, String(n))));
+
+  let F = null;
+  const fields = [
+    /* ---------------------------- 1 · CUSTOMER ---------------------------- */
+    { type: 'sec', key: 'secCust', label: 'Customer', icon: '👤', hint: 'Kis ne maanga — record ya walk-in' },
+    { key: 'customerId', label: 'Customer (catalog se)', type: 'search', full: true, scan: false,
+      value: d.customerId || '', displayValue: d.customerName || '',
+      placeholder: '🔍 Naam / phone / code — list khud khulti hai',
+      load: (q, cb) => {
+        /* v2.27.0 (W3.T3) — shared accessor (same query dobara = 0 nayi request) */
+        Shared.customers({ q: q || '', limit: q ? 15 : 25, withBalance: true })
+          .then(cs => cb((cs || []).map(c => ({
+            value: c.id, label: c.name, data: c,
+            tag: (Number(c.balance) > 0 ? 'due ' + fmt.money(c.balance) : 'clear'),
+            sub: [c.phone, c.type || c.customerType, (c.balance ? 'balance ' + fmt.money(c.balance) : ''),
+              (c.creditLimit ? 'limit ' + fmt.money(c.creditLimit) : '')].filter(Boolean).join(' · '),
+            fill: { customerName: c.name, customerPhone: c.phone || '' }
+          })))).catch(() => cb([]));
+      },
+      onPick: row => custPick(row && row.data) },
+    { key: 'customerName', label: 'Customer name', placeholder: 'Walk-in / naya customer ka naam' },
+    { key: 'customerPhone', label: 'Customer phone', placeholder: '03xx-xxxxxxx', onChange: () => toggleWalkNote() },
+    { type: 'el', el: custNote },
+    { type: 'el', el: walkNote },
+
+    /* ----------------------------- 2 · PRODUCT ---------------------------- */
+    { type: 'sec', key: 'secItem', label: 'Product', icon: '📦', hint: 'Catalog se pick ya custom name (scan 📷 support)' },
+    { key: 'itemId', label: 'Product (pick from catalog)', type: 'search', full: true, scan: true,
+      value: d.itemId || '', displayValue: d.itemName || '',
+      placeholder: '🔍 Code / name / barcode — ya 📷 se scan karein',
+      load: (q, cb) => {
+        Shared.items({ q: q || '', limit: q ? 12 : 25 })
+          .then(rows => cb((rows || []).map(r => ({
+            value: r.id, label: r.name, data: r,
+            tag: 'stock ' + (r.stock === undefined || r.stock === null ? '?' : r.stock),
+            sub: [r.code, r.category, r.brand, (r.retailPrice ? fmt.money(r.retailPrice) : '')].filter(Boolean).join(' · '),
+            fill: { itemName: r.name, itemCode: r.code || '', category: r.category || '', brand: r.brand || '',
+              make: r.make || '', model: r.model || '' }
+          })))).catch(() => cb([]));
+      },
+      onPick: row => itemPick(row && row.data) },
+    { type: 'el', el: itemNote },
+    { key: 'itemName', label: 'Product name (custom allowed)', required: true, full: true,
+      placeholder: 'Catalog na ho to naam type karein — availability check ho jayega' },
+    { key: 'itemCode', label: 'Part code / SKU', placeholder: 'BP-1001' },
+    { key: 'category', label: 'Category' },
+    { key: 'brand', label: 'Brand' },
+
+    /* ------------------------- 3 · DEMAND DETAILS ------------------------- */
+    { type: 'sec', key: 'secDetail', label: 'Demand details', icon: '🎯', hint: 'Kya, kitna, kab, kis priority par' },
+    { key: 'qty', label: 'Qty', type: 'number', required: true },
+    { key: 'priority', label: 'Priority', type: 'select', options: ['LOW', 'MEDIUM', 'HIGH', 'URGENT'].map(v => ({ value: v, label: v })) },
+    { key: 'expectedDate', label: 'Expected date', type: 'date' },
+    { key: 'source', label: 'Source', type: 'select', options: DEMAND_SOURCES },
+    { type: 'el', el: dateChips('expectedDate', [['Aaj', 0], ['3 din', 3], ['1 hafta', 7], ['2 hafte', 14], ['1 mahina', 30], ['Clear', null]]) },
+    { type: 'el', el: qtyChips },
+    { type: 'el', el: dupNote },
+    { key: 'notes', label: 'Notes / details', full: true, type: 'textarea', rows: 2,
+      placeholder: 'Customer ki baat, colour/variant, ya koi khaas requirement…', onChange: () => toggleWalkNote() },
+
+    /* --------------------------- 4 · ADVANCED ----------------------------- */
+    { key: '__adv', label: 'Advanced options', type: 'switch', value: advOn,
+      hint: 'Budget, follow-up, partial/substitute policy, notify channel, internal notes, tags',
+      onChange: on => { if (F) advKeys.forEach(k => F.show(k, on)); } },
+    { type: 'sec', key: 'advNote', label: 'Advanced — sourcing & policy', icon: '⚙', hidden: !advOn,
+      hint: 'Internal use — customer ko nahi dikhta' },
+    { key: 'make', label: 'Make', hidden: !advOn },
+    { key: 'model', label: 'Model / variant', hidden: !advOn },
+    { key: 'customerPo', label: 'Customer PO / reference', placeholder: 'Customer ka apna number', hidden: !advOn },
+    { key: 'budgetPrice', label: 'Budget price (per unit)', type: 'money', placeholder: '0.00',
+      hint: 'Is se zyada par customer ko batayein', hidden: !advOn },
+    { key: 'partialOk', label: 'Partial delivery chalegi', type: 'switch', value: !!(d.partialOk === 'true' || d.partialOk === true), hidden: !advOn },
+    { key: 'substituteOk', label: 'Substitute / alternate brand chale ga', type: 'switch', value: !!(d.substituteOk === 'true' || d.substituteOk === true), hidden: !advOn },
+    { key: 'followUpDate', label: 'Follow-up date', type: 'date', hint: 'Is din dobara customer se rabta karna hai', hidden: !advOn },
+    { key: 'notifyChannel', label: 'Arrival par notify', type: 'select', options: DEMAND_NOTIFY, hidden: !advOn },
+    { key: 'assignedSupplierId', label: 'Preferred supplier', type: 'search', placeholder: '🔍 Supplier…',
+      value: d.assignedSupplierId || '', hidden: !advOn,
+      load: (q, cb) => {
+        Shared.suppliers({ q: q || '', limit: q ? 12 : 20 })   /* v2.27.0 W3.T3 */
+          .then(rows => cb((rows || []).map(s => ({ value: s.id, label: s.name,
+            sub: [s.phone, s.city].filter(Boolean).join(' · ') })))).catch(() => cb([]));
+      } },
+    { key: 'tags', label: 'Tags (comma separated)', placeholder: 'urgent, brake, repeat-customer', hidden: !advOn },
+    { key: 'internalNote', label: 'Internal note (team ke liye)', type: 'textarea', full: true, rows: 2,
+      placeholder: 'Sirf staff ko dikhega — sourcing hints, vendor quotes…', hidden: !advOn }
+  ];
+
+  F = UI2.form({
+    values: {
+      qty: d.qty || 1, priority: d.priority || 'MEDIUM', source: d.source || 'WALK_IN',
+      expectedDate: d.expectedDate || demandTodayPlus(7), followUpDate: d.followUpDate || '',
+      notifyChannel: d.notifyChannel || 'NONE', customerName: d.customerName || '', customerPhone: d.customerPhone || '',
+      itemName: d.itemName || '', itemCode: d.itemCode || '', category: d.category || '', brand: d.brand || '',
+      make: d.make || '', model: d.model || '', notes: d.notes || '', customerPo: d.customerPo || '',
+      budgetPrice: d.budgetPrice || '', partialOk: d.partialOk === 'true' || d.partialOk === true,
+      substituteOk: d.substituteOk === 'true' || d.substituteOk === true, tags: d.tags || '',
+      internalNote: d.internalNote || '', locationId: d.locationId || App.state.locationId
+    },
+    fields
+  });
+
+  function toggleWalkNote() {
+    const v = F.values();
+    const typed = String(v.customerName || '').trim();
+    walkNote.hidden = !!(v.customerId || !typed);
+  }
+  function checkDup(extraHit) {
+    dupHit = null;
+    if (extraHit) {
+      dupHit = extraHit; dupNote.hidden = false; dupNote.className = 'f-note warn'; dupNote.innerHTML = '';
+      dupNote.append(h('span', { class: 'f-note-i' }, '⚠'),
+        h('div', { class: 'f-note-t' }, h('b', null, 'Duplicate open demand: ' + extraHit.demandNo),
+          h('span', null, extraHit.status + ' · ' + extraHit.qty + ' pcs · ' + (extraHit.date ? fmt.date(extraHit.date) : '') +
+            ' — pehle us demand ko complete/cancel karein.')));
+      return;
+    }
+    if (!cust || !item || !openRows.length) { dupNote.hidden = true; return; }
+    const hit = openRows.filter(r => (r.itemId && item.id && String(r.itemId) === String(item.id))
+      || (r.itemName || '').toLowerCase() === (item.name || '').toLowerCase())[0];
+    if (isEdit) dupNote.hidden = true;
+    if (!hit) { if (!isEdit) dupNote.hidden = true; return; }
+    dupHit = hit; dupNote.hidden = false; dupNote.className = 'f-note warn'; dupNote.innerHTML = '';
+    dupNote.append(h('span', { class: 'f-note-i' }, '⚠'),
+      h('div', { class: 'f-note-t' }, h('b', null, 'Duplicate open demand: ' + hit.demandNo),
+        h('span', null, hit.status + ' · ' + hit.qty + ' pcs · ' + (hit.date ? fmt.date(hit.date) : '') +
+          ' — pehle us demand ko complete/cancel karein, warna save block hoga.')));
+  }
+
+  async function custPick(c) {
+    if (!c) return;
+    cust = c;
+    custNote.className = 'f-note brand'; custNote.hidden = false; custNote.innerHTML = '';
+    custNote.append(h('span', { class: 'f-note-i' }, '👤'),
+      h('div', { class: 'f-note-t' },
+        h('b', null, c.name + (c.code ? ' · ' + c.code : '')),
+        h('span', null, [c.phone || 'phone nahi', c.type || c.customerType || '',
+          'Balance ' + fmt.money(c.balance || 0),
+          (c.creditLimit ? 'Credit limit ' + fmt.money(c.creditLimit) : '')].filter(Boolean).join(' · '))));
+    toggleWalkNote();
+    try {
+      const r = await API.call('demand.list', { customerId: c.id, status: 'ACTIVE', limit: 25 },
+        { offlineFallback: () => ({ rows: [] }) });
+      openRows = r.rows || [];
+      custNote.append(h('div', { class: 'f-note-t' },
+        h('b', null, openRows.length ? openRows.length + ' open demand' + (openRows.length > 1 ? 's' : '') : 'Koi open demand nahi'),
+        h('span', null, openRows.slice(0, 3).map(x => x.itemName + ' (' + x.qty + ')').join('  ·  ')
+          || 'Naya demand safar shuru kar sakte hain')));
+      checkDup();
+    } catch (e) { }
+  }
+
+  async function itemPick(r) {
+    if (!r) return;
+    item = r;
+    const stk = (r.stock === undefined || r.stock === null) ? NaN : Number(r.stock);
+    itemNote.className = 'f-note ' + (!isNaN(stk) && stk > 0 ? 'ok' : 'warn');
+    itemNote.hidden = false; itemNote.innerHTML = '';
+    itemNote.append(h('span', { class: 'f-note-i' }, '📦'),
+      h('div', { class: 'f-note-t' },
+        h('b', null, r.name + (r.code ? ' · ' + r.code : '')),
+        h('span', null, [isNaN(stk) ? 'Stock info nahi' : (stk > 0 ? 'Branch stock: ' + fmt.num(stk) : 'Out of stock — sourcing lagegi'),
+          (r.retailPrice ? 'Retail ' + fmt.money(r.retailPrice) : ''),
+          (r.wholesalePrice ? 'Wholesale ' + fmt.money(r.wholesalePrice) : ''),
+          (r.costPrice ? 'Cost ' + fmt.money(r.costPrice) : '')].filter(Boolean).join(' · '))));
+    if (!isNaN(stk) && stk <= 0) {
+      itemNote.append(h('div', { class: 'f-note-t' },
+        h('b', null, 'Sourcing suggestion'),
+        h('span', null, 'Ye item stock mein nahi — PO Suggestions tab is demand ko supplier ke sath jor sakta hai.')));
+    }
+    try {
+      const hh = await API.call('demand.list', { itemId: r.id, limit: 6 }, { offlineFallback: () => ({ rows: [] }) });
+      const rows = hh.rows || [];
+      if (rows.length) {
+        itemNote.append(h('div', { class: 'f-note-t' },
+          h('b', null, 'Demand history (' + rows.length + ')'),
+          h('span', null, rows.slice(0, 3).map(x => x.demandNo + ' · ' + x.customerName + ' · ' + x.status).join('  ·  '))));
+      }
+    } catch (e) { }
+    checkDup();
+  }
+
+  /* v2.25.0 (req 3) — duplicate check ab SERVER se bhi hota hai, aur naam se bhi
+     (pehle sirf tab chalta tha jab catalog se item PICK kiya ho — walk-in/custom
+     naam par duplicate bilkul pakra nahi jata tha). */
+  async function findDupLive(v, name) {
+    const cid = v.customerId || (cust && cust.id) || '';
+    if (!cid) return null;
+    const nm = String(name || '').trim().toLowerCase();
+    try {
+      const r = await API.call('demand.list', { customerId: cid, status: 'ACTIVE', limit: 50 },
+        { offlineFallback: () => ({ rows: [] }) });
+      const rows = (r && r.rows) || [];
+      const hit = rows.filter(x =>
+        (v.itemId && x.itemId && String(x.itemId) === String(v.itemId))
+        || (nm && String(x.itemName || '').trim().toLowerCase() === nm))[0];
+      if (!hit) return null;
+      if (isEdit && String(hit.id) === String(d.id)) return null;
+      return hit;
+    } catch (e) { return null; }
+  }
+
+  async function save() {
+    const v = F.values();
+    const name = String(v.itemName || '').trim();
+    const cname = String(v.customerName || '').trim();
+    if (!v.customerId && !cname) return UI.toast('Customer select karein ya walk-in ka naam likhein', 'err', 4000), false;
+    if (!name) return UI.toast('Product name zaroori hai — catalog se pick karein ya type karein', 'err', 4000), false;
+    const qty = Number(v.qty) || 0;
+    if (qty <= 0) return UI.toast('Qty 1 ya zyada honi chahiye', 'err'), false;
+    if (dupHit) return UI.toast('Ye demand pehle se open hai (' + dupHit.demandNo + ') — pehle us ko complete/cancel karein', 'warn', 5200), false;
+    const live = await findDupLive(v, name);
+    if (live) {
+      checkDup(live);
+      return UI.toast('Duplicate — ' + live.demandNo + ' pehle se open hai (' + live.status + ')', 'warn', 5200), false;
+    }
+    const today = new Date().toISOString().slice(0, 10);
+    /* v2.25.0 — native confirm() ki jagah app ka apna dialog (design system,
+       blocking browser popup nahi) aur ab ASLI intezar (pehle ye foran aage
+       barh jata tha — user ko poochha hi nahi jata tha). */
+    if (v.expectedDate && v.expectedDate < today
+      && !(await UI2.confirm('Expected date guzar chuki hai (' + v.expectedDate + ') — phir bhi save karein?', null, true))) return false;
+    if (Number(v.budgetPrice) > 0 && Number(v.budgetPrice) < Number(item && item.costPrice || 0)
+      && !(await UI2.confirm('Budget price cost se kam hai (cost ' + fmt.money(Number(item.costPrice)) + ') — phir bhi save karein?', null, true))) return false;
+
+    let custId = v.customerId;
+    if (!custId) {
+      /* real-world flow: walk-in ka naya customer record khud ban jaye */
+      try {
+        const saved = await API.call('customers.save', { customer: { name: cname, phone: v.customerPhone || '' } });
+        custId = (saved && (saved.id || (saved.customer && saved.customer.id))) || '';
+        if (!custId) throw new Error('Customer id nahi mili');
+        UI.toast('Naya customer ban gaya: ' + cname, 'ok');
+      } catch (e) { return UI.toast('Customer add nahi ho saka: ' + e.message, 'err', 5200), false; }
+    }
+    const patch = {
+      customerId: custId, customerName: cname, itemId: v.itemId || '', itemName: name,
+      itemCode: v.itemCode || '', category: v.category || '', brand: v.brand || '',
+      make: v.make || '', model: v.model || '', qty: qty, priority: v.priority, source: v.source,
+      expectedDate: v.expectedDate || '', notes: v.notes || '', locationId: v.locationId || App.state.locationId,
+      customerPo: v.customerPo || '', budgetPrice: Number(v.budgetPrice) || 0,
+      partialOk: v.partialOk === true, substituteOk: v.substituteOk === true,
+      followUpDate: v.followUpDate || '', notifyChannel: v.notifyChannel || 'NONE',
+      assignedSupplierId: v.assignedSupplierId || '', tags: v.tags || '', internalNote: v.internalNote || ''
+    };
+    try {
+      if (isEdit) await API.call('demand.update', { id: d.id, patch: patch });
+      else await API.call('demand.create', { demand: patch });
+      UI.toast(isEdit ? 'Demand update ho gayi ✅' : 'Demand save ho gayi ✅', 'ok');
+      return true;
+    } catch (e) { UI.toast(e.message || 'Save fail', 'err', 6000); return false; }
+  }
+
+  toggleWalkNote();
+  return { f: F, save };
+}
+
+/* ------------------------------ OPENERS --------------------------------- */
+/* v2.25.0 (req 3/6) — demand modal bhi GRN jaisa: F9 = Save, Esc = band (shared
+   modal registry), aur Save button par shortcut ka hint. Ek jagah helper se
+   teenon openers (create/edit/repeat) same behaviour dete hain. */
+function openDemandModal(cfg, F) {
+  const m = UI2.modal({
+    title: cfg.title, subtitle: cfg.subtitle, size: 'lg', body: F.f.el,
+    actions: [
+      { label: 'Cancel', cls: 'ghost', onClick: c => c() },
+      { label: cfg.saveLabel + ' (F9)', cls: 'ok', onClick: c => { F.save().then(ok => { if (ok) { c(); App.refresh(); } }); } }
+    ]
+  });
+  const onKey = (e) => {
+    if (!document.body.contains(m.el)) { document.removeEventListener('keydown', onKey); return; }
+    if (e.key === 'F9') {
+      e.preventDefault();
+      const btn = [...document.querySelectorAll('.modal2 .m-foot button')].find(b => /F9/.test(b.textContent || ''));
+      if (btn) btn.click();
+    }
+  };
+  document.addEventListener('keydown', onKey);
+  return m;
+}
+
+function openCreate() {
+  if (!App.can('demand.create')) return UI.toast('Permission nahi hai', 'err');
+  const F = demandForm(null);
+  openDemandModal({
+    title: '➕ New Customer Demand',
+    subtitle: 'Customer → product → commitment. Fields data-aware hain — balance, stock aur duplicate check khud hota hai. (F9 = save)',
+    saveLabel: 'Save demand'
+  }, F);
+}
+
+function openEdit(d) {
+  const F = demandForm(d);
+  openDemandModal({
+    title: '✎ Update demand ' + (d.demandNo || ''),
+    subtitle: 'Qty, priority, dates aur advanced policy — sab kuch update ho sakta hai. (F9 = save)',
+    saveLabel: 'Save changes'
+  }, F);
+}
+
+function openRepeat(d) {
+  if (!App.can('demand.create')) return UI.toast('Permission nahi hai', 'err');
+  const F = demandForm(Object.assign({}, d, { id: '' }));
+  openDemandModal({
+    title: '🔁 Repeat demand — ' + (d.demandNo || ''),
+    subtitle: 'Purani demand se copy — qty/date adjust kar ke naya demand banayein. (F9 = save)',
+    saveLabel: 'Create repeat'
+  }, F);
+}
+
+async function vendorSuggest(row) {
+  const d = row.itemId ? row : row; // accept both
+  const id = d.itemId || '';
+  if (!id && !d.itemName) return UI.toast('Item info nahi hai', 'warn');
+  UI.toast('Best vendor dhoond rahe hain…', 'info');
+  try {
+    const res = await API.call('demand.vendorSuggest', { itemId: id, itemName: d.itemName || '', days: 180 });
+    const best = res.best;
+    const rows = res.rows || [];
+    const body = h('div', null,
+      best ? h('div', { class: 'card', style: { borderColor: 'var(--ok)', background: 'var(--ok-soft)' } },
+        h('div', { class: 'card-head' }, h('h4', null, '⭐ Best: ' + (best.supplierName || '')), h('span', { class: 'badge ok' }, 'Score ' + (best.score||''))),
+        h('div', { class: 'card-body' },
+          h('div', { class: 'f-grid' },
+            h('div', null, 'Avg cost: ', h('b', null, fmt.money(best.avgCost))),
+            h('div', null, 'Lead: ', h('b', null, (best.leadTimeAvg||0) + ' days')),
+            h('div', null, 'Reliability: ', h('b', null, (best.reliabilityPct||0) + '%')),
+            h('div', null, 'Last: ', h('span', null, fmt.money(best.lastRate) + ' · ' + (best.lastDate||'')))
+          ),
+          best.note ? h('div', { style: { fontSize: '12px', color: 'var(--muted)', marginTop: '6px' } }, best.note) : ''
+        )) : h('div', { class: 'empty' }, res.note || 'No vendor history'),
+      rows.length ? UI2.table({
+        screen: 'vendor_suggest', rows, height: '40vh', exportName: 'vendor-suggestion',
+        columns: [
+          { key: 'supplierName', label: 'Supplier', render: r => h('span', null, r.supplierName + (r.isBest ? h('span', { class: 'badge ok', style: { marginLeft: '6px' } }, 'BEST') : '')) },
+          { key: 'purchases', label: 'POs', num: true, render: r => String(r.purchases) },
+          { key: 'avgCost', label: 'Avg cost', num: true, render: r => fmt.money(r.avgCost) },
+          { key: 'lastRate', label: 'Last rate', num: true, render: r => fmt.money(r.lastRate) },
+          { key: 'leadTimeAvg', label: 'Lead', num: true, render: r => r.leadTimeAvg != null ? r.leadTimeAvg + 'd' : '—' },
+          { key: 'reliabilityPct', label: 'On-time', num: true, render: r => r.reliabilityPct != null ? r.reliabilityPct + '%' : '—' },
+          { key: 'score', label: 'Score', num: true, render: r => h('b', null, r.score || 0) }
+        ]
+      }) : ''
+    );
+    UI2.modal({ title: '🏭 Best Vendor — ' + (d.itemName||id), size: 'lg', body, actions: [{ label: 'Close', onClick: c => c() }] });
+  } catch (e) { UI.toast(e.message, 'err'); }
+}
+
+/* ============================ DASHBOARD ================================= */
+function renderDashboard(c) {
+  const host = h('div'); c.appendChild(host);
+  host.appendChild(UI.skeleton(4));
+  API.call('demand.dashboard', { locationId: App.state.locationId }, { offlineFallback: () => ({ totals: {}, byStatus: {}, ageing: {} }) }).then(dash => {
+    host.innerHTML = '';
+    const t = dash.totals || {};
+    host.appendChild(UI2.kpiGrid([
+      { icon: '📝', label: 'Total demands', value: t.total || 0, cls: 'brand' },
+      { icon: '⏳', label: 'Outstanding', value: t.outstanding || 0, cls: 'warn' },
+      { icon: '✅', label: 'Fulfilled', value: t.fulfilled || 0, cls: 'ok' },
+      { icon: '🚚', label: 'Pending procurement', value: t.pendingProcurement || 0, cls: 'err' },
+      { icon: '👥', label: 'Waiting customers', value: t.waitingCustomers || 0 },
+      { icon: '⚠', label: 'Overdue', value: t.overdue || 0, cls: 'err' }
+    ]));
+    host.appendChild(h('div', { class: 'grid g2-1', style: { marginTop: '10px' } },
+      h('div', { class: 'card' }, h('div', { class: 'card-head' }, h('h4', null, '📊 By status')),
+        h('div', { class: 'card-body' }, Chart.bars(Object.keys(dash.byStatus||{}).map(k => ({ label: k, value: dash.byStatus[k] }), { horizontal: true, height: 180 })) || h('div', { class: 'empty' }, 'No data'))),
+      h('div', { class: 'card' }, h('div', { class: 'card-head' }, h('h4', null, '⏱ Ageing (open demands)')),
+        h('div', { class: 'card-body' }, Chart.bars(Object.keys(dash.ageing||{}).map(k => ({ label: k, value: dash.ageing[k] })), { height: 180 }) || h('div', { class: 'empty' }, 'No data')))
+    ));
+    const chart2 = h('div', { class: 'card', style: { marginTop: '10px' } }, h('div', { class: 'card-head' }, h('h4', null, '🏭 Supplier order status')), h('div', { class: 'card-body' },
+      Object.keys(dash.supplierOrderStatus||{}).length ? Chart.bars(Object.keys(dash.supplierOrderStatus).map(k => ({ label: k, value: dash.supplierOrderStatus[k] })), { horizontal: true, height: 180 }) : h('div', { class: 'empty' }, 'No PO-linked demands')));
+    host.appendChild(chart2);
+    host.appendChild(h('div', { class: 'card', style: { marginTop: '10px' } },
+      h('div', { class: 'card-head' }, h('h4', null, '🤖 AI monitor'), h('button', { class: 'btn sm sec', onclick: runMonitor }, 'Run now')),
+      h('div', { class: 'card-body' }, h('div', { style: { fontSize: '13px', color: 'var(--muted)' } },
+        'Daily monitors: overdue, arrival-not-notified, pending procurement. Triggers at ' + ((App.state.settings && App.state.settings['demand.alertDays']) || '3') + ' days. ' + (dash.trends ? 'Last 7d: ' + dash.trends.last7Created + ' created · ' + dash.trends.last7Fulfilled + ' fulfilled' : ''))))
+    );
+  }).catch(e => { host.innerHTML = ''; host.appendChild(h('div', { class: 'empty err' }, '⚠ ' + e.message)); });
+}
+
+function runMonitor() {
+  UI.toast('AI monitor chala rahe hain…', 'info');
+  API.call('demand.monitor', {}).then(r => UI.toast('Monitor: ' + (r.alerts||0) + ' alerts ✅', 'ok')).catch(e => UI.toast(e.message, 'err'));
+}
+
+/* ============================ PO SUGGEST ================================= */
+function renderPOSuggest(c) {
+  const host = h('div'); c.appendChild(host);
+  host.appendChild(UI.skeleton(4));
+  API.call('demand.suggestForPO', { locationId: App.state.locationId, limit: 50 }, { offlineFallback: () => ({ items: [] }) }).then(res => {
+    host.innerHTML = '';
+    const s = res;
+    host.appendChild(UI2.kpiGrid([
+      { icon: '📦', label: 'Items to order', value: s.totalItems || 0, cls: 'brand' },
+      { icon: '📝', label: 'Demands', value: s.totalDemands || 0 },
+      { icon: '🔢', label: 'Total qty', value: s.totalQty || 0 },
+      { icon: '💰', label: 'Est. value', value: fmt.money(s.estimatedValue || 0), cls: 'ok' }
+    ]));
+    if (!s.items || !s.items.length) {
+      host.appendChild(h('div', { class: 'empty' }, h('span', { class: 'big' }, '✅'), h('div', null, 'Koi outstanding demand nahi — PO ke liye kuch pending nahi')));
+      return;
+    }
+    host.appendChild(h('div', { style: { margin: '10px 0', display: 'flex', gap: '6px', flexWrap: 'wrap' } },
+      h('button', { class: 'btn sm ok', onclick: () => createPOFROMSelected() }, '🚚 Create PO from selected'),
+      h('button', { class: 'btn sm sec', onclick: () => App.go('purchase') }, 'Open Purchase')
+    ));
+    const sel = new Set();
+    host.appendChild(UI2.table({
+      screen: 'demand_posuggest', rows: s.items, height: '56vh', exportName: 'demand-po-suggestions',
+      columns: [
+        { key: '__sel', label: '', render: r => {
+          const cb = h('input', { type: 'checkbox', checked: sel.has(r.key), 'aria-label': 'Select' });
+          cb.onchange = () => { if (cb.checked) sel.add(r.key); else sel.delete(r.key); };
+          return cb;
+        }},
+        { key: 'itemName', label: 'Product', render: r => h('div', null, h('b', null, r.itemName), h('div', { style: { fontSize: '11px', color: 'var(--muted)' } }, r.itemCode + (r.category ? ' · ' + r.category : '') + (r.brand ? ' · ' + r.brand : ''))) },
+        { key: 'demandCount', label: 'Demands', num: true },
+        { key: 'totalQty', label: 'Qty to order', num: true, render: r => h('b', null, r.totalQty) },
+        { key: 'onHand', label: 'On hand', num: true },
+        { key: 'topPriority', label: 'Priority', render: r => h('span', { class: 'badge ' + (r.topPriority==='URGENT'?'err':r.topPriority==='HIGH'?'warn':'') }, r.topPriority) },
+        { key: 'customers', label: 'Waiting customers', render: r => h('span', { style: { fontSize: '12px' } }, r.customers.slice(0,2).map(c => c.name).join(', ') + (r.customers.length>2 ? ' +' + (r.customers.length-2) : '')) },
+        { key: 'estimatedValue', label: 'Est. value', num: true, render: r => fmt.money(r.estimatedValue) }
+      ],
+      onRow: r => {
+        // show demand ids popup
+        UI2.modal({
+          title: r.itemName + ' — demands', size: 'md',
+          body: h('div', null, r.customers.map(cc => h('div', { class: 'list-item' }, h('div', { class: 'li-main' }, h('b', null, cc.name), h('span', null, cc.demandNo + ' · qty ' + cc.qty + ' · ' + cc.priority)))), h('button', { class: 'btn sm sec', style: { marginTop: '8px' }, onclick: () => vendorSuggest(r) }, '🏭 Vendor suggest')),
+          actions: [{ label: 'Close', onClick: c => c() }]
+        });
+      }
+    }));
+
+    function createPOFROMSelected() {
+      const chosen = s.items.filter(it => sel.has(it.key));
+      if (!chosen.length) return UI.toast('Koi item select nahi', 'warn');
+      // group by supplier suggestion? For v1, ask supplier
+      const supSel = h('select', { class: 'f-input' }, h('option', { value: '' }, '— Auto / primary —'));
+      Shared.suppliers({ limit: 30 }).then(rows => {   /* v2.27.0 W3.T3 */
+        (rows || []).forEach(sup => supSel.appendChild(h('option', { value: sup.id }, sup.name)));
+      });
+      UI2.modal({
+        title: 'Create PO from ' + chosen.length + ' items', size: 'md',
+        body: h('div', null, h('label', null, 'Supplier (optional: leave auto)'), supSel,
+          h('div', { style: { marginTop: '8px', fontSize: '13px', color: 'var(--muted)' } }, chosen.map(x => x.itemName + ' ×' + x.totalQty).join(', '))),
+        actions: [
+          { label: 'Cancel', cls: 'ghost', onClick: c => c() },
+          { label: 'Create PO (DRAFT)', cls: 'ok', onClick: async c => {
+            try {
+              const items = chosen.map(x => ({ itemId: x.itemId, code: x.itemCode, name: x.itemName, qty: x.totalQty, rate: x.costPrice || 0 }));
+              const demandIds = chosen.flatMap(x => x.demandIds || []);
+              const po = await API.call('purchase.po.save', { po: { supplierId: supSel.value, locationId: App.state.locationId, date: new Date().toISOString().slice(0,10), items, demandIds, notes: 'From customer demands ' + new Date().toLocaleDateString() } });
+              UI.toast('PO ' + (po.poNo||po.id) + ' created ✅', 'ok');
+              c(); App.go('purchase', { open: po.id });
+            } catch (e) { UI.toast(e.message, 'err'); }
+          }}
+        ]
+      });
+    }
+    // expose for outer scope
+    host._createPO = createPOFROMSelected;
+  }).catch(e => { host.innerHTML = ''; host.appendChild(h('div', { class: 'empty err' }, '⚠ ' + e.message)); });
+}
+
+/* ============================ REPORTS =================================== */
+function renderReports(c) {
+  const host = h('div'); c.appendChild(host);
+  const tabsHost = h('div'); host.appendChild(tabsHost);
+  UI2.tabs(tabsHost, {
+    level: 2, active: 'outstanding',
+    tabs: [
+      { id: 'outstanding', label: 'Outstanding', render: c2 => reportTable(c2, 'outstanding') },
+      { id: 'fulfilled', label: 'Fulfilled', render: c2 => reportTable(c2, 'fulfilled') },
+      { id: 'pending_procurement', label: 'Pending procurement', render: c2 => reportTable(c2, 'pending_procurement') },
+      { id: 'waiting_customers', label: 'Waiting customers', render: c2 => waitingReport(c2) },
+      { id: 'supplier_status', label: 'Supplier status', render: c2 => supplierReport(c2) }
+    ]
+  });
+}
+
+function reportTable(c, type) {
+  const host = h('div'); c.appendChild(host);
+  host.appendChild(UI.skeleton(4));
+  API.call('demand.reports', { type, limit: 100, locationId: App.state.locationId }).then(r => {
+    host.innerHTML = '';
+    host.appendChild(h('div', { style: { marginBottom: '8px', display: 'flex', gap: '6px' } }, h('span', { class: 'badge' }, 'Rows: ' + (r.total||r.rows?.length||0)), h('span', { class: 'badge brand' }, type.replace(/_/g,' '))));
+    const rows = r.rows || [];
+    host.appendChild(UI2.table({
+      screen: 'demand_rep_' + type, rows, height: '48vh', exportName: 'demand-' + type,
+      columns: [
+        { key: 'demandNo', label: 'Demand #' },
+        { key: 'date', label: 'Date', render: x => fmt.date(x.date) },
+        { key: 'customerName', label: 'Customer' },
+        { key: 'itemName', label: 'Product' },
+        { key: 'qty', label: 'Qty', num: true },
+        { key: 'priority', label: 'Priority', render: x => h('span', { class: 'badge' }, x.priority) },
+        { key: 'status', label: 'Status', render: x => h('span', { class: 'badge ' + (x.status==='FULFILLED'?'ok':x.status==='ORDERED'?'warn':'') }, x.status) },
+        { key: 'daysOpen', label: 'Age', num: true, render: x => x.daysOpen + 'd' }
+      ],
+      onRow: x => openDetail(x.id)
+    }));
+  }).catch(e => { host.innerHTML = ''; host.appendChild(h('div', { class: 'empty err' }, '⚠ ' + e.message)); });
+}
+
+function waitingReport(c) {
+  const host = h('div'); c.appendChild(host);
+  host.appendChild(UI.skeleton(3));
+  API.call('demand.reports', { type: 'waiting_customers', limit: 100, locationId: App.state.locationId }).then(r => {
+    host.innerHTML = '';
+    const rows = r.customers || [];
+    host.appendChild(UI2.table({
+      screen: 'demand_waiting', rows, height: '48vh', exportName: 'waiting-customers',
+      columns: [
+        { key: 'customerName', label: 'Customer', render: x => h('b', null, x.customerName) },
+        { key: 'customerPhone', label: 'Phone', render: x => x.customerPhone || '—' },
+        { key: 'count', label: 'Demands', num: true },
+        { key: 'items', label: 'Products', render: x => h('span', { style: { fontSize: '12px' } }, x.items.slice(0,3).map(i => i.itemName + ' (' + i.qty + ')').join(', ') + (x.items.length>3 ? ' +' + (x.items.length-3) : '')) },
+        { key: 'earliest', label: 'Since', render: x => fmt.date(x.earliest) }
+      ]
+    }));
+  }).catch(e => { host.innerHTML = ''; host.appendChild(h('div', { class: 'empty err' }, '⚠ ' + e.message)); });
+}
+
+function supplierReport(c) {
+  const host = h('div'); c.appendChild(host);
+  host.appendChild(UI.skeleton(3));
+  API.call('demand.reports', { type: 'supplier_status', limit: 100, locationId: App.state.locationId }).then(r => {
+    host.innerHTML = '';
+    const rows = r.rows || [];
+    host.appendChild(UI2.table({
+      screen: 'demand_supplier', rows, height: '48vh', exportName: 'supplier-demand-status',
+      columns: [
+        { key: 'supplierName', label: 'Supplier' },
+        { key: 'poStatus', label: 'PO status', render: x => h('span', { class: 'badge' }, x.poStatus) },
+        { key: 'demandCount', label: 'Demands', num: true },
+        { key: 'poCount', label: 'POs', num: true }
+      ]
+    }));
+  }).catch(e => { host.innerHTML = ''; host.appendChild(h('div', { class: 'empty err' }, '⚠ ' + e.message)); });
+}
+
+/* ============================ POS HOOK ================================== */
+// POS customer-select hook — other screens can call DM.posHook(customerId)
+DM.posHook = async function (customerId) {
+  if (!customerId) return null;
+  try { return await API.call('demand.posRecommend', { customerId, locationId: App.state.locationId, limit: 6 }); }
+  catch (e) { return null; }
+};
+window.DM = DM;
+
+})();
+</script>

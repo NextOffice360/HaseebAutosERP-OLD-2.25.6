@@ -1,0 +1,2583 @@
+<script>
+/* ==========================================================================
+   HASEEB AUTOS — CORE
+   State · API transport (Apps Script / JSONP / demo-mock) · Offline queue
+   · i18n (EN + Roman Urdu) · Router · UI kit (toast/modal/drawer/table/charts)
+   ========================================================================== */
+(function () {
+'use strict';
+
+/* ============================== STORAGE ============================== */
+const Store = {
+  get(k, d) { try { const v = localStorage.getItem('ha_' + k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem('ha_' + k, JSON.stringify(v)); } catch (e) { } },
+  del(k) { try { localStorage.removeItem('ha_' + k); } catch (e) { } }
+};
+
+/* ========================== BACKEND & INTEGRATIONS (v2.24) ==========================
+   Self-hosted / Netlify / GitHub Pages / local PC support:
+   - window.API_URL (from Index.html) is primary (GAS exec URL)
+   - fallback: localStorage 'ha_backendUrl' — owner sets in Settings → Backend & Integrations
+   - also checks 'backend.gasUrl' from DB settings when available (after boot)
+   No secrets ever stored here — only the exec URL (not Sheet ID / keys).
+   Offline queue (API.enqueue) handles "offline vs remote unavailable" gracefully.
+   ================================================================================ */
+const Backend = {
+  _lsKey: 'ha_backendUrl',
+  getUrl: function() {
+    // 1) GAS injected (server-side template) — most authoritative when running inside GAS
+    if (window.API_URL && String(window.API_URL).trim()) return String(window.API_URL).trim().replace(/\/$/, '');
+    // 2) Owner-configured static URL in localStorage (self-hosted / Netlify / local PC)
+    try {
+      const ls = localStorage.getItem(Backend._lsKey) || localStorage.getItem('ha_backend_url') || '';
+      if (ls && ls.trim()) return ls.trim().replace(/\/$/, '');
+    } catch(e) {}
+    try {
+      const v = Store.get('backendUrl','');
+      if (v && String(v).trim()) return String(v).trim().replace(/\/$/, '');
+    } catch(e) {}
+    // 3) Settings-driven gasUrl (after boot, for GAS-hosted the current exec URL is used)
+    try {
+      if (App && App.state && App.state.settings && App.state.settings['backend.gasUrl']) {
+        const g = String(App.state.settings['backend.gasUrl']).trim();
+        if (g) return g.replace(/\/$/, '');
+      }
+    } catch(e) {}
+    return '';
+  },
+  setUrl: function(url) {
+    url = String(url||'').trim().replace(/\/$/, '');
+    if (!url) {
+      try { localStorage.removeItem(Backend._lsKey); localStorage.removeItem('ha_backend_url'); } catch(e){}
+      Store.del('backendUrl');
+      window.API_URL = '';
+      return '';
+    }
+    if (!/^https:\/\//i.test(url)) throw new Error('Backend URL must start with https://');
+    if (url.indexOf('script.google.com')===-1 && url.indexOf('/exec')===-1) {
+      // allow any https for custom proxy, but warn
+    }
+    try { localStorage.setItem(Backend._lsKey, url); localStorage.setItem('ha_backend_url', url); } catch(e){}
+    Store.set('backendUrl', url);
+    window.API_URL = url;
+    return url;
+  },
+  clearUrl: function(){ return Backend.setUrl(''); },
+  isExternal: function(){ return !!(window.API_URL || Backend.getUrl()) && !(window.google && google.script && google.script.run); },
+  test: async function(url) {
+    const u = url || Backend.getUrl();
+    if (!u) throw new Error('No backend URL set.');
+    // Try ping via JSONP fetch (no auth)
+    const cb = 'haTest_' + Math.random().toString(36).slice(2);
+    return new Promise((resolve, reject)=>{
+      const s = document.createElement('script');
+      const t = setTimeout(()=>{ cleanup(); reject(new Error('Timeout — URL reachable nahi ya GAS deploy nahi.')); }, 8000);
+      function cleanup(){ clearTimeout(t); window[cb]=function(){}; setTimeout(()=>{delete window[cb];},60000); if(s.parentNode) s.parentNode.removeChild(s); }
+      window[cb]=r=>{ cleanup(); if(r && r.ok) resolve(r.data); else reject(new Error((r && r.error && r.error.message)||'Ping failed')); };
+      s.src = u + '?t=jsonp&cb=' + cb + '&a=system.ping&p=' + encodeURIComponent(JSON.stringify({}));
+      s.onerror=()=>{ cleanup(); reject(new Error('Network error — CORS / deploy check karein.')); };
+      document.body.appendChild(s);
+    });
+  }
+};
+// Expose + auto-wire window.API_URL on load for static/self-hosted
+try {
+  const auto = Backend.getUrl();
+  if (auto && !window.API_URL) window.API_URL = auto;
+} catch(e) {}
+window.Backend = Backend;
+
+/* ============================== HELPERS ============================== */
+const $ = (s, r) => (r || document).querySelector(s);
+const $$ = (s, r) => Array.from((r || document).querySelectorAll(s));
+const isFn = f => typeof f === 'function';
+
+/* Accessibility safety net: koi bhi input/select/textarea ya icon-only button
+   bina label ke na rahe — warna screen reader/tooltip khaali rehta hai. */
+function haDefaultLabel(tag, attrs) {
+  if (tag === 'select') return 'Select option';
+  if (tag === 'textarea') return 'Notes';
+  if (tag !== 'input') return '';
+  const t = (attrs && attrs.type) || 'text';
+  return ({ date: 'Date', number: 'Quantity', search: 'Search', checkbox: 'Enable',
+    radio: 'Option', file: 'File', password: 'Password', email: 'Email',
+    tel: 'Phone', time: 'Time', month: 'Month', color: 'Colour' })[t] || 'Input';
+}
+
+/* v2.6 §16 — har <img> jo app banati hai lazy-load + async decode ho.
+   Product images reports/POS mein ek sath load ho kar pehli paint slow karti thin. */
+(function () {
+  if (typeof document === 'undefined') return;
+  var orig = document.createElement.bind(document);
+  document.createElement = function (tag) {
+    var el = orig(tag);
+    if (String(tag).toLowerCase() === 'img') {
+      el.loading = 'lazy'; el.decoding = 'async';
+      el.setAttribute('loading', 'lazy'); el.setAttribute('decoding', 'async');
+    }
+    return el;
+  };
+})();
+
+function h(tag, attrs, ...kids) {
+  const el = document.createElement(tag);
+  const labelled = (tag === 'input' || tag === 'select' || tag === 'textarea');
+  if (attrs) Object.keys(attrs).forEach(k => {
+    const v = attrs[k];
+    if (v === null || v === undefined || v === false) return;
+    if (k === 'class') el.className = v;
+    else if (k === 'html') el.innerHTML = v;
+    else if (k === 'style' && typeof v === 'object') Object.assign(el.style, v);
+    else if (k === 'dataset' && typeof v === 'object') Object.keys(v).forEach(d => { el.dataset[d] = v[d]; });
+    else if (k.startsWith('on') && isFn(v)) el.addEventListener(k.slice(2).toLowerCase(), v);
+    else if (k === 'value') el.value = v;
+    else el.setAttribute(k, v === true ? '' : v);
+  });
+  (kids || []).flat(9).forEach(c => {
+    if (c === null || c === undefined || c === false) return;
+    el.appendChild(c.nodeType ? c : document.createTextNode(String(c)));
+  });
+  // --- a11y net ---
+  if (labelled && attrs && attrs.type !== 'hidden') {
+    const has = attrs['aria-label'] || attrs.title || attrs.placeholder;
+    if (!has) {
+      const t = haDefaultLabel(tag, attrs);
+      if (t) { el.setAttribute('aria-label', t); el.setAttribute('title', t); }
+    }
+  }
+  if (tag === 'button' && !el.textContent.trim() && !el.getAttribute('aria-label') && !el.getAttribute('title')) {
+    el.setAttribute('aria-label', 'Action'); el.setAttribute('title', 'Action');
+  }
+  return el;
+}
+function esc(s) { return String(s === null || s === undefined ? '' : s)
+  .replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+function debounce(fn, ms) { let t; return function (...a) { clearTimeout(t); t = setTimeout(() => fn.apply(this, a), ms || 250); }; }
+function clone(o) { return JSON.parse(JSON.stringify(o)); }
+function uid(p) { return (p || 'id') + '_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+
+/* ================= GLOBAL DATE/TIME SYSTEM (v2.29.0 · spec §8) ==============
+   Backend U.disp()/U.stamp() ka frontend mirror — WAHI settings, WAHI format.
+   Boot par `system.dtconfig` se config aati hai (App.state.dt), warna defaults.
+   `fmt.date()` isi par delegate karta hai, is liye poore app ke 92 call-sites
+   apne aap naye system par aa jate hain (page-specific patch nahi).
+   ========================================================================== */
+const DT = {
+  MON: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+  cfg() {
+    const s = (App.state && App.state.dt) || {};
+    const st = (App.state && App.state.settings) || {};
+    return {
+      tz: s.tz || st.timezone || 'Asia/Karachi',
+      format: s.format || st['dt.format'] || 'datetime',
+      dateStyle: s.dateStyle || st['dt.dateStyle'] || 'DD MMM YYYY',
+      hour12: s.hour12 !== undefined ? !!s.hour12 : String(st['dt.hour12']) === 'true',
+      seconds: s.seconds !== undefined ? !!s.seconds : String(st['dt.seconds']) === 'true',
+      showTime: s.showTime !== undefined ? !!s.showTime : (st['dt.showTime'] === undefined ? true : String(st['dt.showTime']) === 'true'),
+      showRecords: s.showRecords !== undefined ? !!s.showRecords : (st['dt.showRecords'] === undefined ? true : String(st['dt.showRecords']) === 'true')
+    };
+  },
+  pad(n) { return String(n).padStart(2, '0'); },
+  /* stored wall-clock string waise hi; asli instant → configured tz */
+  parts(v, tz) {
+    if (typeof v === 'string') {
+      const m = /^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::(\d{2}))?)?/.exec(v.trim());
+      if (m) return { y: +m[1], mo: +m[2], d: +m[3], h: +(m[4] || 0), mi: +(m[5] || 0), s: +(m[6] || 0) };
+    }
+    const d = v instanceof Date ? v : new Date(v);
+    if (isNaN(d)) return null;
+    try {
+      const f = new Intl.DateTimeFormat('en-GB', { timeZone: tz || 'Asia/Karachi', year: 'numeric', month: '2-digit',
+        day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+      const o = {};
+      f.formatToParts(d).forEach(x => { o[x.type] = x.value; });
+      return { y: +o.year, mo: +o.month, d: +o.day, h: (+o.hour) % 24, mi: +o.minute, s: +o.second };
+    } catch (e) {
+      return { y: d.getFullYear(), mo: d.getMonth() + 1, d: d.getDate(), h: d.getHours(), mi: d.getMinutes(), s: d.getSeconds() };
+    }
+  },
+  /** mode: 'date' | 'time' | 'datetime' | 'stamp' | 'auto' */
+  format(v, mode) {
+    if (v === undefined || v === null || v === '') return '';
+    const c = DT.cfg();
+    const p = DT.parts(v, c.tz);
+    if (!p) return String(v);
+    if (!mode || mode === 'auto') mode = c.format || 'datetime';
+    if (!c.showTime && (mode === 'time' || mode === 'datetime' || mode === 'stamp')) mode = 'date';
+    const sec = mode === 'stamp' ? true : c.seconds;
+    const datePart = c.dateStyle === 'YYYY-MM-DD' ? p.y + '-' + DT.pad(p.mo) + '-' + DT.pad(p.d)
+      : c.dateStyle === 'DD/MM/YYYY' ? DT.pad(p.d) + '/' + DT.pad(p.mo) + '/' + p.y
+      : c.dateStyle === 'MM/DD/YYYY' ? DT.pad(p.mo) + '/' + DT.pad(p.d) + '/' + p.y
+      : DT.pad(p.d) + ' ' + DT.MON[p.mo - 1] + ' ' + p.y;
+    let h = p.h, ap = '';
+    if (c.hour12) { ap = h < 12 ? 'am' : 'pm'; h = h % 12; if (!h) h = 12; }
+    const timePart = (c.hour12 ? h : DT.pad(h)) + ':' + DT.pad(p.mi) + (sec ? ':' + DT.pad(p.s) : '') + (c.hour12 ? ' ' + ap : '');
+    if (mode === 'date') return datePart;
+    if (mode === 'time') return timePart;
+    return datePart + ', ' + timePart;
+  },
+  /** record ke stamps: "Created: 23 Sep 2026, 10:42:31 · Updated: …" */
+  stampLine(rec) {
+    const c = DT.cfg();
+    if (!c.showRecords || !rec) return '';
+    const out = [];
+    if (rec.createdAt) out.push('Created: ' + DT.format(rec.createdAt, 'stamp'));
+    if (rec.updatedAt && String(rec.updatedAt) !== String(rec.createdAt)) out.push('Updated: ' + DT.format(rec.updatedAt, 'stamp'));
+    return out.join(' · ');
+  }
+};
+window.DT = DT;
+
+const fmt = {
+  money(v, sym) { sym = sym || (App.state.settings && App.state.settings.currencySymbol) || 'Rs';
+    const n = Number(v || 0);
+    return sym + ' ' + n.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 }); },
+  num(v, dp) { const n = Number(v || 0); return n.toLocaleString('en-US',
+    { minimumFractionDigits: dp || 0, maximumFractionDigits: dp === undefined ? 2 : dp }); },
+  compact(v) { const n = Number(v || 0); const a = Math.abs(n);
+    const t = x => { let s = x.toFixed(2); if (s.indexOf('.') > -1) s = s.replace(/0+$/, '').replace(/\.$/, ''); return s; };
+    /* v2.8.5 QA — "L" / "Cr" ki jagah saaf alfaz (user confusion fix):
+       "20.67 Lakh", "1.03 Crore". K = hazaar (standard). */
+    if (a >= 1e7) return t(n / 1e7) + ' Crore';
+    if (a >= 1e5) return t(n / 1e5) + ' Lakh';
+    if (a >= 1e3) return t(n / 1e3) + 'K';
+    return n.toFixed(0); },
+  /* v2.8.5 — KPI/amount locations par "Rs 20.67 Lakh" (saaf: ye paisa hai).
+     Chart axes bare compact rakhte hain (space kam, title mein currency). */
+  moneyCompact(v, sym) {
+    sym = sym || (App.state.settings && App.state.settings.currencySymbol) || 'Rs';
+    if (sym === 'Rs') sym = 'Rs.';
+    const n = Number(v || 0); const a = Math.abs(n);
+    if (!Number.isFinite(n)) return sym + ' 0';
+    const rounded = x => x.toFixed(2);
+    if (a >= 1e7) return sym + ' ' + rounded(n / 1e7) + ' Crore (' + fmt.money(n, sym) + ')';
+    if (a >= 1e5) return sym + ' ' + rounded(n / 1e5) + ' Lakhs';
+    return fmt.money(n, sym);
+  },
+  /* v2.29.0 (W4) — sab formatting ek shared system se (DT): settings-driven,
+     timezone-aware, 12/24h, seconds toggle, global showTime on/off. Purane
+     call-sites (92) waise hi chalte hain, sirf behaviour ab configurable hai. */
+  date(v, withTime) {
+    if (!v) return '—';
+    const d = new Date(v);
+    if (isNaN(d) && typeof v !== 'string') return String(v).slice(0, 10);
+    return DT.format(v, withTime ? 'datetime' : 'date') || String(v).slice(0, 10);
+  },
+  dt(v) { return DT.format(v, 'stamp'); },          /* poora timestamp (seconds ke sath) */
+  time(v) {
+    const d = new Date(v);
+    if (isNaN(d) && typeof v !== 'string') return '';
+    return DT.format(v, 'time');
+  },
+  rel(v) { const d = new Date(v); const s = (Date.now() - d.getTime()) / 1000;
+    if (s < 60) return 'just now'; if (s < 3600) return Math.floor(s / 60) + 'm ago';
+    if (s < 86400) return Math.floor(s / 3600) + 'h ago';
+    if (s < 604800) return Math.floor(s / 86400) + 'd ago'; return fmt.date(v); },
+  phone(p) { p = String(p || '').replace(/\D/g, ''); return p.length > 10 ? '+' + p.slice(0, -10) + ' ' + p.slice(-10) : p; }
+};
+
+/* ============================== i18n ================================= */
+const I18N = {
+  en: {
+    dashboard: 'Dashboard', pos: 'Point of Sale', items: 'Items', inventory: 'Inventory',
+    purchase: 'Purchase', customers: 'Customers', suppliers: 'Suppliers', sales: 'Sales',
+    reports: 'Reports', users: 'Users & Security', settings: 'Settings', audit: 'Audit Log',
+    search: 'Search', save: 'Save', cancel: 'Cancel', delete: 'Delete', edit: 'Edit', add: 'Add',
+    actions: 'Actions', total: 'Total', date: 'Date', status: 'Status', name: 'Name', code: 'Code',
+    price: 'Price', qty: 'Qty', stock: 'Stock', customer: 'Customer', supplier: 'Supplier',
+    loading: 'Loading…', noData: 'No data found', allBranches: 'All branches', filter: 'Filter',
+    export: 'Export CSV', print: 'Print', refresh: 'Refresh', close: 'Close', confirm: 'Confirm',
+    yes: 'Yes', no: 'No', branch: 'Branch', today: 'Today', week: 'This week', month: 'This month',
+    profit: 'Profit', revenue: 'Revenue', expenses: 'Expenses', discount: 'Discount', tax: 'Tax',
+    paid: 'Paid', due: 'Due', balance: 'Balance', payment: 'Payment', cash: 'Cash', card: 'Card',
+    walkin: 'Walk-in Customer', barcode: 'Barcode', label: 'Label', hold: 'Hold', held: 'Held bills'
+  },
+  ur: { // Roman Urdu
+    dashboard: 'Dashboard', pos: 'Bill Book (POS)', items: 'Items', inventory: 'Stock',
+    purchase: 'Purchase', customers: 'Customers', suppliers: 'Suppliers', sales: 'Sales',
+    reports: 'Reports', users: 'Users & Security', settings: 'Settings', audit: 'Audit Log',
+    search: 'Dhoondain', save: 'Save', cancel: 'Cancel', delete: 'Delete', edit: 'Edit', add: 'Add',
+    actions: 'Actions', total: 'Total', date: 'Tareekh', status: 'Status', name: 'Naam', code: 'Code',
+    price: 'Rate', qty: 'Qty', stock: 'Stock', customer: 'Customer', supplier: 'Supplier',
+    loading: 'Load ho raha hai…', noData: 'Koi data nahi mila', allBranches: 'Sab branches',
+    filter: 'Filter', export: 'CSV Export', print: 'Print', refresh: 'Refresh', close: 'Band karein',
+    confirm: 'Confirm', yes: 'Haan', no: 'Nahi', branch: 'Branch', today: 'Aaj', week: 'Is haftay',
+    month: 'Is mahinay', profit: 'Munafa', revenue: 'Sale', expenses: 'Kharchay',
+    discount: 'Discount', tax: 'Tax', paid: 'Wasool', due: 'Udhaar', balance: 'Balance',
+    payment: 'Payment', cash: 'Cash', card: 'Card', walkin: 'Walk-in Customer',
+    barcode: 'Barcode', label: 'Label', hold: 'Hold', held: 'Hold bills'
+  }
+};
+let LANG = Store.get('lang', 'en');
+function t(key, fallback) {
+  const d = I18N[LANG] || I18N.en;
+  return d[key] || (I18N.en[key]) || fallback || key;
+}
+
+/* ============================== APP STATE ============================ */
+const App = {
+  state: {
+    booted: false,
+    session: null,
+    settings: {},
+    locations: [],
+    locationId: '',
+    branchName: '',
+    catalog: { items: [], customers: [], ts: 0 },
+    offline: false,
+    queue: Store.get('queue', []),
+    user: null
+  },
+  screens: {},
+
+  /**
+   * Session-safe meta — logout / session-expiry ke baad bhi UI crash na ho.
+   * Bug (v2.25.9 mein pakra gaya): shop quick-dialog aur account menu
+   * App.state.session.fullName seedha parh rahe the → session null hone par
+   * "Cannot read properties of null (reading 'fullName')" — poora modal gayab.
+   * Ab poori app ek hi jagah se safe values leti hai.
+   */
+  sessionMeta() {
+    const s = (App.state && App.state.session) || {};
+    const name = s.fullName || s.username || '';
+    return {
+      ok: !!(App.state && App.state.session),
+      name: name,
+      initial: (name || 'U').charAt(0).toUpperCase(),
+      role: s.role || '—',
+      group: s.groupName || '',
+      userId: s.userId || '',
+      token: s.token || ''
+    };
+  },
+  nav: [],
+  view: null,
+  current: 'dashboard'
+};
+
+/* ============================================================================
+   v2.7 — GLOBAL ERROR SAFETY NET (reliability)
+   ----------------------------------------------------------------------------
+   Masla: app me koi bhi global handler nahi tha. Koi JS error aaye ya koi
+   Promise reject ho jaye (bin .catch ke) to user ko KUCH nazar nahi aata —
+   screen adhoori rehti hai, button kaam nahi karta, aur koi batata nahi kyun.
+   Production app me ye sab se bara reliability khaRa hota hai.
+
+   Hal: do global listeners
+     · error              → JS runtime errors
+     · unhandledrejection → Promise rejections (bin catch ke await/then)
+   Dono:
+     · console me poora detail (developer ke liye)
+     · user ko ek MUKHTASAR, samajh aane wala toast (ghabrane wala nahi)
+     · toast rate-limited (ek hi waqt me 5 se zyada nahi) — spam nahi hoga
+   ========================================================================== */
+(function installGlobalErrorNet() {
+  if (typeof window === 'undefined' || window.__haErrNet) return;
+  window.__haErrNet = true;
+
+  var shown = 0, resetAt = 0;
+  function userNote(where) {
+    var now = Date.now();
+    if (now > resetAt) { resetAt = now + 4000; shown = 0; }
+    if (shown >= 3) return;                 /* spam se bachao */
+    shown++;
+    try {
+      if (window.UI && UI.toast) {
+        UI.toast('Kuch theek se load nahi hua — dobara koshish karein', 'err');
+      }
+    } catch (e) { }
+  }
+  function safeLog(label, detail) {
+    try { console.error('[HaseebAutos] ' + label + ':', detail); } catch (e) { }
+  }
+
+  window.addEventListener('error', function (ev) {
+    /* resource load errors (img/script) — un par toast nahi, sirf log */
+    if (ev && ev.target && ev.target !== window && ev.target.tagName) {
+      safeLog('resource failed', ev.target.src || ev.target.href || ev.target.tagName);
+      return;
+    }
+    safeLog('uncaught error', (ev && ev.message) || ev);
+    if (ev && ev.error && ev.error.stack) safeLog('stack', ev.error.stack);
+    userNote('error');
+  }, true);
+
+  window.addEventListener('unhandledrejection', function (ev) {
+    var r = ev && ev.reason;
+    /* user ne khud cancel kiya ho to chup raho */
+    if (r && (r.name === 'AbortError' || r.message === 'Session expire ho gaya.')) return;
+    safeLog('unhandled rejection', (r && r.message) || r);
+    /* Promise ko swallow kar dete hain taake browser console dobara na chillaye
+       — hum pehle hi log + user notice kar chuke hain */
+    try { ev.preventDefault(); } catch (e) { }
+    userNote('rejection');
+  });
+})();
+
+/* ============================== API ================================== */
+const API = {
+  pending: 0,
+
+  /* ==========================================================================
+     v2.25.8 — API INSTRUMENTATION  (Performance audit W0.T2)
+     --------------------------------------------------------------------------
+     User ki shikayat: "button dabane par ~1 minute tak kuch nahi hota". Bina
+     naape hue is ka ilaaj mumkin nahi. Ye block har call ka record rakhta hai:
+       · duration (ms)        · action-wise count
+       · in-flight peak       · DUPLICATE (same action + same payload jab
+                                pehli call abhi chal rahi ho)
+       · slow calls           · p50 / p95
+     Ye sirf NAAP hai — behaviour bilkul nahi badalta (koi call block/delay
+     nahi hoti). `window.__apiStats` (raw) ya `API.statsSummary()` (summary);
+     `API.statsReset()` se zero.
+     ========================================================================== */
+  stats: {
+    calls: 0, ok: 0, fail: 0, dups: 0, inflight: 0, maxInflight: 0,
+    byAction: {}, dupList: [], times: [], slow: [], slowMs: 1500, _live: {},
+    cacheHits: 0, dedupesServed: 0, retries: 0, cacheSize: 0
+  },
+  _now() { return (window.performance && performance.now) ? performance.now() : Date.now(); },
+  _key(action, payload) {
+    try { return action + '|' + JSON.stringify(payload || {}).slice(0, 300); }
+    catch (e) { return action + '|?'; }
+  },
+  _begin(action, payload) {
+    const st = API.stats, k = API._key(action, payload);
+    st.calls++;
+    st.byAction[action] = (st.byAction[action] || 0) + 1;
+    st.inflight++;
+    if (st.inflight > st.maxInflight) st.maxInflight = st.inflight;
+    if (st._live[k]) {                       /* wahi call ABHI chalu hai */
+      st.dups++;
+      if (st.dupList.length < 50) st.dupList.push({ action: action, at: Date.now() });
+    }
+    st._live[k] = (st._live[k] || 0) + 1;
+    return { t0: API._now(), k: k, action: action };
+  },
+  _end(rec, ok) {
+    const st = API.stats;
+    const ms = Math.max(0, API._now() - rec.t0);
+    st.inflight = Math.max(0, st.inflight - 1);
+    const n = (st._live[rec.k] || 1) - 1;
+    if (n > 0) st._live[rec.k] = n; else delete st._live[rec.k];
+    if (ok) st.ok++; else st.fail++;
+    if (st.times.length < 600) st.times.push(ms);
+    if (ms >= (st.slowMs || 1500) && st.slow.length < 40) st.slow.push({ action: rec.action, ms: Math.round(ms), at: Date.now() });
+  },
+  statsReset() {
+    const st = API.stats;
+    st.calls = st.ok = st.fail = st.dups = st.maxInflight = 0;
+    st.byAction = {}; st.dupList = []; st.times = []; st.slow = []; st._live = {};
+    st.cacheHits = st.dedupesServed = st.retries = 0;
+    API._cacheHits = API._dedupServed = API._retries = 0;
+    return true;
+  },
+  statsSummary() {
+    const st = API.stats, t = st.times.slice().sort((a, b) => a - b);
+    const q = f => t.length ? Math.round(t[Math.min(t.length - 1, Math.floor(t.length * f))]) : 0;
+    const top = Object.keys(st.byAction).map(a => ({ action: a, n: st.byAction[a] }))
+      .sort((a, b) => b.n - a.n).slice(0, 15);
+    return { calls: st.calls, ok: st.ok, fail: st.fail, dups: st.dups,
+      cacheHits: API._cacheHits || 0, dedupesServed: API._dedupServed || 0, retries: API._retries || 0,
+      cacheSize: Object.keys(API._cache || {}).length,
+      maxInflight: st.maxInflight, n: t.length, p50: q(0.5), p95: q(0.95),
+      max: t.length ? Math.round(t[t.length - 1]) : 0,
+      top: top, slow: st.slow.slice(-10), dupList: st.dupList.slice(-10) };
+  },
+
+  timeoutFor(action, opts) {
+    const requested = Number(opts && opts.timeoutMs);
+    if (Number.isFinite(requested) && requested > 0) return Math.min(180000, Math.max(10, requested));
+    return /^ai\./.test(action) ? 65000 : 60000;
+  },
+
+  /* ------------------------------------------------------------------------
+     v2.8.3 — PAYLOAD GUARD (Inventory "illegal value in property: locationId")
+     `google.script.run` FUNCTION serialize nahi kar sakta. Agar galti se
+     `{ locationId: loc }` bheja jaye (jahan `loc` ek function hai, `loc()`
+     nahi), to Apps Script ye cryptic error deta hai:
+         "Failed due to illegal value in property: locationId"
+     Demo/mock transport mein wahi galti CHUPKE SE chal jati thi — is liye bug
+     production tak pahunch gaya. Ab hum pehle khud check karte hain aur SAAF,
+     actionable message dete hain (kaunsi property, kaunsa action).
+     ------------------------------------------------------------------------ */
+  assertSerializable(action, val, path) {
+    path = path || '';
+    if (val === null || val === undefined) return;
+    const t = typeof val;
+    if (t === 'function') {
+      throw new Error('Illegal value in property: ' + (path || 'payload') +
+        ' — yahan FUNCTION bheja gaya, value nahi. Kya () lagana bhool gaye?' +
+        ' (action: ' + action + ')');
+    }
+    if (t !== 'object') return;
+    Object.keys(val).forEach(k => API.assertSerializable(action, val[k], path ? path + '.' + k : k));
+  },
+
+  /* ==========================================================================
+     v2.25.9 — SHARED FETCH CORE (W2.T1 · req 1/2)
+     --------------------------------------------------------------------------
+     Audit (E1–E11) ke mutabiq asli slowness ke teen sabab the:
+       E1  koi in-flight dedupe / cache nahi        → wahi call bar bar network par
+       E4  har nav par config.menu dobara fetch     → bina cache
+       E8  49 sequential awaits (koi parallelism)   → waterfall
+     Ye block pehle do ka core fix karta hai (teeje ka ilaaj API.parallel + W7):
+       · IN-FLIGHT DEDUPE — same action+payload jab pehli call chalu ho to
+         DOOSRI network call nahi hoti; dono ko wahi promise milta hai.
+         (Sirf READS par — writes par kabhi nahi, warna do save ek ho jayen.)
+       · TTL CACHE — DEFAULT_TTL mein di gayi actions (config/defs/menu/jaisi
+         stable reads) chand second/minute ke liye yaad rehti hain.
+         Har kaamyab WRITE par cache khud saaf (taaza data, stale nahi).
+         Per-call control: { cacheTtl: 30000 } ya { noCache: true }.
+       · RETRY — sirf READS aur sirf network/timeout wali error par, chhoti
+         backoff + jitter ke sath (max 1 retry by default; { retries: 3 } ya
+         { retry: false }). Validation/session errors par retry NAHI.
+     Sab kuch `API._features` se off ho sakta hai (sensitivity test ke liye).
+     ========================================================================== */
+  _features: { dedupe: true, cache: true, retry: true },
+  DEFAULT_TTL: {
+    'config.defs': 120000, 'config.menu': 120000, 'config.list': 120000,
+    'system.settings.get': 60000, 'items.facets': 120000, 'warehouse.list': 60000
+  },
+  _cache: {}, _inflight: {},
+  _cacheHits: 0, _dedupServed: 0, _retries: 0,
+
+  _isWrite(action) {
+    return /save|create|post|update|delete|void|return|receive|approve|hold|sync|assign|purge|reindex|close/i.test(action);
+  },
+  _retryable(msg) {
+    return /REQUEST_TIMEOUT|Network error|Failed to fetch|Load failed|Empty response|Koi backend connected nahi|timeout|aborted/i.test(String(msg || ''));
+  },
+  _ckey(action, payload) {
+    try {
+      return action + '|' + (App.state.locationId || '') + '|' +
+        ((App.state.session && App.state.session.token) || '') + '|' + JSON.stringify(payload || {});
+    } catch (e) { return action + '|?'; }
+  },
+  /** cache saaf — prefix ke baghair poora */
+  cacheClear(prefix) {
+    if (!prefix) { const n = Object.keys(API._cache).length; API._cache = {}; return n; }
+    let n = 0;
+    Object.keys(API._cache).forEach(k => { if (k.indexOf(prefix) === 0) { delete API._cache[k]; n++; } });
+    return n;
+  },
+  invalidate(prefix) { return API.cacheClear(prefix); },
+  cacheSize() { return Object.keys(API._cache).length; },
+
+  /** main call — INSTRUMENTED + shared core (dedupe · cache · retry). */
+  call(action, payload, opts) {
+    opts = opts || {};
+    payload = payload || {};
+    const F = API._features;
+    const isWrite = API._isWrite(action);
+    const rec = API._begin(action, payload);
+    const finish = ok => API._end(rec, ok);
+    const ck = API._ckey(action, payload);
+
+    /* 1) TTL cache — sirf reads */
+    const ttl = (F.cache && !isWrite && !opts.noCache)
+      ? Number(opts.cacheTtl != null ? opts.cacheTtl : (API.DEFAULT_TTL[action] || 0)) : 0;
+    if (ttl > 0) {
+      const hit = API._cache[ck];
+      if (hit && (Date.now() - hit.at) < hit.ttl) {
+        API._cacheHits++; API.stats.cacheHits = API._cacheHits;
+        finish(true);
+        return Promise.resolve(hit.data);
+      }
+    }
+
+    /* 2) in-flight dedupe — sirf reads (double render / double click) */
+    if (F.dedupe && !isWrite && !opts.noDedupe && API._inflight[ck]) {
+      API._dedupServed++; API.stats.dedupesServed = API._dedupServed;
+      return API._inflight[ck].then(r => { finish(true); return r; }, e => { finish(false); throw e; });
+    }
+
+    /* 3) transport + retry (reads only, network errors only) */
+    const maxTries = (F.retry && !isWrite && opts.retry !== false)
+      ? Math.max(1, Math.min(4, (opts.retries != null ? Number(opts.retries) : 1) + 1)) : 1;
+    const runner = (async () => {
+      let lastErr = null;
+      for (let attempt = 1; attempt <= maxTries; attempt++) {
+        try {
+          const r = await API._call(action, payload, opts);
+          if (ttl > 0) API._cache[ck] = { at: Date.now(), ttl: ttl, data: r };
+          if (isWrite) API.cacheClear();          /* likhai ke baad har read taaza */
+          return r;
+        } catch (e) {
+          lastErr = e;
+          if (attempt >= maxTries || !API._retryable(e && e.message)) throw e;
+          API._retries++; API.stats.retries = API._retries;
+          await new Promise(res => setTimeout(res, 260 * attempt + Math.floor(Math.random() * 160)));
+        }
+      }
+      throw lastErr;
+    })();
+    if (F.dedupe && !isWrite && !opts.noDedupe) {
+      API._inflight[ck] = runner;
+      runner.then(() => { delete API._inflight[ck]; }, () => { delete API._inflight[ck]; });
+    }
+    return runner.then(r => { finish(true); return r; }, e => { finish(false); throw e; });
+  },
+
+  /* v2.25.9 — API.parallel: sequential awaits ki jagah ek sath (E8 waterfall fix).
+     `tasks` = [{action, payload, opts}] ya seedha promise-returning functions.
+     limit = ek waqt mein kitni (default 6) — GAS par zyada concurrency se bachao. */
+  async parallel(tasks, limit) {
+    const list = (tasks || []).slice();
+    const max = Math.max(1, Number(limit) || 6);
+    const out = new Array(list.length);
+    let i = 0;
+    const worker = async () => {           /* perf-audit: ye N+1 NAHI — ye khud parallel worker hai */
+      while (i < list.length) {
+        const idx = i++;
+        const t = list[idx];
+        try {
+          out[idx] = isFn(t) ? await t() : await API.call(t.action, t.payload, t.opts);
+        } catch (e) { out[idx] = { __err: (e && e.message) || String(e) }; }
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(max, list.length) }, worker));
+    return out;
+  },
+
+  /** asli transport (pehle `call` yahi tha) */
+  _call(action, payload, opts) {
+    opts = opts || {};
+    payload = payload || {};
+    try { API.assertSerializable(action, payload); }
+    catch (e) { console.error('[API] ' + e.message); return Promise.reject(e); }
+    const token = (App.state.session && App.state.session.token) || '';
+    if (token) payload.token = token;
+    if (App.state.locationId && !payload.locationId && action.indexOf('system.') !== 0) {
+      payload.locationId = App.state.locationId;
+    }
+    // v2.24 — external integration: send origin + optional shared key (server validates)
+    try {
+      if (Backend.isExternal() || window.API_URL) {
+        payload._origin = location.origin || '';
+        const ik = Store.get('integrationKey','') || localStorage.getItem('ha_integrationKey') || '';
+        if (ik) payload._integrationKey = String(ik);
+      }
+    } catch(e) {}
+    const sensitiveKey = payload.key !== undefined;
+    if (sensitiveKey) {
+      opts.queueable = false;
+      if (window.API_URL && !(window.google && google.script && google.script.run))
+        return Promise.reject(new Error('API keys: open your original Apps Script web app to save securely. Keys are never sent in a URL.'));
+    }
+    const isWrite = /save|create|post|update|delete|void|return|receive|approve|hold|sync|assign|purge|reindex|close/i.test(action);
+
+    // offline: writes go to queue, reads come from cache
+    if (!navigator.onLine || App.state.offline) {
+      if (isWrite && opts.queueable !== false) {
+        return API.enqueue(action, payload);
+      }
+      if (opts.offlineFallback) return Promise.resolve(opts.offlineFallback());
+      return Promise.reject(new Error('Offline — ye kaam internet aane par ho ga.'));
+    }
+
+    API.pending++; UI.busy(true);
+    return new Promise((resolve, reject) => {
+      let settled = false;
+      let timer;
+      const done = () => {
+        if (settled) return false;
+        settled = true; clearTimeout(timer);
+        API.pending = Math.max(0, API.pending - 1);
+        if (!API.pending) UI.busy(false);
+        return true;
+      };
+      const sentToken = payload.token || '';
+      const success = res => {
+        if (done()) {
+          /* v2.27.0 (W3.T3) — write ke baad shared read-caches invalidate (tables taaza rahein) */
+          if (isWrite) { try { if (window.Shared && Shared.invalidateFor) Shared.invalidateFor(action); } catch (e) { } }
+          API.handle(res, resolve, reject, { token: sentToken });
+        }
+      };
+      const failure = err => {
+        if (done()) reject(new Error(err && err.message ? err.message : String(err)));
+      };
+      const timeoutMs = API.timeoutFor(action, opts);
+      timer = setTimeout(() => {
+        const caution = isWrite || action === 'ai.chat'
+          ? ' Natija abhi maloom nahi: dobara save/post karne se pehle record/history check karein.'
+          : ' Connection check karein; phir dobara koshish karein.';
+        failure(new Error('REQUEST_TIMEOUT [' + action + ']: ' + Math.round(timeoutMs / 1000) +
+          's mein jawab nahi aaya. Server ka kaam abhi chal sakta hai.' + caution));
+      }, timeoutMs);
+      try {
+        if (window.google && google.script && google.script.run) {
+          // Ensure Backend meta stays in sync (do not override)
+          google.script.run.withSuccessHandler(success).withFailureHandler(failure).api(action, payload);
+          return;
+        }
+        const extUrl = (typeof Backend !== 'undefined' && Backend.getUrl) ? Backend.getUrl() : window.API_URL;
+        if (extUrl) {
+          window.API_URL = extUrl;
+          API.jsonp(action, payload, timeoutMs).then(success, failure);
+          return;
+        }
+        if (window.MockAPI && window.MockAPI[action]) {
+          setTimeout(() => {
+            if (settled) return;
+            try { success({ ok: true, data: window.MockAPI[action](clone(payload)) }); }
+            catch (e) { failure(e); }
+          }, 90 + Math.random() * 160);
+          return;
+        }
+        failure(new Error('Koi backend connected nahi hai (action: ' + action + ')'));
+      } catch (e) { failure(e); }
+    });
+  },
+
+  handle(res, resolve, reject, request) {
+    if (!res) return reject(new Error('Empty response'));
+    if (res.ok) return resolve(res.data);
+    const code = res.error && res.error.code;
+    if (code === 'SESSION_EXPIRED') {
+      const currentToken = (App.state.session && App.state.session.token) || Store.get('token', '');
+      const sentToken = request ? request.token : currentToken;
+      // An anonymous or old-session response must not log out a newer login.
+      if (sentToken && sentToken === currentToken) App.logout(true);
+      return reject(new Error(sentToken ? 'Session expire ho gaya.' : 'Login zaroori hai.'));
+    }
+    reject(new Error((res.error && res.error.message) || 'Error'));
+  },
+
+  jsonp(action, payload, timeoutMs) {
+    return new Promise((resolve, reject) => {
+      const cb = 'hacb_' + Math.random().toString(36).slice(2);
+      const s = document.createElement('script');
+      const timer = setTimeout(() => { cleanup(); reject(new Error('REQUEST_TIMEOUT [' + action + ']: Server ka kaam abhi chal sakta hai; repeat save se pehle record check karein.')); }, timeoutMs || API.timeoutFor(action));
+      function cleanup() {
+        clearTimeout(timer);
+        window[cb] = function () {};
+        setTimeout(() => { delete window[cb]; }, 60000);
+        if (s.parentNode) s.parentNode.removeChild(s);
+      }
+      window[cb] = r => { cleanup(); resolve(r); };
+      const base = (typeof Backend !== 'undefined' && Backend.getUrl) ? Backend.getUrl() : window.API_URL;
+      const originParam = (typeof location !== 'undefined' && location.origin) ? '&_origin=' + encodeURIComponent(location.origin) : '';
+      let keyParam = '';
+      try { const ik = Store.get('integrationKey','') || localStorage.getItem('ha_integrationKey') || ''; if(ik) keyParam='&_integrationKey=' + encodeURIComponent(String(ik)); } catch(e){}
+      s.src = base + '?t=jsonp&cb=' + cb + '&a=' + encodeURIComponent(action) +
+        '&p=' + encodeURIComponent(JSON.stringify(payload)) + originParam + keyParam;
+      s.onerror = () => { cleanup(); reject(new Error('Network error — backend URL / deployment check karein.')); };
+      document.body.appendChild(s);
+    });
+  },
+
+  /* ------------------------------------------------------------------------
+     v2.7 BUG FIX — `API.pullSettings()`
+     ------------------------------------------------------------------------
+     App_Config.html me 4 jagah call hota tha (Settings: save ke baad,
+     defaults restore, reload, config import) — magar KAHIN DEFINED HI NAHI THA.
+     Har call `TypeError: API.pullSettings is not a function` phenkti thi:
+       · Save ke baad `Promise.all([API.pullSettings(), loadDefs()])` reject
+         → save HO JATA tha magar user ko ERROR toast nazar aata tha
+       · Reload button ka kuch bhi nahi hota tha
+     Ab asal implementation: backend se taaza settings la kar App.state.settings
+     update karta hai (theme bhi turant lagu).
+     ---------------------------------------------------------------------- */
+  async pullSettings() {
+    try {
+      const st = await API.call('system.settings.get', {}, {
+        offlineFallback: () => (App.state && App.state.settings) || null
+      });
+      if (st && typeof st === 'object') {
+        App.state.settings = st;
+        try { Store.set('settings', st); } catch (e) { }
+        /* theme / brand turant lagu ho */
+        try { if (typeof applyTheme === 'function') applyTheme(); } catch (e) { }
+      }
+      return App.state.settings;
+    } catch (e) {
+      /* settings na milen to purani hi rahen — app chalte rahe */
+      return (App.state && App.state.settings) || {};
+    }
+  },
+
+  /* --------------------------- offline queue --------------------------- */
+  enqueue(action, payload) {
+    const entry = { clientId: uid('off'), action, payload, createdAt: new Date().toISOString() };
+    App.state.queue.push(entry);
+    Store.set('queue', App.state.queue);
+    UI.toast('Offline: kaam queue mein save ho gaya (' + App.state.queue.length + ')', 'warn');
+    return Promise.resolve({ queued: true, clientId: entry.clientId });
+  },
+
+  async flushQueue() {
+    if (!App.state.queue.length || !navigator.onLine) return 0;
+    const queue = App.state.queue.slice();
+    App.state.queue = []; Store.set('queue', []);
+    try {
+      const res = await API.call('offline.sync', { queue }, { queueable: false });
+      const n = res.succeeded || 0, f = res.failed || 0;
+      if (f) UI.toast(n + ' sync hue, ' + f + ' fail (data mismatch)', 'warn');
+      else if (n) UI.toast(n + ' queued kaam sync ho gaye ✅', 'ok');
+      return n;
+    } catch (e) {
+      App.state.queue = queue.concat(App.state.queue); Store.set('queue', App.state.queue);
+      return 0;
+    }
+  },
+
+  /* --------------------------- catalog cache --------------------------- */
+  async pullCatalog(force) {
+    const age = Date.now() - (App.state.catalog.ts || 0);
+    if (!force && App.state.catalog.items.length && age < 5 * 60 * 1000) return App.state.catalog;
+    try {
+      const data = await API.call('offline.pull', {}, { offlineFallback: () => Store.get('catalog', null) });
+      if (data && data.items) {
+        App.state.catalog = data; App.state.catalog.ts = Date.now();
+        Store.set('catalog', data);
+      }
+    } catch (e) { App.state.catalog = Store.get('catalog', App.state.catalog); }
+    return App.state.catalog;
+  }
+};
+
+/* ============================== PERMISSIONS =========================== */
+App.can = function (perm) {
+  const s = App.state.session;
+  if (!s) return false;
+  const p = s.permissions || [];
+  if (p.indexOf('*') > -1) return true;
+  if (p.indexOf(perm) > -1) return true;
+  const parts = perm.split('.');
+  for (let i = parts.length - 1; i > 0; i--) {
+    if (p.indexOf(parts.slice(0, i).join('.') + '.*') > -1) return true;
+  }
+  return false;
+};
+
+/* v2.28.0 (W5 · spec §9) — FIELD-LEVEL VISIBILITY (frontend half).
+   Asal rok backend par hai (Fields.gs ▸ Code.gs api()) — ye helper sirf UI se
+   wo column/label/field hata deta hai jahan user ko data milta hi nahi, taake
+   khali column ya "—" na dikhe. Ek hi jagah define, sab screens use karein. */
+App.FIELD_PERMS = {
+  cost: 'field.cost.view',
+  margin: 'field.margin.view',
+  contact: 'field.contact.view',
+  finance: 'field.finance.view',
+  supplier: 'field.supplier.view',
+  notes: 'field.notes.view'
+};
+/** family dikh sakti hai? (missing session = sab allowed, boot se pehle koi flash na ho) */
+App.field = function (family) {
+  const k = App.FIELD_PERMS[family];
+  if (!k) return true;
+  if (!App.state || !App.state.session) return true;
+  return App.can(k);
+};
+/** family ke hisab se filter: list/array se wo entries hata do jin ki family band hai */
+App.fieldFilter = function (list) {
+  return (list || []).filter(f => !f || !f.family || App.field(f.family));
+};
+
+/* ============================== UI KIT ================================ */
+const UI = {
+  /* ==========================================================================
+     W2.T3 (v2.25.11) — SHARED ERROR POLICY
+     --------------------------------------------------------------------------
+     Audit: 150+ jagah `UI.toast(e.message, 'err')` tha — matlab backend ka
+     technical text seedha user ko ("REQUEST_TIMEOUT", "SETTINGS_BUSY: another
+     save is running. Wait, reload settings, then retry."), koi action nahi, aur
+     validation ghalti par bhi "retry" ka kehna (jo ghalat guidance hai).
+
+     Ab ek hi policy poori app ke liye:
+       ① UI.errKind(err)      → { kind, retryable, title, hint, detail, icon }
+       ② UI.errText(err)      → user-friendly line (codes translate, "please
+                                retry" jaise lafz hatta diye — kyunki retry ka
+                                button khud mojood hota hai)
+       ③ UI.errBox(host, err, opts) → ACTION ke paas inline error box +
+                                "Dobara koshish karein" (sirf jab jaiz ho)
+       ④ UI.fail(err, opts)   → toast (classified) + optional inline box
+       ⑤ UI.toast(..., 'err') → khud-ba-khud classified text (150+ purane
+                                call-sites bina chhue behtar ho jate hain)
+       ⑥ UI.run ka error path → khud inline errBox dikhata hai + Retry jo
+                                wahi kaam dobara chalata hai
+
+     RETRY SIRF JAB JAIZ HO (aap ki shart):
+       network / offline / server / conflict  → Retry button
+       validation / auth / unknown            → Retry NAHI (guidance doosri)
+     WRITE par retry ka khatra: agar save/post timeout ho gaya ho to server par
+     kaam ho chuka ho sakta hai — is liye write errors par "Refresh" bhi diya
+     jata hai aur saaf hint likha hota hai.
+     ========================================================================== */
+  _features_err: { err: true },
+  _errStats: { classified: 0, retryable: 0, blockedRetry: 0, retryClicked: 0, writeWarned: 0 },
+  errStats(reset) {
+    const s = Object.assign({}, UI._errStats);
+    if (reset) UI._errStats = { classified: 0, retryable: 0, blockedRetry: 0, retryClicked: 0, writeWarned: 0 };
+    return s;
+  },
+  /* kind → title/hint/icon. Pehla match jeet jata hai (order ahem hai). */
+  _errKinds: [
+    { kind: 'offline', retryable: true, icon: '📶', title: 'Internet nahi hai',
+      hint: 'Connection wapas aane par dobara koshish karein. Kaam mehfooz karne ke liye offline queue khud istemal hogi.',
+      re: /offline|internet nahi|network error|failed to fetch|load failed|ERR_INTERNET|net::/i },
+    { kind: 'network', retryable: true, icon: '⏱', title: 'Jawab nahi aaya',
+      hint: 'Server se jawab waqt par nahi mila. Dobara koshish karein — aam taur par doosri koshish chal jati hai.',
+      re: /REQUEST_TIMEOUT|timeout|timed out|aborted|empty response|koi backend connected nahi|GATEWAY|502|503|504/i },
+    { kind: 'auth', retryable: false, icon: '🔒', title: 'Session / ijazat ka masla',
+      hint: 'Ye kaam aap ke role ke liye ijazat-yafta nahi, ya session expire ho gaya. Dobara login karein ya admin se poochein.',
+      re: /login|session|token expire|expired|unauthor|forbidden|permission|ijazat|not allowed|role/i },
+    { kind: 'validation', retryable: false, icon: '✏', title: 'Maloomat theek karein',
+      hint: 'Retry se hal nahi hoga — fields/values durust kar ke dobara save karein.',
+      re: /required|zaroori|invalid|ghalat|kam hai|zyada|select karein|chunein|pehle items|add karein|khaali|qty 0|mismatch|hisaab match|nahi mila|not found|duplicate stock|balance/i },
+    { kind: 'conflict', retryable: true, icon: '⏳', title: 'Doosra kaam chal raha hai',
+      hint: 'Koi aur save/process abhi chal raha hai. 2–3 second ruk kar dobara koshish karein.',
+      re: /SETTINGS_BUSY|already running|already exists|busy|doosra save|conflict|locked/i },
+    { kind: 'server', retryable: true, icon: '🛠', title: 'Server par masla',
+      hint: 'Backend se error aya. Dobara koshish karein; masla rahe to system log (Diagnose) dekhein.',
+      re: /exception|internal|script error|spreadsheet|quota|server error|500|script function not found|cannot read/i }
+  ],
+  errKind(err) {
+    const msg = (err && err.message) ? String(err.message) : String(err == null ? '' : err);
+    let hit = null;
+    if (!navigator.onLine) hit = UI._errKinds[0];
+    for (let i = 0; !hit && i < UI._errKinds.length; i++) if (UI._errKinds[i].re.test(msg)) hit = UI._errKinds[i];
+    const k = hit || { kind: 'unknown', retryable: false, icon: '⚠', title: 'Kaam mukammal nahi hua',
+      hint: 'Dobara koshish karein. Masla rahe to Support/Diagnose se report bhejein.' };
+    UI._errStats.classified++;
+    if (k.retryable) UI._errStats.retryable++; else UI._errStats.blockedRetry++;
+    return { kind: k.kind, retryable: k.retryable, icon: k.icon, title: k.title, hint: k.hint, detail: msg };
+  },
+  /** user-facing line: codes translate + "please retry" jaisi stale guidance hata do */
+  errText(err) {
+    const info = UI.errKind(err);
+    /* machine-text kinds (conflict/auth/server/unknown) mein asli message aksar
+       technical hota hai — wahan title+hint hi behtar guidance hai; raw text
+       neeche "Technical tafseel" mein milta hai. */
+    const friendlyOnly = /conflict|auth|server|unknown/.test(info.kind);
+    let d = String(info.detail || '').trim()
+      .replace(/^[A-Z_]+:\s*/, '');                                     /* REQUEST_TIMEOUT: ... */
+    /* guidance wale jumle hata do (retry/try again/reload/please/kindly) — ab
+       asli Retry button hota hai, lafzon ki zaroorat nahi. */
+    d = d.split(/(?<=[.!?])\s+/)
+         .filter(s => !/\b(retry|try again|reload|please|kindly|wait,)\b/i.test(s))
+         .join(' ').replace(/\s{2,}/g, ' ').trim();
+    d = d.replace(/[,.;]\s*$/, '').trim();
+    if (friendlyOnly || !d || d.length < 4
+      || d.length > 110 || /^(TypeError|ReferenceError|SyntaxError)/.test(d)) {
+      return info.title + ' — ' + info.hint;
+    }
+    return d;
+  },
+  /**
+   * Inline error box — ACTION ke paas (toast gayab ho jata hai, ye rehta hai).
+   *   UI.errBox(hostEl, err, { retry:fn, refresh:true, write:true, onClose:fn })
+   */
+  errBox(host, err, opts) {
+    opts = opts || {};
+    if (!host || !host.nodeType) return null;
+    const info = UI.errKind(err);
+    if (host.querySelector && host.querySelector('.err-box[data-kind="' + info.kind + '"]')) {
+      /* wahi error dobara — duplicate box nahi */
+      const old = host.querySelector('.err-box');
+      return { el: old, info };
+    }
+    const prev = host.querySelector('.err-box'); if (prev) prev.remove();
+    const box = h('div', { class: 'err-box', 'data-kind': info.kind, role: 'alert' });
+    box.appendChild(h('div', { class: 'eb-head' },
+      h('span', { class: 'eb-ico', 'aria-hidden': 'true' }, info.icon),
+      h('b', null, info.title)));
+    box.appendChild(h('div', { class: 'eb-hint' }, info.hint));
+    if (info.detail && info.detail !== info.title) {
+      box.appendChild(h('details', { class: 'eb-det' },
+        h('summary', null, 'Technical tafseel'),
+        h('div', { class: 'eb-raw' }, UI.errText(err) + '  [' + info.detail + ']')));
+    }
+    const acts = h('div', { class: 'eb-acts' });
+    const closeBox = () => { if (box.parentNode) box.remove(); opts.onClose && opts.onClose(); };
+    if (info.retryable && typeof opts.retry === 'function') {
+      acts.appendChild(h('button', { class: 'btn sm ok', onclick: () => {
+        UI._errStats.retryClicked++; closeBox();
+        /* retry bhi fail ho sakta hai — rejection yahin sambhalo (naya box khud aa jayega) */
+        try {
+          const rp = opts.retry();
+          if (rp && rp.catch) rp.catch(err => { try { console.warn('[UI.errBox] retry failed:', (err && err.message) || err); } catch (e) { } });
+        } catch (e) { try { console.warn('[UI.errBox] retry threw:', (e && e.message) || e); } catch (e2) { } }
+      } }, '↻ Dobara koshish karein'));
+    }
+    if (opts.write) {
+      UI._errStats.writeWarned++;
+      box.appendChild(h('div', { class: 'eb-warn' },
+        'Ye ' + (opts.writeLabel || 'save/post') + ' ka kaam tha — pehle list refresh kar ke dekhein ke kaam ho chuka hai ya nahi, phir dobara karein.'));
+      if (opts.refresh !== false) acts.appendChild(h('button', { class: 'btn sm sec', onclick: () => { closeBox(); if (window.App && App.refresh) App.refresh(); } }, '⟳ List refresh'));
+    }
+    acts.appendChild(h('button', { class: 'btn sm ghost', onclick: closeBox }, 'Band karein'));
+    box.appendChild(acts);
+    host.insertBefore(box, host.firstChild);
+    try { box.scrollIntoView({ block: 'nearest' }); } catch (e) { }
+    return { el: box, info };
+  },
+  /**
+   * UI.fail(err, opts) — ek call mein: classified toast + (host ho to) inline box.
+   *   opts: { host, retry, write, writeLabel, refresh, toast:false }
+   */
+  fail(err, opts) {
+    opts = opts || {};
+    const info = UI.errKind(err);
+    if (opts.toast !== false) {
+      UI.toast(UI.errText(err), 'err', info.retryable && typeof opts.retry === 'function'
+        ? { action: { label: 'Dobara koshish karein', onClick: opts.retry } } : undefined);
+    }
+    const host = opts.host || null;
+    if (host && UI._features && UI._features.err !== false) return UI.errBox(host, err, opts);
+    return { info };
+  },
+  /** sab se qareeb ka scrollable body (modal/drawer/offcanvas) — errBox ke liye */
+  _errHostFor(el) {
+    if (!el || !el.closest) return null;
+    /* footer ke button se body tak: UI.modal/UI.drawer mein button `.modal-foot`
+       mein hota hai (body ka sibling), is liye closest() akela kaafi nahi. */
+    const direct = el.closest('.modal-body, .m-body, .oc-body');
+    if (direct) return direct;
+    const shell = el.closest('.modal, .modal2, .drawer, .offcanvas, .modal-scrim, .scrim');
+    if (shell) return shell.querySelector('.modal-body, .m-body, .oc-body') || shell;
+    return null;
+  },
+
+  toast(msg, type, ms) {
+    // Enhanced bilingual toast — English primary, Roman Urdu secondary where applicable, descriptive, GS1/WCAG friendly
+    // Types: ok (success), err (error), warn (warning), info — icons + color + auto-dismiss
+    const icons = {ok:'✅', err:'❌', warn:'⚠', info:'ℹ'};
+    const typeMap = {ok:'ok', err:'err', warn:'warn', info:'info'};
+    const t = typeMap[type]||'';
+    /* v2.25.11 (W2.T3) — error toasts khud-ba-khud classified hote hain:
+       150+ purane call-sites bina chhue behtar guidance dete hain. */
+    let display = (t === 'err' && UI._features && UI._features.err !== false)
+      ? UI.errText(msg) : String(msg||'');
+    const toastAct = (ms && typeof ms === 'object' && ms.action) ? ms.action : null;
+    const toastMs = (ms && typeof ms === 'object') ? ms.ms : ms;
+    // Add Roman Urdu hint for common messages if not already bilingual
+    const hints = {
+      'Saved':'Ho gaya — Saved',
+      'Added':'Add ho gaya',
+      'Deleted':'Delete ho gaya',
+      'Updated':'Update ho gaya',
+      'Not found':'Nahi mila — Not found',
+      'Invalid':'Ghalat — Invalid',
+      'Required':'Zaroori — Required',
+      'Offline':'Offline — Internet nahi, queue mein save',
+      'Print':'Print — Printein',
+      'Scanned':'Scan ho gaya'
+    };
+    for(let k in hints){ if(display===k) display = hints[k]+' — '+display; }
+    const el = h('div', { class: 'toast ' + t, role:'status', 'aria-live':'polite', style:'display:flex;gap:8px;align-items:center;max-width:92vw;word-break:break-word' },
+      h('span', {style:'font-size:16px;flex:0 0 auto'}, icons[t]||''),
+      h('span', {style:'flex:1'}, display),
+      toastAct ? h('button', {class:'btn sm ok', style:'flex:0 0 auto;min-height:32px', onclick:()=>{
+        el.remove();
+        try {
+          const rp = toastAct.onClick && toastAct.onClick();
+          if (rp && rp.catch) rp.catch(err => { try { console.warn('[UI.toast] action failed:', (err && err.message) || err); } catch (e) { } });
+        } catch (e) { try { console.warn('[UI.toast] action threw:', (e && e.message) || e); } catch (e2) { } }
+      }}, toastAct.label || 'Retry') : null,
+      h('button', {class:'btn sm ghost', style:'margin-left:auto;flex:0 0 auto;padding:2px 6px;min-height:24px', onclick:()=> el.remove(), 'aria-label':'Close'}, '✕')
+    );
+    el.style.opacity='0'; el.style.transform='translateY(8px)'; el.style.transition='all .25s cubic-bezier(.2,.9,.3,1.2)';
+    $('#toastRoot').appendChild(el);
+    requestAnimationFrame(()=>{ el.style.opacity='1'; el.style.transform='translateY(0)'; });
+    const delay = toastMs || (t==='err' ? (toastAct ? 9000 : 4200) : t==='warn' ? 3200 : 2800);
+    setTimeout(() => { el.style.opacity = '0'; el.style.transform='translateY(8px)'; setTimeout(() => el.remove(), 320); }, delay);
+    // Also log for debugging
+    try{ console.log('[Toast:'+t+']', display); }catch(e){}
+  },
+
+  /* ------------------------------------------------------------------------
+     v2.7 — LOADING STATE (flicker khatam)
+     ------------------------------------------------------------------------
+     Masla: har API call par POORI SCREEN ka navy overlay (#boot) aa jata tha
+     aur 150–250ms baad chala jata tha. Naap kar dekha: 7 navigation par
+     7 flash, ausat 181ms — user ko lagta tha app flicker / reload ho raha hai.
+
+     Hal do hisse ka:
+       1. Full-screen #boot SIRF app ke pehle boot par (jab tak booted=false).
+       2. Us ke baad har async kaam ke liye UPAR ek PATLI progress bar
+          (non-blocking — screen block nahi hoti, layout nahi hilta).
+       3. Do aur hifazatain:
+          · show delay 180ms  → chhoti (<180ms) calls par kuch bhi nahi dikhta
+          · min visible 260ms → jo dikhe wo jhatke se na ghume
+     ---------------------------------------------------------------------- */
+  busy(on) {
+    const b = $('#boot');
+    /* (1) pehla boot — poori screen theek hai (abhi app ka kuch bana hi nahi) */
+    if (!App.state.booted) {
+      if (b) b.hidden = !on;
+      const m = $('#bootMsg');
+      if (on && m) m.textContent = 'Loading workspace…';
+      return;
+    }
+    /* (2) us ke baad — sirf patli top bar */
+    if (b && !b.hidden) b.hidden = true;      /* purana overlay kahin phansa ho to */
+    UI._bar(on);
+  },
+
+  /* indeterminate top progress bar — block nahi karti, layout nahi hilati */
+  _bar(on) {
+    let bar = document.getElementById('haTopBar');
+    if (!bar) {
+      bar = document.createElement('div');
+      bar.id = 'haTopBar';
+      bar.setAttribute('aria-hidden', 'true');
+      document.body.appendChild(bar);
+    }
+    if (on) {
+      if (bar.classList.contains('on')) return;
+      clearTimeout(API._barHideT);
+      API._barShowT = setTimeout(() => {
+        bar.classList.add('on');
+        API._barAt = (performance && performance.now) ? performance.now() : Date.now();
+      }, 180);                                  /* chhoti calls par flash nahi */
+    } else {
+      clearTimeout(API._barShowT);
+      if (!bar.classList.contains('on')) return; /* dikhaya hi nahi to hatana bhi nahi */
+      const now = (performance && performance.now) ? performance.now() : Date.now();
+      const elapsed = now - (API._barAt || now);
+      const MIN = 260;                          /* jhatke se na ghume */
+      if (elapsed < MIN) {
+        clearTimeout(API._barHideT);
+        API._barHideT = setTimeout(() => bar.classList.remove('on'), MIN - elapsed);
+      } else {
+        bar.classList.remove('on');
+      }
+    }
+  },
+
+
+  /* ==========================================================================
+     UI.run — ACTION-LEVEL busy state (v2.25.9 · W2.T2)
+     --------------------------------------------------------------------------
+     Audit ka natija: pehle busy-ness do tarah ki thi —
+       (a) global patli top bar (UI.busy) — poori app ke liye, action-specific nahi;
+       (b) har page ka apna hack: PO save mein manual `'Saving…'` + disabled,
+           POS pay mein manual `'⏳ Processing…'`. Aur GRN post / invoice save /
+           customers save jaise bhaari writes par KOI busy state nahi thi →
+           user dobara tap karta tha → DOUBLE POST (stock/double entry ka khatra).
+
+     Ab ek hi shared helper, jo modal/drawer/offcanvas ke har action button par
+     khud-ba-khud lagta hai:
+
+       UI.run(el, fn, opts)
+         · DUPLICATE-SUBMIT BLOCK — jab tak pichla kaam chal raha ho, naya tap
+           chalti hui wahi promise return karta hai (naya call NAHI hota);
+           stats mein `blocked` ginne mein aata hai.
+         · SIRF usi button par spinner + label swap (app-wide spinner NAHI —
+           yehi user ki shart thi).
+         · LONG-OP PROGRESS — chalti hui call ke saath elapsed seconds
+           ("Posting GRN… · 4s"), 20s ke baad "(chal raha hai…)".
+         · SUCCESS ✓ / ERROR ✖ flash, phir button apni asli halat par wapas.
+         · MIN-BUSY 320ms — chhoti call par bhi state jhatke se na gume.
+         · SAFETY: timeoutMs (default 120s) ke baad button wapas usable ho jata
+           hai (server ne jawab na diya to user hamesha ke liye phansa na rahe).
+
+     Kill-switch (tests/sensitivity): UI._features.run = false
+     ========================================================================== */
+  _features: { run: true, err: true },
+  _runState: new Map(),                 /* el → chalti hui promise */
+  _runStats: { started: 0, blocked: 0, ok: 0, err: 0, stale: 0 },
+  _runVerb: {
+    save: 'Saving', post: 'Posting', add: 'Adding', create: 'Creating', update: 'Updating',
+    delete: 'Deleting', remove: 'Removing', pay: 'Payment ho rahi hai', complete: 'Completing',
+    approve: 'Approving', reject: 'Rejecting', send: 'Sending', import: 'Importing',
+    export: 'Exporting', generate: 'Generating', print: 'Printing', apply: 'Applying',
+    submit: 'Submitting', assign: 'Assigning', close: 'Closing', open: 'Opening', reset: 'Reset'
+  },
+  /** button ke label se busy text ('Save PO' → 'Saving PO…') */
+  _busyLabelFor(el) {
+    const raw = String(el.textContent || '').replace(/[✓✖⏳…]/g, '').trim();
+    const words = raw.split(/\s+/).filter(Boolean);
+    if (!words.length) return 'Working…';
+    const verb = UI._runVerb[words[0].toLowerCase()];
+    return (verb ? verb : words[0]) + (words.length > 1 ? ' ' + words.slice(1).join(' ') : '') + '…';
+  },
+  /** el busy hai? (tests + callers ke liye) */
+  runBusy(el) { return !!(el && UI._runState && UI._runState.has(el)); },
+  /** stats snapshot (reset=true se counters saaf) */
+  runStats(reset) {
+    const s = Object.assign({ running: UI._runState.size }, UI._runStats);
+    if (reset) UI._runStats = { started: 0, blocked: 0, ok: 0, err: 0, stale: 0 };
+    return s;
+  },
+  run(el, fn, opts) {
+    opts = opts || {};
+    if (typeof fn !== 'function') return Promise.resolve(fn);
+    if (!UI._features || UI._features.run === false) return Promise.resolve().then(fn);
+    const isEl = !!(el && el.nodeType === 1);
+    if (isEl && UI._runState.has(el)) {                /* ---- DUPLICATE SUBMIT ---- */
+      UI._runStats.blocked++;
+      return UI._runState.get(el);
+    }
+    let out;
+    try { out = fn(); } catch (e) { out = Promise.reject(e); }
+    /* sync action (Cancel/Close jaisi) — koi busy UI nahi, sirf value wapas */
+    if (!out || typeof out.then !== 'function') return Promise.resolve(out);
+    const p = Promise.resolve(out);
+    UI._runStats.started++;
+    if (!isEl) return p;
+
+    const el0 = el;
+    const keep = {
+      html: el0.innerHTML, disabled: el0.disabled,
+      busy: el0.getAttribute('aria-busy'), cls: el0.getAttribute('class') || ''
+    };
+    const label = opts.busyLabel || UI._busyLabelFor(el0);
+    const t0 = Date.now();
+    let labelEl = null, tick = null, timedOut = false;
+
+    if (el0.isConnected) {
+      el0.setAttribute('aria-busy', 'true');
+      el0.classList.add('is-busy');
+      try { el0.disabled = true; } catch (e) { }
+      el0.innerHTML = '<span class="ha-spin" aria-hidden="true"></span><span class="ha-lbl"></span>';
+      labelEl = el0.querySelector('.ha-lbl');
+      if (labelEl) labelEl.textContent = label;
+      /* ---- long-op progress ---- */
+      const pms = opts.progressMs === undefined ? 1400 : opts.progressMs;
+      if (pms > 0 && labelEl) {
+        tick = setInterval(() => {
+          const secs = Math.round((Date.now() - t0) / 1000);
+          if (!labelEl || !labelEl.isConnected) return;
+          labelEl.textContent = label + ' · ' + secs + 's' +
+            (secs >= (opts.slowAfter || 20) ? ' (chal raha hai…)' : '');
+          el0.dataset.haElapsed = String(secs);
+        }, pms);
+      }
+    }
+    UI._runState.set(el0, p);
+
+    const restore = () => {
+      if (!el0.isConnected) return;                    /* modal band ho gaya */
+      el0.innerHTML = keep.html;
+      el0.disabled = keep.disabled;
+      el0.classList.remove('is-busy');
+      if (keep.busy === null) el0.removeAttribute('aria-busy'); else el0.setAttribute('aria-busy', keep.busy);
+      delete el0.dataset.haElapsed;
+    };
+    const flash = good => {
+      if (!el0.isConnected) return;
+      el0.classList.add(good ? 'is-ok' : 'is-err');
+      const mark = document.createElement('span');
+      mark.className = 'ha-flash';
+      mark.setAttribute('aria-hidden', 'true');
+      mark.textContent = good ? '✓' : '✖';
+      /* okLabel diya ho ("Posted" / "Saved") to flash ke dauraan wohi dikhta hai —
+         user ko saaf success state milti hai, phir button apne asli label par. */
+      const useOkLabel = good && opts.okLabel;
+      if (useOkLabel) {
+        el0.textContent = '';
+        el0.appendChild(mark);
+        el0.appendChild(document.createTextNode(String(opts.okLabel)));
+      } else {
+        el0.insertBefore(mark, el0.firstChild);
+      }
+      /* flash ke baad ✓/✖ MARK bhi hatna zaroori hai — warna label hamesha ke liye
+         "✓Save" jaisa reh jata (gate ne pakra). */
+      setTimeout(() => {
+        if (!el0.isConnected) return;
+        el0.classList.remove('is-ok', 'is-err');
+        if (useOkLabel) el0.innerHTML = keep.html;
+        else if (mark.parentNode) mark.parentNode.removeChild(mark);
+      }, opts.flashMs || 900);
+    };
+    const settle = good => {
+      clearInterval(tick);
+      UI._runState.delete(el0);
+      if (good) UI._runStats.ok++; else UI._runStats.err++;
+      const min = opts.minMs === undefined ? 320 : opts.minMs;
+      const wait = Math.max(0, min - (Date.now() - t0));
+      setTimeout(() => { restore(); flash(good); }, wait);
+    };
+    /* safety: server jawab na de to button hamesha ke liye band na rahe */
+    const tmo = opts.timeoutMs === undefined ? 120000 : opts.timeoutMs;
+    let guard = 0;
+    if (tmo > 0) guard = setTimeout(() => {
+      timedOut = true; UI._runStats.stale++;
+      settle(false);
+      if (window.UI && UI.toast) UI.toast('Jawab nahi aaya — dobara koshish kar sakte hain', 'warn');
+    }, tmo);
+
+    return p.then(
+      r => { clearTimeout(guard); if (!timedOut) settle(true); return r; },
+      e => {
+        clearTimeout(guard);
+        if (!timedOut) {
+          settle(false);
+          /* W2.T3 — error khud-ba-khud ACTION ke paas dikhe (toast ke sath),
+             aur Retry sirf tab jab jaiz ho; write par "refresh pehle" warning. */
+          if (UI._features && UI._features.err !== false && opts.err !== false) {
+            const host = opts.errHost || UI._errHostFor(el0);
+            UI.fail(e, {
+              host: host,
+              retry: opts.retryOnFail === false ? null : () => {
+                try { return UI.run(el0, fn, opts); } catch (e2) { return null; }
+              },
+              write: !!opts.write, writeLabel: opts.writeLabel,
+              toast: opts.errToast !== false
+            });
+          }
+        }
+        throw e;
+      }
+    );
+  },
+
+  modal(cfg) {
+    const { title, body, actions, width, onClose } = cfg;
+    const scrim = h('div', { class: 'modal-scrim' });
+    const modal = h('div', { class: 'modal ' + (width || '') });
+    modal.appendChild(h('div', { class: 'modal-head' },
+      h('h3', null, title || ''),
+      h('button', { class: 'x', onclick: close }, '✕')));
+    const bodyEl = h('div', { class: 'modal-body' });
+    if (typeof body === 'string') bodyEl.innerHTML = body; else if (body) bodyEl.appendChild(body);
+    modal.appendChild(bodyEl);
+    let acts = (actions || []).slice();
+    /* v2.24.0 — footer mein Cancel/Close hamesha ho (opt-out: cfg.noCancel) */
+    if (!acts.length && cfg.noCancel !== true) acts = [{ label: 'Close', cls: 'ghost', onClick: c => c() }];
+    if (acts.length && cfg.noCancel !== true
+      && !acts.some(a => /cancel|close|band|nahi|back/i.test(String(a.label || '')))) {
+      acts = acts.concat([{ label: 'Cancel', cls: 'ghost', onClick: c => c() }]);
+    }
+    if (acts.length) {
+      const foot = h('div', { class: 'modal-foot' });
+      acts.forEach(a => foot.appendChild(h('button', {
+        class: 'btn ' + (a.cls || 'sec'),
+        /* v2.25.9 W2.T2 — har modal action button par shared busy/dup-block (UI.run)
+           v2.25.11 W2.T3 — rejection ko yahin sambhalo: warna browser "Uncaught (in promise)"
+           deta hai. Error khud UI.fail se (inline box/toast) dikh chuka hota hai. */
+        onclick: ev => {
+          const pr = UI.run(ev.currentTarget, () => a.onClick && a.onClick(close, bodyEl), a);
+          if (pr && pr.catch) pr.catch(err => { try { console.warn('[UI.run] action failed:', (err && err.message) || err); } catch (e) { } });
+        }
+      }, a.label)));
+      modal.appendChild(foot);
+    }
+    scrim.appendChild(modal);
+    scrim.addEventListener('click', e => { if (e.target === scrim) close(); });
+    let closed = false;
+    const prevFocus = document.activeElement;
+    function close() {
+      if (closed) return; closed = true;
+      if (window.UI2 && UI2._overlays) UI2._untrack(reg);
+      scrim.remove();
+      try { if (prevFocus && prevFocus.focus && document.body.contains(prevFocus)) prevFocus.focus(); } catch (e) { }
+      onClose && onClose();
+    }
+    $('#modalRoot').appendChild(scrim);
+    /* v2.24.0 — overlay registry: Esc se sab se upar wala modal band hota hai */
+    const reg = (window.UI2 && UI2._track) ? UI2._track({ el: scrim, close: close }) : function () { };
+    const f = bodyEl.querySelector('input,select,textarea'); if (f) setTimeout(() => f.focus(), 60);
+    return { close, body: bodyEl };
+  },
+
+  confirm(msg, onYes, danger) {
+    UI.modal({
+      title: t('confirm'), width: 'narrow',
+      body: h('div', { style: { fontSize: 'var(--fs-md)', lineHeight: '1.5' } }, msg),
+      actions: [
+        { label: t('no'), cls: 'ghost', onClick: c => c() },
+        { label: t('yes'), cls: danger ? 'danger' : '', onClick: c => { c(); onYes && onYes(); } }
+      ]
+    });
+  },
+
+  drawer(cfg) {
+    const { title, body, width, actions } = cfg;
+    const scrim = h('div', { class: 'scrim' });
+    const dr = h('div', { class: 'drawer', style: width ? { width } : null });
+    dr.appendChild(h('div', { class: 'modal-head' },
+      h('h3', null, title || ''),
+      h('button', { class: 'x', onclick: close }, '✕')));
+    const bodyEl = h('div', { class: 'modal-body', style: { flex: '1', overflow: 'auto' } });
+    if (typeof body === 'string') bodyEl.innerHTML = body; else if (body) bodyEl.appendChild(body);
+    dr.appendChild(bodyEl);
+    /* v2.24.0 — drawer mein bhi hamesha Cancel/Close (GRN/Stock Issue jaise
+       long forms mein user ko phansne na do) — opt-out: cfg.noCancel */
+    let dacts = (actions || []).slice();
+    if (!dacts.length && cfg.noCancel !== true) dacts = [{ label: 'Close', cls: 'ghost', onClick: c => c() }];
+    if (dacts.length && cfg.noCancel !== true
+      && !dacts.some(a => /cancel|close|band|nahi|back/i.test(String(a.label || '')))) {
+      dacts = dacts.concat([{ label: 'Cancel', cls: 'ghost', onClick: c => c() }]);
+    }
+    if (dacts.length) {
+      const foot = h('div', { class: 'modal-foot' });
+      dacts.forEach(a => foot.appendChild(h('button', {
+        class: 'btn ' + (a.cls || 'sec'),
+        /* v2.25.9 W2.T2 — drawer actions bhi shared busy/dup-block par (GRN post yahan se)
+           v2.25.11 W2.T3 — unhandled rejection se bachao (error UI.fail se dikhta hai) */
+        onclick: ev => {
+          const pr = UI.run(ev.currentTarget, () => a.onClick && a.onClick(close, bodyEl), a);
+          if (pr && pr.catch) pr.catch(err => { try { console.warn('[UI.run] action failed:', (err && err.message) || err); } catch (e) { } });
+        }
+      }, a.label)));
+      dr.appendChild(foot);
+    }
+    let dClosed = false;
+    const dPrevFocus = document.activeElement;
+    function close() {
+      if (dClosed) return; dClosed = true;
+      if (window.UI2 && UI2._overlays) UI2._untrack(reg);
+      dr.remove(); scrim.remove();
+      try { if (dPrevFocus && dPrevFocus.focus && document.body.contains(dPrevFocus)) dPrevFocus.focus(); } catch (e) { }
+    }
+    scrim.onclick = close;
+    $('#drawerRoot').append(scrim); $('#drawerRoot').appendChild(dr);
+    /* overlay registry: Esc se sab se upar wala drawer/modal band (v2.24.0) */
+    const reg = (window.UI2 && UI2._track) ? UI2._track({ el: dr, close: close }) : function () { };
+    return { close, body: bodyEl };
+  },
+
+  /** generic data table */
+  table(cfg) {
+    const { columns, rows, onRow, empty, emptyText, rowClass } = cfg;
+    if (!rows || !rows.length) {
+      return h('div', { class: 'tbl-empty' }, h('span', { class: 'big' }, '📭'),
+        h('div', null, emptyText || t('noData')), empty || '');
+    }
+    const tbl = h('table', { class: 'tbl' });
+    const thead = h('thead');
+    const tr = h('tr');
+    columns.forEach(c => tr.appendChild(h('th', { class: (c.num ? 'num' : '') + (c.sort === false ? ' nos' : '') },
+      c.label, c.sort === false ? '' : ' ↕')));
+    thead.appendChild(tr); tbl.appendChild(thead);
+    const tb = h('tbody');
+    rows.forEach(r => {
+      const row = h('tr', { class: 'clickable' + (rowClass ? ' ' + rowClass(r) : '') });
+      columns.forEach(c => {
+        const td = h('td', { class: c.num ? 'num' : '' });
+        const v = c.render ? c.render(r) : r[c.key];
+        if (v && v.nodeType) td.appendChild(v); else td.innerHTML = (v === null || v === undefined || v === '') ? '—' : esc(v);
+        row.appendChild(td);
+      });
+      if (onRow) row.addEventListener('click', () => onRow(r));
+      tb.appendChild(row);
+    });
+    tbl.appendChild(tb);
+    return h('div', { class: 'table-wrap' }, tbl);
+  },
+
+  /** form builder: fields = [{key,label,type,options,required,placeholder,full,value,hint}] */
+  form(fields, values, opts) {
+    values = values || {}; opts = opts || {};
+    const wrap = h('div', { class: 'form-grid' + (opts && opts.cols ? ' c' + opts.cols : '') });
+    const refs = {};
+    fields.forEach(f => {
+      const id = 'f_' + f.key;
+      let input, vis = null;
+      if (f.type === 'select') {
+        input = h('select', { id, class: '' });
+        (f.options || []).forEach(o => {
+          const val = typeof o === 'object' ? o.value : o;
+          const lab = typeof o === 'object' ? o.label : o;
+          input.appendChild(h('option', { value: val, selected: String(values[f.key] ?? f.value ?? '') === String(val) }, lab));
+        });
+      } else if (f.type === 'textarea') {
+        input = h('textarea', { id, rows: f.rows || 3, placeholder: f.placeholder || '' }, values[f.key] ?? f.value ?? '');
+      } else if (f.type === 'switch') {
+        /* v2.6 §1 — UI2.toggle (ek hi component, On/Off state ke sath).
+           v2.23.21: render the whole switch (label-wrapped), not the bare 13px
+           checkbox — tap area becomes the pill+text, keyboard/aria unchanged. */
+        const tg = UI2.toggle({ id: id, label: f.label || '',
+          checked: values[f.key] ?? f.value });
+        input = tg.input; vis = tg.el;
+      } else {
+        input = h('input', {
+          id, type: f.type || 'text', placeholder: f.placeholder || '',
+          value: values[f.key] ?? f.value ?? '', step: f.step || null, min: f.min || null
+        });
+        if (f.autocomplete) input.setAttribute('autocomplete', f.autocomplete);
+        if (f.list) { const dl = h('datalist', { id: id + '_l' }); f.list.forEach(v => dl.appendChild(h('option', { value: v }))); input.setAttribute('list', id + '_l'); input.parentNode; wrap.appendChild(dl); }
+      }
+      refs[f.key] = input;
+      const field = h('div', { class: 'field ' + (f.full ? 'full' : '') },
+        f.type !== 'switch' ? h('label', { for: id, class: f.required ? 'req' : '' }, f.label) : '',
+        vis || input, f.hint && f.type !== 'switch' ? h('div', { class: 'hint' }, f.hint) : '');
+      if (f.span) field.classList.add('span' + f.span);
+      wrap.appendChild(field);
+    });
+    return {
+      el: wrap,
+      values() {
+        const out = {};
+        fields.forEach(f => {
+          const el = refs[f.key];
+          out[f.key] = f.type === 'switch' ? el.checked :
+            (f.type === 'number' ? Number(el.value || 0) : el.value);
+        });
+        return out;
+      },
+      /* v2.25.0 (req 2/6) — programmatic set: PO load hone par supplier /
+         warehouse yaad se set karne ke liye (pehle callers index se
+         querySelectorAll('select')[0] karte thay — layout badalte hi toota).
+         change event bhi chalta hai taake dependents (balance card, prev rate)
+         update ho jayein. */
+      set(key, val) {
+        const el = refs[key];
+        if (!el) return false;
+        if (el.type === 'checkbox') el.checked = !!val;
+        else el.value = (val === null || val === undefined) ? '' : String(val);
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+        el.dispatchEvent(new Event('change', { bubbles: true }));
+        return true;
+      }
+    };
+  },
+
+
+  /* v2.9 §6 — product image lightbox: click to enlarge (Escape/click-bg close) */
+  zoomImage(src, alt) {
+    const old = document.querySelector('.img-lightbox'); if (old) old.remove();
+    const ov = h('div', { class: 'img-lightbox', role: 'dialog', 'aria-modal': 'true',
+      'aria-label': (alt || 'Image') + ' — enlarged', tabindex: '0' },
+      h('img', { src: src, alt: alt || '' }),
+      alt ? h('div', { class: 'lb-cap' }, alt) : '',
+      h('button', { class: 'lb-x', 'aria-label': 'Close', onclick: close }, '✕'));
+    function close() { ov.remove(); document.removeEventListener('keydown', onKey); }
+    function onKey(e) { if (e.key === 'Escape') close(); }
+    ov.addEventListener('click', e => { if (e.target === ov) close(); });
+    document.addEventListener('keydown', onKey);
+    document.body.appendChild(ov); ov.focus();
+  },
+
+  kpi(icon, label, value, sub, cls) {
+    /* v2.6 QA — KPI cards bhi SVG icon library use karein.
+       42 cards mein 23 alag emoji the (💰 7 jagah, 🏆 5 jagah) — emoji har
+       device par alag dikhte hain. Ab har KPI ka apna, saaf SVG icon.
+       Jis emoji ka icon library me nahi, woh PURANA emoji hi dikhega. */
+    const detail = typeof value === 'string' && value.match(/^(.* Crore) \((.*)\)$/);
+    return h('div', { class: 'kpi ' + (cls || '') },
+      h('div', { class: 'k-ico', html: kpiIcon(icon) }),
+      h('div', { class: 'k-label' }, label),
+      h('div', { class: 'k-value' }, detail ? detail[1] : value),
+      detail ? h('div', { class: 'k-exact' }, '(' + detail[2] + ')') : '',
+      sub ? h('div', { class: 'k-sub' }, sub) : '');
+  },
+
+  /**
+   * v2.5: mini bar chart — ab pro chart engine ke HTML rows use karta hai
+   * (label ellipsis + value right aligned) taake kabhi overlap na ho.
+   * Engine available na ho to simple CSS fallback.
+   */
+  bars(data, opts) {
+    opts = opts || {};
+    data = (data || []).filter(d => d && !isNaN(Number(d.value)));
+    if (!data.length) return h('div', { class: 'chart-empty' }, 'Koi data nahi');
+    try {
+      if (window.Chart && typeof window.Chart.barsHTML === 'function') {
+        return window.Chart.barsHTML(data.map(d => ({ label: d.label, value: d.value })),
+          Object.assign({ horizontal: true }, opts));
+      }
+    } catch (e) { /* fallback neeche */ }
+    const max = Math.max(...data.map(d => Number(d.value) || 0), 1);
+    return h('div', { class: 'mini-chart' }, data.map(d => h('div', { class: 'bar-wrap', title: d.label + ': ' + d.value },
+      h('div', { class: 'bar', style: { height: Math.max(4, ((Number(d.value) || 0) / max) * 100) + '%' } }),
+      h('div', { class: 'lbl' }, d.label))));
+  },
+
+  /**
+   * Delayed-mount skeleton: jab tak data 200 ms se pehle aa jaye, kuch bhi draw nahi
+   * hota → screen blank/flash nahi hoti. Slow load par skeleton shimmer dikhta hai.
+   */
+  skeleton(lines) {
+    const wrap = h('div', { class: 'skel-wrap' });
+    setTimeout(() => {
+      if (!wrap.isConnected) return;                 // data aa gaya → skeleton ki zaroorat nahi
+      for (let i = 0; i < (lines || 4); i++) {
+        wrap.appendChild(h('div', { class: 'skel',
+          style: { height: '16px', margin: '8px 0', width: (100 - i * 7) + '%' } }));
+      }
+    }, 200);
+    return wrap;
+  },
+
+  /** Content swap with fade — purana content achanak hat-ta nahi, is liye flicker nahi */
+  swap(host, node) {
+    if (!host) return;
+    host.innerHTML = '';
+    if (node === null || node === undefined || node === false) return;
+    const wrap = h('div', { class: 'fade-in' });
+    wrap.appendChild(node.nodeType ? node : document.createTextNode(String(node)));
+    host.appendChild(wrap);
+  },
+
+  /**
+   * Anti-flash loader: skeleton sirf tab dikhta hai jab data >220 ms le —
+   * fast loads par koi blink nahi, slow loads par user ko feedback milta hai.
+   *   UI.loadInto(host, API.call(...), (frag, data) => frag.appendChild(render(data)))
+   */
+  loadInto(host, promise, renderFn, opts) {
+    opts = opts || {};
+    const delay = opts.delay === undefined ? 220 : opts.delay;
+    let timer = null;
+    if (delay >= 0) {
+      timer = setTimeout(() => {
+        if (!host.isConnected && host !== document.body) return;
+        host.innerHTML = '';
+        host.appendChild(UI.skeleton(opts.rows || 6));
+      }, delay);
+    }
+    return Promise.resolve()
+      .then(() => promise)
+      .then(data => {
+        if (timer) clearTimeout(timer);
+        const frag = document.createDocumentFragment();
+        renderFn(frag, data);
+        UI.swap(host, frag);
+        return data;
+      })
+      .catch(e => {
+        if (timer) clearTimeout(timer);
+        UI.swap(host, h('div', { class: 'empty' }, '⚠ ' + (e && e.message ? e.message : String(e))));
+        throw e;
+      });
+  }
+};
+
+/* ============================== ROUTER ================================ */
+App.navConfig = [
+  { group: 'Main', items: [
+    { id: 'dashboard', label: 'Dashboard', icon: '📊', perm: 'dashboard.view' },
+    { id: 'pos', label: 'POS / Bill', icon: '🧾', perm: 'pos.access' },
+    { id: 'sales', label: 'Sales History', icon: '📁', perm: 'sales.view' },
+    { id: 'orders', label: 'Order Book', icon: '📝', perm: 'pos.sell' },
+    { id: 'takeorder', label: 'Take Order (mobile)', icon: '📱', perm: 'pos.sell' },
+    { id: 'items', label: 'Items', icon: '📦', perm: 'items.view' },
+    { id: 'inventory', label: 'Inventory', icon: '🏬', perm: 'stock.view' },
+    { id: 'warehouse', label: 'Warehouse', icon: '🏗', perm: 'stock.view' }
+  ]},
+  { group: 'Dedicated Apps', items: [
+    { id: 'apps', label: 'Dedicated Apps (PWA)', icon: '🧩', perm: 'dashboard.view' }
+  ]},
+  { group: 'Trade', items: [
+    { id: 'purchase', label: 'Purchase', icon: '🚚', perm: 'purchase.view' },
+    { id: 'demands', label: 'Demands', icon: '📝', perm: 'demand.view' },
+    { id: 'reorder', label: 'Auto Reorder', icon: '🔁', perm: 'purchase.view' },
+    { id: 'parties', label: 'Customers & Suppliers', icon: '👥', perm: 'customers.view' },
+    /* v2.6 §12 — wholesale core */
+    { id: 'salesman', label: 'Salesman Stock', icon: '🧑', perm: 'sales.view' },
+    { id: 'money', label: 'Payments & Cash', icon: '💰', perm: 'payments.view' },
+    { id: 'accounting', label: 'Accounting', icon: '📒', perm: 'reports.financial' }
+  ]},
+  /* v2.9 §13 — saaf, self-explanatory naam */
+  { group: 'Insights & Dashboards', items: [
+    { id: 'insights', label: 'Dashboards', icon: '📈', perm: 'reports.view' },
+    { id: 'reports', label: 'Reports', icon: '📊', perm: 'reports.view' },
+    { id: 'shop', label: 'Shop Open/Close', icon: '🏪', perm: 'pos.access' },
+    { id: 'users', label: 'Users & Security', icon: '🔐', perm: 'users.view' },
+    { id: 'settings', label: 'Settings', icon: '⚙', perm: 'settings.view' }
+  ]}
+];
+
+App.registerScreen = function (id, cfg) { App.screens[id] = cfg; };
+
+App.go = function (id, params) {
+  if (!App.state.session) return;
+  if (!App.screens[id]) { id = 'dashboard'; }
+  const s = App.screens[id];
+  if (s.perm && !App.can(s.perm)) { UI.toast('Is screen ka access nahi hai', 'err'); id = 'dashboard'; }
+  App.current = id; App.params = params || {};
+  /* v2.9 §2 — deep-link/params ka tab memory me baithe jaye, taake refresh par
+     wahi tab khule. Nav click (no params) par memory fresh screen ke hisab se
+     hi chale (jo tab open tha wohi). */
+  App._tabMem = App._tabMem || {};
+  if (App.params.tab) App._tabMem[id + ':L1'] = App.params.tab; else delete App._tabMem[id + ':L1'];
+  if (App.params.tab2) App._tabMem[id + ':L2'] = App.params.tab2; else delete App._tabMem[id + ':L2'];
+  if (App.params.tab3) App._tabMem[id + ':L3'] = App.params.tab3; else delete App._tabMem[id + ':L3'];
+  location.hash = '#/' + id + (App.params && App.params.tab ? '?tab=' + encodeURIComponent(App.params.tab) : '');
+  App.renderView();
+  // deep links: /#/items?open=ID  →  screen khud detail khol leta hai
+  if (s.onParams && App.params && Object.keys(App.params).length) {
+    setTimeout(() => { try { s.onParams(App.params); } catch (e) { console.warn('onParams', e); } }, 350);
+  }
+  $$('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.id === id));
+  $$('.tabbar button').forEach(n => n.classList.toggle('on', n.dataset.id === id));
+};
+
+App.renderView = function () {
+  if (!App.state.session) return;
+  const view = $('#view');
+  const s = App.screens[App.current];
+  if (!s) return;
+  view.innerHTML = '';
+  /* v2.6 QA — buttons/headings ke andar ka emoji → SVG (ek hi pass, poori screen).
+     Ye render se PEHLE is liye hai ke `view.innerHTML=''` ke baad naya DOM
+     banta hai; upgradeSoon() us naye DOM par chalta hai. */
+  try { if (window.HA_ICONS) HA_ICONS.upgradeSoon(view); } catch (e) { }
+  /* v2.7 — chart text auto-fit: gauge/donut/axis labels kabhi SVG se bahar
+     na jayein (getBBox() ko DOM me maujood element chahiye — is liye render
+     ke turant baad). */
+  try { if (window.Chart && Chart.fitSoon) Chart.fitSoon(view); } catch (e) { }
+  /* v2.5: full-screen screens (mobile order pad) — sidebar/title bar chhup jate hain */
+  view.classList.toggle('m-full', !!s.full);
+  if (s.full) {
+    const bodyF = h('div');
+    view.appendChild(bodyF);
+    Promise.resolve(s.render(bodyF, App.params)).catch(e => {
+      bodyF.innerHTML = '';
+      bodyF.appendChild(h('div', { class: 'empty' }, h('span', { class: 'big' }, '⚠'),
+        h('div', null, e.message || String(e))));
+    });
+    return;
+  }
+  const head = h('div', { class: 'page-head' },
+    h('div', null,
+      h('h2', null, s.title),
+      s.subtitle ? h('div', { class: 'sub' }, isFn(s.subtitle) ? s.subtitle() : s.subtitle) : ''),
+    h('div', { class: 'actions' }, (s.actions ? s.actions() : []).map(a =>
+      h('button', { class: 'btn ' + (a.cls || 'sec'), onclick: a.onClick }, a.icon ? a.icon + ' ' : '', a.label)))
+  );
+  view.appendChild(head);
+  const body = h('div');
+  view.appendChild(body);
+  view.scrollTop = 0;
+  Promise.resolve(s.render(body, App.params)).catch(e => {
+    body.innerHTML = '';
+    body.appendChild(h('div', { class: 'empty' }, h('span', { class: 'big' }, '⚠'),
+      h('div', null, e.message || String(e))));
+  });
+};
+
+App.refresh = function () { App.renderView(); };
+
+/* ============================== NAV RENDER =========================== */
+App.renderNav = function () {
+  const nav = $('#sbNav'); nav.innerHTML = '';
+  // dynamic menu from Settings ▸ Menu builder (falls back to built-in nav)
+
+  /* v2.6 QA — sidebar icon: SVG icon library (har screen ka apna, alag shakl).
+     Pehle 📊 Dashboard aur Reports DONO ke liye tha — icon se pata hi nahi
+     chalta tha ke kaun si screen hai. Ab screen id se asli icon milta hai;
+     jis screen ka icon library me nahi, woh PURANA emoji dikhega. */
+  function navIcon(route, emoji) {
+    var box = h('span', { class: 'ni' });
+    try {
+      if (window.HA_ICONS) box.innerHTML = HA_ICONS.forScreen(route, emoji, 26);
+      else box.textContent = emoji || '\u25B8';
+    } catch (e) { box.textContent = emoji || '\u25B8'; }
+    if (!box.firstChild) box.textContent = emoji || '\u25B8';
+    return box;
+  }
+
+  const renderTree = tree => {
+    nav.innerHTML = '';
+    (tree || []).forEach(node => {
+      const kids = (node.children || []).filter(c => c.route || (c.children || []).length);
+      if (node.route) {
+        nav.appendChild(h('div', { class: 'nav-item', dataset: { id: node.route, tip: node.label }, title: node.label,
+          onclick: () => { App.go(node.route); App.closeSidebar(); } },
+          navIcon(node.route, node.icon), h('span', { class: 'sb-txt' }, node.label),
+          node.badge ? h('span', { class: 'nk' }, node.badge) : ''));
+      } else if (node.label) {
+        const grp = h('div', { class: 'sb-group' }, node.label);
+        nav.appendChild(grp);
+        kids.forEach(c => nav.appendChild(h('div', { class: 'nav-item', dataset: { id: c.route, tip: c.label }, title: c.label,
+          onclick: () => { App.go(c.route); App.closeSidebar(); } },
+          navIcon(c.route, c.icon), h('span', { class: 'sb-txt' }, c.label))));
+      }
+    });
+    renderTabbar(tree);
+  };
+
+  const renderTabbar = tree => {
+    const flat = [];
+    (function walk(n) { n.forEach(x => { if (x.route) flat.push(x); (x.children || []).forEach && walk(x.children || []); }); })(tree || []);
+    const tb = $('#tabbar'); tb.innerHTML = '';
+    ['dashboard', 'pos', 'items', 'parties', 'reports'].forEach(id => {
+      const meta = flat.find(x => x.route === id) || (App.navConfig.flatMap(g => g.items).find(x => x.id === id));
+      if (!meta) return;
+      tb.appendChild(h('button', { dataset: { id }, onclick: () => App.go(id) },
+        h('span', { class: 'ti', html: tabIcon(meta.icon || '\u25B8') }), /* v2.8.5 — label ko .tl class: chhota text, ellipsis, wrap nahi —
+           bottom bar kabhi "messy" nahi lagega */
+        h('span', { class: 'tl' }, (meta.label || id).split(' ')[0])));
+    });
+  };
+
+  // built-in fallback — v2.15 premium: icon-only collapsed shows tooltip via data-tip/title
+  App.navConfig.forEach(g => {
+    const items = g.items.filter(x => !x.perm || App.can(x.perm));
+    if (!items.length) return;
+    nav.appendChild(h('div', { class: 'sb-group' }, g.group));
+    items.forEach(x => nav.appendChild(h('div', { class: 'nav-item', dataset: { id: x.id, tip: x.label }, title: x.label,
+      onclick: () => { App.go(x.id); App.closeSidebar(); } },
+      navIcon(x.id, x.icon), h('span', { class: 'sb-txt' }, x.label),
+      x.badge ? h('span', { class: 'nk' }, x.badge) : '')));
+  });
+  renderTabbar(null);
+
+  if (navigator.onLine && App.state.booted) {
+    API.call('config.menu', {}, { offlineFallback: () => [] })
+      .then(tree => { if (tree && tree.length) { App.state.menu = tree; renderTree(tree); } })
+      .catch(() => { });
+  }
+};
+
+App.closeSidebar = function () {
+  const sb = $('#sidebar'); if (sb) sb.classList.remove('open');
+  const sc = $('#scrim'); if (sc) sc.hidden = true;
+};
+
+
+/* ============================== BRANCH ================================ */
+App.setBranch = function (locId, silent) {
+  App.state.locationId = locId;
+  const loc = (App.state.locations || []).find(l => l.id === locId);
+  App.state.branchName = loc ? loc.name : '';
+  $('#sbBranch').textContent = App.state.branchName;
+  const sel = $('#branchSelect'); if (sel) sel.value = locId;
+  if (App.state.session) App.state.session.locationId = locId;
+  Store.set('branch', locId);
+  if (!silent) App.renderView();
+};
+
+window.App = App; window.UI = UI; window.API = API; window.Store = Store;
+/* v2.25.8 — performance audit ke liye raw stats global (console se dekhein) */
+try { window.__apiStats = API.stats; } catch (e) { }
+/* v2.7 — downloadCsv global export: App_Screens/App_Config/App_Dashboards
+   sab IIFE ke andar hain, to yahan se export karna zaroori hai. */
+window.downloadCsv = downloadCsv;
+/* --------------------------------------------------------------------------
+   v2.7 BUG FIX — `downloadCsv` (GLOBAL)
+   --------------------------------------------------------------------------
+   Pehle ye sirf App_Screens.html ke IIFE ke andar thi (window.__ui.downloadCsv).
+   Magar do jagah isay GLOBAL samajh kar call kiya gaya:
+     · App_Config.html     → Settings → Data & tools → Export config
+     · App_Dashboards.html → day-closing report → CSV
+   Natija: "downloadCsv is not defined" → EXPORT BUTTON KAAM NA KARTA THA
+   (aur user ko khata bhi nazar nahi aata tha).
+
+   YAHAN hona zaroori hai: App_Screens / App_Config / App_Dashboards IIFE ke
+   andar hain — wahan se global nahi banti. Ye line top-level par hai.
+   -------------------------------------------------------------------------- */
+/* ═══════════════════════════════════════════════════════════════════════════
+   Deps — SHARED DYNAMIC / DATA-AWARE DEPENDENCY SYSTEM  (v2.27.0 · W3)
+   ---------------------------------------------------------------------------
+   Attachment A (master spec) §5–7 + line 889 ("Look for" 12 items) + line 799.
+   Audit (tools/audit_dyn_deps.js, v2.26.0) ne dikhaya: `data-dep` markers **0**,
+   104 inline option lists, `items.search` 11 jagah, `customers.list` 7 jagah,
+   110 ad-hoc validations — yani ek bhi shared dependency system nahi tha.
+
+   Poora model EK line mein:
+       Field → Value → Dependency → Data → UI
+   Aur teen tarah se istemal hota hai:
+
+    1) Dependent select (parent badle → child options dobara load):
+         Deps.define('bin', { action: 'warehouse.bins', payload: { locationId: null },
+                              mapInput: v => ({ locationId: v, all: true }), ttl: 300000 });
+         <select data-dep="bin" data-dep-parent="locationId"> … </select>
+         Deps.wire(rootEl)            // ek dafa — baqi sab declarative
+
+    2) Shared cached list (wahi data kai screens par → EK request):
+         const rows = await Shared.items({ q: q, limit: 12 });      // aasan rasta
+         const env  = await Shared.raw('sales.list', { pageSize: 50 });  // poora envelope
+         // neeche wala (manual) bhi chalta hai:
+         const rows2 = await Deps.shared('items.search|' + q,
+                        () => API.call('items.search', { q: q, limit: 12 }), 60000);
+       · identical key → cache HIT (ttl ke andar)
+       · wahi key ek hi waqt mein do jagah → INFLIGHT DEDUPE (ek hi request)
+       · koi bhi write (customers.save / sales.post / stock.count …) → related
+         cache khud invalidate (`Shared.invalidateFor`, API layer hook)
+       · error cache nahi hota (agli koshish asli request karegi)
+
+    3) Conditional UI (data/value maujood → dikhao, warna chhupao):
+         <div data-when="provider=OPENROUTER"> … endpoint field … </div>
+         Deps.when(rootEl)
+
+   Reusable rules:
+     · Har fetch `API.call` se jata hai (W2 ka shared core — timeout/busy/error policy).
+     · `Deps.hardRefresh(key)` → cache clear (write ke baad, W2 write-policy ke sath).
+     · Events: `deps:change` (child options badlein/selection manage hui),
+       `deps:loaded` (data aaya) — tables/forms isse refresh ho sakte hain.
+     · Kill-switch (tests/SENS): `Deps._features.on = false` → wiring bilkul na ho.
+   ═══════════════════════════════════════════════════════════════════════════ */
+var Deps = {
+  VERSION: '1.0.0',
+  _defs: {},
+  _cache: {},
+  _inflight: {},
+  _lastError: null,
+  _stats: { hits: 0, misses: 0, dedupes: 0, errors: 0, evicted: 0 },
+  _features: { on: true, cache: true },
+  _SEP: '\u0000',
+
+  /* ---------------- registry ---------------- */
+  define(key, spec) {
+    this._defs[String(key)] = Object.assign({ ttl: 300000 }, spec || {});
+    return this;
+  },
+  def(key) { return this._defs[String(key)] || null; },
+  keys() { return Object.keys(this._defs); },
+
+  stats(reset) {
+    var s = Object.assign({}, this._stats);
+    if (reset) this._stats = { hits: 0, misses: 0, dedupes: 0, errors: 0, evicted: 0 };
+    return s;
+  },
+
+  /* ---------------- cache ---------------- */
+  _ck(key, parentValue) { return String(key) + this._SEP + String(parentValue === undefined ? '' : parentValue); },
+  /** Raw prefix se cache saaf — `shared:<action>|...` jaise keys ke liye
+      (hardRefresh `key + SEP` prefix match karta hai, jo `|` wali keys par nahi chalta). */
+  clearPrefix(pfx) {
+    var self = this, pre = String(pfx), n = 0;
+    Object.keys(self._cache).forEach(function (k) { if (k.indexOf(pre) === 0) { delete self._cache[k]; n++; } });
+    self._stats.evicted += n;
+    return n;
+  },
+  hardRefresh(key) {
+    var self = this;
+    if (key === undefined || key === null) { self._cache = {}; self._stats.evicted++; return 1; }
+    var pre = String(key) + this._SEP, n = 0;
+    Object.keys(self._cache).forEach(function (k) { if (k.indexOf(pre) === 0) { delete self._cache[k]; n++; } });
+    self._stats.evicted += n;
+    return n;
+  },
+
+  /**
+   * Dependency load — cached + inflight-deduped.
+   * spec: { action, payload, mapInput(parentValue,ctx), opts, fetch(parentValue,ctx), transform(data,…), ttl }
+   */
+  async load(key, parentValue, ctx) {
+    var self = this;
+    if (!self._features.on) return [];
+    var def = self.def(key) || {};
+    var ck = self._ck(key, parentValue);
+    var ttl = def.ttl === undefined ? 300000 : def.ttl;
+    if (self._features.cache && ttl > 0) {
+      var hit = self._cache[ck];
+      if (hit) { self._stats.hits++; return hit.data; }
+    }
+    if (self._inflight[ck]) { self._stats.dedupes++; return self._inflight[ck]; }  /* ek hi waqt, ek request */
+    self._stats.misses++;
+    var p = (async function () {
+      var data;
+      try {
+        if (typeof def.fetch === 'function') {
+          data = await def.fetch(parentValue, ctx);
+        } else if (def.action) {
+          var payload = Object.assign({}, def.payload || {});
+          if (typeof def.mapInput === 'function') Object.assign(payload, def.mapInput(parentValue, ctx) || {});
+          else if (parentValue !== undefined) payload.parent = parentValue;
+          data = await API.call(def.action, payload, def.opts || {});
+        } else { data = []; }
+      } catch (e) {
+        self._stats.errors++;
+        self._lastError = e;                      /* error CACHE nahi hota — agli koshish asli request karegi */
+        throw e;
+      }
+      var val = (typeof def.transform === 'function') ? def.transform(data, parentValue, ctx) : data;
+      if (self._features.cache && ttl > 0) self._cache[ck] = { t: Date.now(), data: val };
+      return val;
+    })();
+    self._inflight[ck] = p;
+    try { return await p; } finally { delete self._inflight[ck]; }
+  },
+
+  /** Shared cached list — dynamic fetcher (items.search|q waghera). */
+  shared(key, fetcher, ttl) {
+    var self = this;
+    var k = String(key);
+    if (!self._defs['shared:' + k]) self.define('shared:' + k, { ttl: ttl === undefined ? 60000 : ttl });
+    else if (ttl !== undefined) self._defs['shared:' + k].ttl = ttl;
+    self._defs['shared:' + k].fetch = fetcher;
+    return self.load('shared:' + k, '');
+  },
+
+  /* ---------------- value management (preserve / manage) ---------------- */
+  /**
+   * Purani value ko naye options ke sath manage karein:
+   *   · value list mein maujood → PRESERVE (jaise thi)
+   *   · maujood nahi       → CLEAR + event (spec: "preserve or manage previously entered values appropriately")
+   */
+  reconcile(prevValue, options, itemValue) {
+    /* v2.27.0 fix — pehle option ka naam `valueOf` tha; `opts.valueOf` Object.prototype se
+       inherit ho jata hai → `.map(Object.prototype.valueOf)` → "Cannot convert undefined or
+       null to object" (gate ne pakda). Ab `itemValue`, aur sirf asli function accept hota hai. */
+    var self = this;
+    var vo = (typeof itemValue === 'function') ? itemValue
+      : function (o) { return self._valueOf(o); };   /* map() `this` undefined karta hai — self capture */
+
+    var vals = (options || []).map(vo);
+    var keep = vals.indexOf(String(prevValue)) > -1;
+    return { keep: keep, value: keep ? prevValue : '' , options: vals };
+  },
+
+  /* ---------------- UI wiring: [data-dep] selects ---------------- */
+  /* v2.27.0 fix — pehle `[data-field]` WRAPPER div mil jata tha aur us ka textContent
+     ("—L1L2") parent value ban jata tha (gate ne pakda). Ab: pehle andar ka select/input. */
+  _findField(field, scope) {
+    if (!field) return null;
+    var sc = scope || document;
+    var el = sc.querySelector('[data-field="' + field + '"] select, [data-field="' + field + '"] input, [data-field="' + field + '"] textarea');
+    if (!el && sc.querySelector) el = sc.querySelector('#' + field) || sc.querySelector('[name="' + field + '"]');
+    if (!el) {
+      el = sc.querySelector('[data-field="' + field + '"]');
+      if (el && el.querySelector) el = el.querySelector('select, input, textarea') || el;
+    }
+    return el || null;
+  },
+  /** Scope resolution: sab se pehle ancestor [data-dep-scope] (value = CSS selector),
+      warna khud element ka data-dep-scope attribute, warna document. Isi wajah se
+      stale/detached tree ka duplicate field ghalat parent value nahi de sakta. */
+  _scopeEl(el) {
+    if (!el) return document;
+    try {
+      var host = el.closest ? el.closest('[data-dep-scope]') : null;
+      if (host && host !== el) {
+        var s2 = host.getAttribute('data-dep-scope');
+        if (s2) { try { var t = document.querySelector(s2); if (t) return t; } catch (e) { } }
+        return host;
+      }
+      var own = el.getAttribute ? el.getAttribute('data-dep-scope') : null;
+      if (own) { try { var t2 = document.querySelector(own); if (t2) return t2; } catch (e) { } }
+    } catch (e) { }
+    return document;
+  },
+
+  _readParent(rootEl, field) {
+    var scope = this._scopeEl(rootEl);
+    var el = this._findField(field, scope);
+    if (el) return el.value !== undefined && el.value !== null ? el.value : (el.textContent || '');
+    return '';
+  },
+  _parentEl(rootEl, field) {
+    return this._findField(field, this._scopeEl(rootEl));
+  },
+  _labelOf(o) {
+    if (o === null || o === undefined) return '';
+    if (typeof o !== 'object') return String(o);
+    return String(o.label !== undefined ? o.label : (o.name !== undefined ? o.name : (o.id !== undefined ? o.id : '')));
+  },
+  _valueOf(o) {
+    if (o === null || o === undefined) return '';
+    if (typeof o !== 'object') return String(o);
+    return String(o.value !== undefined ? o.value : (o.id !== undefined ? o.id : ''));
+  },
+
+  /** data-dep attributes se bindSelect options banao (declarative; T3 modules isi par chalte hain). */
+  _depOpts(sel) {
+    var o = { parentField: sel.getAttribute('data-dep-parent') };
+    var ph = sel.getAttribute('data-dep-placeholder');
+    if (ph === 'false' || ph === 'none') o.placeholder = false;
+    else if (ph !== null && ph !== '') o.placeholder = ph;
+    if (sel.getAttribute('data-dep-scope')) o.scope = sel.getAttribute('data-dep-scope');
+    return o;
+  },
+
+  async bindSelect(sel, key, opts) {
+    opts = opts || {};
+    var parentValue = opts.parentValue !== undefined ? opts.parentValue : this._readParent(sel, opts.parentField || sel.getAttribute('data-dep-parent'));
+    var prev = sel.value;
+    var rows;
+    try { rows = await this.load(key, parentValue, opts.ctx); }
+    catch (e) { rows = []; if (opts.onError) opts.onError(e); }
+    if (opts.transform) rows = opts.transform(rows, parentValue, opts.ctx);
+    var rec = this.reconcile(prev, rows, opts.itemValue);
+    sel.innerHTML = '';
+    if (opts.placeholder !== false) {
+      var ph = document.createElement('option');
+      ph.value = ''; ph.textContent = opts.placeholder || '—';
+      sel.appendChild(ph);
+    }
+    (rows || []).forEach(function (o) {
+      var op = document.createElement('option');
+      op.value = this._valueOf(o); op.textContent = this._labelOf(o);
+      sel.appendChild(op);
+    }, this);
+    if (rec.keep && prev) sel.value = prev;
+    else if (prev) sel.value = '';
+    sel._deps = { key: key, parentValue: parentValue, options: (rows || []).length, kept: rec.keep };
+    try {
+      sel.dispatchEvent(new CustomEvent('deps:change', { bubbles: true, detail: sel._deps }));
+      sel.dispatchEvent(new CustomEvent('deps:loaded', { bubbles: true, detail: sel._deps }));
+    } catch (e) { }
+    return sel._deps;
+  },
+
+  /** Ek dafa: saare [data-dep] selects ko parent changes par wire karein. */
+  wire(root) {
+    if (!this._features.on) return 0;
+    var self = this, n = 0;
+    Array.from((root || document).querySelectorAll('[data-dep]')).forEach(function (sel) {
+      if (sel._depsWired) return;
+      sel._depsWired = true; n++;
+      var parentField = sel.getAttribute('data-dep-parent');
+      var apply = function () { self.bindSelect(sel, sel.getAttribute('data-dep'), self._depOpts(sel)).catch(function () { }); };
+      apply();
+      var pel = self._parentEl(sel, parentField);
+      if (pel && !pel._depParentWired) {
+        pel._depParentWired = true;
+        var ev = pel.tagName === 'SELECT' ? 'change' : 'input';
+        pel.addEventListener(ev, function () { self.refresh(root, parentField); });
+      }
+    });
+    return n;
+  },
+
+  /** Parent badla → us se jurne wale selects dobara load (aur conditional sections re-evaluate). */
+  refresh(root, field) {
+    if (!this._features.on) return 0;
+    var self = this, n = 0;
+    Array.from((root || document).querySelectorAll('[data-dep]')).forEach(function (sel) {
+      if (field && sel.getAttribute('data-dep-parent') !== field) return;
+      n++;
+      self.bindSelect(sel, sel.getAttribute('data-dep'), self._depOpts(sel)).catch(function () { });
+    });
+    Array.from((root || document).querySelectorAll('[data-when]')).forEach(function (el) { self._evalWhen(el, field); });
+    return n;
+  },
+
+  /* ---------------- Conditional UI: [data-when="field=value"] ---------------- */
+  _evalWhen(el, changedField) {
+    var spec = String(el.getAttribute('data-when') || '');
+    if (!spec) return true;
+    var ok = spec.split(',').map(function (part) {
+      part = part.trim();
+      if (!part) return true;
+      var neg = part.charAt(0) === '!';
+      if (neg) part = part.slice(1).trim();
+      var ix = part.indexOf('=');
+      var field = ix > -1 ? part.slice(0, ix).trim() : part.trim();
+      var want = ix > -1 ? part.slice(ix + 1).trim() : '';
+      if (changedField && field !== changedField) return el.__depsWhen !== false;   /* sirf badla hua field dobara judge ho */
+      var have = String(this._readParent(el, field) || '');
+      var match = want ? have.toLowerCase() === want.toLowerCase() : !!have;
+      return neg ? !match : match;
+    }, this).every(Boolean);
+    el.__depsWhen = ok;
+    el.style.display = ok ? '' : 'none';
+    el.setAttribute('aria-hidden', ok ? 'false' : 'true');
+    return ok;
+  },
+  when(root) {
+    if (!this._features.on) return 0;
+    var self = this, n = 0;
+    Array.from((root || document).querySelectorAll('[data-when]')).forEach(function (el) {
+      n++; self._evalWhen(el);
+      var spec = String(el.getAttribute('data-when') || '').split(',')[0].split('=')[0].replace('!', '').trim();
+      var pel = self._parentEl(el, spec);
+      if (pel && !pel._whenWired) {
+        pel._whenWired = true;
+        pel.addEventListener(pel.tagName === 'SELECT' ? 'change' : 'input', function () { self.refresh(root || document, spec); });
+      }
+    });
+    return n;
+  },
+
+  /** Ek hi call mein sab: conditional sections + dependent selects. */
+  apply(root) { var a = this.when(root || document); var b = this.wire(root || document); return { when: a, wired: b }; }
+};
+
+if (typeof window !== 'undefined') window.Deps = Deps;
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   v2.27.0 (W3.T3) — SHARED DATA ACCESSORS
+   --------------------------------------------------------------------------
+   Spec (A §5–7 + line 889 "Look for"): "Repeated API calls … repeated data-fetching
+   logic … fix the shared architecture first, then apply it consistently."
+   Audit (tmp/dyn-deps-audit.json): `items.search` 7 files / 9 calls, `customers.list`
+   7 files, `sales.list` 5, `suppliers.list` 4 — har screen apna fetch likh rahi thi.
+
+   Yahan ek hi jagah: same query = same key = 1 request (TTL ke andar), aur jab bhi
+   record save/update/delete ho → `Shared.invalidate('<name>')` cache saaf.
+   ══════════════════════════════════════════════════════════════════════════════ */
+var Shared = {
+  VERSION: '1.0.0',
+  TTL: { search: 60000, list: 180000 },
+
+  _offline() {
+    try { return (typeof navigator !== 'undefined' && navigator.onLine === false) || !!(window.App && App.state && App.state.offline); }
+    catch (e) { return false; }
+  },
+  /** payload → deterministic key (sirf woh keys jo result badalti hain) */
+  _key(action, payload) {
+    var keys = Object.keys(payload || {}).filter(function (k) { return payload[k] !== undefined && payload[k] !== null && payload[k] !== ''; }).sort();
+    return action + '|' + keys.map(function (k) { return k + '=' + payload[k]; }).join('&');
+  },
+  _rows(r) { return (r && r.rows) ? r.rows : (Array.isArray(r) ? r : (r ? [r] : [])); },
+
+  /**
+   * list(action, payload, {ttl, offline}) → rows array (hamesha array).
+   * · cache: Deps.shared (same key = 1 request)
+   * · offline fallback kabhi CACHE nahi hota (warna data aane par purana fallback chipka rehta)
+   */
+  /** Raw response (envelope: rows + total + totals …) — page wale lists ise use karte hain.
+      Rows aur envelope EK hi cache entry share karte hain (same action+payload = 1 request). */
+  raw(action, payload, o) {
+    o = o || {};
+    payload = payload || {};
+    var self = this;
+    var key = this._key(action, payload);
+    var ttl = o.ttl === undefined ? this.TTL.search : o.ttl;
+    var fetchIt = function () {
+      return API.call(action, payload, o.opts || { offlineFallback: o.offline || function () { return { rows: [] }; } });
+    };
+    if (this._offline()) return Promise.resolve().then(fetchIt);
+    return Deps.shared(key, fetchIt, ttl);
+  },
+  list(action, payload, o) {
+    var self = this;
+    return this.raw(action, payload, o).then(function (r) { return self._rows(r); });
+  },
+
+  customers(o) { o = o || {}; return this.list('customers.list', o.payload || { q: o.q || '', limit: o.limit, withBalance: o.withBalance, pageSize: o.pageSize }, { ttl: o.ttl, offline: o.offline, opts: o.opts }); },
+  suppliers(o) { o = o || {}; return this.list('suppliers.list', o.payload || { q: o.q || '', limit: o.limit }, { ttl: o.ttl, offline: o.offline, opts: o.opts }); },
+  items(o) { o = o || {}; return this.list('items.search', o.payload || { q: o.q || '', limit: o.limit }, { ttl: o.ttl, offline: o.offline, opts: o.opts }); },
+  sales(o) { o = o || {}; return this.list('sales.list', o.payload || { q: o.q || '', pageSize: o.pageSize, limit: o.limit }, { ttl: o.ttl, offline: o.offline, opts: o.opts }); },
+
+  /* Write action → kaunsi read caches purani ho jati hain (spec: "tables that do not
+     update when related data changes"). Prefix match chalta hai (jaise `payments.*`). */
+  _writeMap: {
+    'customers.save': ['customers.list'], 'customers.update': ['customers.list'], 'customers.delete': ['customers.list'],
+    'customers.import': ['customers.list'], 'customers.merge': ['customers.list'],
+    'items.save': ['items.search'], 'items.update': ['items.search'], 'items.delete': ['items.search'],
+    'items.import': ['items.search'], 'items.bulk': ['items.search'], 'barcode.save': ['items.search'],
+    'suppliers.save': ['suppliers.list'], 'suppliers.update': ['suppliers.list'], 'suppliers.delete': ['suppliers.list'],
+    'sales.post': ['sales.list', 'customers.list', 'items.search'],
+    'sales.void': ['sales.list', 'customers.list', 'items.search'],
+    'sales.return': ['sales.list', 'customers.list', 'items.search'],
+    'sales.save': ['sales.list'], 'sales.update': ['sales.list'],
+    'payments.save': ['customers.list', 'sales.list'], 'payments.post': ['customers.list', 'sales.list'],
+    'payments.receive': ['customers.list', 'sales.list'], 'payments.delete': ['customers.list', 'sales.list'],
+    'stock.count': ['items.search'], 'stock.transfer': ['items.search'], 'stock.adjust': ['items.search'],
+    'purchases.save': ['items.search', 'suppliers.list'], 'grn.post': ['items.search'], 'po.save': ['suppliers.list'],
+    'warehouse.save': ['warehouse.list'], 'warehouse.bin.save': ['warehouse.bins'], 'warehouse.bins.save': ['warehouse.bins'],
+    'accounts.save': ['accounts.list'], 'accounts.update': ['accounts.list'], 'journal.post': ['accounts.list']
+  },
+  /** Kisi bhi write ke baad: related read-caches saaf. Unknown action = kuch nahi (safe). */
+  invalidateFor(action) {
+    var a = String(action || '').toLowerCase();
+    var targets = this._writeMap[a];
+    if (!targets) {
+      var prefixes = Object.keys(this._writeMap).filter(function (k) { return k.indexOf('.') > 0 && a.indexOf(k.split('.')[0] + '.') === 0; });
+      targets = [];
+      prefixes.forEach(function (k) { this._writeMap[k].forEach(function (t) { if (targets.indexOf(t) === -1) targets.push(t); }); }, this);
+    }
+    if (!targets || !targets.length) return 0;
+    var n = 0, self = this;
+    /* NOTE: Deps.shared entries `shared:<key>` naam se register hoti hain — prefix wahi hona chahiye,
+       warna invalidate kuch bhi saaf nahi karta (ye gate ne pakda). */
+    targets.forEach(function (t) { n += Deps.clearPrefix('shared:' + t); n += Deps.clearPrefix(t); });
+    return n;
+  },
+
+  /** Write ke baad: related cache saaf (save/update/delete ke foran baad call karein). */
+  invalidate(what) {
+    if (what === undefined) return Deps.hardRefresh(undefined);
+    var names = { customer: 'customers.list', customers: 'customers.list', supplier: 'suppliers.list', suppliers: 'suppliers.list', item: 'items.search', items: 'items.search', sale: 'sales.list', sales: 'sales.list' };
+    var action = names[String(what).toLowerCase()] || what;
+    return Deps.clearPrefix('shared:' + action) + Deps.clearPrefix(action);
+  },
+  stats() { return Deps.stats(false); }
+};
+if (typeof window !== 'undefined') window.Shared = Shared;
+
+
+function downloadCsv(csv, name) {
+  try {
+    var _blob = new Blob([String(csv == null ? '' : csv)], { type: 'text/csv;charset=utf-8' });
+    var _url = URL.createObjectURL(_blob);
+    var _a = h('a', { href: _url, download: name || 'export.csv' });
+    document.body.appendChild(_a);
+    _a.click();
+    _a.remove();
+    setTimeout(function () { try { URL.revokeObjectURL(_url); } catch (e) { } }, 1500);
+    return true;
+  } catch (err) {
+    try { if (window.UI && UI.toast) UI.toast('CSV download fail: ' + err.message, 'err'); } catch (e) { }
+    return false;
+  }
+}
+
+window.h = h; window.fmt = fmt; window.t = t; window.esc = esc; window.debounce = debounce;
+window.uid = uid; window.$ = $; window.$$ = $$; window.LANG = LANG; window.I18N = I18N;
+
+})();
+</script>
+
+<script>
+/* v2.6 §2 — do fields ek hi line mein (vertical space bachao).
+   Har form apna grid likhta tha; ab ek helper — responsive, mobile par stack. */
+function fRow2() {
+  var kids = Array.prototype.slice.call(arguments).filter(Boolean);
+  return h('div', { class: 'f-grid' }, kids);
+}
+</script>
+
+  <script>
+/* ==========================================================================
+   HASEEB AUTOS — BARCODE / QR / PRINTING
+   100% dependency-free Code39 encoder (works offline, scans on every scanner).
+   QR uses a lightweight online renderer with cache + graceful offline fallback.
+   ========================================================================== */
+(function () {
+'use strict';
+
+/* ------------------------------ CODE 39 -------------------------------- */
+const C39 = {
+  '0':'101001101101','1':'110100101011','2':'101100101011','3':'110110010101','4':'101001101011',
+  '5':'110100110101','6':'101100110101','7':'101001011011','8':'110100101101','9':'101100101101',
+  'A':'110101001011','B':'101101001011','C':'110110100101','D':'101011001011','E':'110101100101',
+  'F':'101101100101','G':'101010011011','H':'110101001101','I':'101101001101','J':'101011001101',
+  'K':'110101010011','L':'101101010011','M':'110110101001','N':'101011010011','O':'110101101001',
+  'P':'101101101001','Q':'101010110011','R':'110101011001','S':'101101011001','T':'101011011001',
+  'U':'110010101011','V':'100110101011','W':'110011010101','X':'100101101011','Y':'110010110101',
+  'Z':'100110110101','-':'100101011011','.':'110010101101',' ':'100110101101','$':'100100100101',
+  '/':'100100101001','+':'100101001001','%':'101001001001','*':'100101101101'
+};
+
+const Barcode = {
+  /** sanitize to Code39 charset */
+  clean(str) {
+    return String(str || '').toUpperCase().replace(/[^0-9A-Z\-\.\ \$\/\+%]/g, '-').trim() || 'NOCODE';
+  },
+
+  /** → module bit string (1 = bar, 0 = space) */
+  modules(str) {
+    const s = '*' + Barcode.clean(str) + '*';
+    let out = '';
+    for (let i = 0; i < s.length; i++) {
+      const p = C39[s[i]];
+      if (!p) continue;
+      out += (i ? '0' : '') + p;      // narrow gap between characters
+    }
+    return out;
+  },
+
+  /** → SVG string */
+  svg(str, opts) {
+    opts = opts || {};
+    const bits = Barcode.modules(str);
+    const hPx = opts.height || 44;
+    const quiet = opts.quiet === undefined ? 6 : opts.quiet;
+    const modW = opts.module || 1.6;
+    const total = (bits.length + quiet * 2) * modW;
+    let rects = '', x = quiet * modW;
+    let run = 1;
+    for (let i = 1; i <= bits.length; i++) {
+      if (i < bits.length && bits[i] === bits[i - 1]) { run++; continue; }
+      if (bits[i - 1] === '1') rects += '<rect x="' + x.toFixed(2) + '" y="0" width="' + (run * modW).toFixed(2) + '" height="' + hPx + '"/>';
+      x += run * modW; run = 1;
+    }
+    return '<svg xmlns="http://www.w3.org/2000/svg" width="' + total.toFixed(2) + '" height="' + hPx +
+      '" viewBox="0 0 ' + total.toFixed(2) + ' ' + hPx + '" shape-rendering="crispEdges">' +
+      '<rect width="100%" height="100%" fill="#fff"/><g fill="#000">' + rects + '</g></svg>';
+  },
+
+  /** → inline SVG element */
+  el(str, opts) {
+    const d = document.createElement('div');
+    d.innerHTML = Barcode.svg(str, opts);
+    return d.firstChild;
+  },
+
+  /** → data URI (for <img> in print/export) */
+  dataUrl(str, opts) {
+    return 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(Barcode.svg(str, opts))));
+  }
+};
+
+/* -------------------------------- QR ----------------------------------- */
+const QR = {
+  cache: Store.get('qrcache', {}),
+
+  async dataUrl(text, size) {
+    size = size || 160;
+    const key = size + '|' + text;
+    if (QR.cache[key]) return QR.cache[key];
+    // 1) offline encoder (App_QR.html) — PWA me internet ke baghir bhi chalta hai
+    try {
+      const off = window.QR2 || (typeof QR2 !== 'undefined' ? QR2 : null);
+      if (off) { QR.cache[key] = off.dataUrl(text, { size: size, margin: 0 }); QR._save(); return QR.cache[key]; }
+    } catch (e) {}
+    // 2) fallback: online service
+    if (!navigator.onLine) return null;
+    const url = 'https://api.qrserver.com/v1/create-qr-code/?size=' + size + 'x' + size +
+      '&margin=0&format=png&data=' + encodeURIComponent(text);
+    try {
+      const res = await fetch(url, { mode: 'cors' });
+      if (!res.ok) throw new Error('qr fail');
+      const blob = await res.blob();
+      const dataUrl = await new Promise(r => { const fr = new FileReader(); fr.onload = () => r(fr.result); fr.readAsDataURL(blob); });
+      QR.cache[key] = dataUrl;
+      QR._save();
+      return dataUrl;
+    } catch (e) { return null; }
+  },
+
+  /** simple QR-ish placeholder when offline (draws a frame with text) */
+  /** cache trim + persist */
+  _save() {
+    const keys = Object.keys(QR.cache);
+    if (keys.length > 120) { keys.slice(0, 40).forEach(k => delete QR.cache[k]); }
+    try { Store.set('qrcache', QR.cache); } catch (e) {}
+  },
+
+  placeholder(text, size) {
+    size = size || 160;
+    return 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(
+      '<svg xmlns="http://www.w3.org/2000/svg" width="' + size + '" height="' + size + '">' +
+      '<rect width="100%" height="100%" fill="#fff"/><rect x="2" y="2" width="' + (size - 4) + '" height="' + (size - 4) +
+      '" fill="none" stroke="#999" stroke-dasharray="4 3"/>' +
+      '<text x="50%" y="50%" font-size="9" text-anchor="middle" fill="#666" font-family="monospace">QR offline</text></svg>')));
+  }
+};
+
+/* ------------------------------ PRINTING -------------------------------- */
+const Print = {
+  /* v2.14.0 — paper-aware: pehle @page mein size nahi tha, is liye browser
+     print dialog sirf A4/A5 offer karta tha aur thermal width ignore hoti thi.
+     Ab 58/80/110mm true `size:XXmm auto` (continuous roll) par print/download
+     hote hain; sheet sizes exact page lete hain. Toolbar se size badla ja
+     sakta hai — PDF chahiye to print dialog mein "Save as PDF". */
+  PAPERS: { '58mm': { w: 58, t: true }, '80mm': { w: 80, t: true }, '110mm': { w: 110, t: true },
+    'A4': { w: 210, t: false }, 'A5': { w: 148, t: false } },
+  baseCss(paper) {
+    const m = this.PAPERS[paper] || this.PAPERS['80mm'];
+    const page = m.t
+      ? '@page{size:' + m.w + 'mm auto;margin:2mm}'
+      : '@page{size:' + (paper === 'A4' ? 'A4 portrait' : 'A5 portrait') + ';margin:8mm}';
+    const inner = m.t ? m.w - 6 : (paper === 'A4' ? 194 : 132);
+    return 'body{font-family:monospace;background:#fff;color:#000;margin:0}' +
+      page +
+      '.receipt{width:' + inner + 'mm;padding:3mm}' +
+      '.receipt h4{margin:0 0 2px;font-size:15px;text-align:center}' +
+      '.receipt .center{text-align:center;font-size:11px}' +
+      '.receipt hr{border:0;border-top:1px dashed #000;margin:5px 0}' +
+      '.receipt table{width:100%;font-size:11.5px;border-collapse:collapse;border:1px solid #000}' +
+      '.receipt th{border:1px solid #000;padding:3px 4px;background:#f1f5f9;font-weight:700}' +
+      '.receipt td{padding:3px 4px;vertical-align:top;border:1px solid #000}' +
+      '.receipt .r{text-align:right}.receipt .b{font-weight:700}' +
+      '.receipt th.c, .receipt td.c{text-align:center}' +
+      '.label-sheet{display:flex;flex-wrap:wrap;gap:5px;padding:4mm}' +
+      '.label{border:1px dashed #bbb;padding:3px;text-align:center;page-break-inside:avoid}' +
+      '.label .lname{font-size:9px;font-weight:700;line-height:1.1;max-height:22px;overflow:hidden}' +
+      '.label .lprice{font-size:9px}.label .lcode{font-size:8px;color:#444}' +
+      '.label svg,.label img{display:block;margin:2px auto}' +
+      '.ha-ptool{position:sticky;top:0;display:flex;gap:8px;align-items:center;padding:8px 10px;' +
+      'background:#0b1220;color:#fff;font:13px system-ui}' +
+      '.ha-ptool select{padding:6px 8px;border-radius:8px;border:1px solid #555;background:#fff;color:#000}' +
+      '.ha-ptool button{padding:8px 14px;border-radius:8px;border:0;background:#ff6a00;color:#fff;font-weight:700;cursor:pointer}' +
+      '@media print{.ha-ptool{display:none!important}}';
+  },
+  open(html, title, paper) {
+    paper = paper || '80mm';
+    const root = $('#printRoot');
+    root.innerHTML = html;
+    const w = window.open('', '_blank', 'width=430,height=760');
+    if (!w) { UI.toast('Popup block ho gaya — browser ki setting allow karein', 'warn'); return; }
+    const opts = Object.keys(this.PAPERS).map(function (id) {
+      return '<option value="' + id + '"' + (id === paper ? ' selected' : '') + '>' + id + '</option>';
+    }).join('');
+    w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>' + (title || 'Print') + '</title>' +
+      '<style id="pgstyle">' + Print.baseCss(paper) + '</style></head><body>' +
+      '<div class="ha-ptool"><b>Printer</b><select id="psz">' + opts + '</select>' +
+      '<button id="pgo">🖨 Print / Save PDF</button></div>' + html + '</body></html>');
+    w.document.close();
+    try {
+      w.document.getElementById('psz').onchange = function (e) {
+        w.document.getElementById('pgstyle').textContent = Print.baseCss(e.target.value);
+      };
+      w.document.getElementById('pgo').onclick = function () { w.focus(); w.print(); };
+    } catch (err) { }
+    setTimeout(() => { try { w.focus(); w.print(); } catch (err) { } }, 450);
+    return w;
+  },
+
+  /** Professional receipt — thermal & A4, with prev balance, QR/barcode, created-by */
+  receiptHtml(sale, settings, branchName) {
+    settings = settings || {};
+    const cur = settings.currencySymbol || 'Rs';
+    const dt = fmt.date(sale.date, true);
+    const inv = sale.invoiceNo || sale.id || '—';
+    const custName = sale.customerName || 'Walk-in Customer';
+    const custPhone = sale.customerPhone || sale.phone || '';
+    const custAddr = sale.customerAddress || sale.address || '';
+    const createdBy = sale.createdByName || sale.cashierName || sale.createdBy || (App && App.state && App.state.session ? (App.state.session.fullName||App.state.session.username||'') : '') || '—';
+    const branch = branchName || sale.branchName || (App && App.state ? App.state.branchName : '') || '';
+    const prevBal = (sale.prevBalance!=null? Number(sale.prevBalance): 0);
+    const closing = (sale.closingBalance!=null? Number(sale.closingBalance): (prevBal + Number(sale.total||0) - Number(sale.paid||0)) );
+    const paid = Number(sale.paid||0);
+    const due = Number(sale.due!=null? sale.due : Math.max(0, Number(sale.total||0)-paid));
+    let qrImg = '';
+    try {
+      const txt = 'INV:'+inv+'|TOTAL:'+fmt.num(sale.total)+'|DUE:'+fmt.num(due);
+      if (window.QR2 && QR2.dataUrl) { qrImg = '<img src="'+QR2.dataUrl(txt,{size:90,margin:0})+'" width="64" height="64" style="display:block;margin:0 auto;max-width:100%;height:auto" alt="QR"/>'; }
+      else { qrImg = '<div style="width:64px;height:64px;border:1.5px dashed #999;display:grid;place-items:center;font-size:7px;color:#666;margin:0 auto;max-width:100%">QR<br/>'+esc(inv)+'</div>'; }
+    } catch(e){ qrImg=''; }
+    const logo = settings.logoUrl ? '<div class="center" style="margin-bottom:6px"><img src="'+esc(settings.logoUrl)+'" style="max-height:46px;max-width:140px;object-fit:contain" alt="Logo"/></div>' : '';
+    let idx=0;
+    const rows = (sale.items || []).map(i => {
+      idx++;
+      const code = i.code ? '<span style="font-size:9.5px;color:#555">['+esc(i.code)+']</span> ' : '';
+      const disc = i.discount ? '<br/><span style="font-size:9px;color:#b91c1c">Disc: -'+fmt.money(i.discount)+'</span>' : '';
+      return '<tr><td style="text-align:center">'+idx+'</td><td>'+code+esc(i.name)+disc+'<br/><span style="font-size:9.5px;color:#666">Qty '+fmt.num(i.qty)+' × '+fmt.money(i.price)+'</span></td><td class="r">'+fmt.num(i.qty)+'</td><td class="r">'+fmt.money(i.price)+'</td><td class="r"><b>'+fmt.money(i.lineTotal!=null? i.lineTotal : (i.qty*i.price))+'</b></td></tr>';
+    }).join('');
+    const loyRows = (sale.paymentList || []).filter(p=>String(p.method||'').toUpperCase()==='LOYALTY');
+    const loyAmt = loyRows.reduce((a,p)=>a+Number(p.amount||0),0);
+    const loyPts = Number(sale.loyaltyPointsUsed||sale.pointsRedeemed|| (loyRows[0]&&loyRows[0].points)||0);
+    const payRows = (sale.paymentList || []).map(p => {
+      const isLoy = String(p.method||'').toUpperCase()==='LOYALTY';
+      const label = isLoy ? 'PAID BY Loyalty Points'+(p.points||loyPts? ' ('+(p.points||loyPts)+' pts)':'') : 'Paid via '+esc(p.method||'');
+      const color = isLoy ? 'color:#0a7a2b;font-weight:800' : '';
+      return '<tr><td colspan="4" style="text-align:right;'+color+'">'+label+'</td><td class="r" style="'+color+'">'+fmt.money(p.amount)+'</td></tr>';
+    }).join('');
+    const balBox = '<div style="margin:6px 0;border:1.5px solid #111;border-radius:8px;overflow:hidden;font-size:11px">'+
+      '<div style="display:grid;grid-template-columns:1fr auto;padding:4px 8px;border-bottom:1px dashed #111"><span>Previous balance</span><b>'+fmt.money(prevBal)+'</b></div>'+
+      '<div style="display:grid;grid-template-columns:1fr auto;padding:4px 8px;border-bottom:1px dashed #111"><span>This bill</span><b>'+fmt.money(sale.total)+'</b></div>'+
+      '<div style="display:grid;grid-template-columns:1fr auto;padding:4px 8px;border-bottom:1px dashed #111"><span>Cash Paid</span><b style="color:#0a7a2b">-'+fmt.money(paid)+'</b></div>'+
+      (loyAmt? '<div style="display:grid;grid-template-columns:1fr auto;padding:4px 8px;border-bottom:1px dashed #111;background:#f0fdf4"><span>PAID BY Loyalty Points'+(loyPts?' ('+loyPts+' pts)':'')+'</span><b style="color:#0a7a2b">'+fmt.money(loyAmt)+'</b></div>':'')+
+      '<div style="display:grid;grid-template-columns:1fr auto;padding:6px 8px;background:#0f172a;color:#fff"><span>Closing balance</span><b style="color:'+(closing>0?'#fca5a5':'#86efac')+'">'+fmt.money(closing)+'</b></div></div>'+
+      (sale.dueDate? '<div style="margin:4px 0;padding:4px 8px;background:#fefce8;border:1px dashed #eab308;border-radius:6px;font-size:10px">Promised payment date: <b>'+esc(sale.dueDate)+'</b></div>':'')+
+      (loyPts? '<div style="margin:2px 0;padding:4px 8px;background:#f0fdf4;border:1px solid #86efac;border-radius:6px;font-size:10px;color:#065f46">Points redeemed: <b>'+loyPts+' pts</b> · Value '+fmt.money(loyAmt)+'</div>':'');
+    return '<div class="receipt" style="font-family:monospace,system-ui;padding:4mm">'+logo+
+      '<h4 style="margin:0 0 2px;font-size:16px;text-align:center">'+esc(settings.receiptHeader || settings.businessName || 'HASEEB AUTOS')+'</h4>' +
+      '<div class="center" style="font-weight:700;color:#334155">'+esc(settings.tagline || 'Spare Parts • Service • Wholesale')+'</div>' +
+      '<div class="center" style="margin-top:2px">'+(branch? esc(branch):'')+(settings.phone ? ' • '+esc(settings.phone):'')+'</div>' +
+      '<hr style="border:0;border-top:1.5px dashed #000;margin:7px 0"/>' +
+      '<table style="width:100%;font-size:11px;border-collapse:collapse"><tr><td style="vertical-align:top;width:50%"><div><b>Invoice:</b> '+esc(inv)+'</div><div>Date: '+esc(dt)+'</div><div>Branch: '+esc(branch||'-')+'</div><div>Cashier: '+esc(createdBy)+'</div></td><td style="vertical-align:top;width:50%;text-align:right"><div><b>Customer:</b> '+esc(custName)+'</div>'+(custPhone? '<div>'+esc(custPhone)+'</div>':'')+(custAddr? '<div style="font-size:10px">'+esc(custAddr)+'</div>':'')+'</td></tr></table>'+
+      '<hr style="border:0;border-top:1px dashed #000;margin:6px 0"/>'+
+      '<table style="width:100%;font-size:10.5px;border-collapse:collapse;border:1px solid #000"><thead><tr style="background:#f1f5f9"><th style="padding:4px 3px;border:1px solid #000;width:22px">#</th><th style="padding:4px 3px;border:1px solid #000;text-align:left">Item</th><th style="padding:4px 3px;border:1px solid #000;text-align:right">Qty</th><th style="padding:4px 3px;border:1px solid #000;text-align:right">Rate</th><th style="padding:4px 3px;border:1px solid #000;text-align:right">Amount</th></tr></thead><tbody>' + (rows || '<tr><td colspan="5" style="text-align:center;padding:12px">No items</td></tr>') + '</tbody></table>'+
+      '<table style="width:100%;font-size:11px;border-collapse:collapse;margin-top:6px"><tr><td style="width:60%"></td><td style="text-align:right">Subtotal</td><td class="r" style="width:90px">'+fmt.money(sale.subtotal!=null? sale.subtotal: sale.total)+'</td></tr>'+(sale.discount? '<tr><td></td><td style="text-align:right;color:#b91c1c">Discount</td><td class="r" style="color:#b91c1c">-'+fmt.money(sale.discount)+'</td></tr>':'')+(sale.tax? '<tr><td></td><td style="text-align:right">'+esc(settings.taxLabel||'Tax')+'</td><td class="r">'+fmt.money(sale.tax)+'</td></tr>':'')+'<tr style="font-weight:800;border-top:1.5px solid #000"><td></td><td style="text-align:right">TOTAL</td><td class="r" style="font-size:12px">'+cur+' '+fmt.money(sale.total)+'</td></tr>'+(payRows||'')+(due>0? '<tr style="font-weight:800;background:#fef2f2"><td></td><td style="text-align:right;color:#b91c1c">DUE</td><td class="r" style="color:#b91c1c">'+fmt.money(due)+'</td></tr>':'<tr><td></td><td style="text-align:right;color:#15803d">PAID ✓</td><td class="r" style="color:#15803d;font-weight:700">'+fmt.money(paid)+'</td></tr>')+'</table>'+
+      balBox+
+      '<div style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;margin-top:8px;padding:6px;border:1px dashed #000;border-radius:8px;max-width:100%;overflow:hidden"><div style="text-align:center;min-width:0;overflow:hidden"><div style="max-width:100%;overflow:hidden;display:flex;justify-content:center">'+Barcode.svg(inv, { height: 24, module: 1.0 })+'</div><div style="font-size:8px;letter-spacing:1px;margin-top:2px;word-break:break-all">'+esc(inv)+'</div></div><div style="text-align:center;flex:0 0 72px;max-width:72px">'+qrImg+'<div style="font-size:7px;color:#555;margin-top:2px;word-break:break-word">Scan to verify</div></div></div>'+
+      (sale.notes? '<div style="margin-top:6px;padding:6px 8px;background:#f8fafc;border:1px solid #e5e9f0;border-radius:6px;font-size:10px"><b>Note:</b> '+esc(sale.notes)+'</div>':'')+
+      '<div style="margin-top:8px;padding:6px 8px;background:#f1f5f9;border-radius:6px;font-size:9.5px">'+esc(settings.receiptFooter || 'Thank you! Visit again.')+'</div>'+
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:12px;font-size:10px;text-align:center"><div style="border-top:1px solid #000;padding-top:4px">Customer signature</div><div style="border-top:1px solid #000;padding-top:4px">For '+esc(settings.businessName||'Haseeb Autos')+'<br/><span style="font-size:9px;color:#555">('+esc(createdBy)+')</span></div></div>'+
+      '<div class="center" style="margin-top:10px;font-size:8.5px;color:#64748b">Powered by Haseeb Autos ERP • '+esc(dt)+' • '+esc(inv)+'</div>'+
+      '</div>';
+  },
+
+  /** barcode label sheet */
+  async labelsHtml(rows, template) {
+    template = template || { json: '{}' };
+    let cfg = {};
+    try { cfg = typeof template.json === 'string' ? JSON.parse(template.json || '{}') : (template.json || {}); } catch (e) { cfg = {}; }
+    const wmm = template.width || 50, hmm = template.height || 30;
+    const parts = [];
+    for (const r of rows) {
+      let qr = '';
+      if (cfg.qr) {
+        const d = await QR.dataUrl(r.qr, 90);
+        if (d) qr = '<img src="' + d + '" width="26" height="26" loading="lazy" decoding="async"/>';
+      }
+      parts.push('<div class="label" style="width:' + wmm + 'mm;height:' + hmm + 'mm">' +
+        (cfg.showName !== false ? '<div class="lname">' + esc(r.name) + '</div>' : '') +
+        (cfg.showCode !== false ? '<div class="lcode">' + esc(r.code) + '</div>' : '') +
+        '<div style="height:' + Math.max(16, hmm - 16) + 'mm;display:flex;align-items:center;justify-content:center">' +
+        Barcode.svg(r.barcode, { height: 22, module: 1.15 }) + '</div>' +
+        (cfg.showPrice !== false ? '<div class="lprice"><b>' + esc(r.currency) + ' ' + fmt.num(r.price) + '</b></div>' : '') +
+        (qr ? '<div>' + qr + '</div>' : '') +
+        '</div>');
+    }
+    return '<div class="label-sheet">' + parts.join('') + '</div>';
+  }
+};
+
+window.Barcode = Barcode; window.QR = QR; window.Print = Print;
+})();
+</script>

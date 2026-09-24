@@ -1,0 +1,377 @@
+<script>
+/* ==========================================================================
+   HASEEB AUTOS — POINT OF SALE
+   As-you-type search · barcode scanner · cart · split payment · hold · print
+   Shortcuts: F2 search · F4 customer · F6 discount · F8 hold · F9 pay · Esc clear
+   ========================================================================== */
+(function () {
+'use strict';
+
+const S = { cart: [], customer: null, discount: 0, discountPct: 0, payMethod: 'CASH', results: [], held: [] };
+
+/* ------------------------------ helpers --------------------------------- */
+function cartSubtotal() { return S.cart.reduce((a, l) => a + (l.price * l.qty) - (l.discount || 0), 0); }
+function cartTax() { return S.cart.reduce((a, l) => a + (l.tax || 0), 0); }
+function cartTotal() { return Math.max(0, cartSubtotal() - S.discount + cartTax()); }
+function cartProfit() { return S.cart.reduce((a, l) => a + ((l.price - (l.cost || 0)) * l.qty) - (l.discount || 0), 0); }
+
+function addToCart(item, qty) {
+  qty = qty || 1;
+  const price = (S.customer && S.customer.typeId && item.wholesalePrice && S.customer.typeId !== '') ? item.wholesalePrice : item.retailPrice;
+  const found = S.cart.find(l => l.itemId === item.id);
+  if (found) {
+    found.qty += qty;
+    found.lineTotal = found.qty * found.price - (found.discount || 0);
+  } else {
+    S.cart.push({
+      itemId: item.id, code: item.code, name: item.name, qty,
+      price: price || 0, retail: item.retailPrice, wholesale: item.wholesalePrice,
+      minPrice: item.minPrice || 0, cost: item.costPrice || 0, stock: item.stock,
+      taxRate: item.taxRate || 0, discount: 0, tax: 0, lineTotal: (price || 0) * qty
+    });
+  }
+  renderCart();
+  updateTotals();
+}
+
+/* ------------------------------ screen ---------------------------------- */
+
+/* --------------------------------------------------------------------------
+ * v2.6 §18 — DUPLICATE SCREEN REMOVED: 'pos' do jagah register ho rahi thi.
+ * Live version baad wali file mein hai (load order: last one wins), to yahan
+ * purani dead copy hata di gayi — 0 ambiguity, 0 dead code.
+ * -------------------------------------------------------------------------- */
+
+/* shared render targets between screen instances */
+const POS_RENDER = { cartList: null, totalsEl: null };
+const KEY_POS = {};
+
+/* ------------------------------ search ---------------------------------- */
+async function searchItems(q) {
+  // 1) local cache (instant, offline)
+  const cat = App.state.catalog.items || [];
+  const norm = s => String(s || '').toLowerCase().replace(/[\s\-_\/\\.#]/g, '');
+  const nq = norm(q);
+  const local = cat.filter(i => {
+    const hay = norm(i.code + ' ' + i.name + ' ' + i.bc + ' ' + i.brand + ' ' + i.cat + ' ' + i.alt);
+    if (hay.indexOf(nq) > -1) return true;
+    return nq.split(' ').filter(Boolean).every(t => hay.indexOf(t) > -1);
+  }).slice(0, 30).map(i => ({
+    id: i.id, code: i.code, name: i.name, brand: i.brand, unit: i.unit,
+    retailPrice: i.rp, wholesalePrice: i.wp, costPrice: i.cp, minPrice: i.mp,
+    taxRate: i.tx, stock: i.qty, barcode: i.bc, altBarcodes: i.alt,
+    reorderLevel: 0, minStock: 0
+  }));
+
+  if (local.length >= 8 || !navigator.onLine) return local.slice(0, 24);
+
+  // 2) server (authoritative + stock)
+  try {
+    const rows = await Shared.items({ q, limit: 24, offline: () => local });   /* v2.27.0 W3.T3 */
+    return (rows && rows.length) ? rows : local;
+  } catch (e) { return local; }
+}
+
+/* ------------------------------ cart ------------------------------------ */
+function renderCart() {
+  const list = POS_RENDER.cartList; if (!list) return;
+  list.innerHTML = '';
+  const count = document.getElementById('cartCount'); if (count) count.textContent = S.cart.length + ' items';
+  if (!S.cart.length) {
+    list.appendChild(h('div', { class: 'empty', style: { padding: '34px 12px' } },
+      h('span', { class: 'big' }, '🧺'), h('div', null, 'Cart khali hai')));
+    return;
+  }
+  S.cart.forEach((l, idx) => {
+    const qtyInput = h('input', { type: 'number', value: l.qty, min: '0', step: '1', style: { width: '48px' }, 'aria-label': 'Qty', title: 'Qty' });
+    qtyInput.addEventListener('change', () => {
+      const v = Number(qtyInput.value);
+      if (v <= 0) { S.cart.splice(idx, 1); } else { l.qty = v; l.lineTotal = l.qty * l.price - l.discount; }
+      renderCart(); updateTotals();
+    });
+    const priceInput = h('input', { type: 'number', value: l.price, step: '1', style: { width: '78px', textAlign: 'right' }, 'aria-label': 'Price', title: 'Price' });
+    priceInput.addEventListener('change', () => {
+      let v = Number(priceInput.value);
+      if (l.minPrice && v < l.minPrice && !App.can('items.price.edit')) {
+        UI.toast('Min price ' + fmt.money(l.minPrice) + ' se kam nahi kar saktay', 'err'); v = l.minPrice;
+      }
+      l.price = v; l.lineTotal = l.qty * l.price - l.discount;
+      renderCart(); updateTotals();
+    });
+    list.appendChild(h('div', { class: 'cart-row' },
+      h('div', null,
+        h('div', { class: 'cr-name' }, l.name),
+        h('div', { class: 'cr-sub' }, l.code + ' · stock ' + l.stock + ' · ' + fmt.money(l.price) + ' × ' + l.qty)),
+      h('div', { style: { display: 'flex', alignItems: 'center', gap: '6px' } },
+        h('div', { class: 'qty-ctl' },
+          h('button', { onclick: () => { l.qty = Math.max(1, l.qty - 1); l.lineTotal = l.qty * l.price - l.discount; renderCart(); updateTotals(); } }, '−'),
+          qtyInput,
+          h('button', { onclick: () => { l.qty += 1; l.lineTotal = l.qty * l.price - l.discount; renderCart(); updateTotals(); } }, '+')),
+        h('button', { class: 'icon-btn', style: { width: '30px', height: '30px', border: '0', background: 'transparent' },
+          onclick: () => { S.cart.splice(idx, 1); renderCart(); updateTotals(); } }, '🗑'))));
+    list.appendChild(h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 14px 8px', gap: '6px' } },
+      priceInput,
+      h('span', { style: { fontSize: 'var(--fs-xs)', color: 'var(--muted)' } }, 'Disc '),
+      (function () {
+        const d = h('input', { type: 'number', value: l.discount || 0, step: '1', style: { width: '62px', textAlign: 'right' }, 'aria-label': 'Line discount', title: 'Line discount' });
+        d.addEventListener('change', () => {
+          l.discount = Math.max(0, Number(d.value) || 0);
+          l.lineTotal = l.qty * l.price - l.discount; renderCart(); updateTotals();
+        });
+        return d;
+      })(),
+      h('strong', { style: { marginLeft: 'auto', fontVariantNumeric: 'tabular-nums' } }, fmt.money(l.lineTotal))));
+  });
+}
+
+function updateTotals() {
+  const el = POS_RENDER.totalsEl; if (!el) return;
+  const sub = cartSubtotal(), tax = cartTax(), total = cartTotal();
+  el.innerHTML = '';
+  el.appendChild(h('div', { class: 'cart-foot' },
+    h('div', { class: 'tot-row' }, h('span', null, 'Subtotal'), h('span', null, fmt.money(sub))),
+    h('div', { class: 'tot-row' }, h('span', null, 'Discount'),
+      h('span', { class: 'disc' }, '-' + fmt.money(S.discount))),
+    h('div', { class: 'tot-row' }, h('span', null, App.state.settings.taxLabel || 'Tax'), h('span', null, fmt.money(tax))),
+    h('div', { class: 'tot-row grand' }, h('span', null, 'TOTAL'), h('span', null, fmt.money(total))),
+    App.can('reports.financial') ? h('div', { class: 'tot-row', style: { fontSize: 'var(--fs-xs)', color: 'var(--ok)' } },
+      h('span', null, 'Est. profit'), h('span', null, fmt.money(cartProfit()))) : '',
+    h('div', { class: 'pay-grid' },
+      h('button', { class: 'btn ok', onclick: () => pay('CASH') }, '💵 Cash (F9)'),
+      h('button', { class: 'btn sec', onclick: () => pay('CARD') }, '💳 Card'),
+      h('button', { class: 'btn sec', onclick: () => pay('SPLIT') }, '🔀 Split'),
+      h('button', { class: 'btn sec', onclick: () => pay('CREDIT') }, '📒 Udhaar'))));
+}
+
+function updateCustBar() {
+  const n = document.getElementById('custName'), b = document.getElementById('custBal');
+  if (!n) return;
+  if (!S.customer) { n.textContent = 'Walk-in Customer'; b.textContent = 'Cash sale'; return; }
+  n.textContent = S.customer.name;
+  b.textContent = (S.customer.phone ? '📞 ' + fmt.phone(S.customer.phone) + ' · ' : '') +
+    'Balance: ' + fmt.money(S.customer.bal || 0) + (S.customer.typeName ? ' · ' + S.customer.typeName : '');
+  // wholesale price apply
+  if (S.customer.typeId) {
+    S.cart.forEach(l => {
+      const w = S.customer.typeName && /wholesale|corporate/i.test(S.customer.typeName) && l.wholesale ? l.wholesale : l.retail;
+      l.price = w; l.lineTotal = l.qty * l.price - (l.discount || 0);
+    });
+    renderCart(); updateTotals();
+  }
+}
+
+/* ------------------------------ customer -------------------------------- */
+function pickCustomer() {
+  const search = h('input', { type: 'text', placeholder: 'Naam ya phone number…', style: { width: '100%' } });
+  const listEl = h('div', { style: { maxHeight: '300px', overflow: 'auto', marginTop: '10px' } });
+  let timer;
+  async function run(q) {
+    listEl.innerHTML = '<div class="tbl-empty">Loading…</div>';
+    /* v2.27.0 (W3.T3) — shared accessor: wahi query = 1 request (cache) */
+    const rows = await Shared.customers({ q, withBalance: true, limit: 30,
+      offline: () => ({ rows: (App.state.catalog.customers || []).filter(c => !q || (c.name + c.phone).toLowerCase().includes(q.toLowerCase())) }) });
+    listEl.innerHTML = '';
+    if (!rows.length) listEl.appendChild(h('div', { class: 'tbl-empty' }, 'Koi customer nahi mila'));
+    rows.forEach(c => {
+      listEl.appendChild(h('div', { class: 'list-item', style: { cursor: 'pointer' }, onclick: () => { S.customer = c; updateCustBar(); m.close(); } },
+        h('div', { class: 'avatar' }, (c.name || '?').charAt(0).toUpperCase()),
+        h('div', { class: 'li-main' }, h('b', null, c.name), h('span', null, (c.phone || '') + ' · bal ' + fmt.money(c.balance ?? c.bal ?? 0))),
+        h('span', { class: 'badge ' + ((c.balance ?? c.bal ?? 0) > 0 ? 'warn' : 'ok') }, fmt.money(c.balance ?? c.bal ?? 0))));
+    });
+  }
+  search.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(() => run(search.value.trim()), 220); });
+  const m = UI.modal({
+    title: 'Customer select karein',
+    body: h('div', null, search, listEl,
+      h('button', { class: 'btn sec block', style: { marginTop: '12px' }, onclick: () => newCustomer(() => run('')) }, '➕ Naya customer')),
+    actions: [{ label: 'Walk-in (no name)', onClick: c => { S.customer = null; updateCustBar(); c(); } }]
+  });
+  run(''); setTimeout(() => search.focus(), 80);
+}
+
+function newCustomer(after) {
+  const f = UI.form([
+    { key: 'name', label: 'Name', required: true },
+    { key: 'phone', label: 'Phone', type: 'text' },
+    { key: 'customerTypeId', label: 'Customer type', type: 'select', options: (App.state.customerTypes || []).map(c => ({ value: c.id, label: c.name })) },
+    { key: 'address', label: 'Address', full: true },
+    { key: 'openingBalance', label: 'Opening udhaar (balance)', type: 'number' }
+  ]);
+  UI.modal({
+    title: 'Naya customer', body: f.el,
+    actions: [{ label: 'Save', cls: '', onClick: async (c) => {
+      const v = f.values(); if (!v.name) { UI.toast('Name zaroori hai', 'err'); return; }
+      try { const saved = await API.call('customers.save', { customer: v });
+        UI.toast('Customer saved ✅', 'ok'); c(); after && after(saved);
+      } catch (e) { UI.toast(e.message, 'err'); }
+    } }]
+  });
+}
+
+/* ------------------------------ checkout -------------------------------- */
+function pay(method) {
+  if (!S.cart.length) { UI.toast('Cart khali hai', 'warn'); return; }
+  method = method || 'CASH';
+  const total = cartTotal();
+  const body = h('div');
+  body.appendChild(h('div', { style: { fontSize: 'var(--fs-4xl)', fontWeight: '800', textAlign: 'center', marginBottom: '8px' } }, fmt.money(total)));
+  body.appendChild(h('div', { style: { textAlign: 'center', color: 'var(--muted)', fontSize: 'var(--fs-sm)', marginBottom: '14px' } },
+    (S.customer ? S.customer.name : 'Walk-in Customer') + ' · ' + S.cart.reduce((a, l) => a + l.qty, 0) + ' items'));
+
+  const payRows = h('div', { id: 'payRows' });
+  let payments = [{ method: method === 'SPLIT' ? 'CASH' : method, amount: method === 'CREDIT' ? 0 : total }];
+
+  function renderPayRows() {
+    payRows.innerHTML = '';
+    payments.forEach((p, i) => {
+      payRows.appendChild(h('div', { style: { display: 'flex', gap: '6px', marginBottom: '6px', alignItems: 'center' } },
+        h('select', { title: 'Payment method', 'aria-label': 'Payment method', style: { flex: '1', padding: '9px', border: '1.5px solid var(--line)', borderRadius: '10px', background: 'var(--panel)' },
+          onchange: e => { p.method = e.target.value; } },
+          ['CASH', 'CARD', 'BANK', 'JAZZCASH', 'EASYPAISA', 'CHEQUE'].map(m =>
+            h('option', { value: m, selected: p.method === m }, m))),
+        (function () {
+          const inp = h('input', { type: 'number', value: p.amount, step: '1', style: { width: '110px', padding: '9px', border: '1.5px solid var(--line)', borderRadius: '10px', textAlign: 'right', background: 'var(--panel)' }, 'aria-label': 'Amount', title: 'Amount' });
+          inp.addEventListener('input', () => { p.amount = Number(inp.value || 0); calc(); });
+          return inp;
+        })(),
+        h('button', { class: 'icon-btn', style: { width: '34px', height: '34px' }, onclick: () => { payments.splice(i, 1); renderPayRows(); calc(); } }, '✕')));
+    });
+    if (method === 'SPLIT') payRows.appendChild(h('button', { class: 'btn sm sec', onclick: () => { payments.push({ method: 'CARD', amount: 0 }); renderPayRows(); } }, '+ Add method'));
+  }
+
+  const paidEl = h('div', { style: { display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderTop: '1px solid var(--line)', marginTop: '8px', fontWeight: '700' } });
+  const dueEl = h('div', { style: { display: 'flex', justifyContent: 'space-between', padding: '3px 0', color: 'var(--err)' } });
+  const chgEl = h('div', { style: { display: 'flex', justifyContent: 'space-between', padding: '3px 0', color: 'var(--ok)' } });
+
+  function calc() {
+    const paid = payments.reduce((a, p) => a + (Number(p.amount) || 0), 0);
+    const due = Math.max(0, total - paid), chg = Math.max(0, paid - total);
+    paidEl.innerHTML = '<span>Paid</span><span>' + fmt.money(paid) + '</span>';
+    dueEl.innerHTML = due > 0.5 ? '<span>Current Due (udhaar)</span><span>' + fmt.money(due) + '</span>' : '';
+    chgEl.innerHTML = chg > 0.5 ? '<span>Change</span><span>' + fmt.money(chg) + '</span>' : '';
+    return { paid, due, chg };
+  }
+
+  body.appendChild(payRows); body.appendChild(paidEl); body.appendChild(dueEl); body.appendChild(chgEl);
+
+  const noteInput = h('input', { type: 'text', placeholder: 'Note (optional)', style: { width: '100%', marginTop: '10px', padding: '9px', border: '1.5px solid var(--line)', borderRadius: '10px', background: 'var(--panel)' } });
+  body.appendChild(noteInput);
+  renderPayRows(); calc();
+
+  UI.modal({
+    title: 'Payment', width: 'narrow', body,
+    actions: [
+      { label: 'Cancel', cls: 'ghost', onClick: c => c() },
+      { label: '✅ Complete & Print', cls: 'ok', onClick: async (c) => {
+        const { due } = calc();
+        if (due > 0.5 && !S.customer) { UI.toast('Udhaar ke liye customer select karein', 'err'); return; }
+        c();
+        await submitSale(payments.filter(p => p.amount > 0), noteInput.value.trim());
+      } }
+    ]
+  });
+}
+
+async function submitSale(payments, note) {
+  const payload = {
+    locationId: App.state.locationId,
+    customerId: S.customer ? S.customer.id : '',
+    customerName: S.customer ? S.customer.name : 'Walk-in Customer',
+    customerTypeId: S.customer ? (S.customer.typeId || '') : '',
+    items: S.cart.map(l => ({ itemId: l.itemId, qty: l.qty, price: l.price, discount: l.discount || 0, salespersonId: App.sessionMeta().userId })),
+    discount: S.discount,
+    payments,
+    notes: note || '',
+    source: navigator.onLine ? 'POS' : 'OFFLINE'
+  };
+  if (!navigator.onLine) payload.offlineId = uid('bill');
+  try {
+    const sale = await API.call('sales.create', { sale: payload });
+    if (sale && sale.queued) { UI.toast('Offline bill queue ho gaya', 'warn'); clearCart(true); return; }
+    UI.toast('Sale complete ✅ ' + sale.invoiceNo, 'ok');
+    if (window.confirmPrint !== false) {
+      try { if (window.Print2) { Print2.dialog(sale); return; } } catch (e) { }
+      Print.open(Print.receiptHtml(sale, App.state.settings, App.state.branchName), 'Receipt ' + sale.invoiceNo, (App.state.settings || {})['pos.receiptPaper'] || '80mm');
+    }
+    clearCart(true);
+    API.pullCatalog(true);
+  } catch (e) { UI.toast(e.message, 'err'); }
+}
+
+/* --------------------------- hold / held -------------------------------- */
+async function holdBill() {
+  if (!S.cart.length) { UI.toast('Cart khali hai', 'warn'); return; }
+  try {
+    await API.call('sales.hold', { ref: 'HOLD-' + Date.now().toString().slice(-5), cart: { items: S.cart, total: cartTotal(), discount: S.discount }, customerId: S.customer ? S.customer.id : '' });
+    UI.toast('Bill hold ho gaya ⏸', 'ok'); clearCart(true); loadHeld();
+  } catch (e) { UI.toast(e.message, 'err'); }
+}
+
+async function loadHeld() {
+  try { const rows = await API.call('sales.held.list', {}, { offlineFallback: () => [] }); S.held = rows || []; }
+  catch (e) { S.held = []; }
+}
+
+function showHeld() {
+  loadHeld().then(() => {
+    const list = h('div');
+    if (!S.held.length) list.appendChild(h('div', { class: 'empty' }, h('span', { class: 'big' }, '⏸'), h('div', null, 'Koi held bill nahi')));
+    S.held.forEach(hb => {
+      list.appendChild(h('div', { class: 'list-item' },
+        h('div', { class: 'li-main' }, h('b', null, hb.ref + (hb.note ? ' · ' + hb.note : '')),
+          h('span', null, (hb.items || 0) + ' items · ' + fmt.money(hb.total || 0) + ' · ' + fmt.rel(hb.createdAt))),
+        h('button', { class: 'btn sm', onclick: () => { const c = hb.cart || {}; S.cart = c.items || []; S.discount = c.discount || 0; renderCart(); updateTotals(); UI.modal().close; $$('.modal-scrim').forEach(m => m.remove()); App.go('pos'); } }, 'Resume'),
+        h('button', { class: 'btn sm danger', onclick: async () => { await API.call('sales.held.resume', { id: hb.id }); loadHeld(); UI.toast('Removed', 'ok'); list.remove(); } }, '🗑')));
+    });
+    UI.modal({ title: 'Held bills', body: list, actions: [{ label: 'Close', onClick: c => c() }] });
+  });
+}
+
+async function clearCart(silent) {
+  /* v2.25.0 (req 6) — native confirm() ki jagah shared dialog: sandboxed
+     preview/iframe mein native confirm block ho jata hai (button "kuch nahi karta"
+     lagta hai) aur design system se bahar bhi hai. silent=true par koi await
+     nahi hota, is liye baqi callers ka synchronous flow waisa hi rehta hai. */
+  if (!silent && S.cart.length && !(await UI2.confirm('Cart clear karein? Ye bill ke saare items hata dega.', null, true))) return;
+  S.cart = []; S.discount = 0; S.customer = null;
+  renderCart(); updateTotals(); updateCustBar();
+}
+
+/* --------------------------- quick add item ----------------------------- */
+function quickAdd(name) {
+  const f = UI.form([
+    { key: 'name', label: 'Item name', value: name, required: true },
+    { key: 'code', label: 'Code / Part no.', value: (name || '').slice(0, 3).toUpperCase() + '-' + Math.floor(1000 + Math.random() * 8999) },
+    { key: 'category', label: 'Category', type: 'select', options: ['Parts', 'Lights', 'Brakes', 'Oil & Lubricants', 'Electrical', 'Tyres', 'Decoration', 'Interior', 'Bike Accessories', 'Other'] },
+    { key: 'costPrice', label: 'Cost price', type: 'number' },
+    { key: 'retailPrice', label: 'Retail price', type: 'number' },
+    { key: 'wholesalePrice', label: 'Wholesale price', type: 'number' }
+  ]);
+  UI.modal({
+    title: 'Naya item', body: f.el,
+    actions: [{ label: 'Save & add to cart', onClick: async (c) => {
+      const v = f.values();
+      try {
+        const saved = await API.call('items.save', { item: v });
+        UI.toast('Item saved ✅', 'ok'); c();
+        addToCart({ id: saved.id, code: saved.code, name: saved.name, retailPrice: Number(saved.retailPrice), wholesalePrice: Number(saved.wholesalePrice), costPrice: Number(saved.costPrice), stock: 0, unit: saved.unit, taxRate: 0 }, 1);
+        API.pullCatalog(true);
+      } catch (e) { UI.toast(e.message, 'err'); }
+    } }]
+  });
+}
+
+/* --------------------------- global shortcuts --------------------------- */
+document.addEventListener('keydown', e => {
+  if (App.current !== 'pos') return;
+  if (e.target && /input|textarea|select/i.test(e.target.tagName) && e.key !== 'Escape' && e.key !== 'F9') return;
+  if (e.key === 'F2') { e.preventDefault(); KEY_POS.onF2 && KEY_POS.onF2(); }
+  if (e.key === 'F4') { e.preventDefault(); KEY_POS.onF4 && KEY_POS.onF4(); }
+  if (e.key === 'F8') { e.preventDefault(); KEY_POS.onF8 && KEY_POS.onF8(); }
+  if (e.key === 'F9') { e.preventDefault(); KEY_POS.onF9 && KEY_POS.onF9(); }
+  if (e.key === 'Escape') { KEY_POS.onEsc && KEY_POS.onEsc(); }
+});
+
+window.POS = { S, addToCart, clearCart, pay };
+})();
+</script>

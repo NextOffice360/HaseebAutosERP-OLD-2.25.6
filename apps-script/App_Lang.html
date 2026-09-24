@@ -1,0 +1,248 @@
+<script>
+/* ==========================================================================
+   HASEEB AUTOS — LANGUAGE ENGINE (EN · Roman Urdu · اردو)
+   Har label Settings ▸ Language se editable (Translations sheet).
+   T.t('btn.save', 'Save') — key na mile to fallback english text.
+   ========================================================================== */
+(function () {
+'use strict';
+
+const LANGS = [
+  { id: 'en', label: 'English', short: 'EN', dir: 'ltr' },
+  { id: 'roman', label: 'Roman Urdu', short: 'RO', dir: 'ltr' },
+  { id: 'ur', label: 'اردو', short: 'UR', dir: 'rtl' }
+];
+
+/** translation editor ka scope toggle (global vs personal) */
+const SCOPE = { personal: true, cb: null };
+
+const T = {
+  lang: Store.get('lang', ''),          // '' → server se user ki pasand aayegi
+  dict: {},
+  ready: false,
+  prefs: {},                            // { lang, ... } — per-user (Users.prefs)
+  personal: {},                         // mere personal overrides (scope = user:<id>)
+
+  /** Login ke baad user ki saved language + personal overrides uthaayein */
+  async loadUserPrefs() {
+    const sess = App.state && App.state.session;
+    if (!App.state.booted || !sess) { this.prefs = {}; this.personal = {}; return {}; }
+    const sessionToken = sess.token;
+    const sameSession = () => App.state.session && App.state.session.token === sessionToken;
+    const serverLang = (sess && sess.prefs && sess.prefs.lang) || '';
+    let prefs = {};
+    try { prefs = await API.call('lang.prefs', {}, { offlineFallback: () => ({}) }) || {}; } catch (e) { }
+    if (!sameSession()) return {};
+    this.prefs = prefs;
+    if (!this.prefs.lang) this.prefs.lang = serverLang || 'en';
+
+    // local choice hamesha jeet ti hai (is device ke liye), warna server wali
+    if (!this.lang) this.lang = this.prefs.lang || 'en';
+
+    let personal = {};
+    try { personal = await API.call('lang.myOverrides', {}, { offlineFallback: () => ({}) }) || {}; } catch (e) { }
+    if (!sameSession()) return {};
+    this.personal = personal;
+    return this.prefs;
+  },
+
+  async load() {
+    if (!App.state.booted || !App.state.session) {
+      this.dict = FALLBACK_DICT(this.lang || 'en'); this.ready = true; this.apply(); return;
+    }
+    const sessionToken = (App.state.session && App.state.session.token) || '';
+    if (!this.lang) await this.loadUserPrefs();
+    if (navigator.onLine) {
+      try {
+        const dict = await API.call('lang.dict', { lang: this.lang },
+          { offlineFallback: () => ({}) }) || {};
+        if (!App.state.session || App.state.session.token !== sessionToken) return;
+        this.dict = dict;
+      } catch (e) { this.dict = this.dict || {}; }
+    }
+    if (!App.state.session || App.state.session.token !== sessionToken) return;
+    // built-in fallback + personal overrides (sab se aakhir me)
+    const mine = {};
+    Object.keys(this.personal || {}).forEach(k => {
+      const v = this.personal[k][this.lang] || this.personal[k].en;
+      if (v) mine[k] = v;
+    });
+    this.dict = Object.assign({}, FALLBACK_DICT(this.lang), this.dict, mine);
+    this.ready = true;
+    this.apply();
+  },
+
+  set(lang) {
+    this.lang = lang;
+    Store.set('lang', lang);
+    // per-user save — agli login / doosre device par bhi yahi language
+    if (App.state.booted && App.state.session) API.call('lang.prefs.save', { prefs: { lang: lang } })
+      .then(p => { this.prefs = p || this.prefs; })
+      .catch(() => { });
+    this.load().then(() => { App.renderNav && App.renderNav(); App.refresh && App.refresh(); });
+    this.apply();
+  },
+
+  cycle() {
+    const i = LANGS.findIndex(l => l.id === this.lang);
+    this.set(LANGS[(i + 1) % LANGS.length].id);
+    UI.toast('Language: ' + (LANGS.find(l => l.id === this.lang) || {}).label, 'ok', 1200);
+  },
+
+  apply() {
+    const l = LANGS.find(x => x.id === this.lang) || LANGS[0];
+    document.documentElement.setAttribute('lang', l.id === 'ur' ? 'ur' : 'en');
+    document.documentElement.setAttribute('dir', l.dir);
+    const btn = $('#btnLang'); if (btn) btn.textContent = l.short;
+  },
+
+  /** Translate — key based, fallback to provided text */
+  t(key, fallback) {
+    const v = this.dict[key];
+    if (v) return v;
+    if (this.lang !== 'en' && FALLBACK_DICT(this.lang)[key]) return FALLBACK_DICT(this.lang)[key];
+    return fallback !== undefined ? fallback : key;
+  },
+
+  /** Translate + render helpers */
+  btn(key, fallback) { return this.t(key, fallback); },
+
+  openEditor() {
+    const host = h('div', { class: 'empty' }, 'Loading…');
+    const m = UI2.modal({
+      title: '🌐 ' + this.t('set.language', 'Language'), size: 'xl', body: host,
+      actions: [
+        { label: '✨ AI se khaali translations bharwaein', cls: 'sec', onClick: async () => {
+          UI.toast('AI translate ho raha hai…', 'warn');
+          const r = await API.call('lang.auto', { limit: 100 });
+          UI.toast((r.translated || 0) + ' rows translated', 'ok');
+          m.close(); T.openEditor();
+        } },
+        { label: '↺ Reset to defaults', cls: 'ghost', onClick: async () => {
+          await API.call('lang.reset', {}); UI.toast('Dictionary reset', 'ok'); m.close(); T.openEditor();
+        } },
+        { label: 'Close', onClick: c => c() }
+      ]
+    });
+    Promise.all([
+      API.call('lang.all', {}, { offlineFallback: () => ({}) }).catch(() => ({})),
+      API.call('lang.myOverrides', {}, { offlineFallback: () => ({}) }).catch(() => ({}))
+    ]).then(([all, mine]) => {
+      const rows = Object.keys(all || {}).map(k => Object.assign({
+        key: k, en: all[k].en, roman: (mine[k] && mine[k].roman) || all[k].roman,
+        ur: (mine[k] && mine[k].ur) || all[k].ur, scope: 'UI', mine: !!mine[k]
+      }));
+      // jo key sirf mere personal override me hai (global me nahi)
+      Object.keys(mine || {}).forEach(k => {
+        if (all && all[k]) return;
+        rows.push({ key: k, en: mine[k].en, roman: mine[k].roman, ur: mine[k].ur,
+          scope: 'PERSONAL', mine: true });
+      });
+      host.innerHTML = '';
+      host.className = '';
+      host.appendChild(h('div', { class: 'chips', style: { marginBottom: '10px' } },
+        LANGS.map(l => h('button', {
+          class: 'chip2' + (T.lang === l.id ? ' on' : ''),
+          onclick: () => { T.set(l.id); m.close(); }
+        }, l.label))));
+      /* v2.6 §1 — UI2.toggle; SCOPE.cb ab bhi asli <input> hai (baqi code isi se padhta hai) */
+      const pers = UI2.toggle({ label: '🔒 Sirf mere liye save karein',
+        hint: 'personal override — doosre users par asar nahi',
+        checked: true, row: true,
+        onChange: v => { SCOPE.personal = v; renderTable(); } });
+      SCOPE.cb = pers.input;
+      host.appendChild(pers.el);
+      const tableHost = h('div');
+      host.appendChild(tableHost);
+
+      function renderTable() {
+        tableHost.innerHTML = '';
+        tableHost.appendChild(UI2.table({
+          screen: 'translations', rows: rows, height: '52vh', exportName: 'translations',
+          columns: [
+            { key: 'key', label: 'Key', render: r => h('div', null,
+              h('div', null, r.key),
+              r.mine ? h('span', { class: 'badge', style: { fontSize: 'var(--fs-xs)' } }, 'personal') : '') },
+            { key: 'en', label: 'English' },
+            { key: 'roman', label: 'Roman Urdu', render: r => editable(r, 'roman') },
+            { key: 'ur', label: 'اردو', render: r => editable(r, 'ur') }
+          ],
+          rowActions: r => [{ icon: '💾', onClick: async () => {
+            await saveRow(r); UI.toast('Saved', 'ok');
+          } }]
+        }));
+      }
+      renderTable();
+    }).catch(e => { host.textContent = '⚠ ' + e.message; });
+
+    function scopeFor(r) {
+      if (r.scope === 'PERSONAL') return 'user:' + ((App.state.session || {}).userId || '');
+      return SCOPE.personal ? 'user:' + ((App.state.session || {}).userId || '') : 'UI';
+    }
+
+    async function saveRow(r) {
+      const row = { key: r.key, en: r.en, roman: r.roman, ur: r.ur, scope: scopeFor(r) };
+      await API.call('lang.save', { row: row });
+      // personal override → local dict + pref me turant nazar aaye
+      try {
+        T.personal = await API.call('lang.myOverrides', {}, { offlineFallback: () => ({}) }) || {};
+      } catch (e) { }
+      T.load();
+    }
+
+    function editable(r, field) {
+      const inp = h('input', { class: 'f-input', value: r[field] || '',
+        style: { minWidth: '150px', textAlign: field === 'ur' ? 'right' : 'left',
+          direction: field === 'ur' ? 'rtl' : 'ltr' } });
+      inp.onchange = async () => {
+        r[field] = inp.value;
+        await saveRow(r);
+        UI.toast('Saved', 'ok');
+      };
+      return inp;
+    }
+  }
+};
+
+/* ---------------------- built-in fallback dictionary ---------------------- */
+function FALLBACK_DICT(lang) {
+  if (lang === 'roman') return {
+    'btn.save': 'Save karein', 'btn.cancel': 'Cancel', 'btn.close': 'Band karein',
+    'btn.add': 'Add karein', 'btn.edit': 'Edit karein', 'btn.delete': 'Delete karein',
+    'btn.refresh': 'Refresh', 'btn.print': 'Print', 'btn.new': 'Naya', 'btn.search': 'Dhoondain',
+    'nav.dashboard': 'Dashboard', 'nav.pos': 'Bill banaayein', 'nav.items': 'Items',
+    'nav.inventory': 'Stock', 'nav.warehouse': 'Godam', 'nav.purchase': 'Khareed',
+    'nav.parties': 'Customers & Suppliers', 'nav.reports': 'Reports', 'nav.settings': 'Settings',
+    'nav.reorder': 'Auto reorder', 'nav.insights': 'Dashboards', 'nav.shop': 'Shop open/close',
+    'pos.total': 'TOTAL', 'pos.subtotal': 'Sub total', 'pos.discount': 'Discount',
+    'pos.customer': 'Customer', 'pos.walkin': 'Walk-in customer', 'msg.saved': 'Save ho gaya',
+    'msg.noData': 'Koi data nahi mila', 'msg.loading': 'Load ho raha hai…'
+  };
+  if (lang === 'ur') return {
+    'btn.save': 'محفوظ کریں', 'btn.cancel': 'منسوخ', 'btn.close': 'بند کریں',
+    'btn.add': 'شامل کریں', 'btn.edit': 'تبدیل کریں', 'btn.delete': 'حذف کریں',
+    'btn.refresh': 'تازہ کریں', 'btn.print': 'پرنٹ', 'btn.new': 'نیا', 'btn.search': 'تلاش کریں',
+    'nav.dashboard': 'ڈیش بورڈ', 'nav.pos': 'بل بنائیں', 'nav.items': 'آئٹمز',
+    'nav.inventory': 'اسٹاک', 'nav.warehouse': 'گودام', 'nav.purchase': 'خرید',
+    'nav.parties': 'کسٹمرز اور سپلائرز', 'nav.reports': 'رپورٹس', 'nav.settings': 'سیٹنگز',
+    'nav.reorder': 'آٹو ری آرڈر', 'nav.insights': 'ڈیش بورڈز', 'nav.shop': 'دکان کھولنا/بند',
+    'pos.total': 'ٹوٹل', 'pos.subtotal': 'سب ٹوٹل', 'pos.discount': 'ڈسکاؤنٹ',
+    'pos.customer': 'کسٹمر', 'pos.walkin': 'عام گاہک', 'msg.saved': 'محفوظ ہو گیا',
+    'msg.noData': 'کوئی ڈیٹا نہیں ملا', 'msg.loading': 'لوڈ ہو رہا ہے…'
+  };
+  return {};
+}
+
+window.T = T;
+window.LANGS = LANGS;
+
+/* boot me language load karein (settings ke baad) */
+window.addEventListener('ha:authenticated', async () => {
+  try { await T.loadUserPrefs(); await T.load(); } catch (e) { }
+});
+window.addEventListener('ha:logged-out', () => {
+  T.prefs = {}; T.personal = {}; T.dict = FALLBACK_DICT(T.lang || 'en'); T.apply();
+});
+document.addEventListener('DOMContentLoaded', () => { T.apply(); });
+})();
+</script>

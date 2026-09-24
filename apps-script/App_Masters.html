@@ -1,0 +1,915 @@
+<script>
+/* ==========================================================================
+   HASEEB AUTOS — MASTERS (Items · Customers · Suppliers)
+   List + quick filter + row → OFFCANVAS with sub-tabs
+   (General / Pricing / Stock / Barcode / Media / Custom fields / History / Audit)
+   ========================================================================== */
+(function () {
+'use strict';
+
+let CF = { ITEM: [], CUSTOMER: [], SUPPLIER: [] };
+function loadCF() {
+  const sessionToken = App.state.session && App.state.session.token;
+  if (!App.state.booted || !sessionToken) return;
+  API.call('config.fields.list', {}, { offlineFallback: () => [] })
+    .then(rows => {
+      if (!App.state.session || App.state.session.token !== sessionToken) return;
+      CF = { ITEM: [], CUSTOMER: [], SUPPLIER: [] };
+      (rows || []).forEach(f => { (CF[f.entity] = CF[f.entity] || []).push(f); });
+    }).catch(() => { });
+}
+window.addEventListener('ha:authenticated', loadCF);
+window.addEventListener('ha:logged-out', () => { CF = { ITEM: [], CUSTOMER: [], SUPPLIER: [] }; window.__suppliers = []; });
+
+/* ============================== CUSTOM FIELDS =============================== */
+function cfFields(entity, record) {
+  const defs = CF[entity] || [];
+  let vals = {};
+  try { vals = JSON.parse((record && record.customFields) || '{}'); } catch (e) { vals = {}; }
+  return defs.map(f => ({
+    key: 'cf_' + f.key.replace(/^cf_/, ''), label: f.label, type:
+      f.type === 'NUMBER' ? 'number' : f.type === 'TEXTAREA' ? 'textarea' :
+      f.type === 'DATE' ? 'date' : f.type === 'SWITCH' ? 'switch' : f.type === 'SELECT' ? 'select' : 'text',
+    options: f.type === 'SELECT' ? String(f.options || '').split(',') : null,
+    value: vals[f.key] !== undefined ? vals[f.key] : (f.defaultValue || ''),
+    full: f.type === 'TEXTAREA'
+  }));
+}
+
+function cfValues(values) {
+  const out = {};
+  Object.keys(values).forEach(k => {
+    if (k.indexOf('cf_') === 0) out['cf_' + k.slice(3)] = values[k];
+  });
+  return out;
+}
+
+/* ================================= ITEMS =================================== */
+App.registerScreen('items', {
+  title: 'Items / Products', icon: '📦', perm: 'items.view',
+  subtitle: () => 'Catalog · pricing · stock — ' + App.state.branchName,
+  actions() {
+    const a = [{ label: 'Refresh', icon: '↻', onClick: () => App.refresh() }];
+    if (App.can('items.create')) a.unshift({ label: 'New Item', icon: '➕', onClick: () => itemForm(null, () => App.refresh()) });
+    a.push({ label: 'Import', icon: '⬆', onClick: importItems });
+    return a;
+  },
+  /* deep link: App.go('items', { open:'ITM…' }) → detail offcanvas
+              App.go('items', { import:true }) → import dialog */
+  onParams(p) {
+    if (p.import) setTimeout(() => importItems(), 400);
+    if (p.open) setTimeout(() => itemDetail({ id: p.open }), 500);
+  },
+  render(body) {
+    const host = h('div');
+    const state = { filters: {} };
+    body.appendChild(host);
+
+    (async () => {
+      let rows = [];
+      try {
+        const cats = await API.call('config.list', { entity: 'categories' }, { offlineFallback: () => [] });
+        App.state.categories = cats || [];
+      } catch (e) { App.state.categories = []; }
+      try {
+        const res = await Shared.raw('items.list', { pageSize: 0, withStock: true },   /* v2.27.0 W3.T3 */
+          { offline: () => ({ rows: (App.state.catalog.items || []).map(mapCatItem) }) });
+        rows = (res && res.rows) || [];
+      } catch (e) { rows = []; }
+
+      host.innerHTML = '';
+      host.appendChild(UI2.table({
+        screen: 'items', height: '60vh', exportName: 'items',
+        rows: rows,
+        filters: [
+          { key: 'lineItem', label: 'Line item', type: 'select', options: Array.from(new Set(rows.map(r => r.lineItem).filter(Boolean))).sort() },
+          { key: 'category', label: 'Category', type: 'select', options: (App.state.categories || []).map(c => c.name) },
+          { key: 'brand', label: 'Brand', type: 'select', options: Array.from(new Set(rows.map(r => r.brand).filter(Boolean))) },
+          { key: 'status', label: 'Status', type: 'select', options: ['ACTIVE', 'INACTIVE'] },
+          { key: 'low', label: 'Low stock only', type: 'switch' }
+        ],
+        columns: [
+          { key: 'code', label: 'Code' },
+          { key: 'name', label: 'Item', render: r => h('div', null, h('b', null, r.name),
+              h('div', { style: { fontSize: 'var(--fs-xs)', color: 'var(--muted)', overflow: 'hidden',
+                textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' },
+                title: [r.brand, r.subCategory, r.size].filter(Boolean).join(' · ') },
+                [r.brand, r.subCategory, r.size].filter(Boolean).join(' · '))) },
+          { key: 'lineItem', label: 'Line item' },
+          { key: 'category', label: 'Category' },
+          { key: 'stock', label: 'Stock', num: true, render: r => { const q=Number(r.stock||0); const low=(q>0 && q <= (Number(r.reorderLevel||r.minStock||5))); if(q<=0) return h('span',{class:'badge err'},'Out of Stock'); if(low) return h('span',{class:'badge warn'},'LOW · '+q); return h('span',{class:'badge ok'},'In Stock · '+q); } },
+          { key: 'retailPrice', label: 'Retail', num: true, render: r => fmt.money(r.retailPrice) },
+          { key: 'wholesalePrice', label: 'Wholesale', num: true, render: r => fmt.money(r.wholesalePrice) },
+          { key: 'costPrice', label: 'Cost', num: true, family: 'cost', render: r => fmt.money(r.costPrice) },
+          { key: 'rack', label: 'Rack' },
+          { key: 'status', label: 'Status', render: r => h('span', { class: 'badge ' + (r.status === 'ACTIVE' ? 'ok' : '') }, r.status) }
+        ],
+        rowActions: r => [
+          { icon: '✎', label: 'Edit', onClick: () => itemForm(r, () => App.refresh()) },
+          { icon: '🏷', label: 'Label', onClick: () => printLabels([r.id]) },
+          { icon: '📋', label: 'Duplicate', onClick: () => duplicateItem(r) }
+        ],
+        onRow: r => itemDetail(r),
+        emptyAction: App.can('items.create') ? { label: '➕ Naya item', onClick: () => itemForm(null, () => App.refresh()) } : null
+      }));
+    })();
+  }
+});
+
+function printLabels(ids) {
+  /* v2.23.20 — single shared label flow. The old code called Print.labelHtml
+     (which never existed — TypeError, dead button). labelFlow resolves real
+     item rows, offers the 6 GS1 templates + copies + live preview, prints A4. */
+  return Print.labelFlow(ids);
+}
+
+function mapCatItem(i) {
+  return { id: i.id, code: i.code, name: i.name, cat: i.cat, brand: i.brand,
+    retailPrice: i.rp, wholesalePrice: i.wp, costPrice: i.cp, stock: i.qty, status: 'ACTIVE' };
+}
+
+/* --------------------------- item offcanvas ------------------------------- */
+function itemDetail(item) {
+  const oc = UI2.offcanvas({
+    title: item.name, subtitle: item.code + ' · ' + (item.category || '—'),
+    size: 'lg',
+    actions: App.can('items.edit') ? [{ label: '✎ Edit', cls: '', onClick: () => { oc.close(); itemForm(item, () => App.refresh()); } }] : null,
+    body: h('div', { class: 'empty' }, 'Loading…')
+  });
+  const bodyEl = oc.body;
+  bodyEl.innerHTML = '';
+
+  API.call('items.get', { id: item.id, withStock: true }).then(full => {
+    bodyEl.innerHTML = '';
+    UI2.tabs(bodyEl, {
+      level: 2,
+      tabs: [
+        { id: 'general', label: 'General', icon: '📝', render: c => renderGeneral(c, full) },
+        { id: 'pricing', label: 'Pricing & Tax', icon: '💰', render: c => renderPricing(c, full) },
+        { id: 'stock', label: 'Stock', icon: '📦', render: c => renderStock(c, full) },
+        { id: 'barcode', label: 'Barcode & Labels', icon: '🏷', render: c => renderBarcode(c, full) },
+        { id: 'media', label: 'Media', icon: '🖼', render: c => renderMedia(c, full) },
+        { id: 'custom', label: 'Extra fields', icon: '🧩', render: c => renderCustom(c, full, 'ITEM') },
+        { id: 'history', label: 'History', icon: '🕓', render: c => renderHistory(c, full) }
+      ]
+    });
+  }).catch(e => bodyEl.appendChild(h('div', { class: 'empty' }, '⚠ ' + e.message)));
+}
+
+function renderGeneral(c, it) {
+  const r = it.raw || it;
+  /* ------------------------------------------------------------------
+     v2.23.17 — General tab, professional redesign (was a flat label grid):
+       1. Hero card: image + identity + badges + quick actions
+       2. Grouped info sections with icon tiles (UI2.section tone colors)
+       3. Notes block
+     Reuses existing tokens/classes only — no new CSS framework.
+  ------------------------------------------------------------------ */
+  const stock = Number(r.stock ?? it.stock ?? 0);
+  const status = String(it.status || r.status || 'ACTIVE').toUpperCase();
+  const price = (it.retailPrice ?? r.retailPrice) || 0;
+
+  /* ---- 1) Hero summary ---- */
+  const img = (r.imageUrl || it.imageUrl)
+    ? h('img', { src: r.imageUrl || it.imageUrl, alt: it.name || 'product image', loading: 'lazy', decoding: 'async',
+        style: 'width:88px;height:88px;object-fit:contain;border-radius:12px;border:1px solid var(--line);background:#fff',
+        title: 'Click to enlarge', onclick: () => { try { UI.zoomImage(r.imageUrl || it.imageUrl, it.name); } catch (e) {} } })
+    : h('button', { class: 'btn sec', title: 'Add product image', 'aria-label': 'Add product image',
+        style: 'width:88px;height:88px;border-radius:12px;display:grid;place-items:center;font-size:26px;background:var(--panel);border:1.5px dashed var(--line);cursor:pointer',
+        onclick: () => { const inp = c.querySelector('input[data-quickimg]'); if (inp) inp.click(); } }, '🖼＋');
+  const quickFile = h('input', { type: 'file', accept: 'image/*', 'data-quickimg': '1', style: 'display:none' });
+  quickFile.onchange = async () => {
+    const f = quickFile.files && quickFile.files[0]; if (!f) return;
+    try {
+      const dataUrl = await _shrinkImage(f, 900);
+      await API.call('items.uploadImage', { itemId: it.id, data: dataUrl, mime: 'image/jpeg', slot: 'main' });
+      UI.toast('Image upload ho gayi ✅ — refreshing', 'ok');
+      const fresh = await API.call('items.get', { id: it.id, withStock: true });
+      c.innerHTML = ''; renderGeneral(c, fresh);
+    } catch (e) { UI.toast(e.message || 'Upload fail', 'err'); }
+    quickFile.value = '';
+  };
+  const hero = h('div', { class: 'gi-hero' },
+    h('div', { class: 'gi-hero-left' }, img, quickFile),
+    h('div', { class: 'gi-hero-main' },
+      h('div', { class: 'gi-hero-name' }, it.name || '—'),
+      h('div', { class: 'gi-hero-badges' },
+        h('span', { class: 'badge brand', title: 'SKU / Code' }, it.code || '—'),
+        h('span', { class: 'badge ' + (status === 'ACTIVE' ? 'ok' : 'err'), title: 'Status' }, status),
+        h('span', { class: 'badge ' + (stock <= 0 ? 'err' : (stock <= (Number(r.reorderLevel || r.minStock || 5)) ? 'warn' : 'ok')), title: 'Stock on hand' },
+          stock <= 0 ? 'Out of stock' : 'Stock ' + fmt.num(stock)),
+        h('span', { class: 'badge info', title: 'Retail price' }, fmt.money(price)),
+        (r.barcode && r.barcode !== it.code) ? h('span', { class: 'badge', title: 'Barcode' }, 'BC ' + r.barcode) : ''),
+      h('div', { class: 'gi-hero-actions' },
+        App.can('items.edit') ? h('button', { class: 'btn sm sec', onclick: () => itemForm(it, () => App.refresh()) }, '✎ Edit') : '',
+        h('button', { class: 'btn sm sec', title: 'Print barcode label', onclick: () => { try { printLabels([it.id]); } catch (e) { UI.toast('Print fail', 'err'); } } }, '🏷 Label'),
+        h('button', { class: 'btn sm ghost', title: 'Copy product code', onclick: async () => {
+          try { await navigator.clipboard.writeText(it.code || ''); UI.toast('Code copied — ' + it.code, 'ok'); } catch (e) { UI.toast(it.code || '', 'ok'); }
+        } }, '⧉ Code'))));
+  c.appendChild(hero);
+
+  /* ---- grouped info sections ---- */
+  const tile = (icon, label, value, hint) => h('div', { class: 'gi-tile', title: hint || '' },
+    h('span', { class: 'gi-tile-ic', 'aria-hidden': 'true' }, icon),
+    h('div', { class: 'gi-tile-body' },
+      h('span', { class: 'gi-tile-lab' }, label),
+      h('b', { class: 'gi-tile-val' }, (value === '' || value === null || value === undefined || value === '—') ? '—' : String(value))));
+  const wrapTiles = tiles => h('div', { class: 'gi-grid' }, tiles);
+
+  const veh = [r.make, r.model, r.yearFrom ? (r.yearFrom + (r.yearTo ? '–' + r.yearTo : '+')) : ''].filter(Boolean).join(' ');
+  c.appendChild(UI2.section('Identity & classification', null, 'inv'));
+  c.appendChild(wrapTiles([
+    tile('🔖', 'SKU / Code', it.code),
+    tile('▮▮', 'Barcode', r.barcode || it.code, 'Print label ke liye Barcode & Labels tab kholein'),
+    tile('🗂', 'Category', it.category || '—'),
+    tile('🏷', 'Sub category', r.subCategory || '—'),
+    tile('🏭', 'Brand', r.brand || '—'),
+    tile('⚙', 'Part type', (r.partType || '—').replace(/_/g, ' ')),
+    tile('📏', 'Size / variant', r.size || '—'),
+    tile('📦', 'Unit of measure', r.unit || 'PCS')
+  ]));
+
+  c.appendChild(UI2.section('Sourcing & stocking', null, 'fin'));
+  c.appendChild(wrapTiles([
+    tile('🚚', 'Primary supplier', supplierName(r.primarySupplierId) || '—'),
+    tile('🗄', 'Rack / bin location', r.rack || '—'),
+    tile('🏬', 'Default branch', (r.defaultLocationId ? (locNameOf(r.defaultLocationId)) : App.state.branchName) || '—'),
+    tile('🧮', 'Min stock / reorder', [fmt.num(r.minStock || 0), fmt.num(r.reorderLevel || 0)].join(' / '), 'Reorder point'),
+    r.conversionFactor && Number(r.conversionFactor) > 1 ? tile('📐', 'Pack conversion', '1 ' + (r.unit || 'PCS') + ' = ' + fmt.num(r.conversionFactor), 'Bulk units') : '',
+    r.weight ? tile('⚖', 'Weight', fmt.num(r.weight) + ' kg') : ''
+  ].filter(Boolean)));
+
+  if (veh && veh.trim()) {
+    c.appendChild(UI2.section('Vehicle fitment', null, 'ok'));
+    c.appendChild(wrapTiles([
+      tile('🚗', 'Make', r.make || '—'),
+      tile('🧩', 'Model', r.model || '—'),
+      tile('📅', 'Years', (r.yearFrom || '') + (r.yearTo ? '–' + r.yearTo : (r.yearFrom ? '+' : '')) || '—')
+    ]));
+  }
+
+  /* notes + custom meta footer */
+  const extras = [];
+  if (r.origin) extras.push(tile('🌍', 'Origin', r.origin));
+  if (r.warranty) extras.push(tile('🛡', 'Warranty', fmt.num(r.warranty) + ' months'));
+  if (extras.length) c.appendChild(wrapTiles(extras));
+  c.appendChild(h('div', { class: 'gi-notes' },
+    h('span', { class: 'gi-tile-lab' }, '📝 Notes'),
+    h('div', null, r.notes || 'Koi note nahi — Edit me add karein')));
+}
+
+function renderPricing(c, it) {
+  const r = it.raw || it;
+  const margin = r.costPrice ? ((r.retailPrice - r.costPrice) / r.costPrice * 100) : 0;
+  /* v2.28.0 (W5) — cost/margin tiles sirf unko jin ko ye data milta hai
+     (backend bhi in columns ko hata deta hai — Fields.gs) */
+  const priceTiles = App.fieldFilter([
+    { icon: '🏷', label: 'Retail', value: fmt.money(it.retailPrice), cls: 'brand' },
+    { icon: '🤝', label: 'Wholesale', value: fmt.money(it.wholesalePrice) },
+    { icon: '📥', label: 'Cost', value: fmt.money(it.costPrice), family: 'cost' },
+    { icon: '📈', label: 'Margin', value: margin.toFixed(1) + '%', cls: margin > 20 ? 'ok' : 'warn', family: 'margin' }
+  ]);
+  c.append(
+    UI2.kpiGrid(priceTiles, 2),
+    /* v2.29.0 (W4) — record ke timestamps (spec: created/updated date+time) */
+    UI2.stampRow(r),
+    UI2.section('Customer-type / qty prices', App.can('items.price.edit') ?
+      [h('button', { class: 'btn sm sec', onclick: () => priceEditor(it) }, '＋ Add rule')] : null));
+  API.call('items.prices.get', { itemId: it.id }, { offlineFallback: () => [] }).then(rules => {
+    if (!rules.length) { c.appendChild(h('div', { class: 'tbl-empty' }, 'Koi special price rule nahi')); return; }
+    c.appendChild(UI2.table({
+      screen: 'itemprices', rows: rules, height: '30vh', exportName: false,
+      columns: [
+        { key: 'customerTypeId', label: 'Customer type', render: r => typeName(r.customerTypeId) },
+        { key: 'priceType', label: 'Type' },
+        { key: 'minQty', label: 'Min qty', num: true },
+        { key: 'price', label: 'Price', num: true, render: r => fmt.money(r.price) },
+        { key: 'discountPct', label: 'Disc %', num: true }
+      ],
+      rowActions: App.can('items.price.edit') ? r => [{ icon: '🗑', onClick: () => { } }] : null
+    }));
+  }).catch(() => { });
+}
+
+function renderStock(c, it) {
+  const host = h('div');
+  c.appendChild(host);
+  API.call('stock.levels', { locationId: '' }, { offlineFallback: () => [] }).then(levels => {
+    const rows = (levels || []).filter(l => l.itemId === it.id);
+    host.innerHTML = '';
+    if (!rows.length) { host.appendChild(h('div', { class: 'tbl-empty' }, 'Stock record nahi mila')); return; }
+    host.appendChild(UI2.table({
+      screen: 'itemstock', rows, height: '34vh', exportName: false,
+      columns: [
+        { key: 'locationId', label: 'Branch', render: r => locNameOf(r.locationId) },
+        { key: 'qty', label: 'Qty', num: true, render: r => { const q=Number(r.qty||0); if(q<=0) return h('span',{class:'badge err'},'Out of Stock'); if(q<=5) return h('span',{class:'badge warn'},'LOW · '+q); return h('span',{class:'badge ok'},'In Stock · '+q); } },
+        { key: 'avgCost', label: 'Avg cost', num: true, render: r => fmt.money(r.avgCost) },
+        { key: 'value', label: 'Value', num: true, render: r => fmt.money(r.value) },
+        { key: 'rack', label: 'Rack' }
+      ],
+      rowActions: App.can('stock.adjust') ? r => [{ icon: '⚖', label: 'Count', onClick: () => quickCountItem(it, r) }] : null
+    }));
+  }).catch(e => host.appendChild(h('div', { class: 'empty' }, e.message)));
+}
+
+function renderBarcode(c, it) {
+  const r = it.raw || it;
+  const code = r.barcode || it.code;
+  const svg = h('div', { style: { background: '#fff', padding: '12px', borderRadius: '12px', textAlign: 'center', border: '1px solid var(--line)' } });
+  svg.innerHTML = Barcode.svg(code, { height: 56, module: 1.7 });
+  c.append(
+    svg,
+    h('div', { style: { textAlign: 'center', fontWeight: '700', marginTop: '6px', letterSpacing: '2px' } }, code),
+    h('div', { class: 'chips', style: { marginTop: '12px', justifyContent: 'center' } },
+      h('button', { class: 'chip2', onclick: () => printLabels([it.id]) }, '🏷 Print label'),
+      h('button', { class: 'chip2', onclick: async () => {
+        const g = await API.call('barcode.generate', { value: '', type: 'CODE39' });
+        await API.call('items.save', { item: { id: it.id, barcode: g.value } });
+        UI.toast('New barcode assigned: ' + g.value, 'ok'); App.refresh();
+      } }, '🎲 Generate new'),
+      h('button', { class: 'chip2', onclick: () => {
+        const w = window.open('', '_blank');
+        w.document.write('<body style="text-align:center;font-family:monospace">' + Barcode.svg(code, { height: 80, module: 2.4 }) +
+          '<div>' + code + '</div><script>window.print()</scr' + 'ipt></body>');
+      } }, '🖨 Print'))
+  );
+}
+
+/**
+ * v2.6 QA — "koi option nahi hai product image upload ka".
+ * Ab: 📁 File chunein · 📷 Camera (mobile par direct) · 🔗 URL paste.
+ * File client par resize hoti hai (max 900px, JPEG 0.82) — chhoti image =
+ * tez upload, aur Apps Script ki payload had ke andar.
+ */
+function _shrinkImage(file, maxPx) {
+  return new Promise((resolve, reject) => {
+    const fr = new FileReader();
+    fr.onerror = () => reject(new Error('File parh nahi saka'));
+    fr.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error('Ye image nahi hai'));
+      img.onload = () => {
+        let { width: w, height: hh } = img;
+        const scale = Math.min(1, (maxPx || 900) / Math.max(w, hh));
+        w = Math.round(w * scale); hh = Math.round(hh * scale);
+        const cv = document.createElement('canvas');
+        cv.width = w; cv.height = hh;
+        cv.getContext('2d').drawImage(img, 0, 0, w, hh);
+        resolve(cv.toDataURL('image/jpeg', 0.82));
+      };
+      img.src = fr.result;
+    };
+    fr.readAsDataURL(file);
+  });
+}
+
+async function _uploadItemImage(it, slot, file, statusEl) {
+  statusEl.textContent = '⏳ Upload ho rahi hai…';
+  try {
+    const dataUrl = await _shrinkImage(file, 900);
+    const r = await API.call('items.uploadImage', { itemId: it.id, data: dataUrl, mime: 'image/jpeg', slot: slot });
+    statusEl.textContent = '✅ Upload ho gayi';
+    UI.toast('Image upload ho gayi ✅', 'ok');
+    return r;
+  } catch (e) {
+    statusEl.textContent = '❌ ' + (e.message || 'Upload fail');
+    UI.toast(e.message || 'Upload fail', 'err');
+    return null;
+  }
+}
+
+function renderMedia(c, it) {
+  const r = it.raw || it;
+  const url = h('input', { class: 'f-input', type: 'text', value: r.imageUrl || '', placeholder: 'Image URL' });
+  const gal = h('textarea', { class: 'f-input', rows: 3, placeholder: 'Gallery URLs (one per line)' }, (r.gallery || '').split('\n').join('\n'));
+  const statusEl = h('div', { class: 'hint', style: { minHeight: '18px' } }, '');
+
+  /* hidden file inputs — ek gallery se (desktop), ek camera se (mobile) */
+  const filePick = h('input', { type: 'file', accept: 'image/*', style: { display: 'none' } });
+  const camPick = h('input', { type: 'file', accept: 'image/*', capture: 'environment', style: { display: 'none' } });
+  filePick.onchange = async () => { const f = filePick.files && filePick.files[0]; if (f) { const res = await _uploadItemImage(it, 'gallery', f, statusEl); if (res && res.url) gal.value = (gal.value ? gal.value + '\n' : '') + res.url; } filePick.value = ''; };
+  camPick.onchange = async () => { const f = camPick.files && camPick.files[0]; if (f) { const res = await _uploadItemImage(it, 'main', f, statusEl); if (res && res.url) url.value = res.url; } camPick.value = ''; };
+
+  const canEdit = App.can('items.edit');
+
+  c.append(
+    h('div', { class: 'f-col' }, h('label', null, 'Main image'), url),
+    canEdit ? h('div', { class: 'row', style: { gap: '8px', flexWrap: 'wrap', margin: '8px 0' } },
+      h('button', { class: 'btn sm sec', onclick: () => filePick.click() }, '📁 File se upload'),
+      h('button', { class: 'btn sm sec', onclick: () => camPick.click() }, '📷 Camera se photo'),
+      filePick, camPick, statusEl) : '',
+    h('div', { style: { margin: '10px 0', textAlign: 'center' } },
+      r.imageUrl ? h('img', { src: r.imageUrl, loading: 'lazy', decoding: 'async', alt: '', style: { maxWidth: '100%', borderRadius: '12px', border: '1px solid var(--line)' } })
+        : h('div', { class: 'empty' }, '🖼 No image — upar 📁 ya 📷 se upload karein')),
+    h('div', { class: 'f-col' }, h('label', null, 'Gallery (har line par aik URL)'), gal),
+    canEdit ? h('button', { class: 'btn', style: { marginTop: '10px' }, onclick: async () => {
+      await API.call('items.save', { item: { id: it.id, imageUrl: url.value.trim(), gallery: gal.value } });
+      UI.toast('Saved ✅', 'ok');
+    } }, 'Save media') : '');
+}
+
+function renderCustom(c, it, entity) {
+  const fields = cfFields(entity, (it.raw || it));
+  if (!fields.length) {
+    c.appendChild(h('div', { class: 'empty' }, h('span', { class: 'big' }, '🧩'),
+      h('div', null, 'Koi custom field define nahi'),
+      h('button', { class: 'btn sm', style: { marginTop: '10px' }, onclick: () => App.go('settings') }, 'Settings ▸ Custom fields')));
+    return;
+  }
+  const f = UI2.form({ fields, values: {} });
+  c.appendChild(f.el);
+  c.appendChild(h('button', { class: 'btn', style: { marginTop: '12px' }, onclick: async () => {
+    await API.call(entity === 'ITEM' ? 'items.save' : (entity === 'CUSTOMER' ? 'customers.save' : 'suppliers.save'),
+      { item: { id: it.id }, customer: { id: it.id }, supplier: { id: it.id }, customFields: JSON.stringify(cfValues(f.values())) });
+    UI.toast('Saved ✅', 'ok');
+  } }, 'Save extra fields'));
+}
+
+function renderHistory(c, it) {
+  const host = h('div');
+  c.appendChild(host);
+  API.call('stock.moves', { itemId: it.id, limit: 40 }, { offlineFallback: () => [] }).then(rows => {
+    host.innerHTML = '';
+    host.appendChild(UI2.table({
+      screen: 'itemmoves', rows: rows || [], height: '44vh', exportName: 'item-movements',
+      columns: [
+        { key: 'date', label: 'Date', render: r => fmt.date(r.date) },
+        { key: 'qtyIn', label: 'In', num: true }, { key: 'qtyOut', label: 'Out', num: true },
+        { key: 'balance', label: 'Balance', num: true },
+        { key: 'refType', label: 'Reference' }, { key: 'notes', label: 'Notes' }
+      ]
+    }));
+  }).catch(() => { });
+  API.call('audit.trail', { entity: 'Items', entityId: it.id }, { offlineFallback: () => [] })
+    .then(rows => {
+      if (!rows || !rows.length) return;
+      host.appendChild(UI2.section('Audit trail'));
+      host.appendChild(UI2.table({
+        screen: 'itemaudit', rows, height: '30vh', exportName: false,
+        columns: [
+          { key: 'ts', label: 'Time', render: r => fmt.date(r.ts, true) },
+          { key: 'username', label: 'User' }, { key: 'action', label: 'Action' }
+        ],
+        onRow: r => UI2.modal({ title: 'Audit detail', size: 'md', body: h('pre', { style: { fontSize: 'var(--fs-xs)', whiteSpace: 'pre-wrap' } },
+          'BEFORE:\n' + JSON.stringify(r.before, null, 1) + '\n\nAFTER:\n' + JSON.stringify(r.after, null, 1)), actions: [{ label: 'Close', onClick: c => c() }] })
+      }));
+    }).catch(() => { });
+}
+
+function kv(label, value) {
+  return h('div', { class: 'f-col' },
+    h('label', null, label),
+    h('div', { style: { fontSize: 'var(--fs-md)', fontWeight: '600', padding: '7px 0' } }, value === '' || value === null || value === undefined ? '—' : value));
+}
+
+function locNameOf(id) { const l = (App.state.locations || []).find(x => x.id === id); return l ? l.name : id; }
+function supplierName(id) { if (!id) return ''; const s = (window.__suppliers || []).find(x => x.id === id); return s ? s.name : ''; }
+function typeName(id) { const c = (App.state.customerTypes || []).find(x => x.id === id); return c ? c.name : 'All'; }
+window.addEventListener('ha:authenticated', () => {
+  const token = App.state.session && App.state.session.token;
+  if (!token) return;
+  Shared.suppliers({}).then(rows => {   /* v2.27.0 W3.T3 */
+    if (App.state.session && App.state.session.token === token) window.__suppliers = rows || [];
+  }).catch(() => { });
+});
+
+/* ------------------------------ item form -------------------------------- */
+function itemForm(item, after) {
+  const v = item || {};
+  const f = UI2.form({
+    values: v,
+    tabs: [
+      { id: 'basic', label: 'Basic', icon: '📝', fields: [
+        { key: 'name', label: 'Item name', required: true, full: true },
+        { key: 'code', label: 'Code / part no.' },
+        { key: 'barcode', label: 'Barcode' },
+        { key: 'lineItem', label: 'Line item', type: 'select', options: Array.from(new Set((App.state.categories || []).filter(c => !c.parentId).map(c => c.name))).sort() },
+        { key: 'category', label: 'Category', type: 'select', options: (App.state.categories || []).map(c => c.name) },
+        { key: 'subCategory', label: 'Sub category' },
+        { key: 'brand', label: 'Brand' },
+        { key: 'origin', label: 'Made in (origin)' },
+        { key: 'partType', label: 'Part type', type: 'select', options: ['', 'CAR_CARE', 'LIGHTING', 'BRAKES', 'ENGINE', 'FILTER', 'OIL', 'BATTERY', 'TYRE', 'DECOR', 'ELECTRICAL', 'BODY', 'OTHER'] },
+        { key: 'size', label: 'Size / variant' },
+        { key: 'unit', label: 'Unit', type: 'select', options: ['PCS', 'SET', 'BOX', 'DZN', 'LTR', 'KG', 'PAIR'] },
+        { key: 'make', label: 'Vehicle make' },
+        { key: 'model', label: 'Model' },
+        { key: 'yearFrom', label: 'Year from' },
+        { key: 'yearTo', label: 'Year to' }
+      ]},
+      { id: 'price', label: 'Pricing & Tax', icon: '💰', fields: [
+        { key: 'costPrice', label: 'Cost price', type: 'number', family: 'cost' },
+        { key: 'retailPrice', label: 'Retail price', type: 'number' },
+        { key: 'wholesalePrice', label: 'Wholesale price', type: 'number' },
+        { key: 'minPrice', label: 'Min price', type: 'number', hint: 'Is se neechay discount block' },
+        { key: 'taxRate', label: 'Tax %', type: 'number' },
+        { key: 'warranty', label: 'Warranty (months)', type: 'number' }
+      ]},
+      { id: 'stock', label: 'Stock & Location', icon: '📦', fields: [
+        { key: 'minStock', label: 'Min stock', type: 'number' },
+        { key: 'reorderLevel', label: 'Reorder level', type: 'number' },
+        { key: 'rack', label: 'Rack / bin' },
+        { key: 'defaultLocationId', label: 'Default branch', type: 'select', options: [{ value: '', label: '—' }].concat(App.state.locations.map(l => ({ value: l.id, label: l.name }))) },
+        { key: 'conversionFactor', label: 'Conversion factor', type: 'number' },
+        { key: 'weight', label: 'Weight', type: 'number' },
+        { key: 'favourite', label: 'Show in POS quick keys', type: 'switch' }
+      ]},
+      { id: 'media', label: 'Media & Image', icon: '🖼', fields: [
+        { key: 'imageUrl', label: 'Product image — URL ya upload', type: 'image', full: true,
+          hint: 'URL paste karein, ya 📁 Upload / 📷 Camera se lein — Save par Drive me upload ho jayegi' },
+        { key: 'gallery', label: 'Gallery (ek line = ek image URL)', type: 'textarea', rows: 3, full: true }
+      ]},
+      { id: 'extra', label: 'Extra fields', icon: '🧩', fields: cfFields('ITEM', v).length ? cfFields('ITEM', v) :
+        [{ key: 'notes', label: 'Notes', type: 'textarea', full: true }] }
+    ]
+  });
+  UI2.offcanvas({
+    title: item ? '✏ ' + item.name : '➕ Naya item',
+    subtitle: item ? item.code : 'Naya product banayein',
+    size: 'lg', body: f.el,
+    footer: h('div', null,
+      h('button', { class: 'btn ghost', onclick: () => { } }, 'Cancel'),
+      h('button', { class: 'btn', onclick: async () => {
+        const vals = f.values();
+        if (!vals.name) return UI.toast('Name zaroori hai', 'err');
+        if (item) vals.id = item.id;
+        if (cfFields('ITEM', v).length) vals.customFields = JSON.stringify(cfValues(vals));
+        // image just picked (not yet uploaded): hold it out of the sheet, upload AFTER save
+        const imgRef = f.refs && f.refs.imageUrl;
+        const pendingImg = imgRef && imgRef.__pendingData || null;
+        if (pendingImg) vals.imageUrl = (item && item.imageUrl) || vals.imageUrl || '';
+        const clearPending = () => { if (imgRef) imgRef.__pendingData = null; };
+        try {
+          const saved = await API.call('items.save', { item: vals });
+          if (pendingImg && saved && saved.id) {
+            try {
+              const up = await API.call('items.uploadImage', { itemId: saved.id, data: pendingImg, mime: 'image/jpeg', slot: 'main' });
+              if (up && up.url) {
+                await API.call('items.save', { item: { id: saved.id, imageUrl: up.url } });
+              } else {
+                // No Drive URL (demo/offline) — store the shrunk data-URL directly.
+                // In Apps Script a too-large value would throw → handled below.
+                await API.call('items.save', { item: { id: saved.id, imageUrl: pendingImg } });
+              }
+              clearPending();
+            } catch (e2) {
+              UI.toast('Item save ho gaya, image upload fail: ' + (e2.message || e2) + ' — Drive check karein', 'warn', 4600);
+            }
+          }
+          UI.toast('Saved ✅', 'ok');
+          document.querySelectorAll('.offcanvas').forEach(o => o.remove());
+          document.querySelectorAll('.oc-scrim').forEach(o => o.remove());
+          after && after();
+        } catch (e) { UI.toast(e.message, 'err'); }
+      } }, '💾 Save'))
+  });
+}
+
+function priceEditor(item) {
+  const types = App.state.customerTypes || [];
+  const f = UI2.form({
+    values: {},
+    fields: [
+      { key: 'customerTypeId', label: 'Customer type', type: 'select', options: [{ value: '', label: 'All' }].concat(types.map(t => ({ value: t.id, label: t.name }))) },
+      { key: 'priceType', label: 'Price type', type: 'select', options: ['RETAIL', 'WHOLESALE'] },
+      { key: 'minQty', label: 'Min qty', type: 'number' },
+      { key: 'price', label: 'Price', type: 'number' },
+      { key: 'discountPct', label: 'Discount %', type: 'number' }
+    ]
+  });
+  UI2.modal({
+    title: 'Price rule — ' + item.name, size: 'sm', body: f.el,
+    actions: [{ label: 'Save', cls: 'ok', onClick: async c => {
+      const v = f.values();
+      const existing = await API.call('items.prices.get', { itemId: item.id });
+      existing.push({ customerTypeId: v.customerTypeId, priceType: v.priceType, minQty: v.minQty, price: v.price, discountPct: v.discountPct, active: 'true' });
+      await API.call('items.prices.save', { itemId: item.id, prices: existing });
+      UI.toast('Rule saved ✅', 'ok'); c();
+    } }]
+  });
+}
+
+function duplicateItem(item) {
+  UI2.confirm('"' + item.name + '" ki copy banayein?', async () => {
+    const copy = Object.assign({}, item, { id: null, code: (item.code || 'ITM') + '-C', name: item.name + ' (copy)' });
+    await API.call('items.save', { item: copy });
+    UI.toast('Duplicate ban gaya', 'ok'); App.refresh();
+  });
+}
+
+function quickCountItem(item, row) {
+  const f = UI2.form({ values: { countedQty: row.qty, notes: '' },
+    fields: [{ key: 'countedQty', label: 'Counted qty', type: 'number' }, { key: 'notes', label: 'Note', full: true }] });
+  UI2.modal({
+    title: '⚖ Quick count — ' + item.name, size: 'sm', body: f.el,
+    actions: [{ label: 'Save', cls: 'ok', onClick: async c => {
+      await API.call('stock.count', { itemId: item.id, locationId: row.locationId, countedQty: f.values().countedQty, notes: f.values().notes });
+      UI.toast('Stock updated ✅', 'ok'); c(); App.refresh(); API.pullCatalog(true);
+    } }]
+  });
+}
+
+function importItems() {
+  const ta = h('textarea', { rows: 8, placeholder: 'Paste CSV/TSV — header: code,name,category,brand,costPrice,retailPrice,wholesalePrice,barcode', style: { width: '100%' } });
+  UI2.modal({
+    title: '⬆ Import items', size: 'lg', body: h('div', null,
+      h('p', { style: { fontSize: 'var(--fs-sm)', color: 'var(--muted)' } }, 'Excel/Sheet se copy kar ke paste karein. Existing code → update, naya → create.'), ta),
+    actions: [{ label: 'Import', onClick: async c => {
+      const text = ta.value.trim(); if (!text) return;
+      const delim = text.indexOf('\t') > -1 ? '\t' : ',';
+      const lines = text.split(/\r?\n/).filter(Boolean);
+      const head = lines[0].split(delim).map(s => s.trim().replace(/^"|"$/g, ''));
+      const rows = lines.slice(1).map(l => {
+        const cells = l.split(delim).map(s => s.trim().replace(/^"|"$/g, ''));
+        const o = {}; head.forEach((k, i) => o[k] = cells[i]); return o;
+      });
+      try {
+        const r = await API.call('items.bulkSave', { items: rows });
+        UI.toast('Created ' + r.created + ', updated ' + r.updated + (r.errors.length ? ', errors ' + r.errors.length : ''), 'ok');
+        c(); App.refresh(); API.pullCatalog(true);
+      } catch (e) { UI.toast(e.message, 'err'); }
+    } }]
+  });
+}
+
+/* ============================ CUSTOMERS / SUPPLIERS ======================= */
+App.registerScreen('parties', {
+  title: 'Customers & Suppliers', icon: '👥', perm: 'customers.view',
+  /* deep link: App.go('parties', { tab:'customers', open:'CUS…' }) */
+  onParams(p) {
+    if (!p.open) return;
+    const type = (p.tab === 'suppliers') ? 'SUPPLIER' : 'CUSTOMER';
+    setTimeout(async () => {
+      try {
+        const rec = await API.call(type === 'CUSTOMER' ? 'customers.list' : 'suppliers.list',
+          { q: '', withBalance: true, limit: 500 }, { offlineFallback: () => ({ rows: [] }) });
+        const row = (rec.rows || rec || []).find(x => x.id === p.open);
+        if (row) partyDetail(type, row);
+        else UI.toast('Record nahi mila', 'warn');
+      } catch (e) { console.warn('party deep link', e); }
+    }, 250);
+  },
+  actions() {
+    return [
+      { label: 'Add Customer', icon: '➕', onClick: () => partyForm('CUSTOMER', null, () => App.refresh()) },
+      { label: 'Add Supplier', icon: '🏭', onClick: () => partyForm('SUPPLIER', null, () => App.refresh()) }
+    ];
+  },
+  render(body) {
+    const host = h('div');
+    body.appendChild(host);
+    UI2.tabs(host, {
+      level: 1, active: (App.params && App.params.tab) || 'customers',
+      tabs: [
+        { id: 'customers', label: 'Customers', icon: '👤', render: c => renderPartyList(c, 'CUSTOMER') },
+        { id: 'suppliers', label: 'Suppliers', icon: '🏭', render: c => renderPartyList(c, 'SUPPLIER') }
+      ]
+    });
+  }
+});
+
+function renderPartyList(c, type) {
+  const host = h('div');
+  c.appendChild(host);
+  (async () => {
+    /* v2.9 §11 — withTotals: list mein hi lifetime sales/purchases + paid */
+    const res = await API.call(type === 'CUSTOMER' ? 'customers.list' : 'suppliers.list',
+      { withBalance: true, withTotals: true, limit: 500 },
+      { offlineFallback: () => ({ rows: type === 'CUSTOMER' ? (App.state.catalog.customers || []) : [] }) });
+    const rows = res.rows || res || [];
+    host.innerHTML = '';
+    host.appendChild(UI2.table({
+      screen: 'party_' + type, rows, height: '58vh', exportName: type,
+      filters: type === 'CUSTOMER'
+        ? [{ key: 'customerTypeId', label: 'Type', type: 'select', options: (App.state.customerTypes || []).map(x => ({ value: x.id, label: x.name })) },
+           { key: 'balance', label: 'Has udhaar (type amount)', type: 'text' }]
+        : [{ key: 'paymentTerms', label: 'Terms', type: 'text' }],
+      columns: type === 'CUSTOMER' ? [
+        { key: 'code', label: 'Code' },
+        { key: 'name', label: 'Name', render: r => h('div', null, h('b', null, r.name),
+            h('div', { style: { fontSize: 'var(--fs-xs)', color: 'var(--muted)' } }, (r.address || '').slice(0, 34))) },
+        { key: 'phone', label: 'Phone', family: 'contact', render: r => fmt.phone(r.phone) },
+        { key: 'customerTypeId', label: 'Type', render: r => typeName(r.customerTypeId) },
+        { key: 'creditLimit', label: 'Credit limit', num: true, family: 'finance', render: r => fmt.money(r.creditLimit) },
+        { key: 'balance', label: 'Outstanding', num: true, family: 'finance', render: r => h('b', { style: { color: Number(r.balance ?? r.bal ?? 0) > 0 ? 'var(--err)' : 'var(--ok)' } }, fmt.money(r.balance ?? r.bal ?? 0)) },
+        { key: 'totalSales', label: 'Total sales', num: true, render: r => r.totalSales != null ? fmt.moneyCompact(r.totalSales) : '—' },
+        { key: 'invoiceCount', label: 'Invoices', num: true, render: r => r.invoiceCount != null ? fmt.num(r.invoiceCount) : '—' },
+        { key: 'collected', label: 'Collected', num: true, family: 'finance', render: r => r.collected != null ? fmt.moneyCompact(r.collected) : '—' },
+        { key: 'points', label: 'Points', num: true }
+      ] : [
+        { key: 'code', label: 'Code' },
+        { key: 'name', label: 'Supplier', render: r => h('div', null, h('b', null, r.name),
+            h('div', { style: { fontSize: 'var(--fs-xs)', color: 'var(--muted)' } }, (r.address || '').slice(0, 34))) },
+        { key: 'phone', label: 'Phone', family: 'contact', render: r => fmt.phone(r.phone) },
+        { key: 'paymentTerms', label: 'Terms', family: 'supplier' },
+        { key: 'creditLimit', label: 'Credit limit', num: true, family: 'finance', render: r => r.creditLimit? fmt.money(r.creditLimit):'—' },
+        { key: 'balance', label: 'Payable', num: true, family: 'finance', render: r => h('b', { style: { color: Number(r.balance) < 0 ? 'var(--err)' : 'var(--ok)' } }, fmt.money(Math.abs(r.balance || 0))) },
+        { key: 'available', label: 'Available credit', num: true, family: 'finance', render: r => { const lim=Number(r.creditLimit||0); const pay=Math.abs(Number(r.balance||0)); const avail=lim? Math.max(0, lim-pay):0; return lim? h('span',{class:'badge '+(avail<lim*0.2?'warn':(avail===0?'err':'ok'))}, fmt.money(avail)) : '—'; } },
+        { key: 'totalPurchases', label: 'Total purchases', num: true, render: r => r.totalPurchases != null ? fmt.moneyCompact(r.totalPurchases) + (r.grnCount ? ' · ' + fmt.num(r.grnCount) + ' GRN' : '') : '—' },
+        { key: 'paidOut', label: 'Paid', num: true, family: 'finance', render: r => r.paidOut != null ? fmt.moneyCompact(r.paidOut) : '—' }
+      ],
+      rowActions: r => [
+        { icon: '📒', label: 'Ledger', onClick: () => partyLedger(type, r) },
+        { icon: '✎', label: 'Edit', onClick: () => partyForm(type, r, () => App.refresh()) },
+        type === 'CUSTOMER'
+          ? { icon: '💰', label: 'Receive', onClick: () => receivePayment(r) }
+          : { icon: '💸', label: 'Pay', onClick: () => paySupplier2(r) }
+      ],
+      onRow: r => partyDetail(type, r),
+      emptyAction: { label: '➕ Add ' + type.toLowerCase(), onClick: () => partyForm(type, null, () => App.refresh()) }
+    }));
+  })();
+}
+
+function partyDetail(type, p) {
+  /* v2.5: balance card — previous / current due foran nazar aaye */
+  const bal = Number(p.balance || 0);
+  const sumHost = h('div', { class: 'pb-rows' });
+  const paintSummary = sm => {
+    sumHost.innerHTML = '';
+    const _bal = Number(sm? sm.balance : bal);
+    const _limit = Number(p.creditLimit||0);
+    const _used = Math.abs(_bal);
+    const _avail = _limit? Math.max(0, _limit - _used) : null;
+    const _status = type==='SUPPLIER' ? (_avail===0 && _limit? 'Limit exhausted' : (_avail!==null && _avail<_limit*0.2? 'Low available' : 'OK')) : '';
+    sumHost.append(
+      h('div', { class: 'pb-row' }, h('span', null, 'Opening balance'), h('b', null, fmt.money(sm ? sm.opening : (p.openingBalance || 0)))),
+      h('div', { class: 'pb-row' }, h('span', null, type === 'CUSTOMER' ? 'Billed (invoices)' : 'Purchases'), h('b', null, fmt.money(sm ? sm.billed : 0))),
+      h('div', { class: 'pb-row' }, h('span', null, 'Paid / received'), h('b', null, fmt.money(sm ? sm.paid : 0))),
+      h('div', { class: 'pb-row pb-total' }, h('span', null, type === 'CUSTOMER' ? 'Current udhaar (Outstanding)' : 'Outstanding payable'), h('b', {style:{color: _bal>0.5? 'var(--err)':'var(--ok)'}}, fmt.money(Math.abs(_bal)))),
+      ...(type==='SUPPLIER' ? [
+        h('div', { class: 'pb-row' }, h('span', null, 'Credit limit (supplier offered)'), h('b', null, _limit? fmt.money(_limit):'—')),
+        h('div', { class: 'pb-row' }, h('span', null, 'Credit used'), h('b', null, fmt.money(_used))),
+        h('div', { class: 'pb-row' }, h('span', null, 'Available credit'), h('b', {style:{color: _avail===0?'var(--err)':(_avail<_limit*0.2?'var(--warn)':'var(--ok)')}}, _avail!==null? fmt.money(_avail):'—')),
+        h('div', { class: 'pb-row' }, h('span', null, 'Status'), h('span', {class:'badge '+( _status==='Limit exhausted'?'err':(_status==='Low available'?'warn':'ok'))}, _status))
+      ] : [
+        h('div', { class: 'pb-row' }, h('span', null, 'Credit limit'), h('b', null, p.creditLimit ? fmt.money(p.creditLimit) : '—')),
+        h('div', { class: 'pb-row' }, h('span', null, 'Available'), h('b', {style:{color: (_avail===0?'var(--err)':(_avail!==null && _avail<_limit*0.2?'var(--warn)':'var(--ok)'))}}, _avail!==null? fmt.money(_avail): (_limit? fmt.money(Math.max(0,_limit-_bal)) : '—'))),
+      ]),
+      h('div', { class: 'pb-row' }, h('span', null, type === 'CUSTOMER' ? 'Loyalty points' : 'Lead time (days)'), h('b', null, String(type === 'CUSTOMER' ? (p.points || 0) : (p.leadTimeDays || '—')))),
+      /* v2.29.0 (W4) — party record ke timestamps */
+      UI2.stampRow(p) ? h('div', { class: 'pb-row stamp' }, h('span', null, ''), UI2.stampRow(p)) : '',
+      h('button', { class: 'btn sm sec', onclick: () => { try { oc.close(); } catch (e) { }
+        App.go('parties', { tab: type === 'CUSTOMER' ? 'customers' : 'suppliers' }); } }, '📒 Ledger'));
+  };
+  const balCard = h('div', { class: 'party-bal ' + (bal > 0 ? 'due' : 'ok') },
+    h('div', { class: 'pb-main' },
+      h('span', { class: 'pb-lab' }, type === 'CUSTOMER' ? 'Current udhaar (balance)' : 'Payable balance'),
+      h('b', { class: 'pb-val' }, fmt.money(Math.abs(bal))),
+      h('span', { class: 'pb-sub' }, bal > 0
+        ? (type === 'CUSTOMER' ? 'Customer ne dena hai' : 'Humein dena hai')
+        : (bal < 0 ? (type === 'CUSTOMER' ? 'Advance / credit balance' : 'Advance paid') : 'Balance clear'))),
+    sumHost);
+  paintSummary(null);
+  API.call('parties.balance', { partyType: type, id: p.id }, { offlineFallback: () => null })
+    .then(sm => { if (sm) paintSummary(sm); }).catch(() => { });
+
+  const oc = UI2.offcanvas({
+    title: p.name, subtitle: p.code + ' · ' + (type === 'CUSTOMER' ? 'Customer' : 'Supplier') + ' • ' + fmt.phone(p.phone),
+    size: 'lg',
+    actions: [{ label: '✎ Edit', onClick: () => { oc.close(); partyForm(type, p, () => App.refresh()); } }],
+    body: h('div', { class: 'empty' }, 'Loading…')
+  });
+  const body = oc.body; body.innerHTML = '';
+  API.call('customers.ledger', { id: p.id }, { offlineFallback: () => ({ rows: [], opening: 0, closing: 0 }) })
+    .then(led => {
+      UI2.tabs(body, {
+        level: 2,
+        tabs: [
+          { id: 'profile', label: 'Profile', icon: '👤', render: c => {
+            // Polished profile: 2-column cards with icons + full-width address
+            const phoneCard = h('div', {class:'ui2-block', style:{padding:'12px', display:'flex', alignItems:'center', gap:'12px'}}, h('div', {style:{width:'42px',height:'42px',borderRadius:'12px',background:'var(--info-soft)',display:'grid',placeItems:'center',fontSize:'18px'}}, '📞'), h('div', null, h('div', {style:{fontSize:'11px',color:'var(--muted)',fontWeight:'700',textTransform:'uppercase',letterSpacing:'.5px'}}, 'Phone'), h('div', {style:{fontWeight:'800',fontSize:'14px'}}, fmt.phone(p.phone)||'—')));
+            const emailCard = h('div', {class:'ui2-block', style:{padding:'12px', display:'flex', alignItems:'center', gap:'12px'}}, h('div', {style:{width:'42px',height:'42px',borderRadius:'12px',background:'var(--panel-2)',display:'grid',placeItems:'center',fontSize:'18px'}}, '✉'), h('div', null, h('div', {style:{fontSize:'11px',color:'var(--muted)',fontWeight:'700',textTransform:'uppercase',letterSpacing:'.5px'}}, 'Email'), h('div', {style:{fontWeight:'600',fontSize:'13px',wordBreak:'break-all'}}, p.email||'—')));
+            const addrCard = h('div', {class:'ui2-block', style:{gridColumn:'1/-1', padding:'12px', display:'flex', alignItems:'flex-start', gap:'12px'}}, h('div', {style:{width:'42px',height:'42px',borderRadius:'12px',background:'var(--warn-soft)',display:'grid',placeItems:'center',fontSize:'18px'}}, '📍'), h('div', {style:{flex:'1'}}, h('div', {style:{fontSize:'11px',color:'var(--muted)',fontWeight:'700',textTransform:'uppercase',letterSpacing:'.5px'}}, 'Address'), h('div', {style:{fontWeight:'600',fontSize:'13px',lineHeight:'1.4'}}, p.address||'—')));
+            const typeCard = h('div', {class:'ui2-block', style:{padding:'12px'}}, h('div', {style:{fontSize:'11px',color:'var(--muted)',fontWeight:'700',textTransform:'uppercase',letterSpacing:'.5px'}}, type==='CUSTOMER'?'Customer type':'Payment terms'), h('div', {style:{fontWeight:'700',marginTop:'4px'}}, type==='CUSTOMER'? typeName(p.customerTypeId): (p.paymentTerms||'—')));
+            const creditCard = h('div', {class:'ui2-block', style:{padding:'12px'}}, h('div', {style:{fontSize:'11px',color:'var(--muted)',fontWeight:'700',textTransform:'uppercase',letterSpacing:'.5px'}}, 'Credit limit'), h('div', {style:{fontWeight:'800',fontSize:'15px',color:'var(--info)'}}, fmt.money(p.creditLimit)));
+            const balCard = h('div', {class:'ui2-block', style:{padding:'12px',borderLeft:'4px solid '+(Number(led.closing)>0?'var(--err)':'var(--ok)'),background: Number(led.closing)>0?'var(--err-soft)':'var(--ok-soft)'}}, h('div', {style:{fontSize:'11px',color:'var(--muted)',fontWeight:'700',textTransform:'uppercase',letterSpacing:'.5px'}}, 'Current balance'), h('div', {style:{fontWeight:'800',fontSize:'15px'}}, fmt.money(led.closing)), h('div', {style:{fontSize:'11px',color:'var(--muted)'}}, Number(led.closing)>0? 'Receivable':'Clear'));
+            const openCard = h('div', {class:'ui2-block', style:{padding:'12px'}}, h('div', {style:{fontSize:'11px',color:'var(--muted)',fontWeight:'700',textTransform:'uppercase',letterSpacing:'.5px'}}, 'Opening balance'), h('div', {style:{fontWeight:'700',marginTop:'4px'}}, fmt.money(p.openingBalance)));
+            const idCard = h('div', {class:'ui2-block', style:{padding:'12px'}}, h('div', {style:{fontSize:'11px',color:'var(--muted)',fontWeight:'700',textTransform:'uppercase',letterSpacing:'.5px'}}, 'NTN / CNIC'), h('div', {style:{fontWeight:'600',marginTop:'4px'}}, (p.ntn||p.cnic||'—')));
+            c.appendChild(h('div', {style:{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(240px,1fr))',gap:'10px'}}, phoneCard, emailCard, addrCard, typeCard, creditCard, balCard, openCard, idCard));
+          }},
+          { id: 'ledger', label: 'Ledger', icon: '📒', render: c => {
+            c.append(
+              UI2.kpiGrid([
+                { icon: '📒', label: 'Opening balance', value: fmt.money(led.opening) },
+                { icon: '➕', label: type === 'CUSTOMER' ? 'Billed' : 'Purchases',
+                  value: fmt.money((led.rows || []).reduce((a, r) => a + Number(type === 'CUSTOMER' ? (r.debit || 0) : (r.credit || 0)), 0)) },
+                { icon: '➖', label: type === 'CUSTOMER' ? 'Received' : 'Paid',
+                  value: fmt.money((led.rows || []).reduce((a, r) => a + Number(type === 'CUSTOMER' ? (r.credit || 0) : (r.debit || 0)), 0)) },
+                { icon: '💰', label: 'Closing', value: fmt.money(led.closing), cls: led.closing > 0 ? 'err' : 'ok' }
+              ], 2),
+              UI2.table({
+                screen: 'ledger_' + p.id, rows: led.rows || [], height: '40vh', exportName: 'ledger',
+                columns: [
+                  { key: 'date', label: 'Date', render: r => fmt.date(r.date) },
+                  { key: 'description', label: 'Description' },
+                  { key: 'debit', label: 'Debit', num: true, render: r => r.debit ? fmt.money(r.debit) : '—' },
+                  { key: 'credit', label: 'Credit', num: true, render: r => r.credit ? fmt.money(r.credit) : '—' },
+                  { key: 'balance', label: 'Balance', num: true, render: r => h('b', null, fmt.money(r.balance)) }
+                ]
+              }));
+          }},
+          { id: 'custom', label: 'Extra fields', icon: '🧩', render: c => renderCustom(c, p, type) },
+          { id: 'actions', label: 'Actions', icon: '⚡', render: c => {
+            c.appendChild(h('div', { class: 'f-grid' },
+              type === 'CUSTOMER'
+                ? h('button', { class: 'btn ok full', onclick: () => receivePayment(p) }, '💰 Payment receive karein')
+                : h('button', { class: 'btn full', onclick: () => paySupplier2(p) }, '💸 Supplier payment'),
+              h('button', { class: 'btn sec full', onclick: () => { oc.close(); App.go('sales', { customerId: p.id }); } }, '🧾 Invoices dekhein')));
+          }}
+        ]
+      });
+    }).catch(e => body.appendChild(h('div', { class: 'empty' }, '⚠ ' + e.message)));
+}
+
+function partyForm(type, p, after) {
+  const v = p || {};
+  const fields = type === 'CUSTOMER' ? [
+    { key: 'name', label: 'Name', required: true, full: true },
+    { key: 'phone', label: 'Phone', family: 'contact' },
+    { key: 'customerTypeId', label: 'Customer type', type: 'select', options: [{ value: '', label: '—' }].concat((App.state.customerTypes || []).map(t => ({ value: t.id, label: t.name }))) },
+    { key: 'email', label: 'Email', family: 'contact' },
+    { key: 'cnic', label: 'CNIC', family: 'contact' },
+    { key: 'address', label: 'Address', full: true },
+    { key: 'creditLimit', label: 'Credit limit', type: 'number' },
+    { key: 'openingBalance', label: 'Opening udhaar', type: 'number' },
+    { key: 'notes', label: 'Notes', type: 'textarea', full: true }
+  ] : [
+    { key: 'name', label: 'Supplier name', required: true, full: true },
+    { key: 'phone', label: 'Phone' },
+    { key: 'email', label: 'Email' },
+    { key: 'paymentTerms', label: 'Payment terms' },
+    { key: 'ntn', label: 'NTN' },
+    { key: 'address', label: 'Address', full: true },
+    { key: 'creditLimit', label: 'Supplier credit limit', type: 'number', hint: 'Supplier ne kitna udhaar diya hai' },
+    { key: 'openingBalance', label: 'Opening balance (+ hum denay hain)', type: 'number' },
+    { key: 'notes', label: 'Notes', type: 'textarea', full: true }
+  ];
+  const f = UI2.form({ values: v, fields });
+  UI2.offcanvas({
+    title: p ? '✏ ' + p.name : (type === 'CUSTOMER' ? '➕ Naya customer' : '➕ Naya supplier'),
+    size: 'md', body: f.el,
+    footer: h('div', null,
+      h('button', { class: 'btn', onclick: async () => {
+        const vals = f.values();
+        if (!vals.name) return UI.toast('Name zaroori hai', 'err');
+        if (p) vals.id = p.id;
+        try {
+          await API.call(type === 'CUSTOMER' ? 'customers.save' : 'suppliers.save',
+            type === 'CUSTOMER' ? { customer: vals } : { supplier: vals });
+          UI.toast('Saved ✅', 'ok');
+          document.querySelectorAll('.offcanvas').forEach(o => o.remove());
+          document.querySelectorAll('.oc-scrim').forEach(o => o.remove());
+          after && after();
+        } catch (e) { UI.toast(e.message, 'err'); }
+      } }, '💾 Save'))
+  });
+}
+
+function partyLedger(type, p) {
+  UI2.offcanvas({ title: '📒 Ledger — ' + p.name, size: 'md', body: h('div', { class: 'empty' }, 'Loading…') });
+  partyDetail(type, p);
+}
+
+function receivePayment(c) {
+  const f = UI2.form({ values: { amount: Number(c.balance ?? c.bal ?? 0) },
+    fields: [
+      { key: 'amount', label: 'Amount', type: 'number' },
+      { key: 'method', label: 'Method', type: 'select', options: ['CASH', 'BANK', 'JAZZCASH', 'EASYPAISA', 'CHEQUE', 'CARD'] },
+      { key: 'reference', label: 'Reference' },
+      { key: 'notes', label: 'Notes', full: true }
+    ] });
+  UI2.modal({
+    title: '💰 Receive — ' + c.name, size: 'sm', body: f.el,
+    actions: [{ label: 'Receive', cls: 'ok', onClick: async close => {
+      const v = f.values();
+      try {
+        await API.call('payments.create', { payment: Object.assign(v, { type: 'RECEIPT', partyType: 'CUSTOMER', partyId: c.id, locationId: App.state.locationId }) });
+        UI.toast('Payment received ✅', 'ok'); close(); App.refresh();
+      } catch (e) { UI.toast(e.message, 'err'); }
+    } }]
+  });
+}
+
+function paySupplier2(s) {
+  const f = UI2.form({ values: { amount: Math.abs(Number(s.balance || 0)) },
+    fields: [
+      { key: 'amount', label: 'Amount', type: 'number' },
+      { key: 'method', label: 'Method', type: 'select', options: ['CASH', 'BANK', 'CHEQUE', 'JAZZCASH'] },
+      { key: 'reference', label: 'Reference' },
+      { key: 'notes', label: 'Notes', full: true }
+    ] });
+  UI2.modal({
+    title: '💸 Pay — ' + s.name, size: 'sm', body: f.el,
+    actions: [{ label: 'Pay', onClick: async close => {
+      const v = f.values();
+      try {
+        await API.call('payments.create', { payment: Object.assign(v, { type: 'SUPPLIER_PAYMENT', partyType: 'SUPPLIER', partyId: s.id, locationId: App.state.locationId }) });
+        UI.toast('Payment recorded ✅', 'ok'); close(); App.refresh();
+      } catch (e) { UI.toast(e.message, 'err'); }
+    } }]
+  });
+}
+
+window.__printLabels = printLabels;  /* v2.23.20: canonical flow everywhere */
+})();
+</script>

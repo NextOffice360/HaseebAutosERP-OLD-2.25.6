@@ -1,0 +1,99 @@
+<script>
+/* ==========================================================================
+   HASEEB AUTOS — AI ASSISTANT
+   Business agent: live data tools, drafts, Roman Urdu / English, RBAC aware.
+   ========================================================================== */
+(function () {
+'use strict';
+
+const AI = { history: [], open: false, busy: false };
+
+function renderDrawer() {
+  const d = $('#aiDrawer');
+  d.innerHTML = '';
+  d.appendChild(h('div', { class: 'ai-head' },
+    h('div', { class: 'ai-ico' }, '✨'),
+    h('div', { style: { flex: '1' } },
+      h('div', { style: { fontWeight: '700', fontSize: 'var(--fs-md)' } }, 'Haseeb Assistant'),
+      h('div', { style: { fontSize: 'var(--fs-xs)', color: 'var(--muted)' } },
+        (function () { const c = App.state.aiConfig || {};
+          return c.usable === false ? 'Setup zaroori — AI Agent tab kholein'
+            : (c.provider === 'MOCK' ? 'Mock agent · live data par tools' : 'Live · ' + (c.model || '')); })())), 
+    h('button', { class: 'btn sm ghost', title: 'Clear chat', 'aria-label': 'Clear chat', onclick: clearChat }, '🗑'),
+    h('button', { class: 'x btn sm ghost', onclick: App.closeAI }, '✕')));
+
+  const body = h('div', { class: 'ai-body', id: 'aiBody' });
+  body.appendChild(h('div', { class: 'msg bot' },
+    'Assalam-o-Alaikum! 👋 Main aapka business agent hoon.\n\nPooch saktay hain:\n• "Aaj ki sale kitni hui?"\n• "Low stock items batao"\n• "Ahmad ka udhaar kitna hai?"\n• "Is mahine ka profit"\n• "Reorder suggestion do"'));
+  d.appendChild(body);
+
+  const chips = h('div', { class: 'ai-chips', id: 'aiChips' });
+  (App.state.suggestions || ['Aaj ki sale kitni hui?', 'Low stock items batao', 'Top 5 selling parts'])
+    .forEach(s => chips.appendChild(h('button', { class: 'chip', onclick: () => send(s) }, s)));
+  d.appendChild(chips);
+
+  const input = h('input', { type: 'text', id: 'aiInput', placeholder: 'Sawal likhein… (Enter = send)', autocomplete: 'off' });
+  input.addEventListener('keydown', e => { if (e.key === 'Enter' && input.value.trim()) { send(input.value.trim()); input.value = ''; } });
+  d.appendChild(h('div', { class: 'ai-input' },
+    input,
+    h('button', { class: 'btn', id: 'aiSend', onclick: () => { if (input.value.trim()) { send(input.value.trim()); input.value = ''; } } }, '➤')));
+}
+
+function pushMsg(role, text, tools, info) {
+  const body = $('#aiBody'); if (!body) return;
+  if (role === 'typing') {
+    const el = h('div', { class: 'msg bot', id: 'typingMsg' },
+      h('div', { class: 'typing' }, h('i'), h('i'), h('i')));
+    body.appendChild(el); body.scrollTop = body.scrollHeight; return el;
+  }
+  const el = h('div', { class: 'msg ' + (role === 'user' ? 'user' : 'bot') }, text);
+  if (tools && tools.length) {
+    el.appendChild(h('span', { class: 'tool' }, '🔧 ' + tools.map(t => t.tool).join(', ')));
+  }
+  if(info) el.appendChild(h('span',{class:'tool'}, 'Answered by '+info.provider+' · '+info.model+(info.failover ? ' · fallback used' : '')+(info.provider==='MOCK' ? ' · rule-based, not live AI' : '')));
+  body.appendChild(el);
+  body.scrollTop = body.scrollHeight;
+  return el;
+}
+
+async function send(text) {
+  const body = $('#aiBody'); if (!body || AI.busy) return;
+  pushMsg('user', text);
+  AI.history.push({ role: 'user', content: text });
+  AI.busy = true;
+  const typing = pushMsg('typing');
+  const btn = $('#aiSend'); if (btn) btn.disabled = true;
+  try {
+    const res = await API.call('ai.chat', { message: text, history: AI.history.slice(0, -1).slice(-10) },
+      { offlineFallback: () => ({ reply: '📴 Offline hoon — internet aane par dobara poochiye. (AI chat ke liye connection zaroori hai)', toolResults: [] }) });
+    typing.remove();
+    pushMsg('bot', res.reply, res.toolResults, res.config && Object.assign({},res.config,{failover:res.routing && res.routing.failover}));
+    AI.history.push({ role: 'assistant', content: res.reply });
+    if (res.needsKey) {
+      const c = $('#aiChips'); if (c) { c.innerHTML = ''; c.appendChild(h('button', { class: 'chip', onclick: () => App.go('ai', { tab: 'setup' }) }, 'AI Agent ▸ Setup mein key set karein')); }
+    }
+  } catch (e) {
+    typing.remove();
+    pushMsg('bot', '⚠ ' + e.message);
+  } finally {
+    AI.busy = false; if (btn) btn.disabled = false;
+    const i = $('#aiInput'); if (i) i.focus();
+  }
+}
+
+function clearChat() { AI.history = []; Store.del('aihist'); renderDrawer(); }
+
+App.openAI = function () {
+  const d = $('#aiDrawer');
+  d.hidden = false; $('#scrim').hidden = false;
+  AI.open = true;
+  if (!d.children.length) renderDrawer();
+  setTimeout(() => { const i = $('#aiInput'); if (i) i.focus(); }, 120);
+};
+App.closeAI = function () {
+  $('#aiDrawer').hidden = true; $('#scrim').hidden = true; AI.open = false;
+};
+App.toggleAI = function () { AI.open ? App.closeAI() : App.openAI(); };
+window.sendAIMessage = send;
+})();
+</script>

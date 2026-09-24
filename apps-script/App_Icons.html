@@ -1,0 +1,343 @@
+<script>
+/* ==========================================================================
+   HASEEB AUTOS — ICON LIBRARY (v2.6 QA)
+   --------------------------------------------------------------------------
+   MASLA (user ki shikayat):
+     "icon realistic nahi hain, icons say idea nahi hota ke ye section
+      field kis cheez k baray main hai"
+
+   ASAL WAJAH (nap kar saboot ke sath):
+     Emoji dohraaye ja rahe the — aik hi icon kai screens ke liye:
+        📊  → Dashboard  AUR  Reports        (dono aik jaisay!)
+        📁 📝 📦 → Sales / Orders / Items     (sab "kaghaz" jaisay)
+        🏬 🏗 🏪 → Inventory / Warehouse / Shop (sab "imarat" jaisay)
+     Is wajah se icon dekh kar pata hi nahi chalta ke kaun si screen hai.
+
+   HAL:
+     Har screen ka apna, alag shakl wala SVG icon (stroke style —
+     professional ERP/POS look). SVG honay ke fawaid:
+       • har size par bilkul saaf (emoji ki tarah dhundla nahi)
+       • har device par aik jaisa (Windows/Mac/Android sab par)
+       • rang theme ke sath badalta hai (currentColor)
+
+     Jis screen ka icon yahan nahi, woh PURANA emoji dikhega —
+     koi feature kabhi delete nahi hota (v2.6 usul).
+
+   Istemal:  HA_ICONS.get('dashboard', 26)   → SVG string
+             HA_ICONS.forScreen('pos', '🧾', 26) → SVG ya emoji fallback
+   ========================================================================== */
+(function () {
+  'use strict';
+
+  /* Lucide-style stroke icons — 24x24 viewBox, stroke: currentColor */
+  var P = {
+    /* Dashboard — gauge (Reports se bilkul alag) */
+    gauge: '<path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/>',
+    /* POS — receipt (bill) */
+    receipt: '<path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 17.5V7"/>',
+    /* Sales history — clock with arrow */
+    history: '<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/>',
+    /* Order book — clipboard with list */
+    clipboard: '<path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M9 12h7"/><path d="M9 16h5"/>',
+    /* Take order (mobile) — smartphone */
+    phone: '<rect x="6" y="2" width="12" height="20" rx="2"/><path d="M12 18h.01"/>',
+    /* Items — package (box) */
+    box: '<path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/>',
+    /* Inventory — stacked layers */
+    layers: '<path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m6.08 9.5-3.5 1.6a1 1 0 0 0 0 1.81l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9a1 1 0 0 0 0-1.83l-3.5-1.59"/><path d="m6.08 14.5-3.5 1.6a1 1 0 0 0 0 1.81l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9a1 1 0 0 0 0-1.83l-3.5-1.59"/>',
+    /* Warehouse — godown */
+    warehouse: '<path d="M22 8.35V20a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8.35A2 2 0 0 1 3.26 6.5l8-3.2a2 2 0 0 1 1.48 0l8 3.2A2 2 0 0 1 22 8.35Z"/><path d="M6 18h12"/><path d="M6 14h12"/><path d="m6 10 6-2.5 6 2.5"/>',
+    /* Purchase — truck */
+    truck: '<path d="M10 17h4V5H2v12h3"/><path d="M20 17h2v-3.34a1 1 0 0 0-.84-.99L19 12"/><path d="M3 12h14"/><circle cx="7.5" cy="17.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/>',
+    /* Auto reorder — do tukdon mein ghoomti teer (refresh) */
+    refresh: '<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/>',
+    /* Parties — do log */
+    users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+    /* Salesman stock — briefcase (salesman ka bag) */
+    briefcase: '<path d="M16 20V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/><rect x="2" y="6" width="20" height="14" rx="2"/>',
+    /* Payments & cash — wallet */
+    wallet: '<path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/>',
+    /* Accounting — khuli kitab */
+    book: '<path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/>',
+    /* Dashboards / insights — upar jata chart */
+    trend: '<path d="M16 7h6v6"/><path d="m22 7-8.5 8.5-5-5L2 17"/>',
+    /* Reports — file with bar chart */
+    report: '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M8 18v-2"/><path d="M12 18v-4"/><path d="M16 18v-6"/>',
+    /* Shop open/close — khula darwaza */
+    door: '<path d="M13 4h3a2 2 0 0 1 2 2v14"/><path d="M2 20h3"/><path d="M13 20h9"/><path d="M11 4v16a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h5a2 2 0 0 1 2 2Z"/>',
+    /* Users & security — shield */
+    shield: '<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/>',
+    /* Settings — gear */
+    gear: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
+    /* Extra — aam kaam ke icons */
+    cart: '<circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/>',
+    search: '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
+    plus: '<path d="M5 12h14"/><path d="M12 5v14"/>',
+    printer: '<path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 9V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6"/><rect x="6" y="14" width="12" height="8" rx="1"/>',
+    money: '<rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6 12h.01"/><path d="M18 12h.01"/>',
+    alert: '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
+
+    /* ---- KPI cards (42 cards, 23 alag emoji the) ----
+       Har KPI ka apna icon: paise, munafa, udhaar, stock sab alag nazar aayen. */
+    coins: '<circle cx="8" cy="8" r="6"/><path d="M18.09 10.37A6 6 0 1 1 10.34 18"/><path d="M7 6h1v4"/><path d="m16.71 13.88.7.71-2.82 2.82"/>',
+    trophy: '<path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0Z"/>',
+    calendar: '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/>',
+    arrowUp: '<path d="M12 19V5"/><path d="m5 12 7-7 7 7"/>',
+    arrowDown: '<path d="M12 5v14"/><path d="m19 12-7 7-7-7"/>',
+    check: '<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>',
+    calc: '<rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 6h8"/><path d="M8 10h.01"/><path d="M12 10h.01"/><path d="M16 10h.01"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/><path d="M8 18h8"/>',
+    hash: '<path d="M4 9h16"/><path d="M4 15h16"/><path d="M10 3 8 21"/><path d="M16 3l-2 18"/>',
+    unlock: '<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/>',
+    user: '<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
+    tag: '<path d="M12.59 2.59A2 2 0 0 0 11.17 2H4a2 2 0 0 0-2 2v7.17a2 2 0 0 0 .59 1.42l8.7 8.7a2.43 2.43 0 0 0 3.42 0l6.58-6.58a2.43 2.43 0 0 0 0-3.42z"/><circle cx="7.5" cy="7.5" r="1" fill="currentColor" stroke="none"/>',
+    factory: '<path d="M2 20a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8l-7 5V8l-7 5V4a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"/><path d="M17 18h1"/><path d="M12 18h1"/><path d="M7 18h1"/>',
+    store: '<path d="M3 9 4.5 4h15L21 9"/><path d="M3 9v11a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1V9"/><path d="M3 9h18"/><path d="M9 21v-6h6v6"/>',
+    bank: '<path d="M3 21h18"/><path d="M5 21V10"/><path d="M9 21V10"/><path d="M15 21V10"/><path d="M19 21V10"/><path d="M12 2 20 7H4Z"/>',
+    clock: '<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
+    chart: '<path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M7 16v-3"/><path d="M12 16V9"/><path d="M17 16v-6"/>',
+
+    /* ---- aam amal ke icons (har screen ke buttons/tabs/sections) ---- */
+    download: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/>',
+    upload: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m17 8-5-5-5 5"/><path d="M12 3v12"/>',
+    scale: '<path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="M7 21h10"/><path d="M12 3v18"/><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/>',
+    edit: '<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4Z"/>',
+    pencil: '<path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/>',
+    puzzle: '<path d="M15.39 4.39a1 1 0 0 0 1.68-.47l.62-1.72a1 1 0 0 1 1.88 0l.62 1.72a1 1 0 0 0 1.68.47 1 1 0 0 1 1.09 1.09l-.47 1.68a1 1 0 0 0 .47 1.68l1.72.62a1 1 0 0 1 0 1.88l-1.72.62a1 1 0 0 0-.47 1.68.998.998 0 0 1-1.09 1.09l-1.68-.47a1 1 0 0 0-1.68.47 1 1 0 0 1-1.88 0l-.62-1.72a1 1 0 0 0-1.68-.47.998.998 0 0 1-1.09-1.09l.47-1.68a1 1 0 0 0-.47-1.68l-1.72-.62a1 1 0 0 1 0-1.88l1.72-.62a1 1 0 0 0 .47-1.68.998.998 0 0 1 1.09-1.09Z"/><path d="m14.5 9.5-9 9"/><path d="M8.5 4.5 6 2"/><path d="M3 7l-2.5 2.5"/><path d="M11 2 9.5 3.5"/>',
+    trash: '<path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M10 11v6"/><path d="M14 11v6"/>',
+    archive: '<rect x="2" y="3" width="20" height="5" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/>',
+    files: '<path d="M16 17l-4 4-4-4"/><path d="M12 12v9"/><path d="M20.88 18.09A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.29"/>',
+    ban: '<circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/>',
+    lock: '<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
+    bell: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
+    card: '<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/>',
+    save: '<path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/>',
+    eye: '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>',
+    wrench: '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76Z"/>',
+    zap: '<path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14Z"/>',
+    home: '<path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/>',
+    gift: '<rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13"/><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 8a4.8 8 0 0 1 4.5-5 2.5 2.5 0 0 1 0 5"/>',
+    target: '<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>',
+    trendDown: '<path d="M22 17h-6v-6"/><path d="m22 17-8.5-8.5-5 5L2 7"/>',
+    file: '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/>',
+    pause: '<rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/>',
+    info: '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>',
+    undo: '<path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5 5.5 5.5 0 0 1-5.5 5.5H11"/>',
+    /* AI / robot (🤖) */
+    bot: '<rect x="4" y="8" width="16" height="12" rx="2"/><path d="M12 8V4"/><circle cx="12" cy="3" r="1" fill="currentColor" stroke="none"/><path d="M9 13h.01"/><path d="M15 13h.01"/><path d="M9.5 16.5h5"/><path d="M2 12v3"/><path d="M22 12v3"/>',
+    /* placeholder (▸) — jis tab ka koi icon nahi */
+    chevron: '<path d="m9 6 6 6-6 6"/>',
+    star: '<path d="M12 2.5l2.9 5.9 6.5.9-4.7 4.6 1.1 6.5-5.8-3-5.8 3 1.1-6.5L2.6 9.3l6.5-.9Z"/>',
+    chat: '<path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/>',
+    camera: '<path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3Z"/><circle cx="12" cy="13" r="3.5"/>',
+    shuffle: '<path d="m18 14 4 4-4 4"/><path d="m18 2 4 4-4 4"/><path d="M2 18h1.973a4 4 0 0 0 3.3-1.7l5.454-8.6a4 4 0 0 1 3.3-1.7H22"/><path d="M2 6h1.972a4 4 0 0 1 3.6 2.2"/><path d="M22 18h-6.041a4 4 0 0 1-3.3-1.8l-.359-.45"/>',
+    bookOpen: '<path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/>',
+    books: '<path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a1 1 0 0 1 0-5H20"/><path d="M9 7h6"/>',
+    recycle: '<path d="M3 12a9 9 0 0 1 14.3-7.2L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-14.3 7.2L3 16"/><path d="M8 16H3v5"/><path d="m14 9-3 3 3 3"/><path d="m10 15-3-3 3-3"/>',
+    bookmark: '<path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2Z"/>',
+    map: '<path d="m3 6 6-3 6 3 6-3v15l-6 3-6-3-6 3Z"/><path d="M9 3v15"/><path d="M15 6v15"/>'
+  };
+
+  /* screen id → icon name. Yahi asal "farq" hai:
+     pehle Dashboard aur Reports dono 📊 the, ab gauge vs report-file. */
+  var BY_SCREEN = {
+    dashboard: 'gauge',
+    pos: 'receipt',
+    sales: 'history',
+    orders: 'clipboard',
+    takeorder: 'phone',
+    items: 'box',
+    inventory: 'layers',
+    warehouse: 'warehouse',
+    apps: 'puzzle',
+    purchase: 'truck',
+    reorder: 'refresh',
+    parties: 'users',
+    salesman: 'briefcase',
+    money: 'wallet',
+    accounting: 'book',
+    insights: 'trend',
+    reports: 'report',
+    shop: 'door',
+    users: 'shield',
+    settings: 'gear',
+    ai: 'bot'
+  };
+
+  /* purane emoji → naya icon (jahan screen id nahi milti) */
+  var BY_EMOJI = {
+    '\uD83D\uDCCA': 'gauge', '\uD83E\uDDFE': 'receipt', '\uD83D\uDCC1': 'history',
+    '\uD83D\uDCDD': 'clipboard', '\uD83D\uDCF1': 'phone', '\uD83D\uDCE6': 'box',
+    '\uD83C\uDFEC': 'layers', '\uD83C\uDFD7': 'warehouse', '\uD83D\uDE9A': 'truck',
+    '\uD83D\uDD01': 'refresh', '\uD83D\uDC65': 'users', '\uD83E\uDDD1': 'briefcase',
+    '\uD83D\uDCB0': 'wallet', '\uD83D\uDCD2': 'book', '\uD83D\uDCC8': 'trend',
+    '\uD83C\uDFEA': 'door', '\uD83D\uDD10': 'shield', '⚙': 'gear',
+    '\uD83D\uDED2': 'cart', '\uD83D\uDDA8': 'printer', '\uD83D\uDCB5': 'money',
+    /* KPI cards ke emoji */
+    '\uD83D\uDCB0': 'coins', '\uD83C\uDFC6': 'trophy', '\uD83D\uDCC5': 'calendar',
+    '\u2B07': 'arrowDown', '\u2B06': 'arrowUp', '\u2705': 'check',
+    '\uD83E\uDDEE': 'calc', '\uD83D\uDD22': 'hash', '\uD83D\uDD13': 'unlock',
+    '\uD83D\uDC64': 'user', '\uD83C\uDFF7': 'tag', '\uD83C\uDFED': 'factory',
+    '\uD83C\uDFEC': 'store', '\uD83C\uDFE6': 'bank', '\u23F3': 'clock',
+    '\u26A0': 'alert',
+    /* v2.10 — AI Agent screen */
+    '\u2728': 'bot', '\uD83D\uDCAC': 'chat', '\uD83D\uDD27': 'wrench',
+    '\uD83D\uDD11': 'lock', '\uD83D\uDDD1': 'trash', '\uD83D\uDCE1': 'upload',
+    '\u26A1': 'zap',
+    /* U+2795 = ➕ (heavy plus), U+1F4BC = 💼 (briefcase) */
+    '\u2795': 'plus', '\uD83D\uDCBC': 'briefcase',
+    /* aam amal */
+    '\u21BB': 'refresh', '\u21A9': 'undo', '\u23F1': 'clock', '\u23F8': 'pause',
+    '\u2696': 'scale', '\u26A1': 'zap', '\u2139': 'info', '\u0069': 'info',
+    '\u270E': 'pencil', '\u2713': 'check', '\u2715': 'ban', '\u2796': 'chart',
+    /* v2.14.1 — POS multi-select toolbar (☑ = U+2611 BALLOT BOX WITH CHECK) */
+    '\u2611': 'check', '\u2610': 'clipboard',
+    /* v2.24.0 — keyboard glyph (POS Help / shortcuts) bhi SVG ho jaye */
+    '\u2328': 'tag',
+    '\uD83C\uDF81': 'gift', '\uD83C\uDFAF': 'target', '\uD83C\uDFDB': 'bank',
+    '\uD83C\uDFE0': 'home', '\uD83D\uDCB3': 'card', '\uD83D\uDCB8': 'coins',
+    '\uD83D\uDCBE': 'save', '\uD83D\uDCC4': 'file', '\uD83D\uDCC9': 'trendDown',
+    '\uD83D\uDCCB': 'clipboard', '\uD83D\uDCCD': 'target', '\uD83D\uDD0D': 'search',
+    '\uD83D\uDD10': 'lock', '\uD83D\uDD14': 'bell', '\uD83D\uDD17': 'wrench',
+    '\uD83D\uDCE4': 'upload', '\uD83D\uDCE5': 'download', '\uD83D\uDCF2': 'phone',
+    '\uD83D\uDD04': 'refresh', '\uD83D\uDD01': 'refresh', '\uD83D\uDD53': 'clock',
+    '\uD83D\uDDA8': 'printer', '\uD83D\uDDBC': 'file', '\uD83D\uDDC2': 'archive',
+    '\uD83D\uDDC3': 'files', '\uD83D\uDDC4': 'archive', '\uD83D\uDDD1': 'trash',
+    '\uD83D\uDEAB': 'ban', '\uD83D\uDEE0': 'wrench', '\uD83E\uDD1D': 'users',
+    '\uD83E\uDDE9': 'puzzle', '\uD83E\uDDF9': 'trash', '\uD83D\uDC41': 'eye',
+    '\uD83D\uDCDD': 'edit', '\u2191': 'arrowUp', '\u2193': 'arrowDown',
+    '\u2194': 'refresh', '\u26D4': 'ban', '\u2728': 'zap',
+    '\uD83E\uDD16': 'bot', '\u25B8': 'chevron', '\u2B50': 'star', '\uD83C\uDF1F': 'star',
+    '\uD83D\uDCAC': 'chat', '\uD83D\uDCF7': 'camera', '\uD83D\uDD00': 'shuffle',
+    '\uD83D\uDCD6': 'bookOpen', '\uD83D\uDCDA': 'books',
+    '\uD83D\uDD58': 'clock', '\u267B': 'recycle', '\uD83D\uDD12': 'lock',
+    '\uD83D\uDCD1': 'bookmark', '\uD83D\uDDFA': 'map'
+  };
+
+  function svg(name, size, color) {
+    var d = P[name];
+    if (!d) return '';
+    var s = size || 24;
+    return '<svg class="ha-ico" viewBox="0 0 24 24" width="' + s + '" height="' + s +
+      '" fill="none" stroke="' + (color || 'currentColor') +
+      '" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" ' +
+      'aria-hidden="true" focusable="false">' + d + '</svg>';
+  }
+
+  /* screen id ya emoji se icon — na mile to PURANA emoji wapas (kuch delete nahi) */
+  function forScreen(id, emoji, size) {
+    var n = BY_SCREEN[id] || BY_EMOJI[emoji];
+    return n ? svg(n, size || 24) : (emoji || '▸');
+  }
+
+  /* ---- global helpers ----
+     Ye DONO yahan is liye hain ke App_Icons.html sab se PEHLE load hoti hai.
+     Agar inhen App_Core/App_UI2 me rakha to load-order ke sabab
+     "tabIcon is not defined" aata hai aur poora app mar jata hai. */
+  function kpiIcon(emoji, size) {
+    try {
+      var n = BY_EMOJI[emoji];
+      if (n) return svg(n, size || 28);
+    } catch (e) { }
+    return String(emoji == null ? '' : emoji);
+  }
+  function tabIcon(emoji, size) {
+    try {
+      var n = BY_EMOJI[emoji];
+      if (n) return svg(n, size || 20);
+    } catch (e) { }
+    return String(emoji == null ? '' : emoji);
+  }
+  /* ======================================================================
+     INLINE ICON UPGRADE — buttons / headings (v2.6 QA)
+     ----------------------------------------------------------------------
+     Buttons aise bante hain:  h('button', ..., '⏸ Hold')
+     yani emoji TEXT ke andar hai. Har jagah ja kar badalna mumkin nahi
+     (1000+ jagah). Is liye render ke BAAD DOM par aik pass chalate hain:
+     shuru ka emoji nikal kar uski jagah SVG rakh dete hain.
+
+     Surakshit is liye hai ke:
+       • sirf pehla text-node badalta hai (baqi HTML ko haath nahi lagaya)
+       • jis emoji ka icon library me na ho, woh WAISA HI rehta hai
+       • element khali ho jaye to kuch nahi bigarta
+     ====================================================================== */
+  var EMOJI_RE = null;
+  try { EMOJI_RE = new RegExp('^(\\p{Extended_Pictographic}(?:\\u200D\\p{Extended_Pictographic}|\\uFE0F)*)\\s*', 'u'); } catch (e) { EMOJI_RE = null; }
+
+  function leadingEmoji(txt) {
+    if (!EMOJI_RE || !txt) return null;
+    var m = txt.match(EMOJI_RE);
+    return m ? m[1] : null;
+  }
+
+  /** aik element ke shuru ke emoji ko SVG se badlo */
+  function upgradeOne(el, size) {
+    if (!el || el.dataset.icoDone === '1') return false;
+    var first = el.firstChild;
+    if (!first || first.nodeType !== 3) return false;      /* sirf text node */
+    var txt = first.nodeValue || '';
+    var em = leadingEmoji(txt);
+    if (!em) return false;
+    var name = BY_EMOJI[em];
+    if (!name) return false;                                /* mapping nahi → chhor do */
+    var span = document.createElement('span');
+    span.className = 'bi';
+    span.setAttribute('aria-hidden', 'true');
+    span.innerHTML = svg(name, size || 18);
+    el.insertBefore(span, first);
+    first.nodeValue = txt.slice(em.length).replace(/^\s+/, '');
+    el.dataset.icoDone = '1';
+    return true;
+  }
+
+  /** poori branch par chalao */
+  var UPGRADE_SEL = '.btn, .sec-head h4, .card-head h3, .card-head h4, .page-head h2, .empty .big';
+  function upgrade(root) {
+    if (!root || !root.querySelectorAll) return 0;
+    var n = 0, list;
+    try { list = root.querySelectorAll(UPGRADE_SEL); } catch (e) { return 0; }
+    for (var i = 0; i < list.length; i++) {
+      var el = list[i];
+      var size = el.classList && el.classList.contains('btn') ? 18 : 20;
+      try { if (upgradeOne(el, size)) n++; } catch (e) { /* aik element fail ho to baqi chalte rahein */ }
+    }
+    return n;
+  }
+
+  /* har screen render ke baad khud chal jaye (async render bhi cover ho) */
+  var upTimer = null;
+  function upgradeSoon(root) {
+    if (upTimer) clearTimeout(upTimer);
+    upTimer = setTimeout(function () {
+      upTimer = null;
+      try { upgrade(root || document.getElementById('view') || document.body); } catch (e) { }
+    }, 60);
+  }
+  function watch(root) {
+    try {
+      if (!window.MutationObserver) return;
+      var t = null;
+      new MutationObserver(function () {
+        if (t) clearTimeout(t);
+        t = setTimeout(function () {
+          try { upgrade(root); } catch (e) { }
+        }, 120);
+      }).observe(root, { childList: true, subtree: true });
+    } catch (e) { }
+  }
+
+  window.upgradeIcons = upgrade;
+  window.upgradeIconsSoon = upgradeSoon;
+
+  window.kpiIcon = kpiIcon;
+  window.tabIcon = tabIcon;
+
+  window.HA_ICONS = {
+    paths: P, byScreen: BY_SCREEN, byEmoji: BY_EMOJI,
+    svg: svg, get: svg, forScreen: forScreen, kpiIcon: kpiIcon, tabIcon: tabIcon,
+    upgrade: upgrade, upgradeSoon: upgradeSoon, watch: watch,
+    has: function (id) { return !!BY_SCREEN[id]; },
+    count: Object.keys(P).length,
+    screens: Object.keys(BY_SCREEN).length
+  };
+})();
+</script>

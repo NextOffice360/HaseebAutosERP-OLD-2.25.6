@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <title><?= title ?></title>
+  <?!= include('Pwa_Shell'); ?>
+  <script>
+    var PWA_ICON_192 = '<?!= PWA_ICONS.i192 ?>';
+    var PWA_ICON_512 = '<?!= PWA_ICONS.i512 ?>';
+  </script>
+  <script>
+    HA_applyExtraMeta(<?!= extraMetaJson ?>);
+  </script>
+  <style>
+    .po-table{width:100%;border-collapse:collapse;font-size:12px}
+    .po-table th{background:var(--card3);padding:8px 6px;text-align:left;border:1px solid var(--line);font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted)}
+    .po-table td{padding:8px 6px;border:1px solid var(--line)}
+    .po-table tr.on{background:rgba(245,158,11,.08)}
+    .count-row{display:flex;align-items:center;gap:10px;padding:10px;border:1px solid var(--line);border-radius:12px;background:var(--card2);margin-bottom:8px}
+    .count-row.matched{border-color:rgba(34,197,94,.35);background:rgba(34,197,94,.06)}
+    .count-row.short{border-color:rgba(239,68,68,.35);background:rgba(239,68,68,.06)}
+    .count-row.over{border-color:rgba(245,158,11,.35);background:rgba(245,158,11,.06)}
+    .count-row .tx{flex:1;min-width:0}
+    .count-row .tx b{font-size:13px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .count-row .tx small{font-size:11px;color:var(--muted);display:block}
+    .count-input{width:84px;min-height:40px;padding:6px 8px;border-radius:10px;border:1px solid var(--line);background:var(--card);text-align:center;font-weight:800;font-size:15px}
+    .progress-bar{height:8px;border-radius:999px;background:var(--card3);overflow:hidden;margin:8px 0}
+    .progress-fill{height:100%;background:var(--ok-grad);transition:width .3s}
+    .audit-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:8px 0}
+    .audit-box{padding:10px;border-radius:12px;background:var(--card2);border:1px solid var(--line);text-align:center}
+    .audit-box b{font-size:16px;display:block}
+    .audit-box small{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.3px}
+  </style>
+</head>
+<body>
+
+<div class="pwa-top">
+  <div class="ttl" id="pwaTitle">🏬 Warehouse</div>
+  <div class="net" id="pwaNet">● Online</div>
+</div>
+
+<div class="pwa-wrap"><div id="pwaBody"></div></div>
+<div class="pwa-bar" id="pwaBar"></div>
+
+<script>
+/* ==========================================================================
+   §10 — WAREHOUSE PWA — v2.22 ENTERPRISE FLOW
+   Receive = PO select → auto-load expected → count actual → match & confirm GRN
+   Count   = Sheet select → load audit lines → fill counted → variance → save in parts
+   Put-away & Transfer = existing polished
+   ========================================================================== */
+(function () {
+  var TABS = [
+    { id: 'receive', label: 'Receive', icon: '📥' },
+    { id: 'putaway', label: 'Put-away', icon: '📦' },
+    { id: 'count', label: 'Count', icon: '🔢' },
+    { id: 'transfer', label: 'Transfer', icon: '🔄' }
+  ];
+  var S = { q: '', cart: [], binId: '', sheetId: '', fromBin: '', toBin: '', supplierId: '', lotNo: '', expiry: '', selectedPoId: '', poCache: {}, countCache: {}, countFilter: '' };
+
+  function items() { return (PWA.data && PWA.data.items) || []; }
+  function find(q) {
+    q = String(q || '').trim().toLowerCase();
+    if (!q) return [];
+    return items().filter(function (i) {
+      return i.name.toLowerCase().indexOf(q) > -1 || i.code.toLowerCase().indexOf(q) > -1 ||
+        String(i.barcode || '').toLowerCase() === q || String(i.barcode||'').toLowerCase().indexOf(q)>-1;
+    }).slice(0, 40);
+  }
+  function redraw() { render(PWA.state.tab); }
+  function money(v){ return PWA.money(v); }
+
+  /* local storage for count partial audit (resume next day) */
+  function countStoreKey(sheetId){ return 'ha_wh_count_'+sheetId; }
+  function getLocalCounts(sheetId){
+    try{ var v = localStorage.getItem(countStoreKey(sheetId)); return v? JSON.parse(v): {}; }catch(e){ return {}; }
+  }
+  function setLocalCount(sheetId, itemId, qty){
+    try{
+      var m = getLocalCounts(sheetId);
+      if(qty===''||qty===null||qty===undefined) delete m[itemId]; else m[itemId]=Number(qty);
+      localStorage.setItem(countStoreKey(sheetId), JSON.stringify(m));
+    }catch(e){}
+  }
+  function clearLocalCounts(sheetId){ try{ localStorage.removeItem(countStoreKey(sheetId)); }catch(e){} }
+
+  /* ----------------------------- shared pieces ---------------------------- */
+  function scannerBox(onPick) {
+    var input = PWA.el('input', {
+      type: 'search', placeholder: '🔎 Scan karein ya naam / code likhein…',
+      'aria-label':'Item search',
+      oninput: function () { S.q = input.value; renderHits(onPick); }
+    });
+    /* v2.24.3 — handheld scanner support (camera path jaisa hi) */
+    if(PWA.attachScan) PWA.attachScan(input, {
+      label: 'Item',
+      find: function(code){ return find(code); },
+      onHit: function(it, code){ onPick(it); input.value=''; S.q=''; try{ hits.innerHTML=''; }catch(e){} input.focus(); PWA.toast('📷 ' + it.code + ' — ' + it.name, 'ok'); },
+      onMulti: function(list, code){ PWA.toast(list.length + ' matches — list se chunein', 'warn'); }
+    });
+    var scanBtn = PWA.el('button', { class:'btn sm', type:'button', onclick:function(){
+      if(PWA.scanWithCamera) PWA.scanWithCamera(function(code){
+        var clean=String(code||'').trim();
+        if(!clean) return;
+        input.value=clean; S.q=clean; renderHits(onPick);
+        var lst=find(clean);
+        if(lst.length===1){ onPick(lst[0]); input.value=''; S.q=''; hits.innerHTML=''; input.focus(); }
+        else if(lst.length>1){ PWA.toast(lst.length+' matches — list se chunein','warn'); input.focus(); input.select(); }
+        else { PWA.toast('Code not found: '+clean,'warn'); input.value=''; S.q=''; hits.innerHTML=''; input.focus(); }
+      });
+      else {
+        var c=prompt('Barcode / code scan karein',''); if(c){ input.value=c; S.q=c; renderHits(onPick); }
+      }
+    }}, '📷 Scan');
+    var bulkBtn = PWA.el('button', { class:'btn sm ghost', type:'button', onclick:function(){
+      if(PWA.openBulkPicker) PWA.openBulkPicker({ items: items(), title:'Bulk add — Warehouse', onAdd:function(picks){
+        if(PWA.state.tab==='putaway' && !S.binId) return PWA.toast('Pehle bin chunein','warn');
+        if(PWA.state.tab==='transfer' && (!S.fromBin||!S.toBin)) return PWA.toast('Pehle dono bins chunein','warn');
+        picks.forEach(function(p){
+          var ex=S.cart.filter(function(l){return l.itemId===p.item.id;})[0];
+          if(ex) ex.qty += p.qty; else S.cart.push({ itemId:p.item.id, code:p.item.code, name:p.item.name, qty:p.qty, cost:p.item.cost, barcode:p.item.barcode });
+        }); redraw();
+        PWA.toast('✅ '+picks.length+' items added','ok'); PWA.haptic(true);
+      }});
+    }}, '☑ Bulk');
+    var hits = PWA.el('div', { id: 'pwaHits' });
+    function renderHits(cb) {
+      hits.innerHTML = '';
+      var list = find(S.q);
+      if (!S.q) return;
+      if (!list.length) { hits.appendChild(PWA.el('div', { class: 'empty' }, 'Koi item nahi mila — code ya naam check karein')); return; }
+      list.forEach(function (i) {
+        hits.appendChild(PWA.el('div', {
+          class: 'task', onclick: function () { cb(i); input.value = ''; S.q = ''; hits.innerHTML = ''; }
+        }, [
+          PWA.el('div', { class: 'ico', text: '📦' }),
+          PWA.el('div', { class: 'tx' }, [
+            PWA.el('b', { text: i.name }),
+            PWA.el('small', { text: i.code + ' · stock ' + i.stock + ' · ' + money(i.cost) + (i.barcode? ' · '+i.barcode:'') })
+          ]),
+          PWA.el('span', { class:'badge', text: i.stock<=5 ? 'LOW' : '' })
+        ]));
+      });
+    }
+    var row = PWA.el('div', { class:'f' }, [
+      PWA.el('label',{text:'Item — barcode scan ya search'} ),
+      PWA.el('div',{style:'display:flex;gap:8px'}, [ PWA.el('div',{style:'flex:1'}, input), scanBtn, bulkBtn ])
+    ]);
+    return PWA.el('div', { class: 'card' }, [ row, hits, PWA.el('div',{class:'pull-hint'}, 'Tip: Enter dabayein to pehla item auto-add') ]);
+  }
+
+  function cartView(editableCost) {
+    var host = PWA.el('div', { class: 'card' });
+    host.appendChild(PWA.el('h3', { text: 'GRN Lines (' + S.cart.length + ')' }));
+    if (!S.cart.length) { host.appendChild(PWA.el('div', { class: 'empty' }, [PWA.el('span',{class:'big',text:'📭'}), PWA.el('div',{text:'Abhi kuch nahi — PO load karein ya scan karein'}) ])); return host; }
+    var totalQty=0, totalVal=0;
+    S.cart.forEach(function (l, idx) {
+      totalQty+=Number(l.qty||0); totalVal+=Number(l.qty||0)*Number(l.cost||0);
+      var poQty = l.poQty!==undefined? ' · PO '+l.poQty : '';
+      var pending = l.pendingQty!==undefined? ' · pending '+l.pendingQty : '';
+      host.appendChild(PWA.el('div', { class: 'line' }, [
+        PWA.el('div', { class: 'nm' }, [
+          PWA.el('b', { text: l.name }),
+          PWA.el('small', { text: l.code + (editableCost ? ' · cost ' + money(l.cost) : '') + poQty + pending + (l.barcode?' · '+l.barcode:'') })
+        ]),
+        PWA.el('div', { class: 'qty' }, [
+          PWA.el('button', { text: '−', 'aria-label':'Kam karein', onclick: function () { l.qty = Math.max(0, l.qty - 1); if (!l.qty) S.cart.splice(idx, 1); redraw(); } }),
+          PWA.el('span', { text: String(l.qty) }),
+          PWA.el('button', { text: '＋', 'aria-label':'Zyada karein', onclick: function () { l.qty += 1; redraw(); } }),
+          PWA.el('button', { class:'btn sm ghost', text:'✕', onclick:function(){ S.cart.splice(idx,1); redraw(); } })
+        ])
+      ]));
+    });
+    host.appendChild(PWA.el('div',{class:'right muted', style:'font-size:12px;margin-top:8px'}, totalQty+' pcs · '+money(totalVal)+(S.selectedPoId? ' · PO match':'') ));
+    return host;
+  }
+
+  function kpiBar(){
+    var tasks = (PWA.data && PWA.data.tasks) || [];
+    var bins = (PWA.data && PWA.data.bins) || [];
+    var itemsCount = (PWA.data && PWA.data.items) ? PWA.data.items.length : 0;
+    var low = items().filter(function(i){ return Number(i.stock)<=5 && Number(i.stock)>0; }).length;
+    var out = items().filter(function(i){ return Number(i.stock)<=0; }).length;
+    var audit = PWA.data && PWA.data.audit;
+    var acc = audit ? (audit.accuracy||0)+'%' : '—';
+    var box = PWA.el('div',{class:'kpi-grid'}, [
+      PWA.el('div',{class:'kpi'}, [PWA.el('b',{text:String(tasks.filter(function(t){ return t.kind==='RECEIVE'}).length)}), PWA.el('small',{text:'Pending PO'})]),
+      PWA.el('div',{class:'kpi'}, [PWA.el('b',{text:String(tasks.filter(function(t){ return t.kind==='COUNT'}).length)}), PWA.el('small',{text:'Open counts'})]),
+      PWA.el('div',{class:'kpi'}, [PWA.el('b',{text:String(bins.length)}), PWA.el('small',{text:'Bins'})]),
+      PWA.el('div',{class:'kpi'}, [PWA.el('b',{text: audit? acc : (low+out>0 ? low+'/'+out : String(itemsCount))}), PWA.el('small',{text: audit? 'Accuracy' : (low+out>0 ? 'Low / Out' : 'SKUs')})])
+    ]);
+    return box;
+  }
+
+  /* ------------------------------- TABS ---------------------------------- */
+  function render(tab) {
+    var body = PWA.$('#pwaBody'); body.innerHTML = '';
+    PWA.state.tab = tab;
+    body.appendChild(kpiBar());
+    if (tab === 'receive') return viewReceive(body);
+    if (tab === 'putaway') return viewPutaway(body);
+    if (tab === 'count') return viewCount(body);
+    if (tab === 'transfer') return viewTransfer(body);
+  }
+
+  /* ---- 1) RECEIVE (GRN) — PO → auto-load → verify → confirm ---- */
+  function viewReceive(body) {
+    var tasks = (PWA.data && PWA.data.tasks || []).filter(function (t) { return t.kind === 'RECEIVE'; });
+    // PO selector card
+    if (tasks.length) {
+      var c = PWA.el('div', { class: 'card' });
+      c.appendChild(PWA.el('h3', { text: 'PO select karein — auto-load for GRN' }));
+      c.appendChild(PWA.el('div',{class:'muted', style:'font-size:11px;margin-bottom:8px'}, 'PO chunein → expected items GRN cart mein auto-load. Phir actual counted qty match karke GRN confirm karein.'));
+      tasks.slice(0, 8).forEach(function (t) {
+        var isSel = S.selectedPoId===t.refId;
+        var row = PWA.el('div', { class: 'task'+(isSel?' on':''), style: isSel? 'border-color:var(--accent);background:rgba(245,158,11,.10)':'' });
+        row.appendChild(PWA.el('div', { class: 'ico', text: '📥' }));
+        row.appendChild(PWA.el('div', { class: 'tx' }, [
+          PWA.el('b', { text: t.title }),
+          PWA.el('small', { text: t.meta })
+        ]));
+        row.appendChild(PWA.el('span', { class: 'badge ok', text: isSel? '✓ PO':'PO' }));
+        var btn = PWA.el('button', {class:'btn sm '+(isSel?'primary':'ghost'), text: isSel? 'Loaded':'Load'});
+        btn.onclick = function(e){ e.stopPropagation(); selectPo(t.refId); };
+        row.appendChild(btn);
+        row.onclick = function(){ selectPo(t.refId); };
+        c.appendChild(row);
+      });
+      if(tasks.length>8) c.appendChild(PWA.el('div',{class:'muted', style:'font-size:11px;text-align:center;margin-top:6px'}, '+ '+(tasks.length-8)+' more in ERP'));
+      if(S.selectedPoId){
+        c.appendChild(PWA.el('div',{style:'display:flex;gap:8px;margin-top:8px'},[
+          PWA.el('button',{class:'btn sm ghost', onclick:function(){ S.selectedPoId=''; S.cart=[]; redraw(); }}, '✕ Clear PO'),
+          PWA.el('button',{class:'btn sm', onclick:function(){ loadPoIntoCart(S.selectedPoId); }}, '↻ Reload PO items')
+        ]));
+      }
+      body.appendChild(c);
+    } else {
+      body.appendChild(PWA.el('div',{class:'card'},[PWA.el('div',{class:'empty'},[PWA.el('span',{class:'big',text:'📥'}),PWA.el('div',{text:'Koi pending PO nahi'}),PWA.el('small',{text:'ERP ▸ Purchase ▸ PO se naya PO banayein'})])]));
+    }
+
+    // PO detail preview if selected
+    if(S.selectedPoId){
+      var po = getPoDetail(S.selectedPoId);
+      if(po){
+        var pc = PWA.el('div',{class:'card'});
+        pc.appendChild(PWA.el('h3',{text:'PO — '+ (po.poNo||S.selectedPoId) + ' · '+ (po.supplier && po.supplier.name || po.supplierName||'')}));
+        pc.appendChild(PWA.el('div',{class:'muted', style:'font-size:12px'}, 'Date: '+(po.date||'')+' · Status: '+(po.status||'')+' · Supplier: '+((po.supplier&&po.supplier.name)||po.supplierName||'')+' · Items: '+((po.items||[]).length)));
+        var tbl = PWA.el('table',{class:'po-table'});
+        var thead = PWA.el('thead');
+        thead.appendChild(PWA.el('tr',{},[PWA.el('th',{text:'#'}),PWA.el('th',{text:'Item'}),PWA.el('th',{text:'Ordered'}),PWA.el('th',{text:'Pending'}),PWA.el('th',{text:'Rate'}),PWA.el('th',{text:'Load qty'})]));
+        tbl.appendChild(thead);
+        var tbody = PWA.el('tbody');
+        (po.items||[]).forEach(function(it, idx){
+          var pend = (it.pendingQty!==undefined? it.pendingQty : Math.max(0, Number(it.qty)-Number(it.receivedQty||0)));
+          var isInCart = S.cart.some(function(l){return l.itemId===it.itemId;});
+          var tr = PWA.el('tr',{class: isInCart?'on':''});
+          tr.appendChild(PWA.el('td',{text:String(idx+1)}));
+          tr.appendChild(PWA.el('td',{},[PWA.el('b',{text:it.name}), PWA.el('small',{text:it.code})]));
+          tr.appendChild(PWA.el('td',{text:String(it.qty)}));
+          tr.appendChild(PWA.el('td',{html:'<b style="color:var(--warn)">'+pend+'</b>'}));
+          tr.appendChild(PWA.el('td',{text: money(it.rate||it.cost||0)}));
+          var qtyIn = PWA.el('input',{type:'number', value:String(pend), min:'0', style:'width:64px;min-height:32px;padding:4px;border-radius:8px;border:1px solid var(--line);text-align:center;font-weight:800'});
+          qtyIn.oninput = function(){ /* live update cart if already loaded */ var ex=S.cart.filter(function(l){return l.itemId===it.itemId;})[0]; if(ex) ex.qty=Math.max(0, Number(qtyIn.value)||0); };
+          var addBtn = PWA.el('button',{class:'btn sm '+(isInCart?'ghost':'primary'), text: isInCart?'✓':'Add'});
+          addBtn.onclick = function(){
+            var q = Math.max(0, Number(qtyIn.value)||0);
+            if(q<=0) return PWA.toast('Qty >0 karein','warn');
+            var ex=S.cart.filter(function(l){return l.itemId===it.itemId;})[0];
+            if(ex) ex.qty = q;
+            else S.cart.push({ itemId:it.itemId, code:it.code, name:it.name, qty:q, cost:Number(it.rate||it.cost||0), poQty:Number(it.qty), pendingQty:pend, barcode: '' });
+            PWA.toast('Added '+it.code,'ok'); redraw();
+          };
+          tr.appendChild(PWA.el('td',{},[ PWA.el('div',{style:'display:flex;gap:4px;align-items:center'},[qtyIn, addBtn]) ]));
+          tbody.appendChild(tr);
+        });
+        tbl.appendChild(tbody);
+        pc.appendChild(tbl);
+        pc.appendChild(PWA.el('div',{style:'display:flex;gap:8px;margin-top:10px'},[
+          PWA.el('button',{class:'btn primary', onclick:function(){ loadPoIntoCart(S.selectedPoId); }}, '⬇ Load all pending into GRN cart'),
+          PWA.el('button',{class:'btn ghost', onclick:function(){ S.cart=S.cart.filter(function(l){ return !(po.items||[]).some(function(it){return it.itemId===l.itemId;}); }); redraw(); }}, 'Clear PO items')
+        ]));
+        body.appendChild(pc);
+      } else {
+        body.appendChild(PWA.el('div',{class:'card'},[PWA.el('div',{class:'muted', style:'font-size:12px'}, 'PO detail load ho raha hai…'), PWA.el('button',{class:'btn sm', onclick:function(){ fetchPoDetail(S.selectedPoId, function(){ redraw(); }); }}, '↻ Retry')]));
+        fetchPoDetail(S.selectedPoId, function(){ redraw(); });
+      }
+    }
+
+    body.appendChild(scannerBox(function (i) {
+      // PO selected → only allow items from PO, warn otherwise
+      if(S.selectedPoId){
+        var po = getPoDetail(S.selectedPoId);
+        var inPo = po && (po.items||[]).some(function(it){ return it.itemId===i.id; });
+        if(!inPo){
+          PWA.toast('Ye item PO mein nahi — phir bhi add kar rahe hain','warn');
+        }
+      }
+      var ex = S.cart.filter(function (l) { return l.itemId === i.id; })[0];
+      if (ex) ex.qty += 1;
+      else {
+        var poItem = null;
+        if(S.selectedPoId){ var po2=getPoDetail(S.selectedPoId); if(po2) poItem=(po2.items||[]).filter(function(it){return it.itemId===i.id;})[0]; }
+        S.cart.push({ itemId: i.id, code: i.code, name: i.name, qty: 1, cost: poItem? Number(poItem.rate||poItem.cost||i.cost): i.cost, poQty: poItem? Number(poItem.qty): undefined, pendingQty: poItem? Math.max(0, Number(poItem.qty)-Number(poItem.receivedQty||0)): undefined, barcode: i.barcode });
+      }
+      redraw();
+      PWA.haptic(true);
+    }));
+
+    var inv = PWA.el('input', { type: 'text', placeholder: 'Supplier invoice no. (optional)', 'aria-label':'Supplier invoice' });
+    var lot = PWA.el('input', { type: 'text', placeholder: 'Lot / batch no. (optional)', 'aria-label':'Lot no' , oninput:function(){ S.lotNo=lot.value; } });
+    var exp = PWA.el('input', { type: 'date', 'aria-label':'Expiry date', oninput:function(){ S.expiry=exp.value; } });
+    body.appendChild(PWA.el('div', { class: 'card' }, [
+      PWA.el('h3',{text:'GRN details — verify & confirm'}),
+      PWA.el('div', { class: 'f' }, [PWA.el('label', { text: 'Supplier invoice' }), inv]),
+      PWA.el('div',{class:'row2'}, [
+        PWA.el('div',{class:'f'}, [PWA.el('label',{text:'Lot / Batch'}), lot]),
+        PWA.el('div',{class:'f'}, [PWA.el('label',{text:'Expiry'}), exp])
+      ]),
+      PWA.el('div',{class:'muted', style:'font-size:11px'}, 'PO match: cart qty ko actual received se milayein — farq ho to qty edit karein phir GRN save karein. Lot/Expiry sirf agar tracking on ho.')
+    ]));
+
+    body.appendChild(cartView(true));
+
+    body.appendChild(PWA.el('div',{style:'display:flex;gap:8px;flex-wrap:wrap'}, [
+      PWA.el('button', { class:'btn ghost block', style:'flex:1', onclick:function(){ S.cart=[]; redraw(); } }, '🗑 Clear cart'),
+      PWA.el('button', {
+        class: 'btn ok block big', style:'flex:2', onclick: async function () {
+          if (!S.cart.length) return PWA.toast('Pehle PO load karein ya item scan karein', 'warn');
+          // validate against PO if selected
+          if(S.selectedPoId){
+            var po = getPoDetail(S.selectedPoId);
+            if(po){
+              // warn if any cart item not in PO
+              var extra = S.cart.filter(function(l){ return !(po.items||[]).some(function(it){return it.itemId===l.itemId;}); });
+              if(extra.length && !confirm(extra.length+' item(s) PO mein nahi — phir bhi GRN karein?')) return;
+            }
+          }
+          try {
+            var r = await PWA.call('pwa.wh.receive', {
+              poId: S.selectedPoId||'',
+              items: S.cart.map(function (l) { return { itemId: l.itemId, qty: l.qty, cost: l.cost }; }),
+              invoiceNo: inv.value.trim(), lotNo: lot.value.trim(), expiry: exp.value,
+              locationId: PWA.data.locationId
+            }, { queueable: true });
+            if (r && r.queued) { PWA.toast('Offline — GRN queue mein save ho gaya', 'warn'); S.cart = []; S.selectedPoId=''; PWA.updateNet(); return redraw(); }
+            PWA.toast('✅ GRN ' + r.grnNo + ' ban gayi', 'ok'); S.cart = []; S.selectedPoId=''; lot.value=''; exp.value=''; S.lotNo=''; S.expiry=''; redraw(); PWA.reload();
+          } catch (e) { PWA.toast(e.message, 'err'); }
+        }
+      }, '✅ GRN receive — confirm & save')
+    ]));
+  }
+
+  function getPoDetail(poId){
+    if(S.poCache[poId]) return S.poCache[poId];
+    var map = PWA.data && PWA.data.poMap;
+    if(map && map[poId]) { S.poCache[poId]=map[poId]; return map[poId]; }
+    return null;
+  }
+  function fetchPoDetail(poId, cb){
+    if(getPoDetail(poId)) { if(cb) cb(getPoDetail(poId)); return; }
+    PWA.call('pwa.wh.po.get', {id: poId}).then(function(r){
+      S.poCache[poId]=r;
+      if(cb) cb(r);
+    }).catch(function(e){ PWA.toast('PO load fail: '+e.message,'err'); });
+  }
+  function selectPo(poId){
+    S.selectedPoId = poId;
+    fetchPoDetail(poId, function(){ redraw(); });
+    // optimistic redraw
+    redraw();
+  }
+  function loadPoIntoCart(poId){
+    var po = getPoDetail(poId);
+    if(!po){ PWA.toast('PO detail nahi mila','err'); fetchPoDetail(poId, function(p){ if(p) loadPoIntoCart(poId); }); return; }
+    var added=0;
+    (po.items||[]).forEach(function(it){
+      var pend = Math.max(0, Number(it.qty)-Number(it.receivedQty||0));
+      if(pend<=0) return;
+      var ex = S.cart.filter(function(l){return l.itemId===it.itemId;})[0];
+      if(ex){ ex.qty = pend; ex.cost = Number(it.rate||it.cost||ex.cost); ex.poQty=Number(it.qty); ex.pendingQty=pend; }
+      else {
+        S.cart.push({ itemId: it.itemId, code: it.code, name: it.name, qty: pend, cost: Number(it.rate||it.cost||0), poQty:Number(it.qty), pendingQty:pend });
+      }
+      added++;
+    });
+    PWA.toast('✅ '+added+' PO items cart mein — verify karke GRN save karein','ok');
+    redraw();
+  }
+
+  /* ---- 2) PUT-AWAY ---- */
+  function viewPutaway(body) {
+    var bins = (PWA.data && PWA.data.bins) || [];
+    var sel = PWA.el('select', {
+      onchange: function () { S.binId = sel.value; },
+      'aria-label':'Destination bin'
+    }, [PWA.el('option', { value: '' }, 'Bin chunein… (e.g. A-01)')].concat(bins.map(function (b) {
+      return PWA.el('option', { value: b.id }, b.name + (b.code?' · '+b.code:''));
+    })));
+    if(S.binId) sel.value = S.binId;
+    body.appendChild(PWA.el('div', { class: 'card' }, [
+      PWA.el('h3',{text:'Put-away — bin mein rakhein'}),
+      PWA.el('div', { class: 'f' }, [PWA.el('label', { text: 'Destination bin' }), sel]),
+      PWA.el('div',{class:'chip-row'}, bins.slice(0,4).map(function(b){ return PWA.el('button',{class:'chip', onclick:function(){ sel.value=b.id; S.binId=b.id; }}, b.name); }) )
+    ]));
+
+    body.appendChild(scannerBox(function (i) {
+      if (!S.binId) return PWA.toast('Pehle bin chunein', 'warn');
+      S.cart.push({ itemId: i.id, code: i.code, name: i.name, qty: 1, barcode:i.barcode }); redraw(); PWA.haptic(true);
+    }));
+    body.appendChild(cartView());
+
+    body.appendChild(PWA.el('button', {
+      class: 'btn primary block big', onclick: async function () {
+        if (!S.binId) return PWA.toast('Bin chunein', 'warn');
+        if (!S.cart.length) return PWA.toast('Item add karein', 'warn');
+        try {
+          for (var k = 0; k < S.cart.length; k++) {
+            await PWA.call('pwa.wh.putaway', { itemId: S.cart[k].itemId, binId: S.binId, qty: S.cart[k].qty });
+          }
+          PWA.toast('✅ Put-away ho gaya', 'ok'); S.cart = []; redraw();
+        } catch (e) { PWA.toast(e.message, 'err'); }
+      }
+    }, '📦 Bin mein dalen'));
+  }
+
+  /* ---- 3) COUNT — sheet → audit lines → partial & resume ---- */
+  function viewCount(body) {
+    var tasks = (PWA.data && PWA.data.tasks || []).filter(function (t) { return t.kind === 'COUNT'; });
+    if (!tasks.length) {
+      body.appendChild(PWA.el('div', { class: 'card' }, [PWA.el('div', { class: 'empty' }, [PWA.el('span',{class:'big', text:'🔢'}), PWA.el('div',{text:'Koi open count sheet nahi'}), PWA.el('small',{text:'ERP ▸ Inventory ▸ Count sheet se sheet banayein'}) ])]));
+      // show audit overview if exists
+      var audit = PWA.data && PWA.data.audit;
+      if(audit){
+        body.appendChild(auditCard(audit));
+        var stock = PWA.data.stockByBin || [];
+        if(stock.length) body.appendChild(stockAuditList(stock, 'Existing stock (by bin)'));
+      }
+      return;
+    }
+    // sheet selector
+    var selCard = PWA.el('div', { class: 'card' });
+    selCard.appendChild(PWA.el('h3',{text:'Count sheet — audit in parts'}));
+    selCard.appendChild(PWA.el('div',{class:'muted', style:'font-size:11px;margin-bottom:8px'}, 'Sheet chunein → system qty dekhein → counted qty bharein → farq (variance) dekhein. Adha kaam karke kal resume kar sakte hain — counted values phone par save rehti hain.'));
+    var sel = PWA.el('select', {
+      onchange: function () { S.sheetId = sel.value; S.countFilter=''; if(S.sheetId) loadSheet(S.sheetId, function(){ redraw(); }); else redraw(); },
+      'aria-label':'Count sheet'
+    }, [PWA.el('option', { value: '' }, 'Sheet chunein…')].concat(tasks.map(function (t) {
+      var prog = '';
+      var m = getSheetFromCache(t.refId);
+      if(m && m.progress) prog = ' — '+m.progress.counted+'/'+m.progress.total;
+      return PWA.el('option', { value: t.refId, selected: S.sheetId===t.refId ? true: undefined }, t.title + ' — ' + t.meta + prog);
+    })));
+    selCard.appendChild(PWA.el('div', { class: 'f' }, [PWA.el('label', { text: 'Count sheet' }), sel]));
+    selCard.appendChild(PWA.el('div',{class:'chip-row'}, tasks.slice(0,3).map(function(t){ return PWA.el('button',{class:'chip'+(S.sheetId===t.refId?' on':''), onclick:function(){ S.sheetId=t.refId; sel.value=t.refId; loadSheet(t.refId, function(){ redraw(); }); redraw(); }}, t.ref); })));
+    body.appendChild(selCard);
+
+    if(!S.sheetId){
+      // sheet list with progress
+      var list = PWA.el('div',{class:'card'});
+      list.appendChild(PWA.el('h3',{text:'Open sheets ('+tasks.length+') — tap to load'}));
+      tasks.forEach(function(t){
+        var det = getSheetFromCache(t.refId);
+        var prog = det && det.progress;
+        var row = PWA.el('div',{class:'task', onclick:function(){ S.sheetId=t.refId; sel.value=t.refId; loadSheet(t.refId, function(){ redraw(); }); redraw(); }},[
+          PWA.el('div',{class:'ico', text:'🔢'}),
+          PWA.el('div',{class:'tx'},[ PWA.el('b',{text:t.title}), PWA.el('small',{text:t.meta + (prog? ' · '+prog.counted+'/'+prog.total+' counted':'' )}) ]),
+          PWA.el('span',{class:'badge '+(prog && prog.pct===100?'ok':''), text: prog? prog.pct+'%': 'OPEN'})
+        ]);
+        if(prog) row.appendChild(PWA.el('div',{style:'width:48px;height:6px;border-radius:999px;background:var(--card3);overflow:hidden'},[PWA.el('div',{style:'height:100%;width:'+(prog.pct||0)+'%;background:var(--ok)'})]));
+        list.appendChild(row);
+      });
+      body.appendChild(list);
+      // audit overview
+      var audit2 = PWA.data && PWA.data.audit;
+      if(audit2) body.appendChild(auditCard(audit2));
+      return;
+    }
+
+    // selected sheet — load details
+    var sheetData = getSheetFromCache(S.sheetId);
+    if(!sheetData){
+      body.appendChild(PWA.el('div',{class:'card'},[PWA.el('div',{class:'muted'}, 'Sheet load ho rahi hai…'), PWA.el('button',{class:'btn sm', onclick:function(){ loadSheet(S.sheetId, function(){ redraw(); }); }}, '↻ Retry')]));
+      loadSheet(S.sheetId, function(){ redraw(); });
+      return;
+    }
+
+    // sheet header with progress
+    var sh = sheetData.sheet, lines = sheetData.lines||[], prog = sheetData.progress||{total:lines.length, counted:0, pending:lines.length, pct:0, varianceValue:0};
+    var head = PWA.el('div',{class:'card'});
+    head.appendChild(PWA.el('h3',{text:'Sheet '+ (sh.sheetNo||S.sheetId) + ' — '+ (sh.scope||'')}));
+    head.appendChild(PWA.el('div',{class:'muted', style:'font-size:11px'}, 'Location: '+(sh.locationId||'')+' · Warehouse: '+(sh.warehouseId||'—')+' · Date: '+String(sh.date||'').slice(0,10)));
+    var bar = PWA.el('div',{class:'progress-bar'}); bar.appendChild(PWA.el('div',{class:'progress-fill', style:'width:'+(prog.pct||0)+'%;'}));
+    head.appendChild(bar);
+    head.appendChild(PWA.el('div',{style:'display:flex;gap:6px;flex-wrap:wrap;font-size:11px'},[
+      PWA.el('span',{class:'pill', text: prog.counted+' counted'}),
+      PWA.el('span',{class:'pill', text: prog.pending+' pending'}),
+      PWA.el('span',{class:'pill', text: prog.diffLines+' diff'}),
+      PWA.el('span',{class:'badge '+(prog.pct===100?'ok':''), text: prog.pct+'%'}),
+      PWA.el('span',{class:'pill', text:'Var '+money(prog.varianceValue||0)})
+    ]));
+    head.appendChild(PWA.el('div',{class:'audit-grid'},[
+      PWA.el('div',{class:'audit-box'},[PWA.el('b',{text:String(prog.total)}), PWA.el('small',{text:'Total lines'})]),
+      PWA.el('div',{class:'audit-box'},[PWA.el('b',{text:String(prog.counted)}), PWA.el('small',{text:'Counted'})]),
+      PWA.el('div',{class:'audit-box'},[PWA.el('b',{text:String(prog.short||0)+'/'+String(prog.over||0)}), PWA.el('small',{text:'Short / Over'})])
+    ]));
+    head.appendChild(PWA.el('div',{style:'display:flex;gap:8px;margin-top:8px'},[
+      PWA.el('button',{class:'btn sm ghost', onclick:function(){ S.sheetId=''; sel.value=''; clearLocalCounts(S.sheetId); redraw(); }}, 'Change sheet'),
+      PWA.el('button',{class:'btn sm', onclick:function(){ loadSheet(S.sheetId, function(){ redraw(); }); PWA.toast('Refreshed','ok'); }}, '↻ Refresh'),
+      PWA.el('button',{class:'btn sm ghost', onclick:function(){ if(confirm('Local counted values clear karein? (server values rahenge)')){ clearLocalCounts(S.sheetId); loadSheet(S.sheetId, function(){ redraw(); }); } }}, 'Clear local')
+    ]));
+    body.appendChild(head);
+
+    // filter
+    var filterInput = PWA.el('input',{type:'search', placeholder:'🔎 Sheet lines mein search (code / naam)…', value: S.countFilter, 'aria-label':'Filter count lines', oninput:function(){ S.countFilter=this.value; renderLines(); }});
+    body.appendChild(PWA.el('div',{class:'card'},[ PWA.el('div',{class:'f'},[PWA.el('label',{text:'Filter lines'}), filterInput]), PWA.el('div',{class:'muted', style:'font-size:11px'}, 'Scan se bhi line bhari ja sakti hai — neeche scanner use karein.') ]));
+
+    // scanner for count — fills countedQty for that item
+    body.appendChild(scannerBox(async function (i) {
+      if (!S.sheetId) return PWA.toast('Pehle sheet chunein', 'warn');
+      // find line for this item
+      var sheet = getSheetFromCache(S.sheetId);
+      var line = (sheet.lines||[]).filter(function(l){ return l.itemId===i.id; })[0];
+      if(!line){ return PWA.toast('Ye item is sheet mein nahi — filter check karein','warn'); }
+      var local = getLocalCounts(S.sheetId);
+      var cur = local[i.id]!==undefined? local[i.id] : (line.countedQty!==''? Number(line.countedQty): 0);
+      var q = prompt(i.name + ' — counted qty? (system: '+line.systemQty+')', String(cur));
+      if (q === null) return;
+      var qty = Number(q);
+      if(isNaN(qty)) return PWA.toast('Qty ghalat','warn');
+      setLocalCount(S.sheetId, i.id, qty);
+      // also try server save
+      try{
+        var r = await PWA.call('pwa.wh.count', { sheetId: S.sheetId, itemId: i.id, qty: qty }, {queueable:true});
+        if(r && r.queued) { PWA.toast('Offline — count queue mein ('+i.code+' = '+qty+')','warn'); PWA.updateNet(); }
+        else { PWA.toast('✅ '+i.code+' = '+qty,'ok'); // update local cache
+          line.countedQty = qty; line.diff = qty - Number(line.systemQty); // update progress
+          // refresh progress
+          loadSheet(S.sheetId, function(){ renderLines(); });
+        }
+        PWA.haptic(true);
+      }catch(e){ PWA.toast(e.message,'err'); }
+      renderLines();
+    }));
+
+    // lines list host
+    var linesHost = PWA.el('div',{id:'countLinesHost'});
+    body.appendChild(linesHost);
+    function renderLines(){
+      linesHost.innerHTML='';
+      var q = String(S.countFilter||'').trim().toLowerCase();
+      var filtered = lines;
+      if(q) filtered = lines.filter(function(l){ return String(l.code||'').toLowerCase().indexOf(q)>-1 || String(l.name||'').toLowerCase().indexOf(q)>-1; });
+      filtered = filtered.slice(0, 80);
+      if(!filtered.length){
+        linesHost.appendChild(PWA.el('div',{class:'empty'}, 'Koi line nahi — search badlein'));
+        return;
+      }
+      var localMap = getLocalCounts(S.sheetId);
+      filtered.forEach(function(l){
+        var counted = localMap[l.itemId]!==undefined? localMap[l.itemId] : (l.countedQty!==''&&l.countedQty!==null&&l.countedQty!==undefined? Number(l.countedQty): '');
+        var diff = (counted!==''? (Number(counted)-Number(l.systemQty)): (l.diff||0));
+        var stateCls = counted===''? '' : (diff===0?'matched': (diff<0?'short':'over'));
+        var row = PWA.el('div',{class:'count-row '+stateCls});
+        row.appendChild(PWA.el('div',{class:'ico', text: stateCls==='matched'?'✅':(stateCls==='short'?'⚠':'🔺')}));
+        var tx = PWA.el('div',{class:'tx'});
+        tx.appendChild(PWA.el('b',{text: l.code + ' · ' + l.name}));
+        tx.appendChild(PWA.el('small',{text: 'Bin '+(l.binCode||'—')+' · system '+l.systemQty+' · '+(counted!==''? 'counted '+counted+' · diff '+ (diff>0?'+'+diff:diff) : 'not counted') + (l.avgCost? ' · '+money(l.avgCost):'')}));
+        row.appendChild(tx);
+        var ctrl = PWA.el('div',{style:'display:flex;align-items:center;gap:6px'});
+        var dec = PWA.el('button',{class:'btn sm ghost', text:'−', style:'width:36px;min-width:36px;padding:0'});
+        dec.onclick = function(){ var v = counted==='' ? Number(l.systemQty)-1 : Number(counted)-1; v=Math.max(0, v); setLocalCount(S.sheetId, l.itemId, v); renderLines(); autoSaveLine(l, v); };
+        var inp = PWA.el('input',{type:'number', class:'count-input', value: counted===''?'': String(counted), placeholder: String(l.systemQty)});
+        inp.oninput = function(){ var v = inp.value.trim()===''? '' : Number(inp.value); if(v!==''&&!isNaN(v)) setLocalCount(S.sheetId, l.itemId, v); else if(v==='') setLocalCount(S.sheetId, l.itemId, ''); };
+        inp.onchange = function(){ var v = inp.value.trim()===''? '' : Number(inp.value); if(v!==''&&!isNaN(v)) autoSaveLine(l, v); renderLines(); };
+        inp.onfocus = function(){ inp.select(); };
+        var inc = PWA.el('button',{class:'btn sm ghost', text:'＋', style:'width:36px;min-width:36px;padding:0'});
+        inc.onclick = function(){ var v = counted==='' ? Number(l.systemQty)+1 : Number(counted)+1; setLocalCount(S.sheetId, l.itemId, v); renderLines(); autoSaveLine(l, v); };
+        var saveBtn = PWA.el('button',{class:'btn sm '+(counted!==''?'primary':''), text:'Save'});
+        saveBtn.onclick = async function(){
+          var v = Number(inp.value);
+          if(inp.value.trim()==='' || isNaN(v)) return PWA.toast('Counted qty dalen','warn');
+          setLocalCount(S.sheetId, l.itemId, v);
+          await autoSaveLine(l, v, true);
+          renderLines();
+        };
+        ctrl.appendChild(dec); ctrl.appendChild(inp); ctrl.appendChild(inc); ctrl.appendChild(saveBtn);
+        row.appendChild(ctrl);
+        row.appendChild(PWA.el('span',{class:'badge '+(diff===0&&counted!==''?'ok': (diff!==0?'warn':'' )), text: counted===''?'—': (diff===0?'OK': (diff>0? '+'+diff : String(diff)))}));
+        linesHost.appendChild(row);
+      });
+      if(lines.length>80) linesHost.appendChild(PWA.el('div',{class:'muted', style:'font-size:11px;text-align:center;margin-top:6px'}, 'Showing 80 of '+lines.length+' lines — filter to narrow'));
+      // bulk actions
+      var bulk = PWA.el('div',{class:'card', style:'display:flex;gap:8px;flex-wrap:wrap'});
+      bulk.appendChild(PWA.el('button',{class:'btn ghost', style:'flex:1', onclick:function(){ // fill all empty with system qty
+        var m=getLocalCounts(S.sheetId);
+        var c=0;
+        lines.forEach(function(l){ if(m[l.itemId]===undefined && (l.countedQty===''||l.countedQty===null)){ setLocalCount(S.sheetId, l.itemId, Number(l.systemQty)); c++; }});
+        PWA.toast(c+' lines system qty se fill','ok'); renderLines();
+      }}, 'Fill system → counted'));
+      bulk.appendChild(PWA.el('button',{class:'btn primary', style:'flex:1', onclick: async function(){
+        // save all local that differ from server
+        var m=getLocalCounts(S.sheetId);
+        var keys=Object.keys(m);
+        if(!keys.length) return PWA.toast('Koi local counted nahi','warn');
+        var ok=0, fail=0;
+        for(var i=0;i<keys.length;i++){
+          var itemId=keys[i], qty=m[itemId];
+          try{ var r=await PWA.call('pwa.wh.count', {sheetId:S.sheetId, itemId:itemId, qty:qty}, {queueable:true}); if(!r||!r.queued) ok++; else ok++; }catch(e){ fail++; }
+        }
+        PWA.toast('Bulk save: '+ok+' ok'+(fail?' · '+fail+' fail':''), fail?'err':'ok');
+        if(!fail) loadSheet(S.sheetId, function(){ redraw(); });
+      }}, '💾 Save all ('+Object.keys(getLocalCounts(S.sheetId)).length+')'));
+      linesHost.appendChild(bulk);
+    }
+    async function autoSaveLine(line, qty, showToast){
+      try{
+        var r = await PWA.call('pwa.wh.count', { sheetId: S.sheetId, itemId: line.itemId, qty: Number(qty)||0 }, {queueable:true});
+        if(r && r.queued){ if(showToast) PWA.toast('Queued '+line.code,'warn'); PWA.updateNet(); return; }
+        if(showToast) PWA.toast('✅ '+line.code+' saved','ok');
+        // update server cache
+        line.countedQty = Number(qty); line.diff = Number(qty)-Number(line.systemQty);
+      }catch(e){ if(showToast) PWA.toast(e.message,'err'); }
+    }
+    renderLines();
+
+    // audit card at bottom
+    var audit3 = PWA.data && PWA.data.audit;
+    if(audit3) body.appendChild(auditCard(audit3));
+  }
+
+  function getSheetFromCache(sheetId){
+    if(S.countCache[sheetId]) return S.countCache[sheetId];
+    var map = PWA.data && PWA.data.countMap;
+    if(map && map[sheetId]) { S.countCache[sheetId]=map[sheetId]; return map[sheetId]; }
+    return null;
+  }
+  function loadSheet(sheetId, cb){
+    var cached = getSheetFromCache(sheetId);
+    if(cached){ // merge local counts into progress for display
+      var local = getLocalCounts(sheetId);
+      // overlay local onto lines for progress calc (visual only)
+      if(Object.keys(local).length){
+        var counted = 0;
+        (cached.lines||[]).forEach(function(l){ if(local[l.itemId]!==undefined) counted++; else if(l.countedQty!==''&&l.countedQty!==null) counted++; });
+        // not mutating, just show local as counted in UI via renderLines
+      }
+      if(cb) cb(cached);
+      return;
+    }
+    PWA.call('pwa.wh.count.get', {id: sheetId}).then(function(r){
+      S.countCache[sheetId]=r;
+      if(cb) cb(r);
+    }).catch(function(e){ PWA.toast('Sheet load fail: '+e.message,'err'); });
+  }
+  function auditCard(a){
+    var c = PWA.el('div',{class:'card'});
+    c.appendChild(PWA.el('h3',{text:'Audit overview'}));
+    c.appendChild(PWA.el('div',{class:'audit-grid'},[
+      PWA.el('div',{class:'audit-box'},[PWA.el('b',{text:String(a.sheets||0)}), PWA.el('small',{text:'Sheets'})]),
+      PWA.el('div',{class:'audit-box'},[PWA.el('b',{text:String(a.counted||0)+'/'+String(a.lines||0)}), PWA.el('small',{text:'Counted'})]),
+      PWA.el('div',{class:'audit-box'},[PWA.el('b',{text: (a.accuracy||0)+'%'}), PWA.el('small',{text:'Accuracy'})])
+    ]));
+    c.appendChild(PWA.el('div',{style:'display:flex;gap:6px;flex-wrap:wrap;font-size:11px;margin-top:6px'},[
+      PWA.el('span',{class:'pill', text:'Over '+String(a.over||0)}),
+      PWA.el('span',{class:'pill', text:'Short '+String(a.short||0)}),
+      PWA.el('span',{class:'pill', text:'Var '+money(a.varianceValue||0)}),
+      PWA.el('span',{class:'pill', text: String(a.posted||0)+' posted · '+String(a.open||0)+' open'})
+    ]));
+    if(a.sheetsList && a.sheetsList.length){
+      c.appendChild(PWA.el('div',{class:'muted', style:'font-size:11px;margin-top:8px'}, 'Recent sheets: '+a.sheetsList.slice(0,3).map(function(s){return s.sheetNo+' ('+s.status+')';}).join(' · ')));
+    }
+    return c;
+  }
+  function stockAuditList(rows, title){
+    var c = PWA.el('div',{class:'card'});
+    c.appendChild(PWA.el('h3',{text: title+' ('+rows.length+')'}));
+    c.appendChild(PWA.el('div',{class:'muted', style:'font-size:11px'}, 'Existing stock by bin — audit ke liye reference'));
+    var host = PWA.el('div');
+    rows.slice(0,20).forEach(function(r){
+      host.appendChild(PWA.el('div',{class:'task'},[
+        PWA.el('div',{class:'ico', text:'📦'}),
+        PWA.el('div',{class:'tx'},[PWA.el('b',{text:r.code+' · '+r.name}), PWA.el('small',{text:'Bin '+(r.binCode||'—')+' · qty '+r.qty})]),
+        PWA.el('span',{class:'badge', text: money(r.value||r.qty*r.avgCost)})
+      ]));
+    });
+    if(rows.length>20) host.appendChild(PWA.el('div',{class:'muted', style:'font-size:11px;text-align:center;margin-top:6px'}, '+ '+(rows.length-20)+' more'));
+    c.appendChild(host);
+    return c;
+  }
+
+  /* ---- 4) TRANSFER ---- */
+  function viewTransfer(body) {
+    var bins = (PWA.data && PWA.data.bins) || [];
+    function mk(label, onch) {
+      var s = PWA.el('select', { onchange: function () { onch(s.value); }, 'aria-label':label },
+        [PWA.el('option', { value: '' }, label)].concat(bins.map(function (b) {
+          return PWA.el('option', { value: b.id }, b.name);
+        })));
+      return s;
+    }
+    var fromSel = mk('From…', function (v) { S.fromBin = v; });
+    var toSel = mk('To…', function (v) { S.toBin = v; });
+    if(S.fromBin) fromSel.value=S.fromBin;
+    if(S.toBin) toSel.value=S.toBin;
+    body.appendChild(PWA.el('div', { class: 'card' }, [
+      PWA.el('h3',{text:'Bin transfer'}),
+      PWA.el('div', { class: 'row2' }, [
+        PWA.el('div', { class: 'f' }, [PWA.el('label', { text: 'From bin' }), fromSel]),
+        PWA.el('div', { class: 'f' }, [PWA.el('label', { text: 'To bin' }), toSel])
+      ]),
+      PWA.el('button',{class:'btn sm ghost', onclick:function(){ var a=S.fromBin; S.fromBin=S.toBin; S.toBin=a; var fv=fromSel.value, tv=toSel.value; fromSel.value=tv; toSel.value=fv; }}, '⇄ Swap bins')
+    ]));
+
+    body.appendChild(scannerBox(function (i) {
+      S.cart.push({ itemId: i.id, code: i.code, name: i.name, qty: 1, barcode:i.barcode }); redraw();
+    }));
+    body.appendChild(cartView());
+
+    body.appendChild(PWA.el('button', {
+      class: 'btn primary block big', onclick: async function () {
+        if (!S.fromBin || !S.toBin) return PWA.toast('Dono bins chunein', 'warn');
+        if (S.fromBin === S.toBin) return PWA.toast('From aur To alag hone chahiye', 'warn');
+        if (!S.cart.length) return PWA.toast('Item add karein', 'warn');
+        try {
+          for (var k = 0; k < S.cart.length; k++) {
+            await PWA.call('pwa.wh.transfer',
+              { itemId: S.cart[k].itemId, fromBinId: S.fromBin, toBinId: S.toBin, qty: S.cart[k].qty });
+          }
+          PWA.toast('✅ Transfer ho gaya', 'ok'); S.cart = []; redraw();
+        } catch (e) { PWA.toast(e.message, 'err'); }
+      }
+    }, '🔄 Transfer karein'));
+  }
+
+  PWA.onSynced = function () { PWA.reload(); };
+  PWA.boot('wh', TABS, render);
+})();
+</script>
+</body>
+</html>

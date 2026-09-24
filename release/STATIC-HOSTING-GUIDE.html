@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Static Hosting Guide — Netlify / Vercel / GitHub Pages (Beginner)</title>
+<style>
+  :root{
+    --ink:#12212e; --muted:#5b6b7a; --line:#d8e1e8;
+    --blue:#0b6bcb; --blue-bg:#eaf3fd;
+    --green:#137a3e; --green-bg:#e8f6ed;
+    --amber:#8a5a00; --amber-bg:#fff5e0;
+    --red:#b3261e;   --red-bg:#fdecea;
+    --purple:#6b3fa0; --purple-bg:#f3edfa;
+    --code:#0f1b26;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; padding:0 16px 80px;
+    font-family:"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    font-size:18px; line-height:1.75; color:var(--ink);
+    background:#fff; max-width:900px; margin-left:auto; margin-right:auto;
+  }
+  h1{font-size:34px; line-height:1.25; margin:32px 0 6px; letter-spacing:-.3px}
+  h2{font-size:26px; margin:52px 0 14px; padding-bottom:10px;
+     border-bottom:3px solid var(--purple); color:var(--purple)}
+  h3{font-size:20px; margin:30px 0 8px; color:#3d2560}
+  p{margin:12px 0} ul,ol{margin:12px 0; padding-left:26px} li{margin:8px 0}
+  code{font-family:Consolas,"Courier New",monospace; font-size:15px;
+       background:#eef2f6; padding:2px 6px; border-radius:4px; color:#0a3d62}
+  .hero{background:linear-gradient(135deg,#6b3fa0,#4a2a75); color:#fff;
+        border-radius:14px; padding:26px 28px; margin:26px 0 8px}
+  .hero h2{border:0;color:#fff;margin:0 0 10px;font-size:24px}
+  .hero p{margin:6px 0;color:#f0e9fa}
+  .box{border-radius:10px; padding:16px 20px; margin:20px 0; border-left:6px solid}
+  .box p:first-child{margin-top:0} .box p:last-child{margin-bottom:0}
+  .info{background:var(--blue-bg);  border-color:var(--blue)}
+  .ok  {background:var(--green-bg); border-color:var(--green)}
+  .warn{background:var(--amber-bg); border-color:var(--amber)}
+  .stop{background:var(--red-bg);   border-color:var(--red)}
+  .pur {background:var(--purple-bg);border-color:var(--purple)}
+  .box .t{font-weight:700; display:block; margin-bottom:6px}
+  .info .t{color:var(--blue)} .ok .t{color:var(--green)}
+  .warn .t{color:var(--amber)} .stop .t{color:var(--red)} .pur .t{color:var(--purple)}
+  .term{background:var(--code); color:#e8f0f7; border-radius:10px; padding:16px 18px;
+        margin:16px 0; overflow-x:auto;
+        font-family:Consolas,"Courier New",monospace; font-size:15px; line-height:1.7}
+  .term .c{color:#7fd1a0} .term .o{color:#9ecbff} .term b{color:#ffd479}
+  .term::before{content:"COMMAND PROMPT (kali screen)"; display:block;
+        font-family:"Segoe UI",sans-serif; font-size:12px; letter-spacing:1px;
+        color:#7d93a6; margin-bottom:8px}
+  .step{display:flex; gap:16px; margin:26px 0; align-items:flex-start}
+  .num{flex:0 0 42px; height:42px; border-radius:50%; background:var(--purple);
+       color:#fff; font-weight:700; font-size:19px;
+       display:flex; align-items:center; justify-content:center; margin-top:2px}
+  .step .body{flex:1} .step .body > :first-child{margin-top:0}
+  table{border-collapse:collapse; width:100%; margin:20px 0; font-size:16px}
+  th,td{border:1px solid var(--line); padding:11px 13px; text-align:left; vertical-align:top}
+  th{background:#f6f2fa; font-weight:700; color:#3d2560}
+  tr:nth-child(even) td{background:#fafcfd}
+  .kbd{display:inline-block; background:#fff; border:1px solid #b9c6d1;
+       border-bottom-width:3px; border-radius:6px; padding:1px 8px;
+       font-size:14px; font-family:Consolas,monospace; font-weight:600}
+  .big{font-size:20px} .center{text-align:center}
+  .cards{display:flex; gap:14px; flex-wrap:wrap; margin:20px 0}
+  .card{flex:1 1 200px; border:2px solid var(--line); border-radius:10px;
+        padding:16px; background:#fdfdfe}
+  .card h4{margin:0 0 8px; font-size:17px; color:var(--purple)}
+  .card p{margin:4px 0; font-size:15px; color:var(--muted)}
+  .foot{margin-top:60px; padding-top:20px; border-top:2px solid var(--line);
+        color:var(--muted); font-size:15px}
+  @media print{ body{font-size:12pt} .hero{background:#6b3fa0!important;-webkit-print-color-adjust:exact} }
+</style>
+</head>
+<body>
+
+<h1>🌐 Static Hosting Guide</h1>
+<p class="big"><b>Netlify · Vercel · GitHub Pages · Firebase</b> — Windows 10, bilkul shuru se.</p>
+
+<div class="hero">
+  <h2>⚠ Sab se pehle ye samajh lein (bahut zaroori)</h2>
+  <p>Aap ka ERP <b>do hisso</b> mein banta hai:</p>
+  <p>① <b>Frontend</b> = jo nazar aata hai (buttons, screens) → <b>Static host par ja sakta hai</b> ✅</p>
+  <p>② <b>Backend</b> = database (Google Sheets) → <b>hamesha Google Apps Script par rahega</b> 🔒</p>
+  <p>Is guide mein hum frontend ko Netlify (ya kisi aur) par rakh kar usay
+  Google ke backend se <b>jodte</b> hain. Database move nahi hota.</p>
+</div>
+
+<div class="box stop">
+  <span class="t">🚫 Jo NAHI ho sakta</span>
+  <p>Google Sheets ko Netlify par host <b>nahi</b> kar sakte. Sheets hamesha
+  Google ke paas rahengi. Static host sirf <b>screen</b> deta hai — data nahi.</p>
+</div>
+
+<h2>🎯 Teen raaste — kaunsa chunein?</h2>
+
+<div class="cards">
+  <div class="card">
+    <h4>A) Demo sirf 👀</h4>
+    <p><b>Sab se aasan.</b> Mock data, koi login nahi, koi backend nahi.</p>
+    <p><b>Kab:</b> kisi ko dikhana hai, ya training.</p>
+  </div>
+  <div class="card">
+    <h4>B) Asli app 🚀</h4>
+    <p><b>Behtareen.</b> Screen Netlify par (fast + custom domain),
+    data Google Sheets mein.</p>
+    <p><b>Kab:</b> rozana ka kaam.</p>
+  </div>
+  <div class="card">
+    <h4>C) Sirf Google ⚙</h4>
+    <p>Kuch host nahi karna. <code>script.google.com</code> se hi chalao.</p>
+    <p><b>Kab:</b> sab se kam jhanjhat.</p>
+  </div>
+</div>
+
+<div class="box info">
+  <span class="t">💡 Mera mashwara</span>
+  <p>Agar aap beginner hain → <b>pehle C</b> se shuru karein (clasp guide).
+  Jab sab theek chalne lage, phir <b>B</b> karein.</p>
+</div>
+
+<h2>📦 Hisa 1 — Tayyari</h2>
+
+<h3>1.1 — Backend pehle deploy karein</h3>
+<p>Static hosting se pehle aap ka Apps Script backend <b>chal raha</b> hona chahiye.</p>
+<div class="box warn">
+  <span class="t">Agar abhi tak nahi kiya</span>
+  <p>Pehle <b>CLASP-GUIDE-WINDOWS.html</b> follow karein (Hisa 1–9).
+  Aakhir mein jo <code>.../exec</code> wala URL milega — <b>wahi yahan kaam aaye ga.</b></p>
+</div>
+
+<p>Wo URL kuch aisa hota hai:</p>
+<div class="term">
+<span class="o">https://script.google.com/macros/s/AKfycb……………/exec</span>
+</div>
+
+<h3>1.2 — Python chahiye (static build ke liye)</h3>
+<ol>
+  <li>Jayein: <b>https://www.python.org/downloads/</b></li>
+  <li>Bada <b>"Download Python 3.x.x"</b> button dabayein</li>
+  <li>Installer chalayein</li>
+  <li>🔴 <b>"Add Python to PATH"</b> wala box <b>ZAROOR tick</b> karein (neeche)</li>
+  <li><b>Install Now</b> → intezaar → <b>Close</b></li>
+</ol>
+
+<div class="box stop">
+  <span class="t">🔴 Sab se aam ghalti</span>
+  <p><b>"Add Python to PATH"</b> tick karna bhool jana. Bina is ke
+  <code>python</code> command kaam nahi karega.</p>
+</div>
+
+<p>Check karein (Command Prompt):</p>
+<div class="term">
+python --version<br>
+<br>
+<span class="c">:: jawab:</span><br>
+<span class="o">Python 3.12.0</span>
+</div>
+
+<h2>🅰 Raasta A — Demo Netlify par (5 minute)</h2>
+
+<p>Sab se aasan tareeqa: <b>kheencho aur chhor do</b> (drag &amp; drop).</p>
+
+<div class="step"><div class="num">1</div><div class="body">
+<p>Jayein: <b>https://app.netlify.com/drop</b></p>
+</div></div>
+
+<div class="step"><div class="num">2</div><div class="body">
+<p>Apne <code>HaseebAutos</code> folder mein <code>demo</code> folder kholein</p>
+</div></div>
+
+<div class="step"><div class="num">3</div><div class="body">
+<p>Poore <code>demo</code> folder ko Netlify ki page par <b>kheench kar chhor dein</b>
+(drag &amp; drop)</p>
+</div></div>
+
+<div class="step"><div class="num">4</div><div class="body">
+<p>30 second intezaar → Netlify aap ko ek link dega:</p>
+<div class="term">
+<span class="o">https://random-name-12345.netlify.app</span>
+</div>
+</div></div>
+
+<div class="box ok">
+  <span class="t">🎉 Ho gaya!</span>
+  <p>Ye link kisi ko bhi bhej dein — wo demo dekh sakein ge.
+  <b>Koi login nahi, koi asli data nahi.</b></p>
+</div>
+
+<h2>🅱 Raasta B — Asli app (screen Netlify, data Google)</h2>
+
+<p>Yahan hum ek <b>khaas build</b> banayenge jo Google ke backend se baat kare.</p>
+
+<div class="box info">
+  <span class="t">🧠 Ye kaise kaam karta hai?</span>
+  <p>Netlify wali screen aap ke Google backend ko <b>JSONP</b> ke zariye sawal bhejti hai:
+  <code>.../exec?t=jsonp&amp;a=items.list</code> — aur Google jawab deta hai.
+  Is liye screen kahin bhi ho, <b>data hamesha aap ki Google Sheet mein</b> rehta hai.</p>
+</div>
+
+<div class="step"><div class="num">1</div><div class="body">
+<p>Command Prompt kholein, apne folder mein jayein:</p>
+<div class="term">
+cd C:\Users\Haseeb\Desktop\HaseebAutos
+</div>
+</div></div>
+
+<div class="step"><div class="num">2</div><div class="body">
+<p>Static build banayein (apna <code>/exec</code> URL lagayein):</p>
+<div class="term">
+python tools\build_static.py "https://script.google.com/macros/s/AKfycb……/exec"
+</div>
+<p><b>Kya hoga:</b></p>
+<div class="term">
+<span class="o">✔ Built dist-static/index.html  (900.4 KB)<br>
+✔ Built dist-static/manifest.webmanifest + sw.js + icons  (PWA)<br>
+✔ Saved static-config.json</span>
+</div>
+</div></div>
+
+<div class="box ok">
+  <span class="t">✔ Yaad rakhein</span>
+  <p>URL ek hi dafa poochna parta hai. Agli dafa sirf
+  <code>python tools\build_static.py</code> chalayein.</p>
+</div>
+
+<div class="step"><div class="num">3</div><div class="body">
+<p>Jayein: <b>https://app.netlify.com/drop</b></p>
+</div></div>
+
+<div class="step"><div class="num">4</div><div class="body">
+<p><code>dist-static</code> folder ko <b>kheench kar chhor dein</b></p>
+</div></div>
+
+<div class="step"><div class="num">5</div><div class="body">
+<p>Link milega → kholein → <b>login</b> karein (wahi username/password jo ERP ka hai)</p>
+</div></div>
+
+<div class="box ok">
+  <span class="t">🎉 Ab aap ki app Netlify par hai — aur data Google Sheets mein!</span>
+</div>
+
+<h2>🔁 Naya version kaise chadhayein</h2>
+
+<p>Jab bhi backend badle (naya version):</p>
+
+<div class="term">
+cd C:\Users\Haseeb\Desktop\HaseebAutos<br>
+<br>
+<span class="c">:: 1. backend Google par bhejein</span><br>
+cd apps-script<br>
+clasp push<br>
+<br>
+<span class="c">:: 2. Deploy → Manage → Edit → New version → Deploy</span><br>
+<br>
+<span class="c">:: 3. static build dobara banayein</span><br>
+cd ..<br>
+python tools\build_static.py<br>
+<br>
+<span class="c">:: 4. dist-static folder Netlify par dobara drop karein</span>
+</div>
+
+<h2>🌍 Doosre hosts (ek hi folder, alag jagah)</h2>
+
+<table>
+  <tr><th>Host</th><th>Kaise</th><th>Khayal</th></tr>
+  <tr>
+    <td><b>Netlify</b> ⭐</td>
+    <td><code>app.netlify.com/drop</code> → folder drop</td>
+    <td>Sab se aasan. Free. Custom domain muft (SSL ke sath).</td>
+  </tr>
+  <tr>
+    <td><b>Vercel</b></td>
+    <td><code>vercel.com</code> → Add New → Project → folder drop</td>
+    <td>Tez. GitHub se judta hai.</td>
+  </tr>
+  <tr>
+    <td><b>GitHub Pages</b></td>
+    <td>GitHub repo banayein → Settings → Pages → folder chunein</td>
+    <td>Muft, magar thoda technical.</td>
+  </tr>
+  <tr>
+    <td><b>Firebase Hosting</b></td>
+    <td><code>firebase init</code> → <code>firebase deploy</code></td>
+    <td>Google ka apna — Apps Script ke sath acha.</td>
+  </tr>
+  <tr>
+    <td><b>Cloudflare Pages</b></td>
+    <td><code>pages.cloudflare.com</code> → Upload assets</td>
+    <td>Bahut tez CDN.</td>
+  </tr>
+</table>
+
+<div class="box warn">
+  <span class="t">⚠ Ek hi shart</span>
+  <p>Har host par <b><code>dist-static</code> folder ka andar ka content</b> jana chahiye —
+  folder khud nahi. Yani <code>index.html</code> sab se upar nazar aaye.</p>
+</div>
+
+<h2>🏷 Apna domain lagana (ikhtiyari)</h2>
+
+<p>Netlify par:</p>
+<ol>
+  <li>Apni site kholein → <b>Domain settings</b></li>
+  <li><b>Add custom domain</b></li>
+  <li>Apna domain likhein (masalan <code>haseebautos.com</code>)</li>
+  <li>Netlify aap ko <b>2 addresses</b> dega (DNS records)</li>
+  <li>Apne domain wali site (GoDaddy / Namecheap) par ja kar ye records dal dein</li>
+  <li>1–24 ghante intezaar → <b>SSL (https) apne aap lag jaye ga</b></li>
+</ol>
+
+<h2>🆘 Masle aur un ka hal</h2>
+
+<table>
+  <tr><th>Masla</th><th>Wajah</th><th>Hal</th></tr>
+  <tr>
+    <td><code>python is not recognized</code></td>
+    <td>Python install nahi hua ya PATH nahi laga</td>
+    <td>Python dobara install karein — <b>"Add to PATH" tick karein</b> → Restart</td>
+  </tr>
+  <tr>
+    <td>Build ke waqt <code>✖ Apps Script ka /exec URL chahiye</code></td>
+    <td>URL nahi diya</td>
+    <td>URL quote <code>" "</code> ke andar likhein</td>
+  </tr>
+  <tr>
+    <td>Screen khulti hai, magar <b>data nahi aata</b></td>
+    <td>Purana deployment</td>
+    <td>Apps Script → Deploy → Manage → <b>New version</b> → phir build dobara</td>
+  </tr>
+  <tr>
+    <td><b>"Network error"</b> ya blank screen</td>
+    <td>Ghalat URL, ya deploy nahi hua</td>
+    <td><code>.../exec</code> URL browser mein kholein — app khulni chahiye</td>
+  </tr>
+  <tr>
+    <td>Login ke baad <b>"Session expire"</b> baar baar</td>
+    <td>Backend ne token reject kiya</td>
+    <td>Deploy <b>Execute as: Me</b> + <b>Anyone</b> check karein</td>
+  </tr>
+  <tr>
+    <td>Bada kaam (CSV import) fail</td>
+    <td>JSONP sirf GET hai (~2 KB limit)</td>
+    <td>Bada kaam <b>Google wale URL</b> (<code>.../exec</code>) par kar lein</td>
+  </tr>
+  <tr>
+    <td>PWA install nahi hoti</td>
+    <td>http (https nahi)</td>
+    <td>Netlify/Vercel <b>https</b> dete hain — wahan se kholein</td>
+  </tr>
+</table>
+
+<div class="box warn">
+  <span class="t">📏 JSONP ki had (honest)</span>
+  <p>JSONP sirf <b>GET</b> hai, is liye payload ~2 KB tak theek hai.
+  Rozana ke kaam (sale, stock, reports) is mein aate hain.
+  <b>CSV import jaisa bada kaam</b> Google wale <code>.../exec</code> URL par karein.</p>
+</div>
+
+<h2>📊 Muqabla — kaunsa behtar?</h2>
+
+<table>
+  <tr><th></th><th>Sirf Google (C)</th><th>Netlify + Google (B)</th></tr>
+  <tr><td><b>Raftaar</b></td><td>Theek</td><td>⭐ Tez (CDN)</td></tr>
+  <tr><td><b>Custom domain</b></td><td>❌ Nahi</td><td>✅ Haan</td></tr>
+  <tr><td><b>Jhanjhat</b></td><td>⭐ Kam</td><td>Thodi zyada</td></tr>
+  <tr><td><b>Offline PWA</b></td><td>Had tak</td><td>⭐ Behtar</td></tr>
+  <tr><td><b>Update</b></td><td>⭐ Sirf <code>clasp push</code></td><td>push + build + drop</td></tr>
+  <tr><td><b>Data</b></td><td>Google Sheets</td><td>Google Sheets (wahi)</td></tr>
+</table>
+
+<h2>🎯 Ek nazar mein</h2>
+
+<ol>
+  <li><b>Backend</b> deploy karein (clasp guide) → <code>.../exec</code> URL lein</li>
+  <li><b>Python</b> install karein (<b>Add to PATH</b> ✓)</li>
+  <li><code>python tools\build_static.py "&lt;exec URL&gt;"</code></li>
+  <li><b>app.netlify.com/drop</b> → <code>dist-static</code> folder drop karein</li>
+  <li>Link kholein → login → <b>kaam shuru</b> 🎉</li>
+</ol>
+
+<div class="box ok">
+  <span class="t">🔐 Data kahan hai?</span>
+  <p>Har surat mein <b>Google Sheets</b> mein. Netlify sirf screen deta hai.
+  Agar kal Netlify band ho jaye — aap ka data mehfooz hai, bas naya host lagayein.</p>
+</div>
+
+<div class="foot">
+  <p><b>Masla aaye to:</b> error ka poora text bhej dein — main hal bata doon ga.</p>
+  <p>Haseeb Autos ERP · v2.6.0 · Static hosting guide (Netlify / Vercel / Pages / Firebase)</p>
+</div>
+
+</body>
+</html>

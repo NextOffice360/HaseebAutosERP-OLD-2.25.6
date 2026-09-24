@@ -1,0 +1,757 @@
+<script>
+/* ==========================================================================
+   HASEEB AUTOS — PROFESSIONAL CHART ENGINE (v2.2)
+   Pure SVG + CSS, koi CDN/library nahi (Apps Script + offline PWA safe).
+
+   API (pichle version ke sath compatible):
+     Chart.donut(data, opts)      — doughnut / pie, hover + legend + drill-down
+     Chart.bars(data, opts)       — vertical / horizontal / grouped / stacked
+     Chart.area(points, opts)     — single series area
+     Chart.line(series, opts)     — MULTI-series line/area (NEW, pro axes)
+     Chart.spark(values, opts)    — inline sparkline
+     Chart.progress(rows, opts)   — progress list (NEW signature: array)
+     Chart.gauge(pct, label, sub) — circular gauge (NEW: 270° arc, ticks)
+     Chart.kpiRing(pct, opts)     — small ring for KPI cards (NEW)
+     Chart.heat(values, opts)     — heat strip
+     Chart.funnel(stages, opts)   — funnel
+
+   Har chart: responsive (viewBox), accessible (role=img + <title>/<desc>),
+   hover tooltip, click drill-down, empty-state, aur print-safe.
+   ========================================================================== */
+/* v2.6 QA — CHART LABELS
+   Pehle axis/value labels 9.5–11px the (dashboard ke 22 chhote text).
+   Ab har label +2.5px (12–13.5px) — bina chart ke size badle padhne layak. */
+(function () {
+'use strict';
+
+const PAL = ['#c2410c', '#1d63c9', '#0f7a3f', '#7e22ce', '#be123c', '#0369a1',
+  /* WCAG AA: ye fill colors safed label ke sath bhi 4.5:1 cross karte hain */
+  '#b45309', '#0f766e', '#9333ea', '#c2410c'];
+const num = v => Number(v) || 0;
+const isNum = v => v !== '' && v !== null && v !== undefined && !isNaN(Number(v));
+
+/* ------------------------------- helpers ---------------------------------- */
+function svg(tag, attrs, children) {
+  const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  Object.keys(attrs || {}).forEach(k => {
+    const v = attrs[k];
+    if (v === null || v === undefined || v === false) return;
+    if (k === 'style' && typeof v === 'object') {          /* object → CSS string */
+      el.setAttribute('style', Object.keys(v).map(p2 =>
+        p2.replace(/[A-Z]/g, m => '-' + m.toLowerCase()) + ':' + v[p2]).join(';'));
+      return;
+    }
+    el.setAttribute(k, String(v));
+  });
+  (children || []).forEach(c => { if (c) el.appendChild(c); });
+  return el;
+}
+function root(w, h, cls, title, desc) {
+  const s = svg('svg', {
+    viewBox: '0 0 ' + w + ' ' + h, preserveAspectRatio: 'xMidYMid meet',
+    class: 'chart-svg ' + (cls || ''), role: 'img', width: '100%',
+    style: { display: 'block', overflow: 'visible' }
+  });
+  if (title) { s.appendChild(svg('title', {}, [document.createTextNode(title)])); s.setAttribute('aria-label', title); }
+  if (desc) s.appendChild(svg('desc', {}, [document.createTextNode(desc)]));
+  return s;
+}
+function txt(x, y, str, opts) {
+  opts = opts || {};
+  const t = svg('text', { x: x, y: y, 'text-anchor': opts.anchor || 'start',
+    'dominant-baseline': opts.baseline || 'auto',
+    'font-size': opts.size || 11, fill: opts.fill || 'var(--muted, #64748b)',
+    'font-weight': opts.weight || 400, class: opts.cls || '',
+    'data-maxw': opts.maxw !== undefined ? opts.maxw : undefined });
+  t.textContent = str;
+  return t;
+}
+/** shared floating tooltip (ek hi div, sab charts use karte hain) */
+let TIP = null;
+function tip() {
+  if (!TIP) {
+    TIP = h('div', { class: 'chart-tip' });
+    document.body.appendChild(TIP);
+  }
+  return TIP;
+}
+function showTip(ev, html) {
+  const t = tip(); t.innerHTML = html; t.classList.add('on');
+  const r = t.getBoundingClientRect();
+  let x = (ev.clientX || 0) + 14, y = (ev.clientY || 0) - 10;
+  if (x + r.width > window.innerWidth - 10) x = (ev.clientX || 0) - r.width - 14;
+  if (y + r.height > window.innerHeight - 10) y = window.innerHeight - r.height - 10;
+  t.style.left = Math.max(6, x) + 'px'; t.style.top = Math.max(6, y) + 'px';
+}
+function hideTip() { if (TIP) TIP.classList.remove('on'); }
+window.addEventListener('scroll', hideTip, true);
+
+const compact = v => {
+  const n = num(v);
+  const a = Math.abs(n);
+  const t = x => { let s = x.toFixed(2); if (s.indexOf('.') > -1) s = s.replace(/0+$/, '').replace(/\.$/, ''); return s; };
+  /* v2.8.5 QA — "20.67 L" / "1.03 Cr" user ko samajh nahi aata tha. Ab saaf
+     alfaz: "20.67 Lakh" / "1.03 Crore". K hazaar ke liye chalta hai.
+     Agar jagah kam ho to fitOne() font chhota kar ke fit kar deta hai. */
+  if (a >= 1e7) return t(n / 1e7) + ' Crore';
+  if (a >= 1e5) return t(n / 1e5) + ' Lakh';
+  if (a >= 1e3) return t(n / 1e3) + 'K';
+  return String(Math.round(n * 100) / 100);
+};
+/* v2.8.5 — y-axis ka left gutter ab FIXED 46 nahi; sab se chaure tick label se
+   nikalta hai. Words ("2 Lakh") chauray hote hain, is liye padL dynamic warna
+   label SVG ke kinaare se chipak jata tha (typography gate: "kinaare se 1.6px"). */
+function yPad(max, ticks, fs) {
+  ticks = ticks || 4; fs = fs || 13;
+  let w = 0;
+  for (let i = 0; i <= ticks; i++) {
+    const s = compact(max * i / ticks);
+    w = Math.max(w, String(s).length * charW(fs));
+  }
+  return Math.max(46, Math.ceil(w) + 12);
+}
+const money = v => (window.fmt && fmt.money) ? fmt.money(v) : compact(v);
+const short = (s, n) => { s = String(s || ''); return s.length > (n || 14) ? s.slice(0, (n || 14) - 1) + '…' : s; };
+
+/* --------------------------- layout intelligence -------------------------- */
+/** Font size (px) → approx character width, taake label clip na ho */
+const charW = size => size * 0.58;
+/** Kitne labels safely fit hote hain (overlap se bachne ke liye) */
+function labelStep(count, plotW, labelPx) {
+  if (!count) return 1;
+  const need = Math.max(30, (labelPx || 10) * 4.4);   // har label ke liye kam az kam jagah
+  return Math.max(1, Math.ceil((count * need) / Math.max(1, plotW)));
+}
+/** text ko available width ke hisaab se truncate karo */
+function fit(str, maxPx, size) {
+  const per = charW(size || 10);
+  const maxChars = Math.max(3, Math.floor(maxPx / per));
+  return short(str, maxChars);
+}
+/** professional default sizes (kabhi bade nahi) */
+const SIZING = {
+  donut: { size: 150, thickness: 20, centerSize: 13.5, labelSize: 9.6, subSize: 9.6, max: 170 },
+  gauge: { size: 110, thickness: 10, valueSize: 15.5, labelSize: 9.6, subSize: 9.6 },
+  /* rows are HTML (labels kabhi overlap nahi hote) — height sirf row count se */
+  barH: rowCount => Math.min(280, Math.max(84, 26 * Math.min(rowCount, 12) + 8)),
+  line: 190,
+  bars: 176,
+  maxBarChartH: 220
+};
+
+function niceMax(v) {
+  if (!isFinite(v) || v <= 0) return 10;
+  const exp = Math.floor(Math.log10(v));
+  const base = Math.pow(10, exp);
+  const n = v / base;
+  const step = n <= 1 ? 1 : n <= 2 ? 2 : n <= 2.5 ? 2.5 : n <= 5 ? 5 : 10;
+  return step * base;
+}
+function empty(msg) {
+  return h('div', { class: 'chart-empty' }, msg || 'Data nahi hai');
+}
+
+/* ================================ DONUT =================================== */
+function donut(data, opts) {
+  opts = opts || {};
+  data = (data || []).filter(d => num(d.value) > 0);
+  if (!data.length) return empty(opts.emptyText || 'Is range me koi data nahi');
+  /* professional card size — donut kabhi 170px se bada nahi (mobile par bhi theek) */
+  const size = Math.max(120, Math.min(opts.size || SIZING.donut.size, SIZING.donut.max));
+  const th = opts.thickness || SIZING.donut.thickness;
+  const total = data.reduce((a, d) => a + num(d.value), 0);
+  const r = (size - th) / 2 - 2, cx = size / 2, cy = size / 2;
+  const circ = 2 * Math.PI * r;
+  const gap = opts.gap === undefined ? 1.5 : opts.gap;
+  let off = 0;
+  const g = svg('g', { transform: 'rotate(-90 ' + cx + ' ' + cy + ')' });
+  data.forEach((d, i) => {
+    const v = num(d.value), len = (v / total) * circ;
+    const arc = svg('circle', { cx, cy, r, fill: 'none', stroke: d.color || PAL[i % PAL.length],
+      'stroke-width': th, 'stroke-dasharray': Math.max(0, len - gap) + ' ' + (circ - Math.max(0, len - gap)),
+      'stroke-dashoffset': -off, 'stroke-linecap': 'butt', class: 'donut-seg' });
+    const pct = (v / total * 100);
+    arc.addEventListener('mousemove', ev => showTip(ev,
+      '<b>' + esc(d.label) + '</b><br>' + money(v) + ' · ' + pct.toFixed(1) + '%'));
+    arc.addEventListener('mouseleave', hideTip);
+    arc.addEventListener('click', () => opts.onClick && opts.onClick(d, i));
+    off += len;
+    g.appendChild(arc);
+  });
+  const s = root(size, size, 'chart-donut', opts.title || 'Donut chart',
+    data.map(d => d.label + ': ' + money(d.value)).join(', '));
+  s.appendChild(g);
+  const cVal = opts.centerValue !== undefined ? opts.centerValue : compact(total);
+  s.appendChild(txt(cx, cy - 2, cVal, { anchor: 'middle', size: opts.centerSize || SIZING.donut.centerSize, weight: 800, fill: 'var(--text, #0f172a)' }));
+  /* v2.7 — 13px center-label donut ke andar tang ho kar arc se takra raha tha */
+  s.appendChild(txt(cx, cy + 14, opts.centerLabel || 'Total',
+    { anchor: 'middle', size: opts.labelSize || SIZING.donut.labelSize, fill: 'var(--muted, #64748b)' }));
+  const wrap = h('div', { class: 'chart-wrap chart-donut-wrap' }, s);
+  if (opts.legend !== false) wrap.appendChild(legend(data, total, opts));
+  return wrap;
+}
+
+function legend(data, total, opts) {
+  opts = opts || {};
+  const box = h('div', { class: 'chart-legend ' + (opts.legendClass || '') });
+  data.slice(0, opts.legendMax || 12).forEach((d, i) => {
+    const v = num(d.value);
+    const row = h('button', { class: 'lg-row', type: 'button', title: d.label + ' — ' + money(v) });
+    row.appendChild(h('i', { style: { background: d.color || PAL[i % PAL.length] } }));
+    row.appendChild(h('span', { class: 'lg-lab' }, short(d.label, opts.labelLen || 18)));
+    row.appendChild(h('b', { class: 'lg-val' }, money(v)));
+    row.appendChild(h('span', { class: 'lg-pct' }, (total ? (v / total * 100).toFixed(1) : '0') + '%'));
+    row.onclick = () => opts.onClick && opts.onClick(d, i);
+    box.appendChild(row);
+  });
+  return box;
+}
+
+/* ================================ BARS ==================================== */
+/**
+ * HTML BAR ROWS — industry practice (Stripe / Shopify / QuickBooks dashboards):
+ * naam ke liye fixed gutter + ellipsis, bar beech mein, value right aligned.
+ * Is tarah label aur value kabhi overlap nahi hote — chahe screen kitni bhi
+ * chhoti ho ya naam kitna bhi lamba ho. Tooltip mein poora naam + amount.
+ */
+function barsHTML(data, opts) {
+  opts = opts || {};
+  data = (data || []).filter(d => isNum(d.value));
+  if (!data.length) return empty(opts.emptyText || 'Koi data nahi');
+  const rows = data.slice(0, opts.limit || 12);
+  const max = Math.max.apply(null, rows.map(d => Math.abs(num(d.value))).concat([opts.min || 0])) || 1;
+  const wrap = h('div', { class: 'bars-html', role: 'table', 'aria-label': opts.title || 'Bar chart' });
+  rows.forEach((d, i) => {
+    const v = num(d.value);
+    const color = d.color || (opts.color || PAL[i % PAL.length]);
+    const pct = Math.min(100, Math.max(1.5, (Math.abs(v) / max) * 100));
+    const row = h('div', { class: 'bh-row' + (opts.onClick ? ' clickable' : ''),
+      title: String(d.label || '') + ': ' + money(v) });
+    row.appendChild(h('span', { class: 'bh-lab' }, String(d.label || '')));
+    const track = h('span', { class: 'bh-track' });
+    track.appendChild(h('span', { class: 'bh-fill' + (v < 0 ? ' neg' : ''),
+      style: { width: pct.toFixed(1) + '%', background: color } }));
+    row.appendChild(track);
+    /* compact value (17.5k) — column narrow rehta hai, poora amount tooltip me */
+    row.appendChild(h('b', { class: 'bh-val' }, d.display || compact(v)));
+    if (opts.onClick) row.onclick = () => opts.onClick(d, i);
+    wrap.appendChild(row);
+  });
+  return wrap;
+}
+
+function bars(data, opts) {
+  opts = opts || {};
+  data = (data || []).filter(d => isNum(d.value));
+  if (!data.length) return empty(opts.emptyText || 'Koi data nahi');
+  /* OVERLAP-FREE RULE: lambe naam ya zyada bars → HTML rows (SVG labels clip
+     ho jate hain). Columns sirf chhote, kam categories ke liye. */
+  const nameLen = data.reduce((a, d) => Math.max(a, String(d.label || '').length), 0);
+  if (opts.horizontal || data.length > 8 || nameLen > 12) {
+    return barsHTML(data, opts);
+  }
+  const horiz = false;
+  const W = opts.width || 640;
+  const H = opts.height || (horiz ? SIZING.barH(data.length) : Math.min(SIZING.bars, SIZING.maxBarChartH));
+  /* label gutter: horizontal bars mein naam ke hisaab se jagah */
+  const longest = data.reduce((a, d) => Math.max(a, String(d.label || '').length), 0);
+  const labelPx = horiz ? Math.min(150, Math.max(60, charW(10.5) * Math.min(longest, 22))) : 44;
+  const max = niceMax(Math.max.apply(null, data.map(d => num(d.value)).concat([opts.min || 0])));
+  const _ticks = opts.ticks || (horiz ? 3 : 4);
+  /* v2.8.5 — dynamic left gutter: word ticks ("2 Lakh") ke liye jagah */
+  const padL = horiz ? labelPx : (opts.padLeft || yPad(max, _ticks, 13));
+  const padR = 14, padT = 16, padB = opts.hideLabels ? 16 : (horiz ? 14 : 34);
+  const iw = Math.max(40, W - padL - padR), ih = Math.max(40, H - padT - padB);
+
+  const s = root(W, H, 'chart-bars', opts.title || 'Bar chart');
+  const _labPlaced = [];   /* v2.6: labels ki jagah yaad rakho (overlap rokne ke liye) */
+  const ticks = opts.ticks || (horiz ? 3 : 4);
+  for (let i = 0; i <= ticks; i++) {
+    const v = max * i / ticks, y = padT + ih - (ih * i / ticks);
+    s.appendChild(svg('line', { x1: padL, y1: y, x2: padL + iw, y2: y,
+      stroke: 'var(--line, #e6eaf2)', 'stroke-width': 1, 'stroke-dasharray': i ? '3 4' : '0' }));
+    s.appendChild(txt(padL - 6, y + 3.5, compact(v), { anchor: 'end', size: 13.0, fill: 'var(--muted-2, #94a3b8)' }));
+  }
+  const slot = (horiz ? ih : iw) / Math.max(1, data.length);
+  const bw = Math.max(2, Math.min(opts.maxBar || (horiz ? 22 : 34), slot * 0.68));
+  const step = horiz ? 1 : labelStep(data.length, iw, 10);
+
+  data.forEach((d, i) => {
+    const v = num(d.value);
+    const color = d.color || (opts.color || PAL[i % PAL.length]);
+    let x, y, w, hh;
+    if (horiz) { x = padL; y = padT + slot * i + (slot - bw) / 2; w = Math.max(1, (v / max) * iw); hh = bw; }
+    else { w = bw; hh = Math.max(1, (v / max) * ih); x = padL + slot * i + (slot - bw) / 2; y = padT + ih - hh; }
+    const rect = svg('rect', { x: x, y: y, width: w, height: hh, rx: Math.min(4, bw / 3),
+      fill: color, class: 'bar-rect' });
+    rect.appendChild(svg('title', {}, [document.createTextNode(String(d.label) + ': ' + money(v))]));
+    rect.addEventListener('mousemove', ev => showTip(ev, '<b>' + esc(String(d.label)) + '</b><br>' + money(v)));
+    rect.addEventListener('mouseleave', hideTip);
+    rect.addEventListener('click', () => opts.onClick && opts.onClick(d, i));
+    s.appendChild(rect);
+
+    /* VALUE LABEL — sirf jab jagah ho (overlap khatam) */
+    if (opts.showValues !== false && (horiz ? w > 48 : (hh > 18 && bw >= 16))) {
+      s.appendChild(txt(horiz ? x + w + 6 : x + w / 2, horiz ? y + hh / 2 + 3.5 : y - 5,
+        compact(v), { anchor: horiz ? 'start' : 'middle', size: 13.0, weight: 700, fill: 'var(--muted, #64748b)' }));
+    }
+    /* CATEGORY LABEL */
+    if (horiz) {
+      s.appendChild(txt(padL - 6, y + hh / 2 + 3.5, fit(String(d.label), labelPx - 8, 10.5),
+        { anchor: 'end', size: 13.0, fill: 'var(--muted, #64748b)' }));
+    } else if (!opts.hideLabels && (i % step === 0 || i === data.length - 1)) {
+      const rotated = step > 1 && data.length > 14;
+      const labSize = 13;
+      /* v2.6 QA — do masle: ① fit() ko 9.5px ka pata tha magar 13px par likha
+         ja raha tha. ② aakhri label hamesha draw hota tha, chahe pichle wale
+         se chipka ho ("0" ⟷ "09-05"). Ab dono theek: width usi size se napi
+         jati hai, aur qareeb wala label chhor diya jata hai. */
+      const lx = x + w / 2;
+      if (!rotated) {
+        const minGap = Math.max(38, labSize * 4.4);
+        if (_labPlaced.some(px => Math.abs(px - lx) < minGap)) return;
+        _labPlaced.push(lx);
+      }
+      const t = txt(lx, H - padB + (rotated ? 10 : 21), fit(String(d.label), slot * step - 4, labSize),
+        { anchor: rotated ? 'end' : 'middle', size: labSize, fill: 'var(--muted-2, #94a3b8)' });
+      if (rotated) t.setAttribute('transform', 'rotate(-38 ' + lx + ' ' + (H - padB + 10) + ')');
+      s.appendChild(t);
+    }
+  });
+  return h('div', { class: 'chart-wrap' }, s);
+}
+
+/* ============================ GROUPED / STACKED =========================== */
+function grouped(groups, series, opts) {   /* groups: [{label, values:[v1,v2]}] */
+  opts = opts || {};
+  if (!groups.length) return empty('Koi data nahi');
+  const W = opts.width || 640, H = opts.height || 240;
+  const stacked = !!opts.stacked;
+  const max = niceMax(Math.max.apply(null, groups.map(g => stacked
+    ? g.values.reduce((a, b) => a + num(b), 0) : Math.max.apply(null, g.values.map(num)))));
+  /* v2.8.5 — dynamic left gutter (word ticks fit) */
+  const padL = yPad(max, 4, 13), padR = 12, padT = 14, padB = 30;
+  const iw = W - padL - padR, ih = H - padT - padB;
+  const s = root(W, H, 'chart-grouped', opts.title || 'Grouped bar chart');
+  for (let i = 0; i <= 4; i++) {
+    const y = padT + ih - (ih * i / 4);
+    s.appendChild(svg('line', { x1: padL, y1: y, x2: padL + iw, y2: y,
+      stroke: 'var(--line, #e6eaf2)', 'stroke-dasharray': i ? '3 4' : '0' }));
+    s.appendChild(txt(padL - 6, y + 3, compact(max * i / 4), { anchor: 'end', size: 13.0, fill: 'var(--muted-2)' }));
+  }
+  const slot = iw / groups.length;
+  groups.forEach((g, gi) => {
+    let acc = 0;
+    g.values.forEach((v, si) => {
+      v = num(v);
+      const hh = Math.max(0, (v / max) * ih);
+      const bw = Math.max(2, Math.min(opts.maxBar || 26, (stacked ? slot * 0.6 : slot * 0.8 / g.values.length)));
+      const x = stacked ? padL + slot * gi + (slot - bw) / 2
+        : padL + slot * gi + (slot - bw * g.values.length) / 2 + bw * si;
+      const y = stacked ? padT + ih - acc - hh : padT + ih - hh;
+      if (stacked) acc += hh;
+      const rect = svg('rect', { x, y, width: bw, height: hh, rx: 3, fill: (opts.colors || PAL)[si % PAL.length], class: 'bar-rect' });
+      rect.appendChild(svg('title', {}, [document.createTextNode(g.label + ' · ' + (series[si] || '') + ': ' + money(v))]));
+      rect.addEventListener('mousemove', ev => showTip(ev, '<b>' + esc(g.label) + '</b><br>' +
+        (series[si] || 'Series ' + (si + 1)) + ': ' + money(v)));
+      rect.addEventListener('mouseleave', hideTip);
+      s.appendChild(rect);
+    });
+    s.appendChild(txt(padL + slot * gi + slot / 2, H - padB + 14, short(g.label, 10),
+      { anchor: 'middle', size: 13.0, fill: 'var(--muted-2)' }));
+  });
+  const wrap = h('div', { class: 'chart-wrap' }, s);
+  if (opts.legend !== false) {
+    const lg = h('div', { class: 'chart-legend inline' });
+    series.forEach((name, i) => lg.appendChild(h('span', { class: 'lg-inline' },
+      h('i', { style: { background: (opts.colors || PAL)[i % PAL.length] } }), h('span', null, name))));
+    wrap.appendChild(lg);
+  }
+  return wrap;
+}
+
+/* ================================= LINE =================================== */
+/**
+ * series: [{ name, color, values:[{x, y}] | [y…] }]   labels: [...]
+ * opts: { height, area:true, smooth:true, yLabel, ticks, legend }
+ */
+function line(series, labels, opts) {
+  opts = opts || {};
+  if (!series || !series.length) return empty('Koi data nahi');
+  const W = opts.width || 680, H = opts.height || SIZING.line;
+  const all = [];
+  series.forEach(s0 => (s0.values || []).forEach(p => all.push(num(p.y !== undefined ? p.y : p))));
+  const max = niceMax(Math.max.apply(null, all.concat([0])) * 1.08) || 10;
+  /* v2.8.5 — dynamic left gutter (word ticks fit) */
+  const padL = yPad(max, opts.ticks || 4, 13), padR = 16, padT = 14, padB = opts.hideLabels ? 18 : 34;
+  const iw = W - padL - padR, ih = H - padT - padB;
+  const s = root(W, H, 'chart-line', opts.title || 'Trend chart');
+  const ticks = opts.ticks || 4;
+  const yOf = v => padT + ih - (num(v) / max) * ih;
+  for (let i = 0; i <= ticks; i++) {
+    const y = padT + ih - (ih * i / ticks);
+    s.appendChild(svg('line', { x1: padL, y1: y, x2: padL + iw, y2: y,
+      stroke: 'var(--line, #e6eaf2)', 'stroke-dasharray': i ? '3 5' : '0' }));
+    s.appendChild(txt(padL - 7, y + 3.5, compact(max * i / ticks), { anchor: 'end', size: 13.0, fill: 'var(--muted-2)' }));
+  }
+  const n = Math.max.apply(null, series.map(x => (x.values || []).length));
+  const xOf = i => padL + (n <= 1 ? iw / 2 : (iw * i) / (n - 1));
+
+  series.forEach((ser, si) => {
+    const color = ser.color || (opts.colors || PAL)[si % PAL.length];
+    const pts = (ser.values || []).map((p, i) => ({ x: xOf(i), y: yOf(p.y !== undefined ? p.y : p), raw: p }));
+    if (!pts.length) return;
+    let d = '';
+    if (opts.smooth !== false && pts.length > 2) {
+      d = 'M' + pts[0].x + ',' + pts[0].y;
+      for (let i = 0; i < pts.length - 1; i++) {
+        const p0 = pts[i], p1 = pts[i + 1], cx = (p0.x + p1.x) / 2;
+        d += ' C' + cx + ',' + p0.y + ' ' + cx + ',' + p1.y + ' ' + p1.x + ',' + p1.y;
+      }
+    } else {
+      d = pts.map((p, i) => (i ? 'L' : 'M') + p.x + ',' + p.y).join(' ');
+    }
+    if (opts.area !== false) {
+      const aid = 'ar' + si + Math.random().toString(36).slice(2, 7);
+      const defs = svg('defs');
+      const lg = svg('linearGradient', { id: aid, x1: 0, y1: 0, x2: 0, y2: 1 });
+      lg.appendChild(svg('stop', { offset: '0%', 'stop-color': color, 'stop-opacity': .26 }));
+      lg.appendChild(svg('stop', { offset: '100%', 'stop-color': color, 'stop-opacity': 0 }));
+      defs.appendChild(lg); s.appendChild(defs);
+      s.appendChild(svg('path', { d: d + ' L' + pts[pts.length - 1].x + ',' + (padT + ih) +
+        ' L' + pts[0].x + ',' + (padT + ih) + ' Z', fill: 'url(#' + aid + ')' }));
+    }
+    s.appendChild(svg('path', { d: d, fill: 'none', stroke: color, 'stroke-width': 2.2,
+      'stroke-linejoin': 'round', 'stroke-linecap': 'round' }));
+    if (opts.points !== false && n <= 40) {
+      pts.forEach((p, i) => {
+        const c = svg('circle', { cx: p.x, cy: p.y, r: 3, fill: '#fff', stroke: color, 'stroke-width': 2, class: 'ln-pt' });
+        c.addEventListener('mousemove', ev => showTip(ev, '<b>' + esc(ser.name || 'Series') + '</b><br>' +
+          ((labels && labels[i]) || p.raw.x || ('#' + (i + 1))) + ': ' + money(p.raw.y !== undefined ? p.raw.y : p.raw)));
+        c.addEventListener('mouseleave', hideTip);
+        s.appendChild(c);
+      });
+    }
+    /* hover bands for full-column tooltip */
+    if (opts.crosshair !== false) {
+      for (let i = 0; i < n; i++) {
+        const band = svg('rect', { x: xOf(i) - iw / (n * 2), y: padT, width: iw / n, height: ih, fill: 'transparent' });
+        band.addEventListener('mousemove', ev => {
+          const rows = series.map((ss, k) => {
+            const v = (ss.values || [])[i];
+            const val = v && v.y !== undefined ? v.y : v;
+            return '<span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:' +
+              ((ss.color || (opts.colors || PAL)[k % PAL.length])) + ';margin-right:6px"></span>' +
+              esc(ss.name || 'S' + k) + ' <b>' + money(val) + '</b>';
+          }).join('<br>');
+          showTip(ev, '<b>' + esc((labels && labels[i]) || ('#' + (i + 1))) + '</b><br>' + rows);
+        });
+        band.addEventListener('mouseleave', hideTip);
+        s.appendChild(band);
+      }
+    }
+  });
+  if (!opts.hideLabels && labels) {
+    /* v2.6 QA — pehle aakhri label HAMESHA draw hota tha (chahe pichle wale se
+       chipka ho) aur baqi `step` se chhante the. Bada font lagu karne par
+       "0" aur "09-05" aapas mein takra gaye.
+       Ab pichhe se aage chal kar har label ki jagah napte hain: jo label
+       pichle (pehle rakhe gaye) label se kam-az-kam faasle par na ho, chhor
+       dete hain. Aakhri label sab se pehle rakha jata hai (sab se ahem). */
+    const labSize = 13;
+    const step = labelStep(labels.length, iw, labSize);
+    const minGap = Math.max(38, labSize * 4.4);
+    const placed = [];
+    const lastI = labels.length - 1;
+    for (let i = lastI; i >= 0; i--) {
+      if (i % step && i !== lastI) continue;
+      const x = xOf(i);
+      if (placed.some(px => Math.abs(px - x) < minGap)) continue;
+      placed.push(x);
+      /* v2.6 QA — y-axis ka "0" label (H-padB+3.5) aur x-axis ki tareekh
+         (H-padB+16) ke darmiyan sirf 12.5px tha; 13px font ko ~16px chahiye.
+         Is liye offset 16 → 21 (faasla ab 17.5px). */
+      s.appendChild(txt(x, H - padB + 21, short(labels[i], 10),
+        { anchor: 'middle', size: labSize, fill: 'var(--muted-2)' }));
+    }
+  }
+  const wrap = h('div', { class: 'chart-wrap' }, s);
+  if (opts.legend !== false && series.length > 1) {
+    const lg = h('div', { class: 'chart-legend inline' });
+    series.forEach((ser, i) => lg.appendChild(h('span', { class: 'lg-inline' },
+      h('i', { style: { background: ser.color || (opts.colors || PAL)[i % PAL.length] } }),
+      h('span', null, ser.name || 'Series ' + (i + 1)))));
+    wrap.appendChild(lg);
+  }
+  return wrap;
+}
+
+/* ================================ AREA ==================================== */
+function area(points, opts) {
+  opts = opts || {};
+  return line([{ name: opts.name || 'Value', color: opts.color, values: points }],
+    (points || []).map(p => p.label), opts);
+}
+
+/* ============================== SPARKLINE ================================= */
+function spark(values, opts) {
+  opts = opts || {};
+  const vals = (values || []).map(num);
+  if (vals.length < 2) return h('span', { class: 'spark-empty' }, '—');
+  const W = opts.width || 96, H = opts.height || 26;
+  const max = Math.max.apply(null, vals), min = Math.min.apply(null, vals);
+  const span = (max - min) || 1;
+  const pts = vals.map((v, i) => [ (W * i) / (vals.length - 1), H - 2 - ((v - min) / span) * (H - 5) ]);
+  const d = pts.map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' ');
+  const color = opts.color || (vals[vals.length - 1] >= vals[0] ? PAL[2] : PAL[4]);
+  const s = root(W, H, 'chart-spark', opts.title || 'Trend', 'Last value ' + vals[vals.length - 1]);
+  s.setAttribute('preserveAspectRatio', 'none');
+  s.appendChild(svg('path', { d: d + ' L' + W + ',' + H + ' L0,' + H + ' Z', fill: color, 'fill-opacity': .12 }));
+  s.appendChild(svg('path', { d: d, fill: 'none', stroke: color, 'stroke-width': 1.6, 'stroke-linejoin': 'round' }));
+  s.appendChild(svg('circle', { cx: pts[pts.length - 1][0], cy: pts[pts.length - 1][1], r: 2.2, fill: color }));
+  return h('span', { class: 'spark' }, s);
+}
+
+/* ================================ GAUGE =================================== */
+function gauge(pct, label, sub, opts) {
+  opts = opts || {};
+  const size = opts.size || SIZING.gauge.size, th = opts.thickness || SIZING.gauge.thickness;
+  const p = Math.max(0, Math.min(100, num(pct)));
+  const r = (size - th) / 2 - 4, cx = size / 2, cy = size / 2 + 6;
+  const circ = 2 * Math.PI * r, sweep = 0.75;                 /* 270° arc */
+  const arcLen = circ * sweep;
+  const color = opts.color || (p >= 80 ? PAL[2] : p >= 50 ? PAL[6] : PAL[4]);
+  /* v2.6 QA — gauge ki 3 lines (value / label / sub). Pehle offsets 15 aur 28
+     chhote font (10.5px) ke liye tune the; font barha to lines upar-upar
+     aa gayin. Ab har line ka offset uske font se nikalta hai. */
+  const vSize = opts.valueSize || SIZING.gauge.valueSize;
+  /* v2.7 — 13px sub-line gauge (118px) se bahar nikal rahi thi aur arc se
+     takra rahi thi (dekhein "Rs 510,660.92" = 94px). Ab compact 9.6px,
+     aur fitAll() har text ko SVG ke andar fit bhi karta hai (safety net). */
+  const lSize = opts.labelSize || 9.6, sSize = opts.subSize || 9.6;
+  const labOff = vSize * 0.5 + 6 + lSize * 0.85;   /* ~ cy + 19 */
+  const subOff = labOff + 4 + sSize * 0.85;        /* ~ cy + 33 */
+  /* v2.8.5 — har line ke liye arc ke ANDAR ki asal chaurai (chord). Jitni
+     neeche line, utna tang chord. fitOne() isi se text auto-shrink karta hai
+     taake "Rs 2,500 / Rs 2,828" curve se na takraye. */
+  const chordW = (yBase, fs) => {
+    const yMid = yBase - fs * 0.35, dy = yMid - cy, rIn = r - th / 2;
+    if (Math.abs(dy) >= rIn) return size - 8;
+    return 2 * Math.sqrt(Math.max(0, rIn * rIn - dy * dy)) - 4;
+  };
+  const s = root(size, size * 0.98, 'chart-gauge', (label || 'Gauge') + ' ' + p + '%');
+  const g = svg('g', { transform: 'rotate(135 ' + cx + ' ' + cy + ')' });
+  g.appendChild(svg('circle', { cx, cy, r, fill: 'none', stroke: 'var(--line, #e9edf4)',
+    'stroke-width': th, 'stroke-dasharray': arcLen + ' ' + (circ - arcLen), 'stroke-linecap': 'round' }));
+  const val = svg('circle', { cx, cy, r, fill: 'none', stroke: color, 'stroke-width': th,
+    'stroke-dasharray': (arcLen * p / 100) + ' ' + (circ - arcLen * p / 100), 'stroke-linecap': 'round', class: 'g-val' });
+  val.appendChild(svg('title', {}, [document.createTextNode((label || '') + ' ' + p + '%')]));
+  g.appendChild(val);
+  s.appendChild(g);
+  s.appendChild(txt(cx, cy - 2, (opts.value !== undefined ? opts.value : p + '%'),
+    { anchor: 'middle', size: vSize, weight: 800, fill: 'var(--text, #0f172a)' }));
+  s.appendChild(txt(cx, cy + labOff, short(label || '', 16), { anchor: 'middle', size: lSize,
+    maxw: chordW(cy + labOff, lSize), fill: 'var(--muted, #64748b)' }));
+  /* v2.8.5 — lambi sub line (jaise "Rs 2,500 / Rs 2,828") ab arc ke ANDAR
+     nahi dabti; neeche full-width caption ban jati hai. Is se overlap/truncate
+     khatam aur font readable rehta hai (≥10.8px). Value + chhota label andar. */
+  const wrap = h('div', { class: 'chart-wrap center' }, s);
+  if (sub) wrap.appendChild(h('div', { class: 'g-sub' }, sub));
+  return wrap;
+}
+
+/* =============================== KPI RING ================================= */
+function kpiRing(pct, opts) {
+  opts = opts || {};
+  const size = opts.size || 46, th = opts.thickness || 5;
+  const p = Math.max(0, Math.min(100, num(pct)));
+  const r = (size - th) / 2, cx = size / 2, cy = size / 2, circ = 2 * Math.PI * r;
+  const color = opts.color || (p >= 80 ? PAL[2] : p >= 50 ? PAL[6] : PAL[4]);
+  const s = root(size, size, 'chart-ring', (opts.label || 'Ring') + ' ' + p + '%');
+  s.appendChild(svg('circle', { cx, cy, r, fill: 'none', stroke: 'var(--line, #e9edf4)', 'stroke-width': th }));
+  const v = svg('circle', { cx, cy, r, fill: 'none', stroke: color, 'stroke-width': th, 'stroke-linecap': 'round',
+    'stroke-dasharray': (circ * p / 100) + ' ' + (circ - circ * p / 100), transform: 'rotate(-90 ' + cx + ' ' + cy + ')' });
+  v.appendChild(svg('title', {}, [document.createTextNode((opts.label || '') + ': ' + p + '%')]));
+  s.appendChild(v);
+  if (opts.showText !== false) {
+    s.appendChild(txt(cx, cy + 3.5, p + '%', { anchor: 'middle', size: 13.5, weight: 800, fill: 'var(--text, #0f172a)' }));
+  }
+  return s;
+}
+
+/* =============================== PROGRESS ================================= */
+/** rows: [{label, value, max, color, sub, display}] */
+function progress(rows, opts) {
+  opts = opts || {};
+  rows = rows || [];
+  if (!rows.length) return empty('Koi data nahi');
+  const box = h('div', { class: 'prog-list' });
+  rows.forEach((r, i) => {
+    const max = num(r.max) || 100, v = num(r.value);
+    const p = Math.max(0, Math.min(100, (v / (max || 1)) * 100));
+    const color = r.color || PAL[i % PAL.length];
+    const row = h('div', { class: 'prog-row' });
+    row.appendChild(h('div', { class: 'prog-top' },
+      h('span', { class: 'prog-lab' }, short(r.label, 26)),
+      h('span', { class: 'prog-val' }, r.display !== undefined ? r.display : (compact(v) + ' / ' + compact(max)))));
+    const track = h('div', { class: 'prog-track' });
+    const fill = h('div', { class: 'prog-fill', style: { width: p + '%', background: color } });
+    fill.appendChild(h('span', null, p.toFixed(0) + '%'));
+    track.appendChild(fill);
+    row.appendChild(track);
+    if (r.sub) row.appendChild(h('div', { class: 'prog-sub' }, r.sub));
+    box.appendChild(row);
+  });
+  return box;
+}
+
+/* ================================= HEAT =================================== */
+function heat(values, opts) {
+  opts = opts || {};
+  const vals = (values || []).map(num);
+  if (!vals.length) return empty('Koi data nahi');
+  const max = Math.max.apply(null, vals) || 1;
+  const box = h('div', { class: 'heat-strip' });
+  vals.forEach((v, i) => {
+    const cell = h('span', { class: 'heat-cell', style: { background: 'rgba(255,106,0,' + (0.12 + (v / max) * 0.88).toFixed(2) + ')' },
+      title: ((opts.labels && opts.labels[i]) || ('#' + (i + 1))) + ': ' + compact(v) });
+    box.appendChild(cell);
+  });
+  return box;
+}
+
+/* ================================ FUNNEL ================================== */
+function funnel(stages, opts) {
+  opts = opts || {};
+  if (!stages || !stages.length) return empty('Koi data nahi');
+  const W = opts.width || 520, H = opts.height || 26 * stages.length + 10;
+  const max = Math.max.apply(null, stages.map(s0 => num(s0.value))) || 1;
+  const s = root(W, H, 'chart-funnel', 'Funnel');
+  stages.forEach((st, i) => {
+    const w = Math.max(40, (num(st.value) / max) * (W - 130));
+    const y = i * 26 + 6;
+    const rect = svg('rect', { x: 60, y: y, width: w, height: 18, rx: 4, fill: st.color || PAL[i % PAL.length] });
+    rect.appendChild(svg('title', {}, [document.createTextNode(st.label + ': ' + money(st.value))]));
+    s.appendChild(rect);
+    s.appendChild(txt(56, y + 13, short(st.label, 12), { anchor: 'end', size: 13.0, fill: 'var(--muted)' }));
+    s.appendChild(txt(60 + w + 6, y + 13, compact(st.value), { size: 13.0, weight: 700, fill: 'var(--text, #0f172a)' }));
+  });
+  return h('div', { class: 'chart-wrap' }, s);
+}
+
+/* ---------------------------- public surface ------------------------------ */
+/* ============================================================================
+   v2.7 — CHART TEXT AUTO-FIT (systemic fix, har chart par lagu)
+   ----------------------------------------------------------------------------
+   Masla (user ki report): gauge/donut ke andar lambi value —
+   masalan "Rs 510,660.92" — 13px par 94px chaurai thi jab ke gauge sirf
+   118px ka tha. Arc x=4–14 aur x=104–114 par tha, text x=12–106 →
+   TEXT AUR ARC AAPAS ME TAKRA RAHE THE. "Rs 12,345 / Rs 1,000,000" to
+   140px tha — 11px dono taraf bahar nikal raha tha (clip).
+
+   Hal do hisse ka:
+     (a) chart text ab COMPACT scale par (9.2–9.6px — user ki guidance ke
+         mutabiq), aur
+     (b) ek RENDER KE BAAD wala fit pass: har <text> ka asli BBox nap kar
+         font tab tak chhota karo jab tak wo apne SVG ke andar na aa jaye.
+     Is se KOI BHI value — kitni bhi lambi — kabhi overflow/overlap nahi karegi.
+   ========================================================================== */
+
+/** Ek <text> ko apne SVG viewBox ke andar fit karo (font chhota kar ke). */
+function fitOne(t, vb, opts) {
+  opts = opts || {};
+  /* v2.8.5 — floor 9.2px (chart-text readability rule). Is se neeche kabhi
+     nahi shrink hota — warna text unreadable ho jata hai. */
+  const MIN = opts.min || 9.2;           /* is se chhota padha nahi jata */
+  const PAD = (opts.pad == null ? 1.5 : opts.pad);
+  let size = parseFloat(t.getAttribute('font-size')) ||
+             parseFloat(getComputedStyle(t).fontSize) || 11;
+  if (!isFinite(size) || size <= 0) return;
+  /* v2.8.5 — gauge jaisi jagah par sirf viewBox kaafi NAHI: text ko apni
+     line par arc ke andar ki chaurai (data-maxw) mein bhi samaana hai, warna
+     wo curve se takrata hai ("Udhaar recovery Rs 2,500 / Rs 2,828"). */
+  const maxw = parseFloat(t.getAttribute('data-maxw')) || Infinity;
+  for (let guard = 0; guard < 14; guard++) {
+    let bb;
+    try { bb = t.getBBox(); } catch (e) { return; }   /* hidden / not rendered */
+    if (!bb || !bb.width) return;
+    const okL = bb.x >= -PAD;
+    const okR = (bb.x + bb.width) <= vb.width + PAD;
+    const okT = bb.y >= -PAD;
+    const okB = (bb.y + bb.height) <= vb.height + PAD;
+    const okW = bb.width <= maxw;
+    if (okL && okR && okT && okB && okW) return;      /* fit ho gaya */
+    if (size <= MIN) return;                          /* aur chhota karna theek nahi */
+    size = Math.max(MIN, size - 0.55);
+    t.setAttribute('font-size', size.toFixed(2));
+  }
+}
+
+/**
+ * root ke andar har chart SVG ke text fit karo.
+ * Render ke BAAD call hota hai (MutationObserver / renderView se) —
+ * kyunki getBBox() ko element ka DOM me maujood hona zaroori hai.
+ */
+function fitAll(root) {
+  root = root || document;
+  let svgs;
+  try { svgs = root.querySelectorAll('svg.chart-svg'); } catch (e) { return 0; }
+  let n = 0;
+  for (let i = 0; i < svgs.length; i++) {
+    const s = svgs[i];
+    if (s.dataset.fit === '1') continue;          /* dobara na karein */
+    let vb;
+    try { vb = s.viewBox && s.viewBox.baseVal; } catch (e) { vb = null; }
+    if (!vb || !vb.width) { s.dataset.fit = '1'; continue; }
+    const texts = s.querySelectorAll('text');
+    for (let j = 0; j < texts.length; j++) {
+      try { fitOne(texts[j], vb); n++; } catch (e) { /* aik text fail to baqi chaltein */ }
+    }
+    s.dataset.fit = '1';
+  }
+  return n;
+}
+
+/** debounced + observer — async charts (tables, tabs, modals) ke liye */
+let _fitT = null;
+function fitSoon(root) {
+  clearTimeout(_fitT);
+  _fitT = setTimeout(() => { try { fitAll(root || document.getElementById('view') || document); } catch (e) {} }, 60);
+}
+function fitWatch(root) {
+  if (!root || typeof MutationObserver === 'undefined') return;
+  let t = null;
+  const mo = new MutationObserver(() => {
+    clearTimeout(t);
+    t = setTimeout(() => { try { fitAll(root); } catch (e) {} }, 120);
+  });
+  try { mo.observe(root, { childList: true, subtree: true }); } catch (e) {}
+}
+
+const Engine = {
+  palette: i => PAL[i % PAL.length], colors: PAL,
+  donut, legend, bars, grouped, line, area, spark, gauge, kpiRing, progress, heat, funnel,
+  empty, compact, money,
+  /* v2.7 — auto-fit API */
+  fitOne, fitAll, fitSoon, fitWatch
+};
+/* Existing call sites (Chart.*) seamlessly upgrade ho jayein.
+   Baad mein koi aur file `window.Chart = …` kare to bhi Engine ke methods
+   tabdeel na hon — is liye property setter ke zariye merge karte hain. */
+let BASE = window.Chart || {};
+let MERGED = Object.assign({}, BASE, Engine);
+try {
+  Object.defineProperty(window, 'Chart', {
+    configurable: true,
+    get: function () { return MERGED; },
+    set: function (v) { BASE = v || {}; MERGED = Object.assign({}, BASE, Engine); }
+  });
+} catch (e) {
+MERGED.barsHTML = barsHTML;           /* HTML rows — overlap-free */
+MERGED.rowsHTML = barsHTML;
+
+  window.Chart = MERGED;               /* purane browsers ke liye fallback */
+}
+window.Chart2 = Engine;
+})();
+</script>

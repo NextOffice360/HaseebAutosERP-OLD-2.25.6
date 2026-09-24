@@ -1,0 +1,155 @@
+<script>
+/* ==========================================================================
+   HASEEB AUTOS — DEDICATED APPS HUB
+   Browsable gallery for installable PWAs: Warehouse, Field, Salesman,
+   Standalone POS. Every app is a separate ?app=… URL with its own manifest.
+
+   Links: ?app=wh | ?app=fo | ?app=sm | ?app=pos
+   Also shows QR for phone scanning + Install hint + status (enabled/perm).
+   ========================================================================== */
+(function(){
+'use strict';
+
+var APPS = [
+  { id:'wh', icon:'🏬', name:'Warehouse', desc:'Receive · Put-away · Count · Transfer', href:'?app=wh', perm:'stock.view', colour:'#f59e0b' },
+  { id:'fo', icon:'🧾', name:'Field Orders', desc:'Order taking · offline · sync', href:'?app=fo', perm:'pos.sell', colour:'#22c55e' },
+  { id:'sm', icon:'🚚', name:'Salesman', desc:'My stock · Sell · Collect · Settle', href:'?app=sm', perm:'pos.sell', colour:'#38bdf8' },
+  { id:'pos', icon:'🧾', name:'POS — Standalone', desc:'Fast billing · barcode · cart drawer · hold · offline', href:'?app=pos', perm:'pos.sell', colour:'#f59e0b', badge:'NEW' }
+];
+
+App.registerScreen('apps', {
+  title: 'Dedicated Apps',
+  icon: '📱',
+  perm: 'dashboard.view',
+  subtitle: 'Installable mobile apps — har app alag icon, offline queue, thumb-first',
+  render: function(body){
+    var host = h('div');
+    body.appendChild(host);
+
+    // intro
+    host.appendChild(h('div',{class:'card', style:{background:'linear-gradient(135deg, #0b1220, #1a2742)', color:'#e8eefc', border:'1px solid #22304d'}},
+      h('div',{style:{display:'flex',gap:'14px',alignItems:'center',flexWrap:'wrap'}},
+        h('div',{style:{fontSize:'36px'}}, '📱'),
+        h('div',{style:{flex:'1',minWidth:'220px'}},
+          h('div',{style:{fontWeight:'800',fontSize:'18px'}}, 'Haseeb Autos — Dedicated Apps (PWA)'),
+          h('div',{style:{fontSize:'13px',opacity:'.85',marginTop:'4px'}}, 'Har app apne naam, icon aur theme ke sath phone ki home screen par install hoti hai. Offline bhi kaam jaari — net aate hi sync.'),
+          h('div',{style:{marginTop:'8px',display:'flex',gap:'8px',flexWrap:'wrap'}},
+            h('span',{class:'pill', style:'background:#fff;color:#0b1220'}, 'Installable'),
+            h('span',{class:'pill', style:'background:rgba(255,255,255,.14);color:#fff;border:1px solid rgba(255,255,255,.2)'}, 'Offline queue'),
+            h('span',{class:'pill', style:'background:rgba(255,255,255,.14);color:#fff;border:1px solid rgba(255,255,255,.2)'}, 'Thumb-first'),
+            h('span',{class:'pill', style:'background:rgba(255,255,255,.14);color:#fff;border:1px solid rgba(255,255,255,.2)'}, 'Camera scan')
+          )
+        ),
+        h('div',{style:{display:'flex',flexDirection:'column',gap:'8px'}},
+          h('button',{class:'btn primary', onclick:function(){ App.go('pos'); }}, '🧾 Open POS'),
+          h('button',{class:'btn ghost', style:'background:rgba(255,255,255,.10);border-color:rgba(255,255,255,.20);color:#fff', onclick:function(){ var el=document.getElementById('appsGrid'); if(el) el.scrollIntoView({behavior:'smooth'}); }}, 'Browse apps ↓')
+        )
+      )
+    ));
+
+    // grid
+    var grid = h('div',{id:'appsGrid', style:{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(280px,1fr))',gap:'12px',margin:'12px 0'}});
+    APPS.forEach(function(app){
+      var enabled = true;
+      try{
+        if(App.state && App.state.settings){
+          var key = 'pwa.'+app.id+'.enabled';
+          var v = App.state.settings[key];
+          if(String(v)==='false') enabled=false;
+        }
+      }catch(e){}
+      var can = !app.perm || App.can(app.perm);
+      var card = h('div',{class:'card', style:{display:'flex',flexDirection:'column',gap:'10px',borderLeft:'4px solid '+app.colour, position:'relative', overflow:'hidden'}});
+      if(app.badge){
+        card.appendChild(h('div',{style:{position:'absolute',top:'8px',right:'8px',background:app.colour,color:'#04120a',fontSize:'10px',fontWeight:'800',padding:'2px 8px',borderRadius:'999px'}}, app.badge));
+      }
+      card.appendChild(h('div',{style:{display:'flex',gap:'12px',alignItems:'center'}},
+        h('div',{style:{width:'48px',height:'48px',borderRadius:'12px',background:app.colour+'18',border:'1px solid '+app.colour+'30',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'22px'}}, app.icon),
+        h('div',{style:{flex:'1'}},
+          h('div',{style:{fontWeight:'800',fontSize:'16px'}}, app.name),
+          h('div',{style:{fontSize:'12px',color:'var(--muted)'}}, app.desc),
+          h('div',{style:{fontSize:'10px',fontWeight:'700',letterSpacing:'.4px',textTransform:'uppercase',marginTop:'4px',color: enabled? (can?'var(--ok)':'var(--warn)') : 'var(--err)'}}, enabled ? (can? '● Ready':'● No access') : '○ Disabled in Settings')
+        )
+      ));
+      // actions row
+      var actions = h('div',{style:{display:'flex',gap:'8px',flexWrap:'wrap'}},
+        h('a',{href:app.href, target:'_blank', class:'btn primary sm', style:'flex:1;textDecoration:none;display:inline-flex;alignItems:center;justifyContent:center'}, 'Open ↗'),
+        h('button',{class:'btn sm', onclick:function(){ makeQR(app); }}, 'QR'),
+        h('button',{class:'btn sm ghost', onclick:function(){ copyLink(app.href); }}, 'Copy link')
+      );
+      if(!can) actions.querySelector('a').style.opacity='.45';
+      card.appendChild(actions);
+      // features chips
+      card.appendChild(h('div',{style:{display:'flex',gap:'6px',flexWrap:'wrap',fontSize:'11px',color:'var(--muted)'}},
+        h('span',{class:'pill'}, 'Standalone'),
+        h('span',{class:'pill'}, 'Offline'),
+        h('span',{class:'pill'}, 'Installable'),
+        h('span',{class:'pill'}, 'Barcode')
+      ));
+      grid.appendChild(card);
+    });
+    host.appendChild(grid);
+
+    // how it works
+    host.appendChild(h('div',{class:'card'},
+      h('h3',null,'How to install on phone'),
+      h('div',{style:{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))',gap:'12px',marginTop:'8px'}},
+        step('1','Open app','Kisi app ka Open dabayein — naya tab khulega.'),
+        step('2','Install prompt','Chrome/Safari menu ▸ Add to Home screen / Install app.'),
+        step('3','Offline use','Bina net ke bill/order karen — net aate hi ↻ Sync.')
+      ),
+      h('div',{style:{marginTop:'12px',fontSize:'12px',color:'var(--muted)'}}, 'Tip: Har app ka apna manifest hai (name, icon, theme) — is liye teenon/chaaron apps home screen par alag-alag nazar aati hain. Settings ▸ Mobile apps (PWA) se koi app band/chaalu kar sakte hain.')
+    ));
+
+    // footer: scanner external URL hint
+    host.appendChild(h('div',{class:'card', style:{background:'var(--panel-2)'}},
+      h('div',{style:{fontWeight:'700'}}, '📷 Live camera scan'),
+      h('div',{style:{fontSize:'12px',color:'var(--muted)',marginTop:'4px'}}, 'PWAs mein camera scan (BarcodeDetector + file fallback) built-in hai. Agar advanced live scanner chahiye to pwa/qr-scanner ko apne domain/GitHub Pages par host karke Settings ▸ Mobile apps ▸ Live camera scan URL mein daalein.'),
+      h('div',{style:{marginTop:'8px',display:'flex',gap:'8px',flexWrap:'wrap'}},
+        h('button',{class:'btn sm', onclick:function(){ App.go('settings',{tab:'pwa'}); }}, '⚙ Settings → Mobile apps'),
+        h('a',{href:'pwa/qr-scanner/', target:'_blank', class:'btn sm ghost', style:'textDecoration:none'}, 'Open QR scanner demo')
+      )
+    ));
+
+    function step(n,title,desc){
+      return h('div',{style:{padding:'12px',border:'1px solid var(--line)',borderRadius:'12px',background:'var(--card2)'}},
+        h('div',{style:{fontSize:'12px',fontWeight:'800',color:'var(--accent)'}}, 'STEP '+n),
+        h('div',{style:{fontWeight:'700',marginTop:'4px'}}, title),
+        h('div',{style:{fontSize:'12px',color:'var(--muted)',marginTop:'4px'}}, desc)
+      );
+    }
+    function copyLink(href){
+      var url = location.origin + location.pathname + href;
+      if(navigator.clipboard){ navigator.clipboard.writeText(url); UI.toast('Link copied: '+url,'ok'); }
+      /* v2.25.0 (req 6) — native prompt() hata diya: shared helper clipboard
+         try karta hai aur block hone par selectable box dikhata hai. */
+      else { if (window.UI2 && UI2.copyText) UI2.copyText(url, 'Install link'); else UI.toast(url, 'info'); }
+    }
+    function makeQR(app){
+      var url = location.origin + location.pathname + app.href;
+      // use QR2 if available else online api
+      var img = h('img',{style:{width:'180px',height:'180px',display:'block',margin:'0 auto',background:'#fff',padding:'8px',borderRadius:'12px'}});
+      var box = h('div',{style:{textAlign:'center'}},
+        h('div',{style:{fontWeight:'700',marginBottom:'8px'}}, app.icon+' '+app.name),
+        img,
+        h('div',{style:{fontSize:'11px',color:'var(--muted)',marginTop:'8px',wordBreak:'break-all'}}, url),
+        h('div',{style:{marginTop:'8px',display:'flex',gap:'8px',justifyContent:'center'}},
+          h('button',{class:'btn sm', onclick:function(){ if(navigator.share) navigator.share({title:app.name, url:url}); else copyLink(app.href); }}, '⤴ Share'),
+          h('button',{class:'btn sm ghost', onclick:function(){ var w=window.open(url,'_blank'); }}, 'Open ↗')
+        )
+      );
+      UI.modal({title:'QR — '+app.name, body:box, actions:[{label:'Close', cls:'ghost', onClick:function(c){c();}}]});
+      // load QR image
+      (async function(){
+        try{
+          if(window.QR2 && QR2.dataUrl){ img.src = QR2.dataUrl(url,{size:180,margin:1}); return; }
+          var api = 'https://api.qrserver.com/v1/create-qr-code/?size=180x180&margin=10&data='+encodeURIComponent(url);
+          img.src = api;
+        }catch(e){ img.alt='QR error'; }
+      })();
+    }
+  }
+});
+
+})();
+</script>

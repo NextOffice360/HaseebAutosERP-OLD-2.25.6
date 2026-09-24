@@ -1,0 +1,1736 @@
+<script>
+/* ==========================================================================
+   HASEEB AUTOS — UI KIT v2
+   Nested Tabs (3 levels) · Offcanvas · Modals (5 sizes) · SmartTable
+   (as-you-type filter on EVERY field, column picker, density, saved views,
+   CSV export, sticky header + internal scroll) · Form builder with
+   sections/tabs + custom fields · Command palette · Filter bar.
+   ========================================================================== */
+(function () {
+'use strict';
+
+const UI2 = {};
+
+/* ============================== TABS (nested) ============================== */
+/**
+ * UI2.tabs(host, { tabs, level, active, onChange, pills })
+ * tab = { id, label, icon, badge, render(container, ctx) }
+ */
+UI2.tabs = function (host, cfg) {
+  const level = cfg.level || 1;
+  const wrap = h('div', { class: 'tabs l' + level });
+  const bar = h('div', { class: 'tabbar-l' + level, role: 'tablist' });
+  const body = h('div', { class: 'tabbody' });
+  /* v2.9 §2 (global rule) — tab state persistence: Save/Update/Delete/Refresh ke
+     baad user usi tab/sub-tab par rahe, pehle tab par wapiss na jaye.
+     Priority: explicit cfg.active (deep-link) → saved memory → first tab. */
+  const memKey = (App.current || 'x') + ':L' + level;
+  App._tabMem = App._tabMem || {};
+  const tIds = (cfg.tabs || []).map(t => t.id);
+  const memId = App._tabMem[memKey];
+  let active = (cfg.active && tIds.indexOf(cfg.active) > -1) ? cfg.active
+    : (memId && tIds.indexOf(memId) > -1 ? memId : (cfg.tabs[0] || {}).id);
+
+  function select(id, force) {
+    if (id === active && !force) { render(); return; }
+    active = id;
+    App._tabMem[memKey] = id;
+    /* URL (#/screen?tab=x) aur App.params ko sync rakho taake F5 aur App.refresh()
+       bhi wahi tab kholein. replaceState hashchange nahi bharta — koi reload nahi. */
+    try {
+      if (App.params) App.params[level === 1 ? 'tab' : 'tab' + level] = id;
+      if (level === 1) history.replaceState(null, '', '#/' + (App.current || '') + '?tab=' + id);
+    } catch (e) { }
+    Array.from(bar.children).forEach(b => b.classList.toggle('on', b.dataset.id === id));
+    render();
+    cfg.onChange && cfg.onChange(id);
+  }
+  function render() {
+    body.innerHTML = '';
+    const t = cfg.tabs.filter(x => x.id === active)[0] || cfg.tabs[0];
+    if (!t) return;
+    const content = h('div', { class: 'tabpanel' });
+    body.appendChild(content);
+    Promise.resolve(t.render(content)).catch(e =>
+      content.appendChild(h('div', { class: 'empty' }, '⚠ ' + e.message)));
+  }
+  (cfg.tabs || []).forEach(t => {
+    bar.appendChild(h('button', { class: 'tab' + (t.id === active ? ' on' : ''), dataset: { id: t.id },
+      onclick: () => select(t.id) },
+      /* v2.6 QA — tab icon bhi SVG (emoji har device par alag dikhte hain) */
+      t.icon ? h('span', { class: 'ti', html: tabIcon(t.icon) }) : '',
+      h('span', null, t.label),
+      t.badge ? h('span', { class: 'tbadge' }, t.badge) : ''));
+  });
+  wrap.append(bar, body);
+  host.appendChild(wrap);
+  render();
+  return { el: wrap, select };
+};
+
+/* ==========================================================================
+   v2.6 §1 — EK HI TOGGLE COMPONENT (shared)
+   --------------------------------------------------------------------------
+   Pehle har screen apna toggle banati thi (14 raw checkbox vs 6 .switch).
+   Ab har "on/off" setting isi helper se banti hai — ek hi look, ek hi
+   accessibility (keyboard focus, aria), On/Off state text ke sath.
+
+   NOTE: row-select / multi-select checkboxes JANA-BUJH kar checkbox hain
+   (wo "toggle" nahi, "selection" hain) — sirf on/off isi helper se.
+   ========================================================================== */
+UI2.toggle = function (cfg) {
+  cfg = cfg || {};
+  const cb = h('input', { type: 'checkbox', id: cfg.id || ('tg-' + Math.random().toString(36).slice(2, 8)),
+    role: 'switch', 'aria-label': cfg.label || cfg.ariaLabel || '' });
+  cb.addEventListener('change', () => { cb.setAttribute('aria-checked', cb.checked ? 'true' : 'false'); });
+  cb.setAttribute('aria-checked', cb.checked ? 'true' : 'false');
+  cb.checked = cfg.checked === true || cfg.checked === 'true' || cfg.checked === 1 || cfg.checked === '1';
+  const st = h('span', { class: 'sw-state' }, cb.checked ? 'On' : 'Off');
+  cb.addEventListener('change', () => {
+    st.textContent = cb.checked ? 'On' : 'Off';
+    if (cfg.onChange) cfg.onChange(cb.checked);
+  });
+  if (cfg.row) {
+    /* professional settings-row: label + hint baen, switch daen (Settings jaisa) */
+    return {
+      el: h('div', { class: 'f-row-switch' },
+        h('div', { style: { minWidth: '0', flex: '1' } },
+          h('span', { class: 'frs-label' }, cfg.label || ''),
+          cfg.hint ? h('div', { class: 'f-hint' }, cfg.hint) : ''),
+        h('label', { class: 'switch' }, cb, h('i'), st)),
+      input: cb
+    };
+  }
+  return {
+    el: h('label', { class: 'switch', title: cfg.label || cfg.hint || '' }, cb, h('i'),
+      cfg.label ? h('span', { class: 'frs-label', style: { fontSize: 'var(--fs-xs)', fontWeight: '600' } }, cfg.label) : '',
+      st),
+    input: cb
+  };
+};
+
+/* ═══════════════ v2.24.0 — OVERLAY REGISTRY + ESC (close reliability) ═══════
+ *  Har modal/offcanvas khud ko is stack mein register karta hai. Ek hi global
+ *  Escape handler sab se upar wala overlay band karta hai (pehle khuli hui
+ *  search list, phir modal/offcanvas) aur focus wapas pehle element par le
+ *  jata hai. Isi se "Cancel/✕ kaam nahi karta" wali class ke bugs khatam hote hain. */
+UI2._overlays = [];
+/* v2.25.2 (req 6) — VISIBLE check: `hidden` attribute ke ilawa asli layout bhi dekho.
+   (position:fixed elements ka offsetParent null hota hai, is liye getClientRects
+   use karte hain — warna asli lightbox bhi "invisible" lag jata.) */
+UI2._visible = function (el) {
+  if (!el || !el.getClientRects) return false;
+  try {
+    if (!el.getClientRects().length) return false;
+    const cs = window.getComputedStyle(el);
+    return cs.display !== 'none' && cs.visibility !== 'hidden' && Number(cs.opacity || 1) > 0;
+  } catch (e) { return false; }
+};
+UI2.dismissTop = function () {
+  /* v2.25.2 — ROOT-CAUSE FIX (user: "cancel/close kaam nahi karta"):
+     pehle Esc sab se pehle koi bhi `.f-search-results`/`.gs-results` (chahe invisible
+     ho) ya `.img-lightbox` (chahe stale ho) dismiss kar deta tha. Ek orphan/invisible
+     node DOM mein reh jaye to Esc HAMESHA usi ko "handle" karta rehta tha aur modal
+     kabhi band nahi hota tha. Ab sirf VISIBLE list/lightbox count hoti hai. */
+  const lists = document.querySelectorAll('.f-search-results:not([hidden]), .gs-results:not([hidden])');
+  let openList = null;
+  for (let i = 0; i < lists.length; i++) { if (UI2._visible(lists[i])) { openList = lists[i]; break; } }
+  if (openList) {
+    openList.hidden = true;
+    const host = openList.parentNode;
+    const inp = host && host.querySelector ? host.querySelector('.f-search, .ipk-q, .st2-q') : null;
+    try { if (inp) inp.focus(); } catch (e) { }
+    return 'list';
+  }
+  const lbs = [].slice.call(document.querySelectorAll('.img-lightbox')).filter(UI2._visible);
+  if (lbs.length) {
+    const x = lbs[lbs.length - 1].querySelector('.lb-x'); if (x) { try { x.click(); } catch (e) { } } return 'lightbox';
+  }
+  for (let i = UI2._overlays.length - 1; i >= 0; i--) {
+    const o = UI2._overlays[i];
+    if (o && o.el && document.body.contains(o.el)) { try { o.close(); } catch (e) { } return 'overlay'; }
+    UI2._overlays.splice(i, 1);
+  }
+  return null;
+};
+UI2._track = function (entry) {
+  UI2._overlays.push(entry);
+  return function untrack() {
+    const i = UI2._overlays.indexOf(entry);
+    if (i > -1) UI2._overlays.splice(i, 1);
+  };
+};
+UI2._untrack = function (fn) { if (typeof fn === 'function') { try { fn(); } catch (e) { } } };
+if (!window.__haEscBound) {
+  window.__haEscBound = 1;
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Escape' || e.defaultPrevented) return;
+    /* v2.24.0 QA — pehle Esc sirf tab chalta tha jab focus field ke bahar ho.
+       Ab: khuli hui list pehle band hoti hai (1st Esc), aur agar koi list nahi
+       to seedha sab se upar wala modal/drawer/offcanvas band (2nd Esc) —
+       chahe focus kisi input mein hi kyun na ho. */
+    /* dismissTop kabhi throw kar ke poora Esc chain na tor de (defensive) */
+    try { if (UI2.dismissTop() === 'list') { e.stopPropagation(); } }
+    catch (err) { try { console.warn('Esc dismiss fail', err); } catch (e2) { } }
+  }, true);
+}
+
+/* ============================== OFFCANVAS ================================== */
+/**
+ * UI2.offcanvas({ title, subtitle, body, footer, size:'sm|md|lg|xl', side:'right|left', onClose })
+ */
+UI2.offcanvas = function (cfg) {
+  const scrim = h('div', { class: 'scrim oc-scrim' });
+  const panel = h('div', { class: 'offcanvas ' + (cfg.size || 'md') + ' ' + (cfg.side || 'right') });
+  const head = h('div', { class: 'oc-head' },
+    h('div', { style: { flex: '1', minWidth: '0' } },
+      h('h3', null, cfg.title || ''),
+      cfg.subtitle ? h('div', { class: 'oc-sub' }, cfg.subtitle) : ''),
+    /* v2.24.0 — offcanvas mein bhi hamesha Close ka rasta (actions mein na ho to add) */
+    (function () {
+      let acts = (cfg.actions || []).slice();
+      if (cfg.noCancel !== true && !acts.some(a => /cancel|close|band|nahi|back/i.test(String(a.label || '')))) {
+        acts = acts.concat([{ label: 'Close', cls: 'ghost', onClick: c => c() }]);
+      }
+      return acts.length ? h('div', { class: 'oc-actions' }, acts.map(a =>
+        h('button', { class: 'btn sm ' + (a.cls || 'sec'),
+          onclick: ev => {
+            const pr = UI.run(ev.currentTarget, () => a.onClick && a.onClick(close, panel), a);
+            if (pr && pr.catch) pr.catch(err => { try { console.warn('[UI.run] action failed:', (err && err.message) || err); } catch (e) { } });
+          } }, a.label))) : '';
+    })(),
+    h('button', { class: 'oc-x', onclick: () => close() }, '✕'));
+  const bodyEl = h('div', { class: 'oc-body' });
+  if (typeof cfg.body === 'string') bodyEl.innerHTML = cfg.body; else if (cfg.body) bodyEl.appendChild(cfg.body);
+  panel.append(head, bodyEl);
+  if (cfg.footer) {
+    const f = h('div', { class: 'oc-foot' });
+    if (typeof cfg.footer === 'string') f.innerHTML = cfg.footer; else f.appendChild(cfg.footer);
+    panel.appendChild(f);
+  }
+  let closed = false;
+  const prevFocus = document.activeElement;
+  function close() {
+    if (closed) return; closed = true;
+    untrack();
+    panel.classList.add('closing'); scrim.classList.add('closing');
+    setTimeout(() => {
+      panel.remove(); scrim.remove();
+      try { if (prevFocus && prevFocus.focus && document.body.contains(prevFocus)) prevFocus.focus(); } catch (e) { }
+      cfg.onClose && cfg.onClose();
+    }, 180);
+  }
+  scrim.onclick = close;
+  $('#drawerRoot').append(scrim, panel);
+  const untrack = UI2._track({ el: scrim, close: close });
+  setTimeout(() => panel.classList.add('open'), 10);
+  return { close, body: bodyEl, el: panel };
+};
+
+/* ================================= MODAL =================================== */
+UI2.modal = function (cfg) {
+  const scrim = h('div', { class: 'modal-scrim' });
+  const modal = h('div', { class: 'modal2 ' + (cfg.size || 'md') });
+  modal.appendChild(h('div', { class: 'm-head' },
+    h('h3', null, cfg.title || ''),
+    cfg.subtitle ? h('div', { class: 'm-sub' }, cfg.subtitle) : '',
+    h('button', { class: 'oc-x', onclick: close }, '✕')));
+  const bodyEl = h('div', { class: 'm-body' });
+  if (typeof cfg.body === 'string') bodyEl.innerHTML = cfg.body; else if (cfg.body) bodyEl.appendChild(cfg.body);
+  modal.appendChild(bodyEl);
+  /* v2.24.0 — "Cancel/close kaam nahi karta" class ke bug ka asli fix:
+     jis modal ke footer mein Cancel/Close nahi tha (sirf primary action), us
+     mein ek Cancel khud add ho jata hai — user kabhi phansa hua mehsoos na kare.
+     Opt-out: cfg.noCancel === true. */
+  let acts = (cfg.actions || []).slice();
+  if (!acts.length && cfg.noCancel !== true) acts = [{ label: 'Close', cls: 'ghost', onClick: c => c() }];
+  if (acts.length && cfg.noCancel !== true
+    && !acts.some(a => /cancel|close|band|nahi|back/i.test(String(a.label || '')))) {
+    acts = acts.concat([{ label: 'Cancel', cls: 'ghost', onClick: c => c() }]);
+  }
+  if (acts.length) {
+    const foot = h('div', { class: 'm-foot' });
+    acts.forEach(a => foot.appendChild(h('button', {
+      class: 'btn ' + (a.cls || 'sec'),
+      /* v2.25.9 W2.T2 — UI2 modal actions bhi shared UI.run par
+         v2.25.11 W2.T3 — rejection yahin sambhalo (error UI.fail se dikhta hai) */
+      onclick: ev => {
+        const pr = UI.run(ev.currentTarget, () => a.onClick && a.onClick(close, bodyEl), a);
+        if (pr && pr.catch) pr.catch(err => { try { console.warn('[UI.run] action failed:', (err && err.message) || err); } catch (e) { } });
+      }
+    }, a.label)));
+    modal.appendChild(foot);
+  }
+  let closed = false;
+  const prevFocus = document.activeElement;
+  function close() {
+    if (closed) return; closed = true;
+    untrack();
+    scrim.remove();
+    try { if (prevFocus && prevFocus.focus && document.body.contains(prevFocus)) prevFocus.focus(); } catch (e) { }
+    cfg.onClose && cfg.onClose();
+  }
+  scrim.addEventListener('click', e => { if (e.target === scrim && cfg.sticky !== true) close(); });
+  $('#modalRoot').appendChild(scrim); scrim.appendChild(modal);
+  const untrack = UI2._track({ el: scrim, close: close });
+  setTimeout(() => { const f = bodyEl.querySelector('input,select,textarea'); if (f) f.focus(); }, 80);
+  return { close, body: bodyEl, el: modal };
+};
+
+/* ============================================================================
+ * UI2.itemPicker(cfg) — v2.9.1 §7 — universal product picker.
+ * Search + 📋 poori list + single-click add + multi-select (checkbox +
+ * qty/item + Add bar) + panel click-outside tak khuli. Har map(row,qty)
+ * line deta hai; onAdd/after hooks se host screen focus/sync bacha rehti.
+ * PO/GRN/Transfer/Adjustment/Salesman sab isi ko use karte hain.
+ * ==========================================================================*/
+/* ==========================================================================
+ * UI2.itemPicker(cfg) — v2.24.0 — universal product picker (scan-first).
+ *
+ *  Scan parity POS ki tarah har jagah:
+ *    • EK hi dedicated scan block, dono modes mein visible:
+ *        normal (single) → scan → SEEDHA line/order mein add → field clear → next scan ready
+ *        multi           → scan → Bulk List mein jama → Add All se commit
+ *    • HID barcode scanner = keyboard. Search box mein bhi burst aaye to usi
+ *      shared locate() se handle hota hai (Enter ya 250ms settle) — dropdown
+ *      hijack nahi hota, file dialog nahi khulta.
+ *    • Invalid code → toast + field clear + refocus; qty/order bilkul na bigre.
+ *    • Duplicate scan → qty merge (nayi duplicate line nahi), stock cap ke sath.
+ *
+ *  Back-compat: cfg.lines / cfg.map / cfg.onAdd / cfg.after / cfg.sub /
+ *  cfg.search / cfg.placeholder aur api.{load,hide,reset,hasSel,getSelected}
+ *  waise hi kaam karte hain (PO/GRN/Transfer/Adjust/Take Order/Salesman).
+ * ==========================================================================*/
+UI2.itemPicker = function (cfg) {
+  cfg = cfg || {};
+  const sel = new Map();
+  const itemCache = new Map();
+  const st = { multi: cfg.mode === 'multi', rows: [], busy: 0 };
+  const r3 = n => Math.round(Number(n) * 1000) / 1000;
+
+  const keyOf = x => cfg.keyOf ? String(cfg.keyOf(x) || '')
+    : String((x && (x.id || x.itemId || x.code)) || '');
+  const stockOf = r => Number(r && (r.stock !== undefined && r.stock !== null ? r.stock : r.qty));
+  const linesArr = () => (cfg.lines || []);
+
+  /* ------------------------------- HEADER -------------------------------- */
+  const modeChip = h('span', { class: 'ipk-chip' }, st.multi ? 'MULTI · BULK' : 'NORMAL · DIRECT');
+  const countChip = h('span', { class: 'ipk-chip soft' }, '0');
+  const headBar = h('div', { class: 'ipk-head' },
+    h('span', { class: 'ipk-ico' }, cfg.icon || '📦'),
+    h('div', { class: 'ipk-tt' },
+      h('b', null, cfg.title || 'Product'),
+      h('span', null, cfg.hint || 'Scan, search ya poori list — Enter se add')),
+    modeChip, countChip);
+
+  /* ------------------------------ SEARCH ROW ------------------------------ */
+  const input = h('input', { class: 'st2-q ipk-q', type: 'text', autocomplete: 'off',
+    placeholder: cfg.placeholder || 'Item search (code / name / barcode)…',
+    'aria-label': 'Search items' });
+  input.dataset.scanAware = '1';      /* v2.24.2 — audit + tests ke liye nishaan */
+  const listBtn = h('button', { class: 'icon-btn', type: 'button',
+    title: 'Poori product list — multi-select ke sath', 'aria-label': 'Open full product list' }, '📋');
+  const multiCb = h('input', { type: 'checkbox', checked: st.multi, 'aria-label': 'Multi-select mode' });
+  const multiLbl = h('label', { class: 'chk mini', title: 'Multi-select: scan/select kai items, phir Add All' }, multiCb, 'Multi-select');
+  const results = h('div', { class: 'gs-results',
+    style: { position: 'static', maxHeight: '240px', overflow: 'auto' }, hidden: true });
+  const addBar = h('div', { class: 'po-addbar', hidden: true });
+
+  /* ------------------------- SCAN BLOCK (always on) ----------------------- */
+  const scanInput = h('input', { class: 'f-input ipk-scan-in', type: 'text', autocomplete: 'off',
+    placeholder: 'Scan barcode / QR — auto-add + auto-clear',
+    'aria-label': 'Scan barcode or QR',
+    style: { flex: '1 1 200px', minWidth: '0', borderColor: 'var(--brand)',
+      background: 'var(--brand-soft)', fontVariantNumeric: 'tabular-nums' } });
+  const scanBtn = h('button', { class: 'btn sm sec', type: 'button', title: 'Camera se scan',
+    'aria-label': 'Camera scan' }, '📷');
+  const lastLine = h('div', { class: 'ipk-last', hidden: true, role: 'status', 'aria-live': 'polite' });
+  const scanRow = h('div', { class: 'scan-row ipk-scan' },
+    h('span', { class: 'ipk-scan-lbl' }, '📷 Scan:'), scanInput, scanBtn,
+    h('span', { class: 'ipk-scan-hint' }, st.multi ? 'Scan → Bulk List → Add All' : 'Scan → direct add → ready'));
+
+  /* --------------------------- SELECTED (multi) --------------------------- */
+  const selectedBox = h('div', { class: 'bulk-selected-box', hidden: true });
+
+  const head = h('div', { class: 'po-pick' }, input, listBtn, multiLbl);
+  const wrap = h('div', { class: 'ipk' }, headBar, scanRow, lastLine, head, selectedBox, results, addBar);
+
+  /* ------------------------------- PAINTERS ------------------------------- */
+  function paintChips() {
+    const n = st.multi ? sel.size : linesArr().length;
+    const q = st.multi
+      ? Array.from(sel.values()).reduce((a, b) => a + (Number(b) || 1), 0)
+      : linesArr().reduce((a, l) => a + (Number(l.qty) || 0), 0);
+    countChip.textContent = st.multi ? (n + ' selected · qty ' + fmt.num(q)) : (n + ' line' + (n === 1 ? '' : 's'));
+    countChip.classList.toggle('warn', st.multi && n === 0);
+    modeChip.textContent = st.multi ? 'MULTI · BULK' : 'NORMAL · DIRECT';
+    scanRow.querySelector('.ipk-scan-hint').textContent = st.multi
+      ? 'Scan → Bulk List → Add All' : 'Scan → direct add → ready';
+  }
+  function setLast(txt, tone) {
+    lastLine.hidden = false;
+    lastLine.className = 'ipk-last ' + (tone || '');
+    lastLine.textContent = txt;
+  }
+  function clearScanFields() {
+    scanInput.value = '';
+    try { scanInput.focus(); } catch (e) { }
+  }
+
+  function addRow(r, qty) {
+    const line = cfg.map ? cfg.map(r, qty) : Object.assign({ qty: r3(qty) || 1 }, r);
+    if (line) (cfg.lines || []).push(line);
+    if (cfg.onAdd) cfg.onAdd(line, r);
+    return line;
+  }
+
+  /* NORMAL mode: scan/click → seedha line list mein (merge ke sath) */
+  function addOne(r, qty) {
+    const q0 = Math.max(1, Number(qty) || 1);
+    let q = q0;
+    const stk = stockOf(r);
+    const key = keyOf(r);
+    const arr = linesArr();
+    const existing = key ? arr.filter(l => keyOf(l) === key)[0] : null;
+    if (existing && cfg.merge !== false) {
+      const cur = Number(existing.qty) || 0;
+      const want = cur + q;
+      const cap = stk >= 0 ? Math.max(1, stk) : want;
+      const next = stk >= 0 ? Math.min(want, cap) : want;
+      if (next <= cur) {
+        UI.toast('Stock limit: ' + (r.name || r.code) + ' — ' + fmt.num(stk) + ' se zyada add nahi', 'warn', 3400);
+        setLast('⚠ Stock limit — qty ' + fmt.num(cur), 'warn');
+        return null;
+      }
+      existing.qty = next;
+      itemCache.set(String(r.id || r.code), r);
+      if (stk >= 0 && want > cap) UI.toast('Stock sirf ' + fmt.num(stk) + ' — qty cap kar di', 'warn', 3400);
+      UI.toast('Added: ' + (r.name || r.code) + ' ×' + fmt.num(q) + ' — qty ab ' + fmt.num(next), 'ok', 2600);
+      setLast('✅ ' + (r.code || '') + ' → ' + (r.name || '') + ' ×' + fmt.num(q) + ' (qty ' + fmt.num(next) + ')', 'ok');
+      if (cfg.onMerge) cfg.onMerge(existing, r, next);
+      if (cfg.after) cfg.after();
+      paintChips();
+      return existing;
+    }
+    if (stk >= 0 && q > stk) {
+      q = Math.max(1, stk);
+      UI.toast('Stock sirf ' + fmt.num(stk) + ' — qty ' + fmt.num(q) + ' par cap', 'warn', 3400);
+    }
+    const line = addRow(r, q);
+    if (r && (r.id || r.code)) itemCache.set(String(r.id || r.code), r);
+    UI.toast('Added: ' + (r.name || r.code) + ' ×' + fmt.num(q) + (st.multi ? ' — Bulk List mein' : ' — order mein'), 'ok', 2400);
+    setLast('✅ ' + (r.code || '') + ' → ' + (r.name || '') + ' ×' + fmt.num(q), 'ok');
+    if (cfg.after) cfg.after();
+    paintChips();
+    return line;
+  }
+
+  /* MULTI mode: scan/click → Bulk List (commit par hi host list mein jata hai) */
+  function processBulkAdd(r, qty) {
+    const k = String(r.id || r.code || r.itemId);
+    itemCache.set(k, r);
+    const add = Math.max(1, Number(qty) || 1);
+    const existing = Number(sel.get(k) || 0);
+    let q = existing + add;
+    const stk = stockOf(r);
+    if (stk >= 0 && q > stk) {
+      q = Math.max(1, stk);
+      UI.toast('Stock sirf ' + fmt.num(stk) + ' — quantity capped', 'warn', 3400);
+    }
+    sel.set(k, q);
+    UI.toast('Added to bulk: ' + (r.name || r.code) + ' ×' + q, 'ok', 2400);
+    setLast('✅ ' + (r.code || '') + ' → Bulk List (' + sel.size + ')', 'ok');
+    paintSelectedBox();
+    paintAddBar();
+    paintChips();
+    if (!results.hidden) paint();
+  }
+
+  /* ------------------------- SHARED SCAN LOOKUP --------------------------- */
+  function locate(code, cb) {
+    const clean = String(code || '').trim();
+    if (!clean) return cb(null);
+    const lc = clean.toLowerCase();
+    const eq = x => x && (String(x.code || '').toLowerCase() === lc
+      || String(x.barcode || '').toLowerCase() === lc
+      || String(x.id || x.itemId || '').toLowerCase() === lc);
+    const pool = (st.rows || []).concat(Array.from(itemCache.values()));
+    let hit = pool.filter(eq)[0];
+    if (hit) return cb(hit);
+    Promise.resolve(UI2.itemPicker._defaultSearch(clean)).then(rows => {
+      rows = rows || [];
+      let f = rows.filter(eq)[0];
+      if (!f && /^\d{8,14}$/.test(clean)) {
+        const tail = clean.slice(-13);
+        f = rows.filter(x => { const b = String(x.barcode || ''); return b && (b.endsWith(clean) || b.endsWith(tail)); })[0];
+      }
+      cb(f || null);
+    }).catch(() => cb(null));
+  }
+
+  function scan(code) {
+    const clean = String(code || '').trim();
+    if (!clean) { clearScanFields(); return false; }
+    locate(clean, r => {
+      if (!r) {
+        UI.toast('Code nahi mila: ' + clean + ' — field clear, next scan ready', 'warn', 3600);
+        setLast('⚠ ' + clean + ' → nahi mila', 'warn');
+      } else if (st.multi) processBulkAdd(r, 1);
+      else { addOne(r, 1); input.value = ''; hide(); }
+      clearScanFields();
+    });
+    return true;
+  }
+
+  /* ---------------------------- BULK LIST UI ------------------------------ */
+  function commitSelected() {
+    let n = 0;
+    sel.forEach((qty, id) => {
+      const r = itemCache.get(String(id)) || st.rows.filter(x => String(x.id || x.itemId) === String(id))[0];
+      if (r) { addRow(r, qty || 1); n++; }
+    });
+    sel.clear();
+    if (n) UI.toast(n + ' item' + (n > 1 ? 's' : '') + ' add ho gaye ✅ — Bulk list cleared', 'ok', 2600);
+    if (cfg.after) cfg.after();
+    paintSelectedBox(); paintAddBar(); paintChips();
+    if (st.multi && !results.hidden) paint();
+    return n;
+  }
+
+  function paintSelectedBox() {
+    if (!st.multi || !sel.size) {
+      selectedBox.hidden = true; selectedBox.innerHTML = ''; paintChips(); return;
+    }
+    selectedBox.hidden = false;
+    selectedBox.innerHTML = '';
+    const totQ = Array.from(sel.values()).reduce((a, b) => a + (Number(b) || 1), 0);
+    selectedBox.appendChild(h('div', { class: 'bsb-head' },
+      h('span', null, '📦 Bulk List — ' + sel.size + ' item' + (sel.size === 1 ? '' : 's') + ' · qty ' + fmt.num(totQ)),
+      h('button', { class: 'btn sm ghost', type: 'button', onclick: () => { sel.clear(); paintSelectedBox(); paintAddBar(); paintChips(); if (!results.hidden) paint(); } }, 'Clear all')));
+    sel.forEach((qty, id) => {
+      const r = itemCache.get(String(id)) || st.rows.filter(x => String(x.id || x.itemId) === String(id))[0] || { name: id, code: id, stock: '?' };
+      const row = h('div', { class: 'bsb-row' },
+        h('div', { class: 'bsb-t' },
+          h('b', { title: r.name || r.code }, r.name || r.code),
+          h('span', null, (r.code || '') + ' · stock ' + (r.stock !== undefined && r.stock !== null ? fmt.num(r.stock) : '?') + ' · qty ' + fmt.num(qty))),
+        h('div', { class: 'bsb-acts' },
+          h('button', { class: 'btn sm ghost', type: 'button', title: 'Kam karein', 'aria-label': 'Decrease', onclick: () => { const cur = Number(sel.get(id) || 1); if (cur <= 1) sel.delete(id); else sel.set(id, cur - 1); paintSelectedBox(); paintAddBar(); paintChips(); } }, '−'),
+          h('input', { type: 'number', min: '1', value: String(qty), 'aria-label': 'Qty ' + (r.name || r.code),
+            oninput: e => { const v = Math.max(1, Number(e.target.value) || 1); sel.set(id, v); paintAddBar(); paintChips(); },
+            onchange: () => paintSelectedBox() }),
+          h('button', { class: 'btn sm ghost', type: 'button', title: 'Barhayein', 'aria-label': 'Increase', onclick: () => { sel.set(id, Number(sel.get(id) || 1) + 1); paintSelectedBox(); paintAddBar(); paintChips(); } }, '+'),
+          h('button', { class: 'btn sm danger', type: 'button', title: 'Nikaal dein', 'aria-label': 'Remove ' + (r.name || r.code), onclick: () => { sel.delete(id); paintSelectedBox(); paintAddBar(); paintChips(); if (!results.hidden) paint(); } }, '✕')));
+      selectedBox.appendChild(row);
+    });
+  }
+
+  function paintAddBar() {
+    addBar.hidden = !(st.multi && sel.size > 0);
+    addBar.innerHTML = '';
+    if (addBar.hidden) return;
+    const totQ = Array.from(sel.values()).reduce((a, b) => a + (Number(b) || 1), 0);
+    addBar.append(
+      h('b', null, sel.size + ' selected · qty ' + fmt.num(totQ)),
+      h('button', { class: 'btn sm ok', type: 'button', onclick: () => commitSelected() }, cfg.commitLabel || 'Add to list'),
+      h('button', { class: 'btn sm sec', type: 'button', onclick: () => { sel.clear(); paintSelectedBox(); paintChips(); } }, 'Clear'));
+    paintSelectedBox();
+  }
+
+  /* ------------------------------ RESULTS -------------------------------- */
+  function paint() {
+    results.innerHTML = '';
+    results.hidden = false;
+    st.rows.forEach(r => {
+      const conv = Math.max(1, Number(r.conversionFactor || 0));
+      const _q = stockOf(r);
+      const stockTxt = isNaN(_q) ? '' : (_q <= 0 ? 'Out of Stock' : (_q <= 5 ? 'LOW · ' + fmt.num(_q) : 'In Stock · ' + fmt.num(_q)));
+      const stockBadge = !isNaN(_q) ? h('span', { class: 'badge ' + (_q <= 0 ? 'err' : (_q <= 5 ? 'warn' : 'ok')), style: { fontSize: '10px', marginLeft: '6px' } }, stockTxt) : '';
+      const sub = cfg.sub ? cfg.sub(r) : [r.code, r.category,
+        r.costPrice ? 'cost ' + fmt.money(r.costPrice) : '',
+        stockTxt,
+        conv > 1 ? 'pack ×' + conv : ''].filter(Boolean).join(' · ');
+      const row = h('div', { class: 'gs-item' + (st.multi && sel.has(String(r.id || r.itemId || r.code)) ? ' on' : ''),
+        role: 'option', tabindex: '0' },
+        h('div', { class: 't' },
+          h('div', { style: { display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' } }, h('b', null, r.name || '—'), stockBadge),
+          h('span', null, sub)),
+        st.multi
+          ? h('div', { style: { display: 'flex', alignItems: 'center', gap: '6px' } },
+            h('input', { type: 'checkbox', checked: sel.has(String(r.id || r.itemId || r.code)),
+              'aria-label': 'Select ' + (r.name || r.code),
+              onchange: e => { const k = String(r.id || r.itemId || r.code);
+                if (e.target.checked) sel.set(k, sel.get(k) || 1); else sel.delete(k);
+                itemCache.set(k, r);
+                row.classList.toggle('on', e.target.checked); paintAddBar(); paintChips(); } }),
+            h('input', { type: 'number', min: '1', step: 'any', value: sel.get(String(r.id || r.itemId || r.code)) || 1,
+              title: 'Quantity', 'aria-label': 'Quantity for ' + (r.name || r.code),
+              style: { width: '58px' },
+              oninput: e => { const k = String(r.id || r.itemId || r.code);
+                if (sel.has(k)) { sel.set(k, Math.max(1, Number(e.target.value) || 1)); paintAddBar(); paintChips(); } } }))
+          : h('span', { class: 'ipk-add', title: 'Add karne ke liye click karein' }, '+'));
+      row.onclick = st.multi
+        ? (e => { if (e.target.tagName === 'INPUT') return;
+          const k = String(r.id || r.itemId || r.code);
+          if (sel.has(k)) sel.delete(k); else { sel.set(k, 1); itemCache.set(k, r); }
+          paint(); paintAddBar(); paintChips(); })
+        : (() => { addOne(r, 1); input.value = ''; hide(); });
+      row.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); row.onclick(e); } };
+      results.appendChild(row);
+    });
+    if (!st.rows.length) {
+      results.appendChild(st.busy ? h('div', { class: 'tbl-empty' }, '⏳ Load ho raha hai…')
+        : h('div', { class: 'tbl-empty' }, st.q ? 'Koi item nahi mila — code check karein ya naya scan karein' : 'Koi item nahi'));
+    }
+    paintAddBar();
+    paintChips();
+  }
+
+  async function load(q) {
+    st.q = q;
+    st.busy = 1; paint();
+    try {
+      st.rows = (cfg.search ? await cfg.search(q) : await UI2.itemPicker._defaultSearch(q)) || [];
+    } catch (e) { st.rows = []; }
+    st.busy = 0; paint();
+  }
+  function hide() { results.hidden = true; }
+
+  /* -------------------------- SEARCH + HID SCAN --------------------------- */
+  input.addEventListener('input', () => {
+    clearTimeout(settle);
+    const v = input.value.trim();
+    /* HID scanner: poora numeric / code-shaped payload ka burst → settle par direct add */
+    if (v.length >= 6 && /^[0-9A-Za-z.\-]+$/.test(v)) {
+      settle = setTimeout(() => {
+        const cur = input.value.trim();
+        if (cur === v && /^(\d{8,14}|[A-Za-z]{1,4}[0-9]{3,})$/.test(cur)) {
+          input.value = ''; scan(cur); return;
+        }
+        load(cur);
+      }, 260);
+      return;
+    }
+    settle = setTimeout(() => load(v), 200);
+  });
+  let settle = null;
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const v = input.value.trim();
+      if (!v) return;
+      /* exact code/barcode hit ya scan-shaped payload → direct add; warna normal search */
+      const lc = v.toLowerCase();
+      const direct = st.rows.filter(x => String(x.code || '').toLowerCase() === lc
+        || String(x.barcode || '').toLowerCase() === lc || String(x.id || x.itemId || '').toLowerCase() === lc)[0];
+      if (direct) { if (st.multi) processBulkAdd(direct, 1); else { addOne(direct, 1); input.value = ''; hide(); } return; }
+      if (/^[0-9A-Za-z.\-]{6,}$/.test(v)) { input.value = ''; scan(v); return; }
+      if (st.rows.length) {
+        if (st.multi) processBulkAdd(st.rows[0], 1); else { addOne(st.rows[0], 1); input.value = ''; hide(); }
+      } else load(v);
+    }
+    if (e.key === 'Escape') { e.stopPropagation(); hide(); }
+  });
+  input.addEventListener('focus', () => { if (st.rows.length) paint(); else load(''); });
+  /* v2.24.0 — focus hatne par list band (warna peechhe khuli list reh jati hai
+     aur pehla Esc use hi band karta hai) */
+  input.addEventListener('blur', () => setTimeout(() => { if (!wrap.contains(document.activeElement)) hide(); }, 180));
+  listBtn.addEventListener('click', () => { input.value = ''; load(''); });
+
+  scanInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); const v = scanInput.value.trim(); scanInput.value = ''; if (v) scan(v); else clearScanFields(); }
+    if (e.key === 'Escape') { e.stopPropagation(); scanInput.value = ''; }
+  });
+  let scanDebounce = null;
+  scanInput.addEventListener('input', () => {
+    clearTimeout(scanDebounce);
+    const v = scanInput.value.trim();
+    /* Enter-less scanners: poora payload settle hone par auto-fire */
+    if (v.length >= 6 && /^[0-9A-Za-z.\-]+$/.test(v)) {
+      scanDebounce = setTimeout(() => { if (scanInput.value.trim() === v) { scanInput.value = ''; scan(v); } }, 280);
+    }
+  });
+  scanBtn.addEventListener('click', async () => {
+    if (window.HaScan && HaScan.scan) HaScan.scan({ onDetect: scan });
+    else if (window.PWA && PWA.scanWithCamera) PWA.scanWithCamera(scan);
+    else { const v = await UI2.askCode(); if (v) scan(v); }
+  });
+
+  multiCb.addEventListener('change', () => {
+    st.multi = multiCb.checked;
+    if (!st.multi) sel.clear();
+    paint(); paintSelectedBox(); paintAddBar(); paintChips();
+    if (st.multi) setTimeout(() => { try { scanInput.focus(); } catch (e) { } }, 80);
+  });
+  document.addEventListener('click', e => {
+    if (!wrap.contains(e.target) && e.target !== input && e.target !== listBtn) hide();
+  });
+
+  wrap.api = {
+    load, hide, scan, add: (r, q) => (st.multi ? processBulkAdd(r, q) : addOne(r, q)),
+    commit: commitSelected,
+    setMulti: on => { if (multiCb.checked !== !!on) { multiCb.checked = !!on; multiCb.dispatchEvent(new Event('change', { bubbles: true })); } },
+    reset: () => { sel.clear(); paintSelectedBox(); paintAddBar(); paintChips(); },
+    hasSel: () => sel.size > 0,
+    getSelected: () => Array.from(sel.entries()),
+    count: () => (st.multi ? sel.size : linesArr().length)
+  };
+  paintChips();
+  return wrap;
+};
+
+UI2.itemPicker._defaultSearch = async function (q) {
+  /* W3 (v2.27.0) — shared cached search: POS/PO/GRN/Salesman/Transfer/Count sab isi
+     ek path se aate hain. Pehle har picker khulne/type karne par nayi request jati thi
+     (audit: `items.search` 11 jagah). Ab: identical query = cache HIT, ek hi waqt mein
+     do pickers = EK request (inflight dedupe). 60s TTL — item price/stock us dauran fresh
+     rehti hai (write ke baad `Shared.invalidateFor` / `Deps.clearPrefix('shared:items.search')`). */
+  try {
+    /* v2.27.0 (W3.T3) — ab shared accessor (POS grid/POS2/Demand/Orders ke sath EK hi cache) */
+    var _q = q || '', _lim = q ? 12 : 40;
+    return await Shared.items({ q: _q, limit: _lim, ttl: 60000, offline: () => ((((window.App && App.state.catalog) || {}).items) || []).slice(0, 40)
+      .map(x => ({ id: x.id, code: x.code, name: x.name, costPrice: x.cp, retailPrice: x.rp,
+        wholesalePrice: x.wp, stock: x.qty, conversionFactor: x.cv, category: x.cat, unit: x.unit })) });
+  } catch (e) { return []; }
+};
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   UI2.scanRow(cfg) — v2.24.2 — SHARED standalone scan field.
+   ---------------------------------------------------------------------------
+   Kyun: itemPicker scan-first hai (POS/PO/GRN/Stock Issue/Take Order/Transfer/
+   Count). Magar kuch surfaces product LINES nahi banate — wo sirf "item dhoondo"
+   karte hain (Return ka bill line, Warehouse putaway, Stock filter). Un sab ko
+   ek hi scan behaviour chahiye tha: HID wedge (Enter ya 280ms settle),
+   auto-clear, ready-for-next, camera fallback. Is liye ek hi shared helper.
+
+     const sr = UI2.scanRow({ hint:'Scan → us item par filter', onScan(code){…} });
+     wrap.appendChild(sr.el);      sr.setLast('✅ FL00000 → FLAMINGO', 'ok');
+
+   cfg: { label, placeholder, hint, aria, camera=true, autofocus=false, onScan }
+   ═══════════════════════════════════════════════════════════════════════════ */
+UI2.scanRow = function (cfg) {
+  cfg = cfg || {};
+  const input = h('input', {
+    class: 'f-input u2scan-in ipk-scan-in', type: 'text', autocomplete: 'off',
+    placeholder: cfg.placeholder || 'Scan barcode / QR — auto-clear, ready for next',
+    'aria-label': cfg.aria || 'Scan barcode or QR',
+    style: { flex: '1 1 200px', minWidth: '0', borderColor: 'var(--brand)',
+      background: 'var(--brand-soft)', fontVariantNumeric: 'tabular-nums' }
+  });
+  const camBtn = h('button', { class: 'btn sm sec', type: 'button', title: 'Camera se scan',
+    'aria-label': 'Camera scan' }, '📷');
+  /* Status line LAZILY banti hai — jab tak koi message na ho, DOM mein koi
+     khaali bordered pill nahi rehti (blank-block audit + saaf UI). */
+  let last = null;
+  const side = cfg.right || null;
+  const row = h('div', { class: 'scan-row ipk-scan' },
+    h('span', { class: 'ipk-scan-lbl' }, cfg.label || '📷 Scan:'), input, camBtn,
+    cfg.hint ? h('span', { class: 'ipk-scan-hint' }, cfg.hint) : '');
+  const wrap = h('div', { class: 'ipk u2scan' }, row);
+
+  function setLast(txt, tone) {
+    if (!txt) { if (last && last.parentNode) last.parentNode.removeChild(last); return; }
+    if (!last) last = h('div', { class: 'ipk-last', role: 'status', 'aria-live': 'polite' });
+    last.className = 'ipk-last ' + (tone || '');
+    last.textContent = txt;
+    if (!last.parentNode) wrap.appendChild(last);
+  }
+  function focus() { try { input.focus(); } catch (e) { } }
+  function fire(v) {
+    v = String(v || '').trim();
+    input.value = '';
+    if (!v) { focus(); return; }
+    try { cfg.onScan && cfg.onScan(v, api); }
+    finally { focus(); }                       /* next scan ready (auto-clear) */
+  }
+  let deb = null;
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); clearTimeout(deb); fire(input.value); }
+    if (e.key === 'Escape') { e.stopPropagation(); input.value = ''; setLast(''); }
+  });
+  input.addEventListener('input', () => {
+    clearTimeout(deb);
+    const v = input.value.trim();
+    /* Enter-less HID scanners: poora payload settle hone par auto-fire */
+    if (v.length >= 6 && /^[0-9A-Za-z.\-]+$/.test(v)) {
+      deb = setTimeout(() => { if (input.value.trim() === v) fire(v); }, 280);
+    }
+  });
+  camBtn.addEventListener('click', async () => {
+    const onDetect = (code) => fire(code);
+    if (window.HaScan && HaScan.scan) HaScan.scan({ onDetect });
+    else if (window.PWA && PWA.scanWithCamera) PWA.scanWithCamera(onDetect);
+    else { const v = await UI2.askCode(); if (v) fire(v); }
+  });
+
+  const api = {
+    el: h('div', null, wrap, side || ''),
+    input, setLast, focus, fire,
+    value: () => input.value,
+    clear: () => { input.value = ''; setLast(''); }
+  };
+  if (cfg.autofocus) setTimeout(focus, 90);
+  return api;
+};
+
+/* UI2.attachScan(input, onScan, opts) — v2.24.2 — maujooda search/filter box ko
+   scan-aware banata hai (naya input add kiye baghair).
+   Plain typing = normal filter; scan-shaped burst (Enter, ya 8+ digits / CODE-1234
+   jaisa payload jo 280ms mein settle ho jaye) = onScan(code). */
+UI2.attachScan = function (input, onScan, opts) {
+  opts = opts || {};
+  input.dataset.scanAware = '1';      /* v2.24.2 — audit + tests ke liye nishaan */
+  const SCANSHAPE = /^(\d{8,14}|[A-Za-z]{1,4}[-.]?\d{3,})$/;
+  let deb = null;
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+      const v = input.value.trim(); if (!v) return;
+      e.preventDefault(); clearTimeout(deb);
+      /* Enter ke sath aaya = scanner terminator (ya user ne jaan-boojh kar commit kiya) */
+      if (SCANSHAPE.test(v) || opts.enterAlways) { input.value = ''; onScan(v, true); }
+      else if (opts.onEnter) opts.onEnter(v);
+    }
+    if (e.key === 'Escape' && opts.onEscape) { input.value = ''; opts.onEscape(); }
+  });
+  input.addEventListener('input', () => {
+    clearTimeout(deb);
+    const v = input.value.trim();
+    if (SCANSHAPE.test(v)) {
+      deb = setTimeout(() => { if (input.value.trim() === v) { input.value = ''; onScan(v, false); } }, 280);
+    }
+  });
+  return input;
+};
+
+UI2.confirm = function (msg, onYes, danger) {
+  /* v2.25.0 — SHARED BUG FIX (req 6 + purani "confirm/close kaam nahi karta").
+     Pehle ye function modal object return karta tha, is liye:
+       · `await UI2.confirm(...)` wale call sites FORAN aage barh jate thay
+         (confirmation ka intezar hi nahi hota tha) — void voucher / shop close
+         jaise kaam bina poochhe chal jate thay.
+       · `ok => { if (!ok) return; ... }` wale callbacks ko hamesha `undefined`
+         milta tha → cancel order / count-sheet post jaisi actions KABHI chalti
+         hi nahi thin (khamoshi se kuch nahi hota tha).
+     Ab: callback style waise hi (aur callback ko `true` milta hai), aur
+     onYes ke baghair Promise<boolean> milta hai (Yes → true, Cancel/Esc/scrim → false). */
+  let resolveFn = null, settled = false;
+  const settle = (v) => { if (settled) return; settled = true; if (resolveFn) resolveFn(v); };
+  const m = UI2.modal({
+    title: 'Confirm', size: 'sm',
+    onClose: () => settle(false),
+    body: h('div', { style: { fontSize: 'var(--fs-md)', lineHeight: '1.55' } }, msg),
+    actions: [
+      { label: 'Cancel', cls: 'ghost', onClick: c => { settle(false); c(); } },
+      { label: 'Yes', cls: danger ? 'danger' : 'ok', onClick: c => { settle(true); if (onYes) onYes(true); c(); } }
+    ]
+  });
+  if (onYes) return m;
+  return new Promise(res => { resolveFn = res; });
+};
+
+UI2.askCode = function (opts) {
+  /* v2.25.0 (req 6 — "ek hi cohesive design system") — app mein jo aakhri
+     native prompt() bache thay (camera/scan fallback) un ki jagah ye shared
+     modal. Native prompt sandboxed preview/iframe mein BLOCK hota hai (kuch
+     hota hi nahi tha) aur design system se bahar tha.
+     Enter = OK · Esc/scrim/Cancel = null → Promise<string|null>. */
+  const o = opts || {};
+  return new Promise(res => {
+    let settled = false;
+    const done = v => { if (settled) return; settled = true; res(v); };
+    const inp = h('input', {
+      class: 'f-input', type: 'text', autocomplete: 'off', inputmode: 'text',
+      placeholder: o.placeholder || 'e.g. 6959375198888',
+      style: { minHeight: '48px', fontSize: '16px', width: '100%' },
+      'aria-label': o.title || 'Barcode / QR code'
+    });
+    const m = UI2.modal({
+      title: o.title || '📷 Barcode / QR code', size: 'sm',
+      onClose: () => done(null),
+      body: h('div', null,
+        h('div', { style: { fontSize: 'var(--fs-sm)', color: 'var(--muted)', marginBottom: '8px', lineHeight: '1.5' } },
+          o.hint || 'Camera scan available nahi — code type ya paste karein (Enter = OK).'),
+        inp),
+      actions: [
+        { label: 'Cancel', cls: 'ghost', onClick: c => { done(null); c(); } },
+        { label: 'OK', cls: 'ok', onClick: c => { done((inp.value || '').trim() || null); c(); } }
+      ]
+    });
+    inp.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); const v = (inp.value || '').trim(); done(v || null); m.close(); }
+    });
+    setTimeout(() => { try { inp.focus(); } catch (e) { } }, 80);
+  });
+};
+
+UI2.copyText = function (text, label) {
+  /* v2.25.0 (req 6) — "Copy link" ke liye native prompt() ki jagah:
+     pehle clipboard try, block ho to selectable box (kuch na hone se behtar). */
+  const t = String(text == null ? '' : text);
+  const fallback = () => {
+    const inp = h('input', {
+      class: 'f-input', type: 'text', readOnly: true, value: t,
+      style: { minHeight: '48px', fontSize: '16px', width: '100%' },
+      'aria-label': label || 'Link'
+    });
+    UI2.modal({
+      title: '🔗 ' + (label || 'Link'), size: 'sm',
+      body: h('div', null,
+        h('div', { style: { fontSize: 'var(--fs-sm)', color: 'var(--muted)', marginBottom: '8px' } },
+          'Automatic copy available nahi — neeche se select karke copy karein (Ctrl+C).'),
+        inp),
+      actions: [{ label: 'Close', cls: 'ghost', onClick: c => c() }]
+    });
+    setTimeout(() => { try { inp.focus(); inp.select(); } catch (e) { } }, 80);
+  };
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      return navigator.clipboard.writeText(t).then(
+        () => { UI.toast((label || 'Link') + ' copy ho gaya', 'ok'); return true; },
+        () => { fallback(); return false; });
+    }
+  } catch (e) { }
+  fallback(); return false;
+};
+
+/* =============================== SMART TABLE =============================== */
+/**
+ * UI2.table({
+ *   screen, columns, rows, filters:[{key,label,type,options,value}],
+ *   onRow, rowActions, pageSize, height, exportName, onRefresh, savedViews:true
+ * })
+ * - as-you-type quick filter over ALL columns (tokens AND)
+ * - chips for extra filters, column picker, density, CSV export, pagination
+ */
+
+/** icon-only action button ke liye readable title (tooltip + screen reader) */
+function actionTitle(a) {
+  if (a.label) return a.label;
+  if (a.title) return a.title;
+  const map = { '✎': 'Edit', '🗑': 'Delete', '💾': 'Save', '👁': 'View', '📄': 'Print',
+    '🏷': 'Print label', '📊': 'Barcode', '➕': 'Add', '↻': 'Refresh', '⏸': 'Hold',
+    '✕': 'Remove', '📦': 'Receive', '💰': 'Payment', '📞': 'Call', '🧾': 'Invoice',
+    '⚙': 'Settings', '🔁': 'Repeat', '📋': 'Copy', '🔍': 'View details' };
+  return map[a.icon] || (a.icon ? 'Action' : 'Action');
+}
+
+UI2.table = function (cfg) {
+  const state = {
+    q: '', page: 1, size: cfg.pageSize || 25, sort: cfg.sort || null, dir: 'asc',
+    filters: {}, hidden: Store.get('cols_' + (cfg.screen || 'x'), []), density: Store.get('density', 'comfortable')
+  };
+  (cfg.filters || []).forEach(f => state.filters[f.key] = f.value !== undefined ? f.value : '');
+
+  const wrap = h('div', { class: 'st2 d-' + state.density });
+  const toolbar = h('div', { class: 'st2-bar' });
+  const search = h('input', { class: 'st2-q', type: 'search', placeholder: cfg.searchPlaceholder || '🔎 Type to filter (kisi bhi field se)…', autocomplete: 'off' });
+  toolbar.appendChild(search);
+
+  // extra filter controls
+  (cfg.filters || []).forEach(f => {
+    let el;
+    if (f.type === 'select') {
+      el = h('select', { class: 'st2-f', title: 'Filter: ' + (f.label || f.key), 'aria-label': 'Filter by ' + (f.label || f.key), onchange: () => { state.filters[f.key] = el.value; state.page = 1; paint(); } });
+      el.appendChild(h('option', { value: '' }, f.label + ': All'));
+      (f.options || []).forEach(o => {
+        const v = typeof o === 'object' ? o.value : o, l = typeof o === 'object' ? o.label : o;
+        el.appendChild(h('option', { value: v, selected: String(state.filters[f.key]) === String(v) }, l));
+      });
+    } else if (f.type === 'date') {
+      el = h('input', { class: 'st2-f', type: 'date', onchange: () => { state.filters[f.key] = el.value; paint(); } });
+    } else if (f.type === 'switch') {
+      /* v2.6 §1 — BILKUL wahi component jo UI2.form use karta hai:
+         .switch + On/Off state text. Pehle yahan ek alag (be-mel) toggle tha. */
+      const cb = h('input', { type: 'checkbox', id: 'flt-' + f.key,
+        onchange: () => { state.filters[f.key] = cb.checked; state.page = 1; paint(); } });
+      const st = h('span', { class: 'sw-state' }, 'Off');
+      cb.addEventListener('change', () => { st.textContent = cb.checked ? 'On' : 'Off'; });
+      el = h('label', { class: 'switch', title: f.label || f.key }, cb, h('i'),
+        h('span', { class: 'frs-label', style: { fontSize: 'var(--fs-xs)', fontWeight: '600' } }, f.label || f.key), st);
+    } else {
+      el = h('input', { class: 'st2-f', type: 'text', placeholder: f.label,
+        oninput: debounce(() => { state.filters[f.key] = el.value; state.page = 1; paint(); }, 200) });
+    }
+    toolbar.appendChild(el);
+  });
+
+  const right = h('div', { class: 'st2-right' });
+  toolbar.appendChild(right);
+
+  // column picker
+  const colBtn = h('button', { class: 'btn sm sec', onclick: e => {
+    e.stopPropagation();
+    const box = h('div');
+    (cfg.columns || []).filter(c => !c.family || App.field(c.family)).forEach(c => {
+      const cb = h('label', { class: 'chk' },
+        (function () { const i = h('input', { type: 'checkbox' }); i.checked = state.hidden.indexOf(c.key) === -1;
+          i.onchange = () => {
+            if (i.checked) state.hidden = state.hidden.filter(x => x !== c.key); else state.hidden.push(c.key);
+            Store.set('cols_' + (cfg.screen || 'x'), state.hidden); paint();
+          }; return i; })(),
+        h('span', null, c.label));
+      box.appendChild(cb);
+    });
+    UI2.modal({ title: 'Columns', size: 'sm', body: box, actions: [{ label: 'Done', onClick: c => c() }] });
+  } }, '⚙ Columns');
+  right.appendChild(colBtn);
+
+  if (cfg.savedViews !== false && cfg.screen) {
+    right.appendChild(h('button', { class: 'btn sm sec', title: 'Filter presets save/load karein',
+      onclick: () => viewsMenu() }, '⭐ Views'));
+  }
+  if (cfg.exportName !== false) {
+    right.appendChild(h('button', { class: 'btn sm sec', onclick: () => exportCsv() }, '⬇ CSV'));
+  }
+
+  /** Saved views — filter + sort + columns ek naam se save (Settings se bhi editable) */
+  function viewState() {
+    return { screen: cfg.screen, q: state.q, filters: state.filters,
+      sort: state.sort, dir: state.dir, hidden: state.hidden };
+  }
+  function applyView(v) {
+    try {
+      const st = typeof v.state === 'string' ? JSON.parse(v.state) : (v.state || {});
+      state.q = st.q || ''; search.value = state.q;
+      state.filters = st.filters || {};
+      state.sort = st.sort || null; state.dir = st.dir || 'asc';
+      state.hidden = st.hidden || []; Store.set('cols_' + (cfg.screen || 'x'), state.hidden);
+      paint();
+      UI.toast('View applied: ' + v.name, 'ok');
+    } catch (e) { UI.toast('View load nahi hua', 'err'); }
+  }
+  function viewsMenu() {
+    const box = h('div');
+    API.call('config.views.list', { screen: cfg.screen }, { offlineFallback: () => [] })
+      .then(rows => {
+        box.innerHTML = '';
+        if (!rows.length) box.appendChild(h('div', { class: 'tbl-empty' }, 'Abhi koi saved view nahi'));
+        (rows || []).forEach(v => box.appendChild(h('div', { class: 'list-item' },
+          h('div', { class: 'li-main' }, h('b', null, v.name),
+            h('span', null, (v.scope === 'GLOBAL' ? 'Sab ke liye' : 'Sirf aap ke liye'))),
+          h('button', { class: 'btn sm', onclick: () => { applyView(v); m.close(); } }, 'Apply'),
+          h('button', { class: 'btn sm danger', onclick: async () => {
+            await API.call('config.views.remove', { id: v.id }); m.close(); viewsMenu();
+          } }, '🗑'))));
+        const name = h('input', { class: 'f-input', placeholder: 'Is filter ko naam dein (e.g. Low stock SDQ)' });
+        box.appendChild(h('div', { style: { marginTop: '10px' } },
+          name,
+          h('button', { class: 'btn', style: { marginTop: '8px' }, onclick: async () => {
+            if (!name.value.trim()) return UI.toast('Naam likhein', 'warn');
+            await API.call('config.views.save', { view: { screen: cfg.screen, name: name.value.trim(),
+              state: JSON.stringify(viewState()), scope: 'USER' } });
+            UI.toast('View saved ⭐', 'ok'); m.close();
+          } }, '💾 Save current filter')));
+      }).catch(() => box.appendChild(h('div', { class: 'empty' }, 'Views load nahi hue')));
+    const m = UI2.modal({ title: '⭐ Saved views — ' + (cfg.screen || ''), size: 'sm', body: box,
+      actions: [{ label: 'Close', onClick: c => c() }] });
+  }
+  if (cfg.onRefresh) right.appendChild(h('button', { class: 'btn sm sec', onclick: () => { UI2.toastMini('Refreshing…'); cfg.onRefresh(); } }, '↻'));
+
+  const body = h('div', { class: 'st2-body', style: cfg.height ? { maxHeight: cfg.height } : null });
+  const foot = h('div', { class: 'st2-foot' });
+  wrap.append(toolbar, body, foot);
+
+  search.addEventListener('input', debounce(() => { state.q = search.value.trim(); state.page = 1; paint(); }, 140));
+
+  function visibleCols() {
+    return (cfg.columns || [])
+      .filter(c => state.hidden.indexOf(c.key) === -1)
+      /* v2.28.0 (W5) — field visibility: jis family ka data backend bhi nahi deta,
+         uska column table mein dikhana hi nahi (khali "—" column nahi) */
+      .filter(c => !c.family || App.field(c.family));
+  }
+
+  function filtered() {
+    let rows = (cfg.rows || []).slice();
+    // quick filter: every token must appear in SOME field
+    if (state.q) {
+      const tokens = U_norm(state.q).split(' ').filter(Boolean);
+      rows = rows.filter(r => {
+        const hay = visibleCols().map(c => {
+          const v = c.filterValue ? c.filterValue(r) : r[c.key];
+          return v === null || v === undefined ? '' : String(v);
+        }).join(' ');
+        const n = U_norm(hay);
+        return tokens.every(t => n.indexOf(t) > -1);
+      });
+    }
+    Object.keys(state.filters).forEach(k => {
+      const v = state.filters[k];
+      if (v === '' || v === undefined || v === null || v === false) return;
+      if (v === true) { rows = rows.filter(r => r[k] === true || r[k] === 'true' || r[k] === 1); return; }
+      rows = rows.filter(r => String(r[k] === undefined ? '' : r[k]).toLowerCase().indexOf(String(v).toLowerCase()) > -1);
+    });
+    if (state.sort) {
+      rows = rows.slice().sort((a, b) => {
+        const ka = a[state.sort], kb = b[state.sort];
+        const va = (ka === null || ka === undefined) ? '' : ka;
+        const vb = (kb === null || kb === undefined) ? '' : kb;
+        if (va < vb) return state.dir === 'asc' ? -1 : 1;
+        if (va > vb) return state.dir === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
+    return rows;
+  }
+
+  function paint() {
+    const rows = filtered();
+    const cols = visibleCols();
+    const total = rows.length;
+    const pages = Math.max(1, Math.ceil(total / state.size));
+    if (state.page > pages) state.page = pages;
+    const slice = rows.slice((state.page - 1) * state.size, state.page * state.size);
+
+    body.innerHTML = '';
+    if (!total) {
+      body.appendChild(h('div', { class: 'empty' }, h('span', { class: 'big' }, '📭'),
+        h('div', null, state.q || Object.keys(state.filters).length ? 'Is filter se kuch nahi mila' : 'Koi data nahi'),
+        cfg.emptyAction ? h('button', { class: 'btn sm', style: { marginTop: '10px' }, onclick: cfg.emptyAction.onClick }, cfg.emptyAction.label) : ''));
+      /* v2.8.5 — khaali footer (19px ki border line) chhupa dete hain, warna
+         zero-row tables mein ek bekaar ki khali patti dikhti hai. */
+      foot.innerHTML = ''; foot.style.display = 'none'; return;
+    }
+    foot.style.display = '';
+
+    const tbl = h('table', { class: 'tbl2' });
+    const thead = h('thead'); const tr = h('tr');
+    cols.forEach(c => {
+      const th = h('th', { class: (c.num ? 'num' : '') + (state.sort === c.key ? ' sorted' : ''),
+        onclick: () => { if (c.sort === false) return; state.sort = c.key; state.dir = state.dir === 'asc' ? 'desc' : 'asc'; paint(); } },
+        c.label, c.sort === false ? '' : h('span', { class: 'sort' }, state.sort === c.key ? (state.dir === 'asc' ? '▲' : '▼') : '↕'));
+      tr.appendChild(th);
+    });
+    if (cfg.rowActions) tr.appendChild(h('th', { class: 'num nos' }, ''));
+    thead.appendChild(tr); tbl.appendChild(thead);
+
+    const tb = h('tbody');
+    slice.forEach(r => {
+      const row = h('tr', { class: 'clickable' + (cfg.rowClass ? ' ' + cfg.rowClass(r) : '') });
+      cols.forEach(c => {
+        const td = h('td', { class: c.num ? 'num' : '' });
+        const v = c.render ? c.render(r) : r[c.key];
+        if (v && v.nodeType) td.appendChild(v);
+        else td.innerHTML = (v === null || v === undefined || v === '') ? '—' : esc(v);
+        row.appendChild(td);
+      });
+      if (cfg.rowActions) {
+        const td = h('td', { class: 'num' });
+        const acts = cfg.rowActions(r) || [];
+        acts.forEach(a => td.appendChild(h('button', {
+          class: 'btn sm ' + (a.cls || 'ghost'),
+          // icon-only buttons ko hamesha tooltip mile (label na ho to icon se)
+          title: actionTitle(a), 'aria-label': actionTitle(a),
+          onclick: e => { e.stopPropagation(); a.onClick(r); }
+        }, a.icon || a.label || '·')));
+        row.appendChild(td);
+      }
+      if (cfg.onRow) row.onclick = () => cfg.onRow(r);
+      tb.appendChild(row);
+    });
+    tbl.appendChild(tb);
+    body.appendChild(tbl);
+
+    foot.innerHTML = '';
+    foot.appendChild(h('span', null, total + ' rows · page ' + state.page + '/' + pages));
+    const sp = h('div', { class: 'sp' });
+    sp.appendChild(h('button', { class: 'btn sm sec', title: 'Previous page', onclick: () => { if (state.page > 1) { state.page--; paint(); } } }, '‹ Prev'));
+    sp.appendChild(h('button', { class: 'btn sm sec', title: 'Next page', onclick: () => { if (state.page < pages) { state.page++; paint(); } } }, 'Next ›'));
+    foot.appendChild(sp);
+  }
+
+  function exportCsv() {
+    const rows = filtered(), cols = visibleCols();
+    const headers = cols.map(c => c.label);
+    const esc2 = v => { v = v === null || v === undefined ? '' : String(v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
+    const lines = [headers.map(esc2).join(',')];
+    rows.forEach(r => lines.push(cols.map(c => {
+      const v = c.filterValue ? c.filterValue(r) : r[c.key];
+      return esc2(v === null || v === undefined ? '' : v);
+    }).join(',')));
+    downloadCsv(lines.join('\n'), (cfg.exportName || cfg.screen || 'export') + '-' + fmt.date(new Date()) + '.csv');
+    UI2.toastMini('CSV downloaded');
+  }
+
+  wrap.refresh = rows => { if (rows) cfg.rows = rows; paint(); };
+  paint();
+  return wrap;
+};
+
+UI2.toastMini = function (msg) { UI.toast(msg, '', 1200); };
+
+/* ============================== FILTER BAR ================================= */
+/** Quick chips row (category / brand / status …) */
+UI2.chips = function (items, active, onPick, opts) {
+  const row = h('div', { class: 'chips' + (opts && opts.scroll ? ' scroll' : '') });
+  items.forEach(it => {
+    const v = typeof it === 'object' ? it.value : it;
+    const l = typeof it === 'object' ? it.label : it;
+    row.appendChild(h('button', { class: 'chip2' + (String(active) === String(v) ? ' on' : ''),
+      onclick: () => onPick(v) },
+      (it.icon ? it.icon + ' ' : ''), l));
+  });
+  return row;
+};
+
+/* ============================== FORM BUILDER =============================== */
+/**
+ * UI2.form({ fields, values, sections:[{id,label,fields:[]}], tabs:[{id,label,fields:[]}], columns:2 })
+ * Supports: text, number, textarea, select, multiselect, switch, date, color, image, tags, money
+ */
+UI2.form = function (cfg) {
+  const refs = {};
+  const groups = cfg.tabs && cfg.tabs.length ? cfg.tabs
+    : (cfg.sections && cfg.sections.length ? cfg.sections
+      : [{ id: 'main', label: '', fields: cfg.fields || [] }]);
+
+  const host = h('div', { class: 'form2' });
+  const panels = {};
+  let apiRef = null;          // niche return wala api (handlers runtime par use karte hain)
+  function vals() {
+    const out = {};
+    Object.keys(refs).forEach(k => {
+      const el = refs[k];
+      if (!el) return;
+      if (el.tagName === 'LABEL') {                       // purana switch wrapper (back-compat)
+        const cb = el.querySelector('input[type=checkbox]');
+        out[k] = cb ? cb.checked : false; return;
+      }
+      if (el.type === 'checkbox') out[k] = !!el.checked;
+      else if (el.classList && el.classList.contains('f-search')) {
+        /* search field: picked value (id) priority, warna likha hua text */
+        out[k] = (el.dataset.value !== undefined && el.dataset.value !== '') ? el.dataset.value : el.value;
+      }
+      else if (el.type === 'number') out[k] = el.value === '' ? '' : Number(el.value);
+      else out[k] = el.value;
+    });
+    return out;
+  }
+  function setVal(k, v, quiet) {
+    const el = refs[k];
+    if (!el) return false;
+    if (el.tagName === 'LABEL') { const cb = el.querySelector('input[type=checkbox]'); if (cb) cb.checked = !!v; }
+    else if (el.type === 'checkbox') {
+      el.checked = !!v;
+      const sw = el.closest ? el.closest('.switch') : null;
+      const sp = sw ? sw.querySelector('.sw-state') : null;
+      if (sp) sp.textContent = el.checked ? 'On' : 'Off';
+    } else if (el.classList && el.classList.contains('f-search')) {
+      el.dataset.value = (v === undefined || v === null) ? '' : String(v);
+      if (!quiet && (v === undefined || v === null)) el.value = '';
+      else if (v) el.value = String(v);
+    } else el.value = (v === undefined || v === null) ? '' : String(v);
+    if (!quiet) { try { el.dispatchEvent(new Event('change', { bubbles: true })); } catch (e) { } }
+    return true;
+  }
+  function showField(k, on) {
+    const el = refs[k];
+    const col = el && (el.__col || (el.closest ? el.closest('.f-col') : null));
+    if (col) col.style.display = on ? '' : 'none';
+  }
+
+  /* ------------------------------------------------------------------------
+     v2.6 QA — HINT DONO ZABANON MEIN + TOOLTIP (app-wide)
+     Bilingual.gs har field par ye bhejta hai:
+       urHint  asli Urdu/Roman-Urdu hint
+       enHint  English hint
+       tip     poora tooltip (English title · Urdu · dono hints)
+     Pehle sirf Urdu hint dikhti thi; ab dono — English pehle (parhne mein
+     aasan), Urdu us ke baad. Tooltip mouse rakhne par milti hai.
+     Jis field par koi hint nahi, wahan kuch nahi badalta.
+     ---------------------------------------------------------------------- */
+  function hintNode(f) {
+    const en = (f && f.enHint) || '';
+    const ur = (f && (f.urHint || (f.hint && !f.enHint ? f.hint : ''))) || '';
+    if (!en && !ur) return '';
+    if (en && ur && en !== ur) {
+      return h('div', { class: 'f-hint bi' },
+        h('span', { class: 'hi-en', lang: 'en' }, en),
+        h('span', { class: 'hi-ur', lang: 'ur', dir: 'rtl' }, ur));
+    }
+    return h('div', { class: 'f-hint bi' }, h('span', { class: 'hi-en' }, en || ur));
+  }
+  function tipOf(f) {
+    if (f && f.tip) return f.tip;
+    const bits = [];
+    if (f && f.label) bits.push(f.label);
+    if (f && f.ur && f.ur !== f.label) bits.push(f.ur);
+    const en = (f && f.enHint) || '', ur = (f && f.urHint) || (f && f.hint) || '';
+    if (en) bits.push(en);
+    if (ur && ur !== en) bits.push(ur);
+    return bits.join('  ·  ');
+  }
+
+  function buildField(f, values) {
+    const id = 'f_' + f.key;
+    let input;
+    let switchWrap = null;
+    const val = values[f.key] !== undefined ? values[f.key] : (f.value !== undefined ? f.value : '');
+    /* v2.24.0 — section header row: { type:'sec', label, hint, icon, tone } */
+    if (f.type === 'sec') {
+      const node = h('div', { class: 'f-sec full ' + (f.tone || 'brand'), style: f.hidden ? { display: 'none' } : null },
+        h('span', { class: 'f-sec-i' }, f.icon || '◆'),
+        h('div', { class: 'f-sec-t' },
+          h('b', null, f.label || ''),
+          (f.hint || f.urHint) ? h('span', { class: 'bi' },
+            f.hint ? h('span', { class: 'hi-en' }, f.hint) : '',
+            f.urHint ? h('span', { class: 'hi-ur', lang: 'ur', dir: 'rtl' }, f.urHint) : '') : ''));
+      if (f.key) { node.__col = node; refs[f.key] = node; }
+      return node;
+    }
+    /* v2.24.0 — inline info/warning callout: { type:'note', label, text, tone } */
+    if (f.type === 'note') {
+      const nnode = h('div', { class: 'f-note full ' + (f.tone || 'info'), style: f.hidden ? { display: 'none' } : null },
+        h('span', { class: 'f-note-i' }, f.icon || (f.tone === 'warn' ? '⚠' : (f.tone === 'ok' ? '✅' : '💡'))),
+        h('div', { class: 'f-note-t' }, f.label ? h('b', null, f.label) : '', h('span', null, f.text || f.hint || '')));
+      if (f.key) { nnode.__col = nnode; refs[f.key] = nnode; }
+      return nnode;
+    }
+    /* v2.24.0 — live panel: host ka apna element (data-aware note/KPI) form grid mein */
+    if (f.type === 'el') {
+      const enode = h('div', { class: 'f-col full f-el-row', style: f.hidden ? { display: 'none' } : null }, f.el || '');
+      /* v2.24.1 — wrapper bhi chhupe jab andar wala panel `hidden` ho.
+         Warna khaali `.f-col` ka border/padding box form mein ek khaali strip
+         ki tarah nazar aata tha (Demand form mein saaf dikh raha tha). */
+      if (f.el && f.el.nodeType === 1) {
+        const syncHidden = () => { enode.style.display = f.el.hidden ? 'none' : ''; };
+        syncHidden();
+        try { new MutationObserver(syncHidden).observe(f.el, { attributes: true, attributeFilter: ['hidden'] }); } catch (e) { }
+      }
+      if (f.key) { enode.__col = enode; refs[f.key] = enode; }
+      return enode;
+    }
+    if (f.type === 'select') {
+      input = h('select', { id, class: 'f-input' });
+      (f.options || []).forEach(o => {
+        const v = typeof o === 'object' ? o.value : o;
+        const l = typeof o === 'object' ? o.label : o;
+        input.appendChild(h('option', { value: v, selected: String(val) === String(v) }, l));
+      });
+    } else if (f.type === 'textarea') {
+      input = h('textarea', { id, class: 'f-input', rows: f.rows || 3, placeholder: f.placeholder || '' }, val);
+    } else if (f.type === 'switch') {
+      // IMPORTANT: refs[f.key] hamesha asli <input type=checkbox> hona chahiye
+      // (pehle <label> wrapper store ho raha tha → switch ki value save hi nahi hoti thi)
+      const cb = h('input', { type: 'checkbox', id, title: tipOf(f) });
+      if (val === true || val === 'true' || val === 1 || val === '1') cb.checked = true;
+      input = cb;
+      /* v2.5 professional settings-row: label + hint baen taraf, switch daen taraf */
+      const state = h('span', { class: 'sw-state' }, cb.checked ? 'On' : 'Off');
+      cb.addEventListener('change', () => { state.textContent = cb.checked ? 'On' : 'Off'; });
+      switchWrap = h('div', { class: 'f-row-switch' },
+        h('div', { class: 'frs-text' },
+          h('span', { class: 'frs-label', title: tipOf(f) }, f.label || f.hint || ''),
+          hintNode(f) || (f.hint ? h('div', { class: 'f-hint' }, f.hint) : '')),
+        h('label', { class: 'switch' }, cb, h('i'), state));
+    } else if (f.type === 'color') {
+      input = h('input', { id, class: 'f-input f-color', type: 'color', value: val || f.def || '#c2410c' });
+    } else if (f.type === 'money' || f.type === 'number') {
+      // v2.8 placeholder audit — if caller left value empty, show faint placeholder (0 / 0.00) so field looks clean
+      // business defaults (e.g. tax 0) still show actual value; creation forms pass '' to get empty+hint
+      const _ph = f.placeholder || (f.type === 'money' ? '0.00' : '0');
+      input = h('input', { id, class: 'f-input', type: 'number', step: f.step || 'any', value: val, placeholder: _ph });
+      input.addEventListener('focus', () => { try { if(input.value) input.select(); } catch(e){} });
+    } else if (f.type === 'date') {
+      input = h('input', { id, class: 'f-input', type: 'date', value: val });
+    } else if (f.type === 'search') {
+      /* v2.24.0 — ASLI async search / auto-complete field.
+         Pehle `type:'search'` ek plain text box ban jata tha aur `load:` hook
+         kabhi call hi nahi hota tha — isi liye Demand ke customer/product
+         fields "wired" nahi lagte the. Ab: dropdown results + keyboard nav
+         (upar/neeche/Enter) + 📋 poori list + ✓ pick badge + row.fill se baqi
+         fields auto-fill + f.onPick/f.onChange hooks. */
+      input = h('input', { id, class: 'f-input f-search', type: 'text', autocomplete: 'off',
+        value: val, placeholder: f.placeholder || 'Search…', role: 'combobox',
+        'aria-autocomplete': 'list', 'aria-expanded': 'false' });
+      input.dataset.value = (val === undefined || val === null) ? '' : String(val);
+      const listBox = h('div', { class: 'f-search-results', hidden: true, role: 'listbox' });
+      const badge = h('div', { class: 'f-pick-badge', hidden: true });
+      const listBtn = h('button', { class: 'f-search-btn', type: 'button', title: 'Poori list dekhein', 'aria-label': 'Open full list' }, '📋');
+      const clearBtn = h('button', { class: 'f-search-btn x', type: 'button', title: 'Clear', 'aria-label': 'Clear selection' }, '✕');
+      const scanBtn = f.scan ? h('button', { class: 'f-search-btn', type: 'button',
+        title: 'Barcode / QR scan', 'aria-label': 'Scan barcode or QR' }, '📷') : null;
+      const wrap = h('div', { class: 'f-search-wrap' }, input, listBtn, scanBtn || '', clearBtn);
+      let rows = [], idx = -1, seq = 0, timer = null, lastQ = null;
+
+      function fireSel() { try { input.dispatchEvent(new Event('haselect', { bubbles: true })); } catch (e) { } }
+      function showBadge(row) {
+        if (!row) { badge.hidden = true; badge.innerHTML = ''; clearBtn.hidden = !input.value; return; }
+        badge.hidden = false; badge.innerHTML = '';
+        badge.append(h('span', { class: 'fpb-i' }, '✓'), h('b', { title: row.sub || '' }, row.label || ''),
+          row.sub ? h('span', { class: 'fpb-s' }, row.sub) : '');
+      }
+      function pick(row) {
+        rows = []; idx = -1; listBox.hidden = true; listBox.innerHTML = '';
+        input.setAttribute('aria-expanded', 'false');
+        input.value = row.label || '';
+        input.dataset.value = (row.value === undefined || row.value === null) ? '' : String(row.value);
+        input.__row = row;
+        showBadge(row);
+        if (row.fill && typeof row.fill === 'object') Object.keys(row.fill).forEach(k => setVal(k, row.fill[k], true));
+        if (typeof f.onPick === 'function') { try { f.onPick(row, apiRef, vals()); } catch (e) { } }
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+        fireSel();
+      }
+      function paintList() {
+        listBox.innerHTML = '';
+        if (!rows.length) listBox.appendChild(h('div', { class: 'f-sr-empty' }, f.emptyText || 'Kuch nahi mila — dobara likh kar try karein'));
+        else rows.forEach((row, i) => {
+          const el = h('div', { class: 'f-sr' + (i === idx ? ' on' : ''), role: 'option' },
+            h('b', null, row.label || ''), row.sub ? h('span', null, row.sub) : '',
+            row.tag ? h('i', { class: 'f-sr-tag' }, row.tag) : '');
+          el.onclick = () => pick(row);
+          listBox.appendChild(el);
+        });
+        listBox.hidden = false;
+        input.setAttribute('aria-expanded', 'true');
+      }
+      function fetch(q, force) {
+        if (!f.load) { rows = []; paintList(); return; }
+        if (!force && q === lastQ && rows.length) { paintList(); return; }
+        lastQ = q;
+        const my = ++seq;
+        try {
+          const maybe = f.load(q, r => { if (my === seq) { rows = Array.isArray(r) ? r : []; idx = -1; paintList(); } });
+          if (maybe && typeof maybe.then === 'function') maybe.then(r => { if (my === seq) { rows = Array.isArray(r) ? r : []; idx = -1; paintList(); } });
+        } catch (e) { rows = []; paintList(); }
+      }
+      input.addEventListener('input', () => {
+        input.dataset.value = ''; input.__row = null; showBadge(null);
+        clearTimeout(timer);
+        timer = setTimeout(() => fetch(input.value.trim()), 200);
+      });
+      input.addEventListener('focus', () => fetch(input.value.trim()));
+      /* field se bahar nikalne par list band (warna peechhe khuli list reh jati hai) */
+      input.addEventListener('blur', () => setTimeout(() => { listBox.hidden = true; input.setAttribute('aria-expanded', 'false'); }, 180));
+      input.addEventListener('keydown', e => {
+        if (e.key === 'ArrowDown') { e.preventDefault(); if (!rows.length) fetch(input.value.trim()); idx = Math.min(rows.length - 1, idx + 1); paintList(); }
+        else if (e.key === 'ArrowUp') { e.preventDefault(); idx = Math.max(0, idx - 1); paintList(); }
+        else if (e.key === 'Enter') { if (rows.length || idx >= 0) { e.preventDefault(); pick(rows[Math.max(0, idx)]); } }
+        else if (e.key === 'Escape') { e.stopPropagation(); listBox.hidden = true; input.setAttribute('aria-expanded', 'false'); }
+      });
+      listBtn.addEventListener('click', () => { input.value = ''; input.dataset.value = ''; lastQ = null; fetch('', true); input.focus(); });
+      if (scanBtn) scanBtn.addEventListener('click', async () => {
+        const doCode = code => {
+          const clean = String(code || '').trim();
+          if (!clean) return;
+          f.load(clean, r => {
+            const list = Array.isArray(r) ? r : [];
+            const lc = clean.toLowerCase();
+            const ex = list.filter(x => String(x.value).toLowerCase() === lc
+              || String(x.sub || '').toLowerCase().indexOf(lc) > -1
+              || String(x.label || '').toLowerCase().indexOf(lc) > -1)[0];
+            if (ex) { pick(ex); UI.toast('Scan mil gaya: ' + (ex.label || clean), 'ok'); }
+            else { input.value = clean; input.dataset.value = ''; rows = list; paintList(); UI.toast('Code ' + clean + ' — list se select karein', 'warn'); }
+          });
+        };
+        if (window.HaScan && HaScan.scan) HaScan.scan({ onDetect: doCode });
+        else if (window.PWA && PWA.scanWithCamera) PWA.scanWithCamera(doCode);
+        else { const v = await UI2.askCode(); if (v) doCode(v); }
+      });
+      clearBtn.addEventListener('click', () => {
+        input.value = ''; input.dataset.value = ''; input.__row = null; rows = []; listBox.hidden = true;
+        showBadge(null); input.dispatchEvent(new Event('change', { bubbles: true })); fireSel(); input.focus();
+      });
+      if (f.displayValue || val) showBadge({ label: f.displayValue || val });
+      refs[f.key] = input;
+      return h('div', { class: 'f-col' + (f.full ? ' full' : '') },
+        h('label', { for: id, class: f.required ? 'req' : '', title: tipOf(f) }, f.label),
+        wrap, listBox, badge, hintNode(f));
+    } else if (f.type === 'tags') {
+      input = h('input', { id, class: 'f-input', type: 'text', value: val, placeholder: f.placeholder || 'comma separated' });
+    } else if (f.type === 'image') {
+      /* v2.23.17 — image field: URL box + preview + Upload/Camera.
+         Chosen file is shrunk client-side and kept as PENDING data (never stuffed
+         into the sheet value); the host form uploads it via items.uploadImage on Save. */
+      input = h('input', { id, class: 'f-input', type: 'text', value: val, autocomplete: 'off',
+        placeholder: f.placeholder || 'Image URL — https://… (ya neeche Upload/Photo dabayein)' });
+      const prev = h('img', { alt: 'image preview', loading: 'lazy', decoding: 'async',
+        style: 'width:76px;height:76px;object-fit:contain;border:1px solid var(--line);border-radius:10px;background:#fff' + (val && /^(https?:|data:image)/.test(val) ? '' : ';display:none'),
+        src: val && /^(https?:|data:image)/.test(val) ? val : '' });
+      const hint = h('div', { class: 'f-hint' }, f.hint || 'JPG/PNG · auto-resize 900px · Save par upload ho jayega');
+      const updPrev = () => { const v = input.value.trim();
+        if (/^(https?:|data:image)/.test(v)) { prev.src = v; prev.style.display = ''; }
+        else if (!input.__pendingData) prev.style.display = 'none'; };
+      input.addEventListener('input', () => { input.__pendingData = null; updPrev(); });
+      const doPick = (camera) => {
+        const fi = h('input', { type: 'file', accept: 'image/*', style: 'display:none' });
+        if (camera) fi.setAttribute('capture', 'environment');
+        fi.onchange = async () => {
+          const file = fi.files && fi.files[0]; if (!file) return;
+          if (file.size > 6 * 1024 * 1024) { UI.toast('Image 6MB se bari hai — chhoti kar ke try karein', 'warn', 3600); return; }
+          hint.textContent = '⏳ Image process ho rahi hai…';
+          try {
+            const dataUrl = await UI2.shrinkImage(file, 900);
+            input.__pendingData = dataUrl;
+            prev.src = dataUrl; prev.style.display = '';
+            hint.textContent = '✅ Image taiyar — “Save” dabate hi upload ho jayegi';
+          } catch (e) { hint.textContent = '❌ ' + (e.message || 'Image process fail'); UI.toast(e.message || 'Image fail', 'err'); }
+        };
+        document.body.appendChild(fi); fi.click();
+        setTimeout(() => { try { fi.remove(); } catch (e) {} }, 5000);
+      };
+      const btns = h('div', { class: 'row', style: 'gap:6px;flex-wrap:wrap;margin-top:6px' },
+        h('button', { type: 'button', class: 'btn sm sec', onclick: () => doPick(false) }, '📁 Upload image'),
+        h('button', { type: 'button', class: 'btn sm sec', onclick: () => doPick(true) }, '📷 Camera / Photo'),
+        h('button', { type: 'button', class: 'btn sm ghost', onclick: () => { input.value = ''; input.__pendingData = null; prev.style.display = 'none'; hint.textContent = 'Image hata di — Save karein to remove ho jayegi'; } }, '✕ Hataein'));
+      refs[f.key] = input;
+      return h('div', { class: 'f-col full' },
+        h('label', { for: id }, f.label || 'Image'),
+        h('div', { style: 'display:flex;gap:10px;align-items:flex-start;min-width:0' },
+          prev, h('div', { style: 'flex:1;min-width:0' }, input)),
+        btns, hint);
+    } else {
+      input = h('input', { id, class: 'f-input', type: f.type || 'text', value: val, placeholder: f.placeholder || '', autocomplete: 'off' });
+    }
+    refs[f.key] = input;
+    const field = h('div', { class: 'f-col' + ((f.full || f.type === 'switch') ? ' full' : ''),
+        style: f.hidden ? { display: 'none' } : null },
+      (f.type !== 'switch') ? h('label', { for: id, class: f.required ? 'req' : '',
+        title: tipOf(f) }, f.label) : '',
+      switchWrap || input,
+      (f.type !== 'switch') ? hintNode(f) : '');
+    input.__col = field;
+    /* v2.24.0 — per-field hook: f.onChange(value, api, allValues) */
+    if (typeof f.onChange === 'function') {
+      const fire = () => { try { f.onChange((apiRef ? apiRef.values() : {})[f.key], apiRef, apiRef ? apiRef.values() : {}); } catch (e) { } };
+      input.addEventListener(f.type === 'search' ? 'haselect' : 'change', fire);
+      if (f.type !== 'select' && f.type !== 'switch' && f.type !== 'search') input.addEventListener('input', fire);
+    }
+    return field;
+  }
+
+  if (groups.length === 1 && !groups[0].label) {
+    const grid = h('div', { class: 'f-grid' });
+    /* v2.28.0 (W5) — field visibility (ek hi chhoot rahi thi: plain-grid layout) */
+    groups[0].fields.filter(f => !f.family || App.field(f.family)).forEach(f => grid.appendChild(buildField(f, cfg.values || {})));
+    host.appendChild(grid);
+  } else {
+    const bodyHost = h('div', { class: 'tabbody' });
+    groups.forEach((g, i) => {
+      const panel = h('div', { class: 'f-grid', hidden: i !== 0 });
+      /* v2.28.0 (W5) — family band ho to field render hi na ho (section bhi khali na lage) */
+      (g.fields || []).filter(f => !f.family || App.field(f.family)).forEach(f => panel.appendChild(buildField(f, cfg.values || {})));
+      panels[g.id] = panel;
+      bodyHost.appendChild(panel);
+    });
+    const bar = h('div', { class: 'tabbar-l2' });
+    groups.forEach((g, i) => bar.appendChild(h('button', {
+      class: 'tab' + (i === 0 ? ' on' : ''), onclick: e => {
+        Array.from(bar.children).forEach(b => b.classList.remove('on'));
+        e.currentTarget.classList.add('on');
+        groups.forEach(gg => panels[gg.id].hidden = gg.id !== g.id);
+      }
+    }, g.icon ? g.icon + ' ' : '', g.label)));
+    host.append(bar, bodyHost);
+  }
+
+  apiRef = {
+    el: host,
+    values: vals,
+    set: setVal,
+    show: showField,
+    field: k => refs[k],
+    setOptions(k, opts) {                                 /* dependent dropdown */
+      const el = refs[k];
+      if (!el || el.tagName !== 'SELECT') return false;
+      el.innerHTML = '';
+      (opts || []).forEach(o => {
+        const v = typeof o === 'object' ? o.value : o;
+        const l = typeof o === 'object' ? o.label : o;
+        el.appendChild(h('option', { value: v }, l));
+      });
+      return true;
+    },
+    refs
+  };
+  return apiRef;
+};
+
+/* ============================= COMMAND PALETTE ============================= */
+UI2.palette = function () {
+  const inp = h('input', { class: 'pal-q', type: 'text', placeholder: 'Item, customer, invoice ya screen dhoondain… (↑↓ Enter)' });
+  const list = h('div', { class: 'pal-list' });
+  let items = [], sel = 0;
+
+  const screens = Object.keys(App.screens).filter(id => {
+    const s = App.screens[id]; return !s.perm || App.can(s.perm);
+  }).map(id => ({ type: 'screen', id, label: App.screens[id].title, sub: 'Screen', icon: App.screens[id].icon || '▣' }));
+
+  async function run(q) {
+    let results = screens.filter(s => s.label.toLowerCase().indexOf(q.toLowerCase()) > -1);
+    if (q.length >= 2) {
+      try {
+        const its = await Shared.items({ q, limit: 6 });
+        results = results.concat((its || []).map(i => ({ type: 'item', id: i.id, label: i.name,
+          sub: i.code + ' · ' + fmt.money(i.retailPrice) + ' · stock ' + i.stock, icon: '📦', data: i })));
+      } catch (e) { }
+      try {
+        const cs = await Shared.customers({ q, limit: 4, withBalance: true });
+        results = results.concat((cs || []).map(c => ({ type: 'customer', id: c.id, label: c.name,
+          sub: (c.phone || '') + ' · bal ' + fmt.money(c.balance ?? c.bal ?? 0), icon: '👤', data: c })));
+      } catch (e) { }
+      try {
+        const ss = await Shared.sales({ q, pageSize: 4 });
+        results = results.concat((ss || []).map(s => ({ type: 'sale', id: s.id, label: s.invoiceNo,
+          sub: s.customerName + ' · ' + fmt.money(s.total), icon: '🧾', data: s })));
+      } catch (e) { }
+    }
+    items = results; sel = 0; paint();
+  }
+
+  function paint() {
+    list.innerHTML = '';
+    if (!items.length) { list.appendChild(h('div', { class: 'tbl-empty' }, 'Kuch nahi mila')); return; }
+    items.slice(0, 12).forEach((it, i) => {
+      list.appendChild(h('div', { class: 'pal-item' + (i === sel ? ' sel' : ''),
+        onclick: () => pick(it), onmouseenter: () => { sel = i; paint(); } },
+        h('span', { class: 'pi' }, it.icon),
+        h('div', { class: 'pt' }, h('b', null, it.label), h('span', null, it.sub))));
+    });
+  }
+
+  function pick(it) {
+    m.close();
+    if (it.type === 'screen') App.go(it.id);
+    else if (it.type === 'item') { App.go('items', { open: it.id }); }
+    else if (it.type === 'customer') { App.go('parties', { open: it.id, tab: 'customers' }); }
+    else if (it.type === 'sale') { App.go('sales', { open: it.id }); }
+  }
+
+  inp.addEventListener('input', debounce(() => run(inp.value.trim()), 160));
+  inp.addEventListener('keydown', e => {
+    if (e.key === 'ArrowDown') { sel = Math.min(items.length - 1, sel + 1); paint(); e.preventDefault(); }
+    if (e.key === 'ArrowUp') { sel = Math.max(0, sel - 1); paint(); e.preventDefault(); }
+    if (e.key === 'Enter' && items[sel]) { pick(items[sel]); e.preventDefault(); }
+  });
+
+  const m = UI2.modal({
+    title: '🔎 Quick find (Ctrl+K)', size: 'md',
+    body: h('div', null, inp, list),
+    actions: [{ label: 'Close', onClick: c => c() }]
+  });
+  setTimeout(() => inp.focus(), 60);
+  run('');
+};
+
+/* ================================ HELPERS ================================== */
+function U_norm(s) { return String(s === null || s === undefined ? '' : s).toLowerCase().replace(/[\s\-_\/\\.#]/g, ''); }
+window.__uNorm = U_norm;   // shared with POS / other modules
+
+/**
+ * v2.29.0 (W4 · spec §8) — record ke Created/Updated timestamps ki ek shared line.
+ * Settings se chalti hai: `dt.showRecords` (global on/off) + format/timezone policy.
+ * Kisi bhi detail view mein `UI2.stampRow(row)` daal dein — bas.
+ */
+UI2.stampRow = function (rec, opts) {
+  if (!rec) return null;
+  const c = (typeof DT !== 'undefined') ? DT.cfg() : null;
+  if (c && !c.showRecords) return null;                       /* global off → kuch na dikhe */
+  const line = (typeof DT !== 'undefined' && DT.stampLine) ? DT.stampLine(rec) : '';
+  if (!line) return null;
+  return h('div', { class: 'stamp-row', 'data-dt-stamp': '1',
+    style: { fontSize: 'var(--fs-xs)', color: 'var(--muted)', marginTop: '8px', display: 'flex',
+      gap: '6px', alignItems: 'center', flexWrap: 'wrap' },
+    title: 'Server time · ' + ((c && c.tz) || 'Asia/Karachi') },
+    (opts && opts.icon) || '🕘', h('span', null, line));
+};
+
+UI2.kpiGrid = function (items, cols) {
+  const g = h('div', { class: 'grid g' + (cols || 4) });
+  items.forEach(k => g.appendChild(UI.kpi(k.icon, k.label, k.value, k.sub, k.cls)));
+  return g;
+};
+
+/**
+ * Section heading — v2.6 QA: ab color-coded (fin/inv/ok/warn/info/err).
+ *   UI2.section('Payments')                     → default (brand)
+ *   UI2.section('Payments', actions, 'fin')     → financial blue
+ *   UI2.section('Stock',    actions, 'inv')     → inventory purple
+ *
+ * v2.8.3 — `opts.desc`: section ke neeche chhoti si wazahat (kya hai / kaise
+ * kaam karta hai). User ne kha tha ke har section/block ka matlab samajh aaye,
+ * is liye ye app-wide available hai — sirf AI panel ke liye nahi.
+ *   UI2.section('AI setup', null, 'info', { desc: 'Pehle provider chunein…' })
+ */
+UI2.section = function (title, actions, tone, opts) {
+  const tones = ['fin', 'inv', 'ok', 'warn', 'info', 'err'];
+  const cls = 'sec-head' + (tone && tones.indexOf(tone) > -1 ? ' ' + tone : '');
+  /* v2.6 QA — section heading: English title + Urdu tooltip (app-wide).
+     Bilingual.gs (window.BILING_SEC) se Urdu title milti hai; nahi mili to
+     asli heading waise hi rahegi — kabhi kuch nahi toota. */
+  const en = (typeof Bilingual !== 'undefined' && Bilingual.secTitle) ? Bilingual.secTitle(title) : title;
+  const ur = (opts && opts.urSec) || ((en !== title) ? title : '');
+  const tip = ur ? (en + '  ·  ' + ur) : en;
+  const desc = (opts && opts.desc) ? String(opts.desc) : '';
+  return h('div', { class: cls + (desc ? ' has-desc' : '') },
+    h('div', { class: 'sec-head-row' },
+      h('h4', { title: tip, style: { cursor: 'help' } }, en),
+      actions ? h('div', { class: 'sec-actions' }, actions) : ''),
+    desc ? h('p', { class: 'sec-desc' }, desc) : '');
+};
+
+/** Shrink any picked image to a JPEG data-URL (keeps payloads small, offline-safe) */
+UI2.shrinkImage = function (file, maxPx) {
+  maxPx = maxPx || 900;
+  return new Promise((resolve, reject) => {
+    if (!/^image\//.test(file.type || '')) return reject(new Error('Sirf image files (JPG/PNG) chalein gi'));
+    const fr = new FileReader();
+    fr.onerror = () => reject(new Error('File nahi parh sake'));
+    fr.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error('Ye valid image nahi hai'));
+      img.onload = () => {
+        try {
+          let w = img.width || maxPx, hh = img.height || maxPx;
+          const k = Math.min(1, maxPx / Math.max(w, hh));
+          w = Math.max(1, Math.round(w * k)); hh = Math.max(1, Math.round(hh * k));
+          const cv = h('canvas'); cv.width = w; cv.height = hh;
+          cv.getContext('2d').drawImage(img, 0, 0, w, hh);
+          resolve(cv.toDataURL('image/jpeg', 0.85));
+        } catch (e) { reject(e); }
+      };
+      img.src = fr.result;
+    };
+    fr.readAsDataURL(file);
+  });
+};
+
+/**
+ * v2.25.0 (req 1 + 6) — SHARED bulk-add modal.
+ *
+ * POS par ye flow pehle se mojood tha (Bulk Add — Multi Select: scan → Bulk List
+ * → Add All, ya search + checkbox + qty). PO/GRN ke picker NORMAL (direct scan →
+ * line) mode mein chalte hain, is liye unke paas bulk/multi-select nahi tha —
+ * yahi wajah thi ke "PO/GRN par wahi POS wala bulk system nahi milta".
+ *
+ * Ab ye helper wahi UI2.itemPicker (mode:'multi') modal mein kholta hai, aur
+ * PO + GRN dono isi ko use karte hain → POS jaisa hi UX, code ek jagah.
+ */
+UI2.bulkAddModal = function (cfg) {
+  cfg = cfg || {};
+  if (!UI2.itemPicker) { UI.toast('Product picker load nahi hua', 'err'); return null; }
+  const added = [];
+  const picker = UI2.itemPicker({
+    mode: 'multi',
+    icon: cfg.icon || '📦',
+    title: cfg.title || 'Bulk add — multi select',
+    hint: cfg.hint || 'Scan → Bulk List → Add All · ya search/📋 list se tick karein',
+    commitLabel: cfg.commitLabel || 'Add selected',
+    placeholder: cfg.placeholder || 'Search product — name / code / barcode…',
+    sub: cfg.sub,
+    map: cfg.map || ((r, q) => Object.assign({}, r, { qty: q })),
+    lines: [],
+    onAdd: line => { added.push(line); if (cfg.onAdd) cfg.onAdd(line); }
+  });
+  const m = UI2.modal({
+    title: cfg.modalTitle || ('📦 ' + (cfg.title || 'Bulk add')),
+    subtitle: cfg.subtitle || 'Scan → Bulk List mein foran add → field khali · ya tick karein → Add All',
+    size: 'lg', body: picker,
+    actions: [{ label: 'Bulk add (' + added.length + ')', cls: 'ghost', onClick: c => c() }]
+  });
+  return { modal: m, added: added };
+};
+
+window.UI2 = UI2;
+})();
+</script>

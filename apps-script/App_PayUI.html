@@ -1,0 +1,154 @@
+<script>
+/* ==========================================================================
+   HASEEB AUTOS — PAYMENT UI (shared component)
+   Ek hi jagah se POS, customer recovery aur supplier payment — sab jagah:
+     • method ke hisaab se asli fields (payer mobile, receiver wallet, txn id,
+       Raast ID, bank/IBAN, cheque no/date, card last4 + approval)
+     • inline validation (backend wali hi schema — pay.validate)
+     • fee / FED / net / settlement preview (PayMethods engine)
+   ========================================================================== */
+(function () {
+'use strict';
+
+const FIELD_CACHE = {};
+
+/** Method ke fields ki metadata laayein (backend = single source of truth) */
+async function fieldsFor(method) {
+  if (FIELD_CACHE[method]) return FIELD_CACHE[method];
+  try {
+    const f = await API.call('pay.fields', { method }, { offlineFallback: () => null }) || [];
+    FIELD_CACHE[method] = f;
+    return f;
+  } catch (e) { return FALLBACK_FIELDS[method] || []; }
+}
+
+/* offline fallback — backend na mile to bhi UI theek rahe */
+const FALLBACK_FIELDS = {
+  JAZZCASH: [{ key: 'payerMobile', label: 'Bhejne wale ka mobile (customer)', type: 'tel', required: true, hint: '03001234567' },
+    { key: 'receiverMobile', label: 'Payment milne wala mobile', type: 'tel', required: false, hint: 'Merchant wallet' },
+    { key: 'txnId', label: 'Transaction ID (wallet)', type: 'text', required: true, hint: 'JazzCash Txn ID' }],
+  EASYPAISA: [{ key: 'payerMobile', label: 'Bhejne wale ka mobile (customer)', type: 'tel', required: true, hint: '03001234567' },
+    { key: 'receiverMobile', label: 'Payment milne wala mobile', type: 'tel', required: false, hint: 'Merchant wallet' },
+    { key: 'txnId', label: 'Transaction ID (wallet)', type: 'text', required: true, hint: 'EasyPaisa Txn ID' }],
+  RAAST: [{ key: 'raastId', label: 'Raast ID (mobile ya IBAN)', type: 'text', required: true, hint: '03001234567' },
+    { key: 'bankName', label: 'Bank', type: 'text', required: false, hint: 'Meezan / HBL' }],
+  BANK: [{ key: 'bankName', label: 'Bank', type: 'text', required: false, hint: 'Meezan / HBL' },
+    { key: 'accountNo', label: 'Account / IBAN', type: 'text', required: false, hint: 'IBAN' },
+    { key: 'reference', label: 'Reference / IBFT number', type: 'text', required: false, hint: '' }],
+  CARD: [{ key: 'bankName', label: 'Bank', type: 'text', required: false, hint: '' },
+    { key: 'cardLast4', label: 'Card last 4 digits', type: 'text', required: false, hint: '1234' },
+    { key: 'approvalCode', label: 'Approval code', type: 'text', required: false, hint: '' }],
+  CHEQUE: [{ key: 'chequeNo', label: 'Cheque number', type: 'text', required: true, hint: 'CHQ-123456' },
+    { key: 'bankName', label: 'Bank', type: 'text', required: true, hint: 'HBL' },
+    { key: 'chequeDate', label: 'Cheque date', type: 'date', required: true, hint: '' }],
+  /* v2.16 — compact Promised Payment Date: inline, no huge block (≤180px) */
+  CREDIT: [{ key: 'dueDate', label: 'Promised payment date', type: 'date', required: false, hint: '', compact: true }],
+  LOYALTY: [{ key: 'points', label: 'Points', type: 'number', required: false, hint: '' }],
+  CASH: []
+};
+
+const PayUI = {
+
+  /**
+   * Method ke detail fields render karein.
+   * @param method  'JAZZCASH' | 'EASYPAISA' | … (ya meta object)
+   * @param payment payment row object (values isi par save hote hain)
+   * @param errors  [{field,message}] — inline dikhane ke liye
+   */
+  async fields(method, payment, errors) {
+    errors = errors || [];
+    const id = (typeof method === 'string') ? method : (method && method.id) || 'CASH';
+    const meta = await fieldsFor(id);
+    const host = h('div', { class: 'pay-extra' });
+    if (!meta || !meta.length) return host;
+
+    meta.forEach(f => {
+      const err = errors.find(e => e.field === f.key);
+      const isCompact = !!f.compact || (id === 'CREDIT' && f.key === 'dueDate');
+      const input = h('input', {
+        class: 'f-input' + (err ? ' err' : '') + (isCompact ? ' compact' : ''),
+        type: f.type === 'date' ? 'date' : (f.type === 'number' ? 'number' : (f.type === 'tel' ? 'tel' : 'text')),
+        value: payment[f.key] || '',
+        placeholder: f.hint || f.label,
+        'aria-label': f.label,
+        title: f.label + (f.required ? ' (lazmi)' : ''),
+        /* v2.16 compact date — Promised Payment Date ab 160px inline, huge block nahi */
+        style: isCompact ? { flex: '0 0 160px', minWidth: '130px', maxWidth: '180px', width: '160px' }
+          : { flex: '1 1 150px', minWidth: '140px', maxWidth: (f.type === 'date' || f.type === 'number') ? '180px' : 'none' },
+        oninput: e => { payment[f.key] = e.target.value; e.target.classList.remove('err'); }
+      });
+      if (f.type === 'tel') { try { input.setAttribute('inputmode', 'numeric'); } catch (e) { } }
+      host.appendChild(h('label', { class: 'pay-field' + (err ? ' has-err' : '') },
+        h('span', { class: 'pf-lab' }, f.label + (f.required ? ' *' : '')),
+        input,
+        err ? h('span', { class: 'pf-err' }, err.message) : ''));
+    });
+    return host;
+  },
+
+  /** Fee / FED / net / settlement — live calculation (PayMethods engine) */
+  feeLine(amount, method) {
+    const host = h('div', { class: 'pay-fee' });
+    if (!amount || !method || method === 'CASH') { host.textContent = ''; return host; }
+    API.call('pay.compute', { amount: amount, method: method }, { offlineFallback: () => null })
+      .then(c => {
+        if (!c) { host.textContent = ''; return; }
+        const extra = (c.fee || c.fed)
+          ? 'Fee ' + fmt.money(c.fee) + (c.fed ? ' + FED ' + fmt.money(c.fed) : '') +
+            ' → net ' + fmt.money(c.net)
+          : 'Koi fee nahi';
+        host.textContent = extra + ' · settlement ' + fmt.date(c.settleDate, false) +
+          (c.postOnClear ? ' · clearing ke baad' : '');
+      }).catch(() => { host.textContent = ''; });
+    return host;
+  },
+
+  /**
+   * Poori payment list validate karein (backend schema).
+   * W7 (v2.26.0) — pehle har payment ka apna round-trip tha (sequential N calls).
+   * Ab parallel (ek hi batch), natija index-wise wahi order rakhta hai.
+   * Demo/offline behaviour barqarar: backend/mock na ho to payment valid mana jata hai.
+   */
+  async validate(payments) {
+    const out = [];
+    const active = (payments || []).filter(p => p && p.amount && Number(p.amount) > 0);
+    if (!active.length) return out;
+    const results = await API.parallel(active.map(p => () => API.call('pay.validate', { payment: p }, { offlineFallback: () => ({ ok: true }) })), 6);
+    for (let i = 0; i < active.length; i++) {
+      const p = active[i], r = results[i];
+      if (r && r.__err) {
+        const msg = String(r.__err || '');
+        if (msg.indexOf('Koi backend') > -1 || msg.indexOf('pay.validate') > -1 || msg.indexOf('MockAPI') > -1) continue;
+        out.push({ method: p.method, errors: [{ field: 'amount', message: msg }] });
+        continue;
+      }
+      if (r && r.ok === false) out.push({ method: p.method, errors: r.errors || [] });
+    }
+    return out;
+  },
+
+  /** Method select (icons + labels ke sath) */
+  async methodSelect(value, onChange, opts) {
+    opts = opts || {};
+    let methods = [];
+    try {
+      methods = await API.call('pay.methods.enabled', {}, { offlineFallback: () => null }) || [];
+    } catch (e) { methods = []; }
+    if (!methods.length) {
+      methods = String((App.state.settings || {}).paymentMethods ||
+        'CASH,CARD,BANK,JAZZCASH,EASYPAISA,RAAST,CHEQUE,CREDIT,LOYALTY').split(',')
+        .map(m => ({ id: m, label: m, icon: '' }));
+    }
+    if (opts.exclude) methods = methods.filter(m => opts.exclude.indexOf(m.id) === -1);
+    const sel = h('select', { class: 'f-input', 'aria-label': 'Payment method', title: 'Payment method',
+      style: { flex: '1', minWidth: '160px' },
+      onchange: e => onChange(e.target.value) },
+      ...methods.map(m => h('option', { value: m.id, selected: m.id === value },
+        (m.icon ? m.icon + ' ' : '') + (m.label || m.id))));
+    return sel;
+  }
+};
+
+window.PayUI = PayUI;
+})();
+</script>

@@ -1,0 +1,660 @@
+<script>
+/* ==========================================================================
+   HASEEB AUTOS — BOOT · LOGIN · SHELL WIRING · PWA
+   ========================================================================== */
+(function () {
+'use strict';
+
+/* ------------------------------ PWA manifest ----------------------------- */
+(function installManifest() {
+  const icon = (size) => 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="' + size + '" height="' + size + '">' +
+    '<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">' +
+    '<stop offset="0" stop-color="#c2410c"/><stop offset="1" stop-color="#ff3d00"/></linearGradient></defs>' +
+    '<rect width="100%" height="100%" rx="' + (size * 0.22) + '" fill="#0b1220"/>' +
+    '<rect x="' + size * 0.12 + '" y="' + size * 0.12 + '" width="' + size * 0.76 + '" height="' + size * 0.76 +
+    '" rx="' + (size * 0.18) + '" fill="url(#g)"/>' +
+    '<text x="50%" y="55%" font-family="Arial,Helvetica,sans-serif" font-weight="bold" font-size="' + size * 0.34 +
+    '" fill="#fff" text-anchor="middle" dy=".35em">HA</text></svg>')));
+
+  const manifest = {
+    name: 'Haseeb Autos — ERP & POS',
+    short_name: 'Haseeb Autos',
+    description: 'Auto parts, car & bike decoration POS + ERP with AI assistant',
+    start_url: '.',
+    scope: '.',
+    display: 'standalone',
+    orientation: 'any',
+    background_color: '#0b1220',
+    theme_color: '#0b1220',
+    lang: 'en-PK',
+    icons: [192, 512].map(s => ({ src: icon(s), sizes: s + 'x' + s, type: 'image/svg+xml', purpose: 'any maskable' })),
+    shortcuts: [
+      { name: 'New Sale', url: '#/pos' },
+      { name: 'Dashboard', url: '#/dashboard' },
+      { name: 'AI Assistant', url: '#/dashboard' }
+    ]
+  };
+  const link = document.createElement('link');
+  link.rel = 'manifest';
+  // Apps Script ke /exec scope me alag file serve nahi ho sakti → data: URI.
+  // Static hosting (Firebase/Netlify/clasp web app) me asli manifest + service worker.
+  const staticHost = (window.SERVE_MODE === 'static' || window.SERVE_MODE === 'demo');
+  link.href = staticHost ? 'manifest.webmanifest'
+    : 'data:application/manifest+json;base64,' + btoa(unescape(encodeURIComponent(JSON.stringify(manifest))));
+  document.head.appendChild(link);
+
+  /* ------------------- service worker (offline shell cache) -------------- */
+  if (staticHost && 'serviceWorker' in navigator && location.protocol !== 'file:') {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js').catch(() => { /* SW optional hai */ });
+    });
+    let swRefreshing = false;
+    navigator.serviceWorker && navigator.serviceWorker.addEventListener &&
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (swRefreshing) return; swRefreshing = true; location.reload();
+      });
+  }
+
+  // cache-first service worker is not possible inside Apps Script's /exec scope,
+  // so offline continuity is handled by the app's own IndexedDB-free localStorage
+  // catalog + write queue (see App_Core → API.enqueue / offline.pull).
+  let deferredPrompt = null;
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault(); deferredPrompt = e;
+    const btn = h('button', { class: 'btn sm', style: { position: 'fixed', bottom: '14px', left: '14px', zIndex: '250' }, onclick: () => {
+      deferredPrompt.prompt(); deferredPrompt.userChoice.then(() => { btn.remove(); deferredPrompt = null; });
+    } }, '📲 Install app');
+    document.body.appendChild(btn);
+  });
+})();
+
+/* -------------------------------- LOGIN ---------------------------------- */
+/* v2.9.2 — production toggle: login.showDemo = false par demo chips hidden (functionality intact) */
+var __loginShowDemo = true;
+async function renderLogin(err) {
+  const root = $('#loginRoot');
+  root.hidden = false;
+  root.innerHTML = '';
+  const user = h('input', { type: 'text', id: 'lgUser', placeholder: 'owner', autocomplete: 'username' });
+  const pass = h('input', { type: 'password', id: 'lgPass', placeholder: '••••••••', autocomplete: 'current-password' });
+  const errBox = err ? h('div', { class: 'login-err' }, '⚠ ' + err) : '';
+
+  const demos = [
+    ['owner', 'admin123'], ['manager', 'manager123'], ['sales1', 'sales123'],
+    ['purchase', 'purchase123'], ['warehouse', 'ware123'], ['accountant', 'acc123'],
+    ['cashier', 'cash123'], ['delivery', 'del123']
+  ];
+
+  // fetch production toggle (public) — default true so no flicker if offline
+  try{
+    var cfg = await (window.API ? API.call('system.loginConfig', {}, {offlineFallback: function(){return {showDemo:true};}}) : Promise.resolve({showDemo:true}));
+    __loginShowDemo = !!cfg.showDemo;
+  }catch(e){ __loginShowDemo = true; }
+  // demo pane — hidden when production toggle OFF
+  const demoPane = __loginShowDemo ? h('div', { class: 'demo-creds' },
+      h('b', null, 'Demo accounts (pehli dafa setup ke baad)'),
+      h('div', { class: 'row' }, demos.map(([u, p]) =>
+        h('span', { class: 'chip', onclick: () => { user.value = u; pass.value = p; setTimeout(() => $('#lgBtn').click(), 80); } }, u)))) : '';
+
+  const form = h('form', { class: 'login-box', onsubmit: e => { e.preventDefault(); doLogin(user.value.trim(), pass.value); } },
+    h('h1', null, 'Welcome back 👋'),
+    h('p', { class: 'sub' }, 'Haseeb Autos ERP & POS — apna username/password dal kar enter dabayein.'),
+    errBox,
+    h('div', { class: 'field' }, h('label', null, 'Username'), user),
+    h('div', { class: 'field' }, h('label', null, 'Password'), pass),
+    h('button', { class: 'btn block lg', type: 'submit', id: 'lgBtn' }, 'Login →'),
+    demoPane);
+
+  root.appendChild(h('div', { class: 'login-hero' },
+    h('div', { class: 'lh-brand' }, h('div', { class: 'lh-logo' }, 'HA'),
+      h('div', { class: 'lh-title' }, 'Haseeb Autos', h('em', null, 'ERP · POS · AI'))),
+    h('div', { class: 'lh-quote' }, 'Auto parts, car & bike decoration ka poora business — ek hi screen par.'),
+    h('div', { class: 'lh-points' },
+      h('span', null, h('i', null, '🧾'), 'Fast POS with barcode scan & as-you-type search'),
+      h('span', null, h('i', null, '📦'), '3 branches · live stock · transfers & audits'),
+      h('span', null, h('i', null, '🤖'), 'AI agent jo aapka data padh kar jawab deta hai'),
+      h('span', null, h('i', null, '📴'), 'Offline billing — internet aate hi auto sync')),
+    h('div', { class: 'lh-foot' }, 'Sadiqabad City · Machi Goth · RYK Branch')));
+  root.appendChild(h('div', { class: 'login-panel' }, form));
+
+  setTimeout(() => (err ? pass : user).focus(), 120);
+}
+
+async function doLogin(username, password) {
+  const btn = $('#lgBtn'); if (btn) { btn.disabled = true; btn.textContent = 'Checking…'; }
+  try {
+    const res = await API.call('auth.login', { username, password, device: navigator.userAgent.slice(0, 80) });
+    Store.set('token', res.token);
+    Store.set('session', res.session);
+    App.state.session = res.session;
+    App.state.session.token = res.token;
+    await startApp();
+  } catch (e) {
+    renderLogin(e.message);
+  }
+}
+
+/* -------------------------------- START ---------------------------------- */
+async function startApp() {
+  $('#bootMsg').textContent = 'Loading your workspace…';
+  /* v2.8.4 — AIK call mein settings + locations + AI config + suggestions +
+     notifications summary. Pehle ye 4 alag `google.script.run` round-trips
+     the (har aik ka apna ~1s overhead) — isi wajah se app dheemi khulti thi. */
+  const boot = await API.call('system.bootstrap', { include: 'ai,notifications' }).catch(e => {
+    // offline resume with stored session
+    const cached = Store.get('bootstrap', null);
+    if (cached) return cached;
+    throw e;
+  });
+  Store.set('bootstrap', boot);
+  App.state.settings = boot.settings || {};
+  try { if (window.__applyTheme) window.__applyTheme(); } catch (e) { }
+  App.state.locations = boot.locations || [];
+  App.state.customerTypes = boot.customerTypes || [];
+  App.state.session = Object.assign(App.state.session || {}, boot.user || {});
+  /* boot se hi mil gaya — alag call ki zaroorat nahi */
+  if (boot.aiConfig) App.state.aiConfig = boot.aiConfig;
+  if (boot.suggestions) App.state.suggestions = boot.suggestions;
+  if (boot.notifications) App.state.notifSummary = boot.notifications;
+
+  const savedBranch = Store.get('branch', '');
+  const locId = (savedBranch && boot.locations.find(l => l.id === savedBranch)) ? savedBranch
+    : (boot.user.defaultLocationId || (boot.locations[0] || {}).id);
+  App.setBranch(locId, true);
+
+  // branch dropdown
+  const sel = $('#branchSelect');
+  sel.innerHTML = '';
+  boot.locations.forEach(l => sel.appendChild(h('option', { value: l.id }, l.name)));
+  sel.value = locId;
+  sel.onchange = () => { App.setBranch(sel.value); };
+
+  // user badge
+  $('#sbUserName').textContent = boot.user.fullName;
+  $('#sbUserRole').textContent = boot.user.role;
+  $('#sbAvatar').textContent = (boot.user.fullName || 'U').charAt(0).toUpperCase();
+
+  App.renderNav();
+  $('#loginRoot').hidden = true;
+  $('#shell').hidden = false;
+  App.state.booted = true;
+  $('#boot').hidden = true;
+  window.dispatchEvent(new Event('ha:authenticated')); 
+
+  // background loads
+  API.pullCatalog().then(() => updateNotif());
+  /* v2.8.4 — ai.config / ai.suggest ab boot call mein hi aa jate hain
+     (upar `include: 'ai'`). Sirf tab alag call karein jab boot se na mile
+     (maslan purana cached bootstrap offline se aaya ho). */
+  if (!boot.aiConfig) API.call('ai.config', {}).then(c => { App.state.aiConfig = c; }).catch(() => { });
+  if (!boot.suggestions) API.call('ai.suggest', {}).then(s => { App.state.suggestions = s; }).catch(() => { });
+  if ((App.state.queue || []).length) setTimeout(() => API.flushQueue(), 1500);
+
+  /* v2.9 §2 — deep-link params: #/settings?tab=automation (tab persistence) */
+  const raw = (location.hash || '').replace('#/', '').trim();
+  const qi = raw.indexOf('?');
+  const route = qi > -1 ? raw.slice(0, qi) : raw;
+  const qp = {};
+  if (qi > -1) raw.slice(qi + 1).split('&').forEach(kv => {
+    const p = kv.split('='); if (p[0]) qp[decodeURIComponent(p[0])] = decodeURIComponent(p[1] || '');
+  });
+  App.go(route && App.screens[route] ? route : (App.can('pos.access') ? 'dashboard' : 'dashboard'),
+    Object.keys(qp).length ? qp : undefined);
+  updateNotif();
+  /* session mil gayi — header ka shop icon ab sahi state dikhayega */
+  if (window.loadShopState) loadShopState();
+}
+
+async function updateNotif() {
+  const badge = $('#notifBadge');
+  const set = n => { if (n > 0) { badge.hidden = false; badge.textContent = n; } else badge.hidden = true; };
+  // offline fallback: local low-stock count
+  try {
+    if (App.state.catalog && App.state.catalog.items) {
+      const low = App.state.catalog.items.filter(i => i.qty <= 0).length;
+      set(low);
+    }
+  } catch (e) { }
+  if (!navigator.onLine) return;
+  try {
+    const s = await API.call('notifications.summary', {});
+    set(s.unread || 0);
+  } catch (e) { }
+}
+
+function localZeroStockAlerts() {
+  // Zero-stock rows from cached catalog — used offline AND when server has no rows,
+  // so the bell always has something meaningful to show (was: silent 'Koi alert nahi').
+  const items = (App.state.catalog && App.state.catalog.items) || [];
+  return items.filter(i => Number(i.qty) <= 0).slice(0, 40).map(i => ({
+    id: 'off-' + i.id, type: 'OUT_OF_STOCK', severity: 'ERR', readAt: '',
+    body: (i.name || i.code || 'Item') + ' — stock khatam / out of stock (' + (i.code || i.id) + ')',
+    createdAt: new Date().toISOString()
+  }));
+}
+function openNotifPanel() {
+  /* v2.23.19 — polished Alerts panel: severity colors, English-first type labels,
+     read/unread affordance, quick filters. (was: plain rows + opacity trick) */
+  const TYPE_LABEL = { OUT_OF_STOCK: 'Out of stock', LOW_STOCK: 'Low stock', PAYMENT_DUE: 'Payment due',
+    RECEIVABLE: 'Receivable due', PO_PENDING: 'PO waiting', GRN_DUE: 'GRN pending', RETURN_DUE: 'Return due',
+    EXPIRY: 'Expiry alert', DAY_REPORT: 'Day report', SAFETY: 'Safety stock', CREDIT_LIMIT: 'Credit limit',
+    SYNC_FAIL: 'Sync failed' };
+  const SEV = { ERR:  { cls: 'err',  icon: '⛔', tag: 'Critical' },
+                WARN: { cls: 'warn', icon: '⚠', tag: 'Warning' },
+                INFO: { cls: 'info', icon: '🔵', tag: 'Info' },
+                OK:   { cls: 'ok',   icon: '✅', tag: 'Done' } };
+  const host = h('div', { class: 'empty' }, 'Loading alerts…');
+  let all = [];
+  let filter = 'all';
+  const paint = () => {
+    host.innerHTML = '';
+    const unread = all.filter(r => !r.readAt).length;
+    const crit = all.filter(r => r.severity === 'ERR' && !r.readAt).length;
+    const head = h('div', { class: 'notif-head' },
+      h('div', { class: 'notif-counts' },
+        h('span', { class: 'badge ' + (unread ? 'warn' : 'ok') }, (unread || 0) + ' unread'),
+        crit ? h('span', { class: 'badge err' }, crit + ' critical') : '',
+        h('span', { class: 'badge' }, all.length + ' total')),
+      h('div', { class: 'chips' },
+        ['all', 'unread', 'critical'].map(f => h('button', {
+          class: 'chip2' + (filter === f ? ' on' : ''),
+          onclick: () => { filter = f; paint(); }
+        }, f === 'all' ? 'All' : f === 'unread' ? 'Unread' : '🔥 Critical'))));
+    host.appendChild(head);
+    let rows = all;
+    if (filter === 'unread') rows = rows.filter(r => !r.readAt);
+    if (filter === 'critical') rows = rows.filter(r => r.severity === 'ERR');
+    if (!rows.length) {
+      host.appendChild(h('div', { class: 'empty' }, h('span', { class: 'big' }, '🎉'),
+        h('div', null, all.length ? 'Is filter me koi alert nahi — filter badlein' : 'All clear — koi alert nahi'),
+        h('div', { style: 'font-size:var(--fs-xs);color:var(--muted-2);margin-top:4px' },
+          'No alerts need attention right now.')));
+      return;
+    }
+    rows.forEach(r => {
+      const sev = SEV[String(r.severity || 'INFO').toUpperCase()] || SEV.INFO;
+      const tLabel = TYPE_LABEL[String(r.type || '').toUpperCase()] || (r.type || 'Alert');
+      const row = h('div', { class: 'notif-row' + (r.readAt ? ' read' : ''), title: 'Mark as read · khulne ke liye tap karein',
+        onclick: async () => { if (!r.readAt) { try { await API.call('notifications.read', { id: r.id }); } catch (e) {} } updateNotif(); openNotifPanel(); } },
+        h('span', { class: 'notif-ic ' + sev.cls, 'aria-hidden': 'true' }, sev.icon),
+        h('div', { class: 'notif-main' },
+          h('div', { class: 'notif-top' },
+            h('b', null, tLabel),
+            h('span', { class: 'badge ' + sev.cls }, sev.tag),
+            r.readAt ? h('span', { class: 'badge' }, '✓ read') : h('span', { class: 'notif-dot', title: 'Unread', 'aria-label': 'Unread' })),
+          h('div', { class: 'notif-body' }, r.body || ''),
+          h('div', { class: 'notif-meta' }, (r.createdAt ? fmt.rel(r.createdAt) : '') + (r.entityId ? ' · #' + String(r.entityId).slice(0, 10) : ''))),
+        h('button', { class: 'btn sm ghost notif-act', title: 'Mark read', 'aria-label': 'Mark as read',
+          onclick: async e => { e.stopPropagation(); try { await API.call('notifications.read', { id: r.id }); } catch (er) {} updateNotif(); openNotifPanel(); } }, '✓'));
+      host.appendChild(row);
+    });
+  };
+  API.call('notifications.list', { limit: 60 }, { offlineFallback: () => localZeroStockAlerts() })
+    .then(rows => { all = rows && rows.length ? rows : localZeroStockAlerts(); paint(); })
+    .catch(e => { host.innerHTML = ''; host.appendChild(h('div', { class: 'empty' }, '⚠ ' + (e.message || e))); });
+  const m = UI2.modal({
+    title: '🔔 Alerts & notifications', size: 'md', body: host,
+    actions: [
+      { label: '✓ Mark all read', cls: 'sec', onClick: async c => { try { await API.call('notifications.readAll', {}); } catch (e) { UI.toast('Mark read fail — dobara try karein', 'err'); } updateNotif(); c(); openNotifPanel(); } },
+      { label: '↻ Generate alerts', cls: 'ghost', onClick: async c => { try { const r = await API.call('notifications.generate', {}); UI.toast(((r && r.added) || 0) + ' naye alerts generate ho gaye', 'ok'); } catch (e) { UI.toast('Generate fail: ' + (e.message || e), 'err'); } c(); openNotifPanel(); } }
+    ]
+  });
+  return m;
+}
+
+/* ------------------------------- LOGOUT ---------------------------------- */
+App.logout = function (silent) {
+  const token = Store.get('token', '');
+  if (token && navigator.onLine) API.call('auth.logout', { token }).catch(() => { });
+  Store.del('token'); Store.del('session'); Store.del('bootstrap');
+  App.state.session = null; App.state.booted = false;
+  window.dispatchEvent(new Event('ha:logged-out')); 
+  $('#shell').hidden = true; $('#boot').hidden = true;
+  if (!silent) renderLogin('Logged out.');
+  else renderLogin('Session expire ho gaya — dobara login karein.');
+};
+
+/* --------------------------- SHELL INTERACTIONS --------------------------- */
+function wireShell() {
+  // sidebar toggle (mobile)
+  $('#sbToggle').onclick = () => {
+    const sb = $('#sidebar'), open = sb.classList.toggle('open');
+    $('#scrim').hidden = !open;
+  };
+  $('#scrim').onclick = () => { $('#sidebar').classList.remove('open'); $('#scrim').hidden = true; App.closeAI(); };
+
+  /* ======================================================================
+     v2.6 QA — sidebar COLLAPSE / EXPAND (desktop) + FULL SCREEN
+     User ki farmaish: "side panel collapse/expand toggle add it on left
+     side panel, also full screen button for desktop".
+     Haalat localStorage mein yaad rahegi (bar baar set na karna paray).
+     ====================================================================== */
+  /* v2.25.8 (req 12–15) — SIDEBAR STATE MODEL
+     Desktop (>=901px):  expanded  ⇄  rail (partially collapsed, SIRF icons)
+     Mobile  (<=900px):  off-canvas (open/close; rail ka koi asar nahi)
+     Preference localStorage mein — page badalne / reload par wahi rehti hai.
+     Ctrl+B bhi ISI function se chalta hai (pehle class seedha toggle hoti thi:
+     save nahi hoti thi, aria/rail glyph sync nahi hote thay). */
+  const SB_KEY = 'ha.sbCollapsed';
+  const SB_MQ = window.matchMedia ? window.matchMedia('(min-width:901px)') : null;
+  const shellEl = $('#shell');
+  let sbPref = false;                                  /* user ki pasand (desktop) */
+  try { sbPref = localStorage.getItem(SB_KEY) === '1'; } catch (e) { }
+
+  const applySb = () => {
+    if (!shellEl) return;
+    const desktop = SB_MQ ? SB_MQ.matches : (document.documentElement.clientWidth >= 901);
+    const rail = !!(desktop && sbPref);                /* rail sirf desktop par */
+    shellEl.classList.toggle('collapsed', rail);
+    shellEl.dataset.sbMode = rail ? 'rail' : (desktop ? 'expanded' : 'offcanvas');
+    const r = $('#sbRail');
+    if (r) { r.textContent = rail ? '⇥' : '⇤'; r.setAttribute('aria-expanded', rail ? 'false' : 'true'); }
+    const btn = $('#sbCollapse');
+    if (btn) btn.setAttribute('aria-expanded', rail ? 'false' : 'true');
+    try { window.dispatchEvent(new Event('resize')); } catch (e) { }
+  };
+  const setCollapsed = (on) => {                       /* user ki pasand save karo */
+    sbPref = !!on;
+    try { localStorage.setItem(SB_KEY, sbPref ? '1' : '0'); } catch (e) { }
+    applySb();
+  };
+  window.__haSetCollapsed = setCollapsed;              /* Ctrl+B / test ke liye */
+
+  /* mahfooz haalat wapas lao + breakpoint badalne par dobara lagao */
+  applySb();
+  if (SB_MQ) {
+    const onMq = () => { App.closeSidebar(); applySb(); };
+    if (SB_MQ.addEventListener) SB_MQ.addEventListener('change', onMq);
+    else if (SB_MQ.addListener) SB_MQ.addListener(onMq);
+  }
+
+  const toggleSb = () => setCollapsed(!shellEl.classList.contains('collapsed'));
+  if ($('#sbCollapse')) $('#sbCollapse').onclick = toggleSb;
+  if ($('#sbRail')) $('#sbRail').onclick = toggleSb;
+
+  /* ---- full screen (desktop) ---- */
+  const fsBtn = $('#fsBtn');
+  if (fsBtn) {
+    const fsEl = () => document.documentElement;
+    const inFs = () => !!(document.fullscreenElement || document.webkitFullscreenElement);
+    const syncFs = () => { fsBtn.textContent = inFs() ? '⛗' : '⛶'; };
+    fsBtn.onclick = () => {
+      try {
+        if (inFs()) { (document.exitFullscreen || document.webkitExitFullscreen).call(document); }
+        else { const el = fsEl(); (el.requestFullscreen || el.webkitRequestFullscreen).call(el); }
+      } catch (e) { UI.toast('Full screen is device par kaam nahi kar raha', 'warn'); }
+    };
+    document.addEventListener('fullscreenchange', syncFs);
+    syncFs();
+  }
+
+  // notifications
+  const nb = $('#btnNotif');
+  if (nb) nb.onclick = () => openNotifPanel();
+
+  // global command palette (Ctrl+K) — AI assistant stays on Ctrl+J
+  document.addEventListener('keydown', e => {
+    /* Ctrl/Cmd+B → sidebar collapse (VS Code jaisa) */
+    if ((e.ctrlKey || e.metaKey) && (e.key === 'b' || e.key === 'B')) {
+      const tag = (e.target && e.target.tagName) || '';
+      if (tag !== 'INPUT' && tag !== 'TEXTAREA') {
+        e.preventDefault();
+        /* v2.25.8 — wahi function jo button use karta hai (persist + aria sync) */
+        if (window.__haSetCollapsed) window.__haSetCollapsed(!document.getElementById('shell').classList.contains('collapsed'));
+      }
+    }
+    if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) {
+      e.preventDefault();
+      if (window.UI2 && App.state.booted) UI2.palette();
+    }
+  });
+
+  // user menu
+  $('#sbUser').onclick = () => {
+    const me = App.sessionMeta();
+    UI.modal({
+      title: 'Account', width: 'narrow',
+      body: h('div', null,
+        h('div', { style: { display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '12px' } },
+          h('div', { class: 'avatar', style: { width: '44px', height: '44px', fontSize: 'var(--fs-xl)' } }, me.initial),
+          h('div', null, h('b', null, me.name || '—'),
+            h('div', { style: { fontSize: 'var(--fs-xs)', color: 'var(--muted)' } }, me.role + ' · ' + me.group))),
+        h('button', { class: 'btn sec block', style: { marginBottom: '8px' }, onclick: changePassword }, '🔑 Change password'),
+        h('button', { class: 'btn sec block', style: { marginBottom: '8px' }, onclick: () => App.go('settings') }, '⚙ Settings'),
+        h('button', { class: 'btn danger block', onclick: () => { $$('.modal-scrim').forEach(m => m.remove()); App.logout(); } }, 'Logout'))
+      , actions: [{ label: 'Close', onClick: c => c() }]
+    });
+  };
+
+  // theme
+  const themeBtn = $('#btnTheme');
+  const applyTheme = th => {
+    document.documentElement.setAttribute('data-theme', th);
+    themeBtn.textContent = th === 'dark' ? '☀' : '🌙';
+    Store.set('theme', th);
+  };
+  applyTheme(Store.get('theme', 'light'));
+  themeBtn.onclick = () => applyTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+
+  // language
+  const langBtn = $('#btnLang');
+  const applyLang = l => {
+    window.LANG = l;
+    langBtn.textContent = l === 'en' ? 'EN' : (l === 'roman' ? 'RO' : 'UR');
+    langBtn.title = 'Language: ' + (l === 'en' ? 'English' : l === 'roman' ? 'Roman Urdu' : 'Urdu') + ' (click to change)';
+    Store.set('lang', l);
+    if (window.T) { T.lang = l; T.load(); }
+    if (App.state.booted && App.state.session) { App.renderNav(); App.refresh(); }
+  };
+  applyLang(Store.get('lang', 'en'));
+  langBtn.onclick = () => { if (window.T) { T.cycle(); } else { applyLang(window.LANG === 'en' ? 'ur' : 'en'); } };
+  langBtn.oncontextmenu = e => { e.preventDefault(); if (window.T) T.openEditor(); };
+  langBtn.ondblclick = () => { if (window.T) T.openEditor(); };
+
+  // assistant
+  $('#btnAssistant').onclick = () => App.toggleAI();
+
+  // offline indicator
+  const offBtn = $('#btnOffline');
+  const setOnline = on => { offBtn.textContent = on ? '📶' : '📴'; offBtn.title = on ? 'Online' : 'Offline — bills queue hon ge'; };
+  setOnline(navigator.onLine);
+  window.addEventListener('online', () => {
+    setOnline(true); App.state.offline = false;
+    UI.toast('Online ✅ queued kaam sync ho rahay hain', 'ok');
+    API.flushQueue(); API.pullCatalog(true);
+  });
+  window.addEventListener('offline', () => { setOnline(false); App.state.offline = true; UI.toast('Offline mode — POS abhi bhi chalay ga', 'warn'); });
+
+
+  /* ---- shop open/close: header pill + quick open/close dialog ---- */
+  const shopBtn = $('#btnShop');
+  window.loadShopState = loadShopState;
+  if (shopBtn) {
+    shopBtn.onclick = () => shopQuickDialog();
+    loadShopState();
+    setInterval(() => { if (!document.hidden) loadShopState(); }, 120000);   // har 2 minute
+  }
+  async function loadShopState() {
+    const btn = $('#btnShop'); if (!btn) return;
+    const txt = $('#shopStateTxt');
+    if (!App.can('pos.cash.manage')) { btn.hidden = true; return; }
+    btn.hidden = false;
+    try {
+      const ses = await API.call('cash.session.current', {}, { offlineFallback: () => null });
+      const open = !!(ses && ses.id);
+      const ur = (App.state.lang === 'ur');
+      btn.classList.toggle('is-open', open);
+      if (txt) txt.textContent = open ? (ur ? 'کھلی' : 'Open') : (ur ? 'بند' : 'Closed');
+      const exp = open ? fmt.money(ses.expectedCash) : '';
+      btn.title = open
+        ? 'Shop KHULI hai · ' + (ses.sessionNo || '') + ' · expected cash ' + exp + ' — click: cash in/out ya close'
+        : 'Shop BAND hai — click kar ke din shuru karein (opening cash)';
+      btn.setAttribute('aria-label', btn.title);
+      window.__shopSession = open ? ses : null;
+    } catch (e) {
+      btn.classList.remove('is-open');
+      if (txt) txt.textContent = '—';
+      window.__shopSession = null;
+    }
+  }
+
+  /** Compact professional Open/Close dialog (header se ek click) */
+  async function shopQuickDialog() {
+    let ses = null;
+    try { ses = await API.call('cash.session.summary', {}, { offlineFallback: () => null }); } catch (e) { ses = null; }
+    const after = () => { loadShopState(); if (App.current === 'shop') App.refresh(); };
+
+    if (!ses) {
+      /* ---------- OPEN THE DAY ---------- */
+      const quick = String(App.state.settings.cashFloatQuick || '500,1000,2000,5000').split(',').map(Number).filter(Boolean);
+      const f = UI2.form({
+        values: { openingCash: Number(App.state.settings.cashDefaultFloat || 0) || 0, notes: '' },
+        fields: [
+          { key: 'openingCash', label: 'Opening cash (drawer float)', type: 'money', full: true },
+          { key: 'notes', label: 'Note (optional)', full: true }
+        ]
+      });
+      const chips = h('div', { class: 'shop-chips' }, ...quick.map(v =>
+        h('button', { class: 'chip2', onclick: () => { const i = f.el.querySelector('input'); if (i) { i.value = v; i.dispatchEvent(new Event('input', { bubbles: true })); } } },
+          fmt.money(v))));
+      UI2.modal({
+        title: '🏪 Shop kholein (day start)', size: 'sm',
+        body: h('div', null, f.el, chips,
+          h('div', { class: 'sub', style: { marginTop: '8px' } },
+            'Opening cash darj karein — day-end par expected vs counted ka farq khud nikal aayega.')),
+        actions: [
+          { label: '🔓 Open shop', cls: 'ok', onClick: async c => {
+            const v = f.values();
+            try {
+              await API.call('cash.session.open', { openingCash: Number(v.openingCash) || 0, notes: v.notes || '' });
+              UI.toast('Shop open ho gayi ✅', 'ok'); c(); after();
+            } catch (e) { UI.toast(e.message, 'err'); }
+          } },
+          { label: 'Full screen', onClick: c => { c(); App.go('shop'); } },
+          { label: 'Close', onClick: c => c() }
+        ]
+      });
+      return;
+    }
+
+    /* ---------- DAY RUNNING: summary + cash moves + close ---------- */
+    const t = ses.totals || {};
+    const mins = Math.max(0, Math.round((Date.now() - new Date(ses.openedAt).getTime()) / 60000));
+    const dur = mins >= 60 ? Math.floor(mins / 60) + 'h ' + (mins % 60) + 'm' : mins + 'm';
+    const row = (k, v, cls) => h('div', { class: 'tot2' + (cls ? ' ' + cls : '') }, h('span', null, k), h('b', null, v));
+    const body = h('div', { class: 'close-shop' },
+      h('div', { class: 'shop-sum' },
+        row('Session', (ses.sessionNo || '') + ' · ' + dur),
+        row('Opening cash', fmt.money(ses.openingCash)),
+        row('Cash in (sales)', fmt.money(t.cashIn || 0), 'ok'),
+        row('Cash out / expenses', '-' + fmt.money((t.cashOut || 0) + (t.expenses || 0)), 'err'),
+        row('Card / wallet', fmt.money(t.card || 0)),
+        row('Expected in drawer', fmt.money(ses.expectedCash || 0), 'grand')),
+      h('div', { class: 'sub' }, (t.txns || 0) + ' transactions · ' + App.sessionMeta().name));
+    UI2.modal({
+      title: '🏪 Shop khuli hai', size: 'sm', body,
+      actions: [
+        { label: '🔒 Close shop', cls: 'danger', onClick: c => { c(); closeShopModal(ses, after); } },
+        { label: '⬇ Cash in', onClick: c => { c(); cashMoveModal('CASH_IN', ses, after); } },
+        { label: '⬆ Cash out', onClick: c => { c(); cashMoveModal('CASH_OUT', ses, after); } },
+        { label: 'Full screen', onClick: c => { c(); App.go('shop'); } },
+        { label: 'Close', onClick: c => c() }
+      ]
+    });
+  }
+  window.shopQuickDialog = shopQuickDialog;
+  // notifications — bell opens the unified Alerts panel (v2.23.19).
+  // (was: a second onclick here that OVERRODE openNotifPanel() and showed only a
+  //  zero-stock modal — the redesigned panel was unreachable dead code.)
+
+  // global search
+  /* v2.24.0 — `gsr`/`gs` kisi bhi screen par mojood na ho to pehle yahan
+     "Cannot set properties of null (setting 'hidden')" throw hoti thi, jo
+     keyboard/Esc wale handler ko bhi gira deti thi (user ko lagta: "close
+     button kaam nahi karta"). Ab sab kuch null-safe hai. */
+  const gs = $('#globalSearch'), gsr = $('#gsResults');
+  if (gs && gsr) gs.addEventListener('input', debounce(async () => {
+    const q = gs.value.trim();
+    if (q.length < 2) { gsr.hidden = true; return; }
+    /* v2.27.0 (W3.T3) — shared accessors: global search ki teen requests ab cache se */
+    let items = [], sales = [], custs = [];
+    try { items = await Shared.items({ q, limit: 6 }); } catch (e) { items = []; }
+    try { sales = await Shared.sales({ q, pageSize: 4 }); } catch (e) { }
+    try { custs = await Shared.customers({ q, limit: 4 }); } catch (e) { }
+    gsr.innerHTML = ''; gsr.hidden = false;
+    const add = (icon, title, sub, action) => gsr.appendChild(h('div', { class: 'gs-item', onclick: () => { gsr.hidden = true; gs.value = ''; action(); } },
+      h('span', null, icon), h('div', { class: 't' }, h('b', null, title), h('span', null, sub))));
+    items.forEach(i => add('📦', i.name, i.code + ' · ' + fmt.money(i.retailPrice) + ' · stock ' + i.stock, () => __itemForm(i)));
+    sales.forEach(s => add('🧾', s.invoiceNo, s.customerName + ' · ' + fmt.money(s.total), () => App.go('sales')));
+    custs.forEach(c => add('👤', c.name, (c.phone || '') + ' · bal ' + fmt.money(c.balance ?? c.bal ?? 0), () => App.go('parties')));
+    if (!gsr.children.length) gsr.appendChild(h('div', { class: 'tbl-empty' }, 'Kuch nahi mila'));
+  }, 220));
+  if (gs && gsr) gs.addEventListener('blur', () => setTimeout(() => { gsr.hidden = true; }, 200));
+
+  // keyboard
+  document.addEventListener('keydown', e => {
+    const ae = document.activeElement || {};
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); App.toggleAI(); }
+    if (e.key === '/' && !/input|textarea|select/i.test(ae.tagName || '')) {
+      e.preventDefault(); const g = $('#globalSearch'); if (g) g.focus();
+    }
+    if (e.key === 'Escape') {
+      try { App.closeAI(); } catch (err) { }
+      const sb = $('#sidebar'); if (sb) sb.classList.remove('open');
+      const sc = $('#scrim'); if (sc) sc.hidden = true;
+      /* overlay stack (UI2._overlays) UI2 ka apna capture handler band karta hai */
+    }
+  });
+
+  window.addEventListener('hashchange', () => {
+    const raw = (location.hash || '').replace('#/', '');
+    const id = raw.split('?')[0];
+    if (id && App.screens[id] && id !== App.current) { App.current = id; App.renderView(); }
+  });
+}
+
+function changePassword() {
+  const f = UI.form([
+    { key: 'oldPassword', label: 'Current password', type: 'password' },
+    { key: 'newPassword', label: 'New password', type: 'password' }
+  ]);
+  UI.modal({
+    title: '🔑 Change password', width: 'narrow', body: f.el,
+    actions: [{ label: 'Update', onClick: async (c) => {
+      const v = f.values();
+      try { await API.call('auth.changePassword', { token: App.sessionMeta().token, ...v }); UI.toast('Password updated ✅', 'ok'); c(); }
+      catch (e) { UI.toast(e.message, 'err'); }
+    } }]
+  });
+}
+
+/* -------------------------------- BOOT ----------------------------------- */
+(async function boot() {
+  /* v2.6 QA — har naye DOM (async tables, modals, tabs) par icons khud upgrade hon.
+     Iske bagair async se bana hua material emoji hi reh jata. */
+  try {
+    const vw = document.getElementById('view');
+    if (vw && window.HA_ICONS && HA_ICONS.watch) HA_ICONS.watch(vw);
+    /* v2.7 — async charts (tables/tabs/modals ke baad bante hain) ke liye */
+    try { if (vw && window.Chart && Chart.fitWatch) Chart.fitWatch(vw); } catch (e) { }
+  } catch (e) { }
+  wireShell();
+  const token = Store.get('token', '');
+  if (token && navigator.onLine) {
+    try {
+      const s = await API.call('auth.me', { token });
+      App.state.session = Object.assign({ token }, s);
+      Store.set('session', App.state.session);
+      await startApp();
+      return;
+    } catch (e) {
+      if (!/expire|session/i.test(e.message)) { /* fall through to login */ }
+    }
+  }
+  $('#boot').hidden = true;
+  renderLogin();
+})();
+
+})();
+</script>

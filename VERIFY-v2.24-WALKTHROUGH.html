@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Haseeb Autos v2.24.0 — Aap Khud Verify Karein</title>
+</head>
+<body style="margin:0;background:#f4f6f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;color:#16202c;-webkit-text-size-adjust:100%">
+<div style="max-width:960px;margin:0 auto;padding:20px 14px 60px">
+
+  <header style="background:linear-gradient(135deg,#0b5cab,#0a4a8c);border-radius:16px;padding:22px 20px;color:#fff">
+    <div style="font-size:12px;letter-spacing:.14em;text-transform:uppercase;opacity:.85">Haseeb Autos · v2.24.0</div>
+    <h1 style="margin:6px 0 8px;font-size:23px;line-height:1.25">Aap Khud Verify Karein — 6 Points, 6 Walkthrough</h1>
+    <p style="margin:0;font-size:14.5px;line-height:1.6;opacity:.95">
+      Har point ke saath: <strong>kahan click karna hai</strong>, <strong>kya nazar aana chahiye</strong>, aur
+      <strong>kaun sa automated test</strong> usko pakadta hai. Sab kuch live demo par chalta hai —
+      koi installer nahi, koi GAS deploy nahi.
+    </p>
+    <div style="margin-top:14px;display:flex;flex-wrap:wrap;gap:8px">
+      <span style="background:rgba(255,255,255,.16);border-radius:999px;padding:6px 12px;font-size:12.5px">47/47 gates green</span>
+      <span style="background:rgba(255,255,255,.16);border-radius:999px;padding:6px 12px;font-size:12.5px">scan 52/52 (real Chrome)</span>
+      <span style="background:rgba(255,255,255,.16);border-radius:999px;padding:6px 12px;font-size:12.5px">close 82/82</span>
+      <span style="background:rgba(255,255,255,.16);border-radius:999px;padding:6px 12px;font-size:12.5px">layout 0 problems</span>
+    </div>
+  </header>
+
+  <div style="background:#fff8e6;border:1px solid #e8c86a;border-radius:12px;padding:14px 16px;margin-top:16px">
+    <strong style="color:#8a5a00">Demo kaise kholein:</strong>
+    <span style="font-size:14.5px;line-height:1.6">
+      Workspace mein <code style="background:#fff;border:1px solid #e2e0d5;border-radius:5px;padding:1px 5px">Demo Preview</code>
+      panel ko kholain (port 8021). Demo ka data asli data nahi, mock hai — bharpoor try karein, kuch na tootega.
+      Login screen par koi bhi demo user chalta hai.
+    </span>
+  </div>
+
+  <!-- 1 -->
+  <section style="background:#fff;border-radius:14px;padding:18px 18px 6px;margin-top:16px;border:1px solid #e3e8ef">
+    <h2 style="margin:0 0 4px;font-size:18.5px"><span style="display:inline-block;background:#0b5cab;color:#fff;border-radius:8px;width:26px;height:26px;line-height:26px;text-align:center;font-size:14px;margin-right:8px">1</span>PO / GRN / baqi pages — POS wali scan logic</h2>
+    <p style="margin:8px 0 14px;font-size:14.5px;line-height:1.65;color:#3c4a5a">
+      Ek hi scan engine (<strong>UI2.itemPicker</strong>) ab POS ke ilawa PO, GRN, Take Order, Salesman Stock,
+      Transfer, Adjustment, Count aur PWA — sab jagah lagaya gaya hai. Har jagah scan ka flow bilkul ek jaisa:
+      <strong>scan → Found → Added → field saaf → agla scan ready</strong>.
+    </p>
+    <div style="display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(260px,1fr))">
+      <div style="border:1px solid #dbe4ef;border-radius:11px;padding:12px 13px">
+        <div style="font-weight:600;font-size:14.5px;margin-bottom:6px">🧾 PO — New PO</div>
+        <div style="font-size:13.8px;line-height:1.6;color:#3c4a5a">Purchase ▸ New PO kholain → picker ka title <em>“PO items — scan ya search”</em> hai. Scan field mein code type/tap karein (ya scanner se bijli ki tarah).</div>
+      </div>
+      <div style="border:1px solid #dbe4ef;border-radius:11px;padding:12px 13px">
+        <div style="font-weight:600;font-size:14.5px;margin-bottom:6px">📥 GRN — Direct Purchase</div>
+        <div style="font-size:13.8px;line-height:1.6;color:#3c4a5a">GRN form kholain → wahi scan-first header + scan block. Scan karte hi line PO/GRN mein add.</div>
+      </div>
+      <div style="border:1px solid #dbe4ef;border-radius:11px;padding:12px 13px">
+        <div style="font-weight:600;font-size:14.5px;margin-bottom:6px">📦 Salesman Stock Issue</div>
+        <div style="font-size:13.8px;line-height:1.6;color:#3c4a5a">Salesman ▸ Stock Issued ▸ ＋ New Issue. Modal pehle khulta hai (pehle slow API par khulta hi nahi tha), phir scan se lines banti hain.</div>
+      </div>
+      <div style="border:1px solid #dbe4ef;border-radius:11px;padding:12px 13px">
+        <div style="font-weight:600;font-size:14.5px;margin-bottom:6px">🛒 Take Order · Bulk</div>
+        <div style="font-size:13.8px;line-height:1.6;color:#3c4a5a">Bulk button → modal → dedicated scan field. Scan list mein jata hai, field clear hota hai.</div>
+      </div>
+    </div>
+    <div style="margin:14px 0 4px;font-size:13.5px;line-height:1.6;color:#2c6e3f;background:#eefaf1;border:1px solid #b8e2c6;border-radius:10px;padding:11px 13px">
+      <strong>Kya zaroor check karein (yahi asli bug tha):</strong> scan ke baad field <strong>khaali</strong> ho aur cursor usi field mein rahe —
+      purana code agli scan mein na juڑے. Galat code daalein → field clear + toast, aur pehle wali lines <strong>salamat</strong> rahein.
+    </div>
+    <p style="margin:12px 0 16px;font-size:13.5px;color:#5b6b7c">
+      <strong>Proof:</strong> <code style="background:#f3f6fa;border-radius:5px;padding:1px 5px">tools/test_browser_scan.js</code> —
+      asli Chrome, live demo: <strong>52 PASS / 0 FAIL</strong> (POS, PO, GRN, Stock Issue, Take Order, Demand, PWA).
+      Log: <code style="background:#f3f6fa;border-radius:5px;padding:1px 5px">/tmp/browser_scan_final.log</code>
+    </p>
+  </section>
+
+  <!-- 2 -->
+  <section style="background:#fff;border-radius:14px;padding:18px 18px 6px;margin-top:16px;border:1px solid #e3e8ef">
+    <h2 style="margin:0 0 4px;font-size:18.5px"><span style="display:inline-block;background:#0b5cab;color:#fff;border-radius:8px;width:26px;height:26px;line-height:26px;text-align:center;font-size:14px;margin-right:8px">2</span>Bulk Add — dedicated modal, dropdown capture khatam</h2>
+    <p style="margin:8px 0 14px;font-size:14.5px;line-height:1.65;color:#3c4a5a">
+      Aap ka diya hua spec (Bulk Add Conflict) poora implement hai: <strong>Bulk Add → Modal → Scan/Search/Select → Bulk List → Add All</strong>,
+      aur <strong>normal scan → seedha cart</strong> — dono alag, koi conflict nahi.
+    </p>
+    <table style="width:100%;border-collapse:collapse;font-size:13.8px">
+      <thead>
+        <tr style="background:#f1f5fa;text-align:left">
+          <th style="padding:9px 11px;border:1px solid #dbe4ef">Step</th>
+          <th style="padding:9px 11px;border:1px solid #dbe4ef">Expected</th>
+        </tr>
+      </thead>
+      <tbody style="color:#3c4a5a">
+        <tr><td style="padding:9px 11px;border:1px solid #dbe4ef">POS par <strong>☑ BULK ADD</strong> dabayein</td><td style="padding:9px 11px;border:1px solid #dbe4ef">Inline picker nahi — <strong>modal</strong> khulta hai: “📦 Bulk Add — Multi Select Mode”</td></tr>
+        <tr><td style="padding:9px 11px;border:1px solid #dbe4ef">Bulk scan field mein code daalein</td><td style="padding:9px 11px;border:1px solid #dbe4ef">“Added to bulk ×1”, field <strong>khaali</strong>, cursor usi field mein — dropdown <strong>nahi</strong> khulta</td></tr>
+        <tr><td style="padding:9px 11px;border:1px solid #dbe4ef">Wahi code dobara scan karein</td><td style="padding:9px 11px;border:1px solid #dbe4ef">Row <strong>duplicate nahi</strong> banti — qty ×2 ho jati hai</td></tr>
+        <tr><td style="padding:9px 11px;border:1px solid #dbe4ef">Search box mein “FLAMINGO” likh kar list se tick karein, phir naya code scan karein</td><td style="padding:9px 11px;border:1px solid #dbe4ef">Bulk List <strong>2 items</strong>; search text “FLAMINGO” <strong>waisa hi</strong> rehta hai (list clear nahi hoti)</td></tr>
+        <tr><td style="padding:9px 11px;border:1px solid #dbe4ef">“Add Selected to Cart” dabayein</td><td style="padding:9px 11px;border:1px solid #dbe4ef">Cart bhar jata hai, modal band, bulk list saaf</td></tr>
+        <tr><td style="padding:9px 11px;border:1px solid #dbe4ef">Qty stock se zyada karein</td><td style="padding:9px 11px;border:1px solid #dbe4ef">Warning — stock se zyada add nahi hota</td></tr>
+      </tbody>
+    </table>
+    <p style="margin:12px 0 16px;font-size:13.5px;color:#5b6b7c">
+      <strong>Proof:</strong> <code style="background:#f3f6fa;border-radius:5px;padding:1px 5px">tools/test_pos_multi.js</code> jsdom —
+      <strong>23 PASS / 0 FAIL</strong> (scan → clear, dup → qty bump na ke nayi row, mixed search+scan, Add Selected → cart).
+      PWA par wahi kaam <code style="background:#f3f6fa;border-radius:5px;padding:1px 5px">Pwa_Shell.openBulkPicker</code> karta hai.
+    </p>
+  </section>
+
+  <!-- 3 -->
+  <section style="background:#fff;border-radius:14px;padding:18px 18px 6px;margin-top:16px;border:1px solid #e3e8ef">
+    <h2 style="margin:0 0 4px;font-size:18.5px"><span style="display:inline-block;background:#0b5cab;color:#fff;border-radius:8px;width:26px;height:26px;line-height:26px;text-align:center;font-size:14px;margin-right:8px">3</span>Modal UI / sections / professional alignment</h2>
+    <p style="margin:8px 0 14px;font-size:14.5px;line-height:1.65;color:#3c4a5a">
+      Modal design dobara banaya gaya: ek hi layout (<code style="background:#f3f6fa;border-radius:5px;padding:1px 5px">.mod-stack</code>),
+      header block, sections cards, aur neeche action footer jo chhoti screen par <strong>wrap</strong> hota hai (pehle button screen se bahar nikal jata tha).
+    </p>
+    <ul style="margin:0 0 14px 18px;padding:0;font-size:14px;line-height:1.7;color:#3c4a5a">
+      <li><strong>Scan block</strong> hamesha nazar aata hai (normal aur multi — dono mode mein), brand colour ke saath.</li>
+      <li><strong>Sections</strong>: Issue details / Items, Customer / Product / Details / Advanced — sab aligned cards mein.</li>
+      <li><strong>Chhoti screen (390px)</strong>: modal 100vw se bahar nahi jata, footer ke buttons wrap hote hain (Share button ka off-screen bug fix).</li>
+      <li><strong>Dark theme</strong>: naye brand text tokens se contrast bhi pass.</li>
+      <li>Text chhota 10px se <strong>10.8px</strong> kiya, inputs <strong>16px</strong>, tap targets <strong>≥48px</strong>.</li>
+    </ul>
+    <p style="margin:12px 0 16px;font-size:13.5px;color:#5b6b7c">
+      <strong>Proof:</strong> <code style="background:#f3f6fa;border-radius:5px;padding:1px 5px">tools/audit_layout.js</code> — 1440 + 390, light + dark, 8+ overlays:
+      <strong>0 problems</strong>; <code style="background:#f3f6fa;border-radius:5px;padding:1px 5px">test_ui_polish.js</code> 52/0.
+    </p>
+  </section>
+
+  <!-- 4 -->
+  <section style="background:#fff;border-radius:14px;padding:18px 18px 6px;margin-top:16px;border:1px solid #e3e8ef">
+    <h2 style="margin:0 0 4px;font-size:18.5px"><span style="display:inline-block;background:#0b5cab;color:#fff;border-radius:8px;width:26px;height:26px;line-height:26px;text-align:center;font-size:14px;margin-right:8px">4</span>Cancel / Close button — har popup mein</h2>
+    <p style="margin:8px 0 14px;font-size:14.5px;line-height:1.65;color:#3c4a5a">
+      Asli wajah mili thi: boot ka Esc handler null element par crash kar raha tha, aur drawer mein Esc ka koi support hi nahi tha.
+      Ab har overlay ek registry mein register hota hai aur <strong>khud Cancel/Close footer</strong> le kar aata hai.
+    </p>
+    <div style="display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(240px,1fr))">
+      <div style="background:#eefaf1;border:1px solid #b8e2c6;border-radius:11px;padding:12px 13px;font-size:13.8px;line-height:1.6">
+        <strong>✕ button</strong> — top-right, band ho jata hai
+      </div>
+      <div style="background:#eefaf1;border:1px solid #b8e2c6;border-radius:11px;padding:12px 13px;font-size:13.8px;line-height:1.6">
+        <strong>Cancel / Close footer</strong> — har modal mein apne aap
+      </div>
+      <div style="background:#eefaf1;border:1px solid #b8e2c6;border-radius:11px;padding:12px 13px;font-size:13.8px;line-height:1.6">
+        <strong>Esc</strong> — pehle khuli hui list band, dusri baar overlay band
+      </div>
+      <div style="background:#eefaf1;border:1px solid #b8e2c6;border-radius:11px;padding:12px 13px;font-size:13.8px;line-height:1.6">
+        <strong>Backdrop click</strong> — bahar click par bhi band
+      </div>
+    </div>
+    <p style="margin:12px 0 16px;font-size:13.5px;color:#5b6b7c">
+      <strong>Proof:</strong> <code style="background:#f3f6fa;border-radius:5px;padding:1px 5px">tools/test_modals_close.js</code> — 11 openers (POS picker, PO, GRN, Sale detail, Item form, Demand, Stock Issue…) × {✕, Esc (2-step), Cancel, backdrop} =
+      <strong>82 PASS / 0 FAIL</strong>. Log: <code style="background:#f3f6fa;border-radius:5px;padding:1px 5px">/tmp/modals_close_final.log</code>
+    </p>
+  </section>
+
+  <!-- 5 -->
+  <section style="background:#fff;border-radius:14px;padding:18px 18px 6px;margin-top:16px;border:1px solid #e3e8ef">
+    <h2 style="margin:0 0 4px;font-size:18.5px"><span style="display:inline-block;background:#0b5cab;color:#fff;border-radius:8px;width:26px;height:26px;line-height:26px;text-align:center;font-size:14px;margin-right:8px">5</span>Customer Demands + New Customer Demand</h2>
+    <p style="margin:8px 0 12px;font-size:14.5px;line-height:1.65;color:#3c4a5a">
+      Screen dobara banayi gayi — ab fields sirf “wired” nahi, poora <strong>app flow</strong> follow karte hain:
+      customer pehle (balance/credit dikhta hai), phir product (stock, prices, history), phir details, aur aakhir mein <strong>Advanced</strong>.
+    </p>
+    <div style="display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(250px,1fr))">
+      <div style="border:1px solid #dbe4ef;border-radius:11px;padding:12px 13px;font-size:13.8px;line-height:1.6">
+        <strong>Customer section</strong> — async search, pick karne par balance · credit limit · open demands, walk-in ke liye naya customer auto-create
+      </div>
+      <div style="border:1px solid #dbe4ef;border-radius:11px;padding:12px 13px;font-size:13.8px;line-height:1.6">
+        <strong>Product section</strong> — scan y bhi chalta hai; stock, price, purchase history, sourcing dikhta hai
+      </div>
+      <div style="border:1px solid #dbe4ef;border-radius:11px;padding:12px 13px;font-size:13.8px;line-height:1.6">
+        <strong>Duplicate guard</strong> — isi item ki open demand ho to save <em>rok diya jata hai</em> aur warning aati hai
+      </div>
+      <div style="border:1px solid #dbe4ef;border-radius:11px;padding:12px 13px;font-size:13.8px;line-height:1.6">
+        <strong>Advanced section</strong> — customer PO no., budget price, partial/substitute allow, follow-up date, notify channel (SMS/WhatsApp/Both), preferred supplier, tags, internal note
+      </div>
+      <div style="border:1px solid #dbe4ef;border-radius:11px;padding:12px 13px;font-size:13.8px;line-height:1.6">
+        <strong>Quick chips</strong> — qty/date jaldi bhарne ke liye
+      </div>
+      <div style="border:1px solid #dbe4ef;border-radius:11px;padding:12px 13px;font-size:13.8px;line-height:1.6">
+        <strong>🔁 Repeat</strong> — list ki row par dabayein, purani demand ki copy naye form mein
+      </div>
+    </div>
+    <p style="margin:12px 0 16px;font-size:13.5px;color:#5b6b7c">
+      <strong>Backend:</strong> <code style="background:#f3f6fa;border-radius:5px;padding:1px 5px">CustomerDemands.gs</code> + <code style="background:#f3f6fa;border-radius:5px;padding:1px 5px">Schema.gs</code> —
+      8 naye columns add-only (purana data safe). <strong>Browser proof</strong> (scan test ke andar): Demand modal ke section cards, data-aware notes,
+      live search dropdown, pick par auto-fill + badge — sab pass.
+    </p>
+  </section>
+
+  <!-- 6 -->
+  <section style="background:#fff;border-radius:14px;padding:18px 18px 6px;margin-top:16px;border:1px solid #e3e8ef">
+    <h2 style="margin:0 0 4px;font-size:18.5px"><span style="display:inline-block;background:#0b5cab;color:#fff;border-radius:8px;width:26px;height:26px;line-height:26px;text-align:center;font-size:14px;margin-right:8px">6</span>Salesman Stock — barcode POS jaisa</h2>
+    <p style="margin:8px 0 14px;font-size:14.5px;line-height:1.65;color:#3c4a5a">
+      Salesman ▸ Stock Issued ▸ ＋ New Issue: modal khulta hai, scan block mojood hai, scan karte hi line banti hai aur field saaf hoti hai.
+      Modal ab <strong>pehle</strong> khulta hai aur routes/areas background mein load hote hain — pehle slow API par modal hi nahi khulta tha.
+    </p>
+    <p style="margin:12px 0 16px;font-size:13.5px;color:#5b6b7c">
+      <strong>Proof:</strong> browser_scan suite ke Stock Issue checks (modal + sections + Cancel + scan→line→clear) — pass.
+      Regression suites: <code style="background:#f3f6fa;border-radius:5px;padding:1px 5px">test_salesman_new.js</code>, <code style="background:#f3f6fa;border-radius:5px;padding:1px 5px">test_salesman_new2.js</code> green.
+    </p>
+  </section>
+
+  <!-- 7 -->
+  <section style="background:#fff;border-radius:14px;padding:18px 18px 18px;margin-top:16px;border:1px solid #e3e8ef">
+    <h2 style="margin:0 0 10px;font-size:18.5px"><span style="display:inline-block;background:#0b5cab;color:#fff;border-radius:8px;width:26px;height:26px;line-height:26px;text-align:center;font-size:14px;margin-right:8px">7</span>Sab modals/pages ka audit — kya nikla</h2>
+    <p style="margin:0 0 12px;font-size:14.5px;line-height:1.65;color:#3c4a5a">
+      “Identify, analyze, debug” ka natija — ye asli bugs thay jo aap ko dikh rahe thay, aur inki root fix:
+    </p>
+    <ol style="margin:0 0 6px 20px;padding:0;font-size:14px;line-height:1.75;color:#3c4a5a">
+      <li><strong>Search-type field ka code hi maujood nahi tha</strong> — isi wajah se Demand ke fields bhare hue bhi “kaam nahi karte” lagte thay. Ab asli async search hai.</li>
+      <li><strong>Dropdown ban kar DOM mein lagta hi nahi tha</strong> — results root mein append nahi hote thay, is liye kuch nazar nahi aata tha.</li>
+      <li><strong>PO screen par purane helper delete ho gaye thay</strong> — “Code nahi mila” ka silent error.</li>
+      <li><strong>Stock Issue modal slow API par khulta hi nahi tha</strong> — ab modal pehle, data baad mein.</li>
+      <li><strong>Screen buttons event object title mein le rahe thay</strong> — title “PO undefined” ban jata tha.</li>
+      <li><strong>Boot ka Esc handler null par crash</strong> — “close kaam nahi karta” ki asli jarh.</li>
+      <li><strong>Drawer mein Esc ka koi support nahi tha</strong> — ab do-step Esc sab jagah.</li>
+    </ol>
+    <p style="margin:10px 0 0;font-size:13.5px;color:#5b6b7c">
+      Har fix <strong>shared logic</strong> mein hua (page-specific patch nahi) — is liye PO/GRN/PWA/Inventory/Returns sab ko ek saath faida hua.
+    </p>
+  </section>
+
+  <!-- evidence -->
+  <section style="background:#0b1c2e;color:#e8f0f8;border-radius:14px;padding:18px;margin-top:16px">
+    <h2 style="margin:0 0 12px;font-size:17px;color:#fff">Evidence — shipped bytes par chala hua</h2>
+    <table style="width:100%;border-collapse:collapse;font-size:13.5px">
+      <thead><tr style="text-align:left;color:#9fc0e0">
+        <th style="padding:6px 8px;border-bottom:1px solid #24405c">Suite</th>
+        <th style="padding:6px 8px;border-bottom:1px solid #24405c">Result</th>
+      </tr></thead>
+      <tbody>
+        <tr><td style="padding:6px 8px;border-bottom:1px solid #16324a">bash tools/verify.sh (47 gates, 765s)</td><td style="padding:6px 8px;border-bottom:1px solid #16324a;color:#7ee2a0">ALL GREEN</td></tr>
+        <tr><td style="padding:6px 8px;border-bottom:1px solid #16324a">test_browser_scan.js (real Chrome)</td><td style="padding:6px 8px;border-bottom:1px solid #16324a;color:#7ee2a0">52 / 0</td></tr>
+        <tr><td style="padding:6px 8px;border-bottom:1px solid #16324a">test_modals_close.js</td><td style="padding:6px 8px;border-bottom:1px solid #16324a;color:#7ee2a0">82 / 0</td></tr>
+        <tr><td style="padding:6px 8px;border-bottom:1px solid #16324a">test_pos_multi.js</td><td style="padding:6px 8px;border-bottom:1px solid #16324a;color:#7ee2a0">23 / 0</td></tr>
+        <tr><td style="padding:6px 8px;border-bottom:1px solid #16324a">verify_punchlist.js</td><td style="padding:6px 8px;border-bottom:1px solid #16324a;color:#7ee2a0">117 / 117</td></tr>
+        <tr><td style="padding:6px 8px;border-bottom:1px solid #16324a">audit_layout.js (1440 · 390 · dark · overlays · PWA)</td><td style="padding:6px 8px;border-bottom:1px solid #16324a;color:#7ee2a0">0 problems</td></tr>
+        <tr><td style="padding:6px 8px;border-bottom:1px solid #16324a">zip vs workspace (file-by-file md5)</td><td style="padding:6px 8px;border-bottom:1px solid #16324a;color:#7ee2a0">MATCH</td></tr>
+        <tr><td style="padding:6px 8px">verify.sh --fast (dobara, aaj)</td><td style="padding:6px 8px;color:#7ee2a0">ALL GREEN (41s)</td></tr>
+      </tbody>
+    </table>
+    <p style="margin:12px 0 0;font-size:13px;line-height:1.6;color:#9fc0e0">
+      Release: <code style="background:#16324a;border-radius:5px;padding:1px 5px;color:#e8f0f8">release/haseeb-autos-v2.24.0.zip</code> ·
+      Notes: <code style="background:#16324a;border-radius:5px;padding:1px 5px;color:#e8f0f8">release/CHANGELOG-v2.24.md</code> ·
+      Deploy: <code style="background:#16324a;border-radius:5px;padding:1px 5px;color:#e8f0f8">release/FIRST-SETUP-GUIDE.html</code>
+    </p>
+  </section>
+
+  <!-- owed -->
+  <section style="background:#fff8e6;border:1px solid #e8c86a;border-radius:14px;padding:16px 18px;margin-top:16px">
+    <h2 style="margin:0 0 8px;font-size:16.5px;color:#8a5a00">Ye 4 cheezein sirf aap check kar sakte hain (machine par nahi ho sakta)</h2>
+    <ol style="margin:0 0 0 20px;padding:0;font-size:14px;line-height:1.75;color:#5f4400">
+      <li><strong>Zx10 scanner</strong> — asli machine se ek drill: 5 scan lagataar, dekhein field har baar saaf ho.</li>
+      <li><strong>Printed label read-back</strong> — label print kar ke wapas scan karein (GS1 quiet zone).</li>
+      <li><strong>GAS + Drive par item image upload</strong> — live deployment par ek image chadhayein.</li>
+      <li><strong>Deployed app par F2</strong> shortcut — POS par F2 dabayein.</li>
+    </ol>
+  </section>
+
+  <p style="text-align:center;font-size:12.5px;color:#8896a6;margin:22px 0 0">
+    Haseeb Autos · v2.24.0 · <span id="gen"></span>
+  </p>
+</div>
+<script>
+  document.getElementById('gen').textContent = new Date().toLocaleString();
+</script>
+</body>
+</html>
