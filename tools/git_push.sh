@@ -63,10 +63,30 @@ echo "  files: $(git ls-files | wc -l) · size: $(du -sh .git | cut -f1)"
 git log --oneline -1 2>/dev/null || echo "  (koi commit nahi)"
 
 echo "── push ($BRANCH → $REPO) ────────────────────────"
-# token ko sirf isi command mein use karo (persist nahi hota)
-git push "https://x-access-token:$TOKEN@github.com/$REPO.git" "$BRANCH:$BRANCH" --force-with-lease 2>&1 | \
-  sed -E "s/$TOKEN/***TOKEN***/g"
+# v2.30.0 FIX — pehle push "stale info" par atak raha tha: remote remove karne se
+# remote-tracking refs delete ho jati hain aur `--force-with-lease` (bina explicit
+# expected sha) phir hamesha reject karta hai. Ab remote ka asli sha ls-remote se
+# parhte hain aur lease USSI par lagate hain; fast-forward par force ki zaroorat hi nahi.
+URL="https://x-access-token:$TOKEN@github.com/$REPO.git"
+RSHA=$(git ls-remote "$URL" "refs/heads/$BRANCH" 2>/dev/null | cut -f1)
+PUSH_OK=0
+if [ -z "$RSHA" ]; then
+  echo "  remote khali hai — pehla push"
+  git push "$URL" "$BRANCH:$BRANCH" 2>&1 | sed -E "s/$TOKEN/***TOKEN***/g" && PUSH_OK=1
+elif git merge-base --is-ancestor "$RSHA" "$BRANCH" 2>/dev/null; then
+  echo "  remote peeche hai ($RSHA) — fast-forward push"
+  git push "$URL" "$BRANCH:$BRANCH" 2>&1 | sed -E "s/$TOKEN/***TOKEN***/g" && PUSH_OK=1
+else
+  echo "  remote diverged hai ($RSHA) — lease ke saath overwrite (expected=$RSHA)"
+  git push "$URL" "$BRANCH:$BRANCH" "--force-with-lease=$BRANCH:$RSHA" 2>&1 | sed -E "s/$TOKEN/***TOKEN***/g" && PUSH_OK=1
+fi
 
 echo "── verify ───────────────────────────────────────"
-git ls-remote "https://x-access-token:$TOKEN@github.com/$REPO.git" 2>/dev/null | sed -E "s/$TOKEN/***TOKEN***/g" | head -3
-echo "✔ ho gaya: https://github.com/$REPO"
+NSHA=$(git ls-remote "$URL" "refs/heads/$BRANCH" 2>/dev/null | cut -f1 | sed -E "s/$TOKEN/***TOKEN***/g")
+echo "  remote $BRANCH = $NSHA"
+if [ "$PUSH_OK" = "1" ] && [ "$NSHA" = "$(git rev-parse $BRANCH)" ]; then
+  echo "✔ push KAMYAB: https://github.com/$REPO (remote ab $(git log --oneline -1 $BRANCH | head -c 60)… par)"
+else
+  echo "✖ push FAIL — remote abhi bhi $NSHA par hai. Upar ki wajah dekhein."
+  exit 1
+fi
