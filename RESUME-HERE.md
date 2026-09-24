@@ -58,8 +58,12 @@ repo docs/ + official links, `help.docsUrl` setting), tooltip sweep 9/9 icon-btn
 (wahi auto-calc jo PO me v2.9 §8 me tha) — 1 BOX=12 PCS, rate Rs 3,000 → base 12 × 250 auto;
 line hamesha BASE units. Gate `test_w13_modules.js` **10/0** = step 23. W13 audit: B§5 credit
 logic + B§13 rename pehle se ✔ (gated). Cleanup (2026-09-25): stale zips/shots ~67MB free;
-test_logic legacy gate ab self-contained **816/0**. **Agla: W13 baqi slices (T13.2 quick-view/
-histories/price-variation → reorder-real-data) → W10 testing matrix → W11/W12 docs + secret scan.** Carry-overs: live GAS deploy, Zx10 printer drill, label read-back, mobile
+test_logic legacy gate ab self-contained **816/0**. **T13.2 B§11 price signals ✔ (v2.30.4):** `purchase.supplierPriceSignals`
+(har item ki aakhri 2 GRN rates — real data) + supplier detail me Price signals tab
+(up/down badges); party history+totals pehle se ✔. Gate 14/0; regression GREEN.
+Quota round 2: chrome-libs → .cache/ (snapshot-excluded), zip tracking band — snapshot
+~85MB. **Agla: W13 baqi (T13.3 quick-view → T13.4 reorder-real-data → T13.5 polish) →
+W10 testing matrix → W11/W12 docs + secret scan.** Carry-overs: live GAS deploy, Zx10 printer drill, label read-back, mobile
 POS cart→Pay→Esc, App_Orders L186 adoption.
 read-back, mobile POS cart→Pay→Esc, App_Orders L186 adoption.
 **PUSH HO CHUKA (2026-09-24):** GitHub `NextOffice360/HaseebAutosERP-OLD-2.25.6` (public) — remote `main` =
