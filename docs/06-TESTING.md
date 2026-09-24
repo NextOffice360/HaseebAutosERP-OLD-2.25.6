@@ -1,6 +1,6 @@
 # ⑥ Testing — gates aur validate_release
 
-Har release se pehle **ek hi checklist** chalti hai — `tools/validate_release.sh` (18 steps).
+Har release se pehle **ek hi checklist** chalti hai — `tools/validate_release.sh` (25 steps).
 Ye sirf "page khulta hai" nahi dekhta — **backend exact-math** (paisa ke sawal) aur
 **rendered-DOM** (jo dikh raha hai wahi assert) dono check karta hai.
 
@@ -14,7 +14,7 @@ export LD_LIBRARY_PATH=/home/user/.cache/chrome-libs/usr/lib/x86_64-linux-gnu
 bash tools/validate_release.sh
 ```
 
-## 18 steps kya hain
+## Steps kya hain (1–25)
 | # | Gate | Cover |
 |---|------|-------|
 | 1–2 | syntax + script blocks | har .gs parse hota hai |
@@ -28,6 +28,9 @@ bash tools/validate_release.sh
 | 11 | inventory_all | All-Inventory tab, catalog vs stock, transfers |
 | 12 | saveall_pages | header Save All: dirty detect, failed-retry, dup-block |
 | 13 | ai_naming | "Local Data Assistant" (koi LLM/MOCK ka jhoota dawa nahi) |
+| 14–22 | offline · data-aware · math · e2e · forms-shared · settings-shared · table-states · w9-help · w13-conversion | har wave ka apna gate (docs/TESTING-MATRIX.md dekhein) |
+| 23–25 | w13-conversion · roles-matrix · **secret-scan** | GRN pack auto-calc · backend role enforcement · no hardcoded secrets |
+| + | TESTING-MATRIX | 17 A§17 dimensions ka full map — `docs/TESTING-MATRIX.md` |
 | 14 | notifications | toast dedupe/merge/cap, settings |
 | 15 | offline_sync | idempotent replay, partial-fail requeue, chip, auto-flush |
 | 16 | data_aware | dependent dropdowns, invalid-child clear, showWhen |
