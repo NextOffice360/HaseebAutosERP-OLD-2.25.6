@@ -211,6 +211,83 @@ const src = f => fs.readFileSync(path.join(ROOT, 'apps-script', f), 'utf-8');
       sig && (sig.err || 'row+badge OK'));
 
     ok('\u2469c Zero page errors (PART3 ke baad bhi)', errs.length === 0, errs.length ? errs[0] : 'clean');
+
+    /* ---------------- PART4: T13.3 — B\u00a76 products quick view (POS2) ---------------- */
+    console.log('\n  \x1b[1mPART 4 \u2014 T13.3 B\u00a76 quick view (POS2)\x1b[0m');
+    const pos2src = src('App_POS2.html');
+    ok('\u246a Source: quickViewItem + image lightbox (UI.zoomImage) + pc-qv + pc-fav badges',
+      /function quickViewItem\(i\)/.test(pos2src)
+      && /onclick: \(\) => UI\.zoomImage\(qvImg/.test(pos2src)
+      && /class: 'pc-qv'/.test(pos2src) && /class: 'pc-fav'/.test(pos2src)
+      && /category after code|cardSubParts\(name, \[i\.brand, i\.sub \|\| i\.subCategory, i\.cat\]\)/.test(pos2src),
+      'App_POS2.html');
+
+    /* DOM: POS2 khulo \u2192 tile par fav star + \u24d8 (quick view) \u2192 modal (title \u24d8 + img) */
+    const qv = await (async () => {
+      await page.evaluate(() => App.go('pos'));
+      await sleep(2200);
+      const r1 = await page.evaluate(() => {
+        const tile = document.querySelector('.pcard');
+        if (!tile) return { err: 'koi product card nahi' };
+        const fav = !!tile.querySelector('.pc-fav');
+        const qvBtn = tile.querySelector('.pc-qv');
+        if (!qvBtn) return { err: 'pc-qv nahi', fav: fav };
+        qvBtn.click();
+        return { fav: fav, clicked: true };
+      });
+      if (r1.err || !r1.clicked) return r1;
+      await sleep(700);
+      const r2 = await page.evaluate(() => {
+        const m = document.querySelector('.modal2');
+        if (!m) return { err: 'quick view modal nahi khula' };
+        const t = (m.querySelector('.m-head h3') || {}).textContent || '';
+        const hasImg = !!m.querySelector('.qv-img');
+        const hasCart = /Cart mein daalein/.test(m.innerText || '');
+        const x = m.querySelector('.oc-x');
+        if (x) x.click();
+        return { t: t.slice(0, 40), hasImg: hasImg, hasCart: hasCart };
+      });
+      await sleep(400);
+      return Object.assign({}, r1, r2);
+    })();
+    ok('\u246a DOM: tile par \u2605 fav + \u24d8; click \u2192 quick view modal (img + Cart action)',
+      qv && !qv.err && qv.fav && qv.clicked && !/err/.test(JSON.stringify(qv))
+      && /\u24d8|Quick|Item|\u2192/.test(qv.t || '') && qv.hasImg && qv.hasCart,
+      qv ? (qv.err || (qv.t || '') + ' img=' + qv.hasImg) : 'null');
+
+    ok('\u246a\u2d4f Zero page errors (PART4 ke baad bhi)', errs.length === 0, errs.length ? errs[0] : 'clean');
+
+    /* ---------------- PART5: T13.4 — B\u00a79 auto reorder + AI monitoring ---------------- */
+    console.log('\n  \x1b[1mPART 5 \u2014 T13.4 B\u00a79 reorder + AI signals (real data)\x1b[0m');
+    const roSrc = src('Reorder.gs');
+    const roUi = src('App_Reorder.html');
+    ok('\u246b Source: suggest REAL sheets se (Sales/SaleItems/Stock/GRN/PO) + createPOs + AI card live',
+      /DB\.all\('SaleItems'\)/.test(roSrc) && /DB\.all\('Sales'\)/.test(roSrc)
+      && /DB\.all\('Stock'\)/.test(roSrc) && /DB\.all\('GRN'\)/.test(roSrc)
+      && /DB\.all\('PurchaseOrders'\)/.test(roSrc)
+      && /createPOs: function/.test(roSrc)
+      && /AI signals \(live data\)/.test(roUi) && /function askAI/.test(roUi)
+      && /reorder\.suggest/.test(roUi),
+      'Reorder.gs + App_Reorder.html');
+
+    /* DOM: reorder screen \u2192 AI signals card nazar + suggest table/error nahi */
+    const ro = await (async () => {
+      await page.evaluate(() => App.go('reorder'));
+      await sleep(2200);
+      return page.evaluate(() => {
+        const txt = (document.getElementById('view') || {}).innerText || '';
+        return {
+          card: /AI signals \(live data\)/.test(txt),
+          table: /Reorder|suggest|Suggested|Item/i.test(txt),
+          err: /backend connected nahi|kharaab|Error:/i.test(txt),
+          askBtn: /Ask AI|AI se poochein/i.test(txt)
+        };
+      });
+    })();
+    ok('\u246b DOM: reorder screen \u2014 AI signals card (live data) + suggest table, bina error',
+      ro && ro.card && ro.table && !ro.err, JSON.stringify(ro));
+
+    ok('\u246b\u2d4f Zero page errors (PART5 ke baad bhi)', errs.length === 0, errs.length ? errs[0] : 'clean');
   } catch (e) {
     ok('PART2 browser flow', false, String(e && e.message).slice(0, 110));
   } finally { await browser.close(); }
