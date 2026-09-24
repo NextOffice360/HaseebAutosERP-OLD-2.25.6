@@ -147,6 +147,8 @@ fs.writeFileSync(path.join(ROOT, 'tmp/field-visibility-audit.json'), JSON.string
 
 console.log('══════════════════════════════════════════════════════════════');
 console.log(' FIELD VISIBILITY AUDIT  (spec §9 · §18 #5)');
+console.log(' NOTE: per-route "module-perm" metric PURANI design hai \u2014 ab CENTRAL Fields.wrap/scrub');
+console.log('       (Code.gs api()) HAR route par lagta hai; asli contract gate = tools/test_field_visibility.js');
 console.log('══════════════════════════════════════════════════════════════');
 console.log(' schema tables            :', out.schema.tables, '· sensitive columns wali tables:', out.schema.sensitiveTables);
 console.log(' routes                   :', routes.length, '· module-perm wale:', withPerm, '· bina perm:', noPerm);

@@ -316,13 +316,14 @@ const ROLES = ['OWNER', 'MANAGER', 'SALESMAN', 'CASHIER', 'PURCHASE', 'WAREHOUSE
 
 const ROLE_PERMS = {
   OWNER: ['*'],
-  MANAGER: ['dashboard.view', 'dashboard.financial', 'pos.access', 'pos.sell', 'pos.return', 'pos.discount', 'pos.hold', 'pos.cash.manage', 'pos.price.override', 'items.view', 'items.create', 'items.edit', 'items.delete', 'items.price.edit', 'items.import', 'stock.view', 'stock.adjust', 'stock.transfer', 'stock.audit.post', 'purchase.view', 'purchase.po.create', 'purchase.po.approve', 'purchase.grn', 'purchase.return', 'sales.view', 'sales.view.all', 'customers.view', 'customers.edit', 'suppliers.view', 'suppliers.edit', 'payments.view', 'payments.create', 'expenses.create', 'expenses.approve', 'reports.view', 'reports.financial', 'reports.export', 'users.view', 'ai.use', 'settings.view', 'settings.manage', 'audit.view'],
-  SALESMAN: ['dashboard.view', 'pos.access', 'pos.sell', 'pos.hold', 'items.view', 'stock.view', 'customers.view', 'customers.edit', 'sales.view', 'ai.use'],
-  CASHIER: ['dashboard.view', 'pos.access', 'pos.sell', 'pos.cash.manage', 'items.view', 'stock.view', 'customers.view', 'payments.view', 'payments.create', 'ai.use'],
-  PURCHASE: ['dashboard.view', 'items.view', 'items.create', 'items.edit', 'stock.view', 'stock.adjust', 'purchase.view', 'purchase.po.create', 'purchase.grn', 'purchase.return', 'suppliers.view', 'suppliers.edit', 'reports.view', 'ai.use'],
-  WAREHOUSE: ['dashboard.view', 'items.view', 'stock.view', 'stock.adjust', 'stock.transfer', 'stock.audit.post', 'purchase.grn', 'ai.use'],
-  ACCOUNTANT: ['dashboard.view', 'dashboard.financial', 'sales.view', 'sales.view.all', 'purchase.view', 'payments.view', 'payments.create', 'expenses.create', 'expenses.approve', 'reports.view', 'reports.financial', 'reports.export', 'customers.view', 'suppliers.view', 'ai.use'],
-  DELIVERY: ['dashboard.view', 'sales.view', 'customers.view', 'ai.use'],
+  MANAGER: ['dashboard.view', 'dashboard.financial', 'pos.access', 'pos.sell', 'pos.return', 'pos.discount', 'pos.hold', 'pos.cash.manage', 'pos.price.override', 'items.view', 'items.create', 'items.edit', 'items.delete', 'items.price.edit', 'items.import', 'stock.view', 'stock.adjust', 'stock.transfer', 'stock.audit.post', 'purchase.view', 'purchase.po.create', 'purchase.po.approve', 'purchase.grn', 'purchase.return', 'sales.view', 'sales.view.all', 'customers.view', 'customers.edit', 'suppliers.view', 'suppliers.edit', 'payments.view', 'payments.create', 'expenses.create', 'expenses.approve', 'reports.view', 'reports.financial', 'reports.export', 'users.view', 'ai.use', 'settings.view', 'settings.manage', 'audit.view',
+    'field.cost.view', 'field.margin.view', 'field.contact.view', 'field.finance.view', 'field.supplier.view', 'field.notes.view'],
+  SALESMAN: ['dashboard.view', 'pos.access', 'pos.sell', 'pos.hold', 'items.view', 'stock.view', 'customers.view', 'customers.edit', 'sales.view', 'ai.use', 'field.contact.view', 'field.finance.view'],
+  CASHIER: ['dashboard.view', 'pos.access', 'pos.sell', 'pos.cash.manage', 'items.view', 'stock.view', 'customers.view', 'payments.view', 'payments.create', 'ai.use', 'field.contact.view', 'field.finance.view'],
+  PURCHASE: ['dashboard.view', 'items.view', 'items.create', 'items.edit', 'stock.view', 'stock.adjust', 'purchase.view', 'purchase.po.create', 'purchase.grn', 'purchase.return', 'suppliers.view', 'suppliers.edit', 'reports.view', 'ai.use', 'field.cost.view', 'field.supplier.view', 'field.contact.view'],
+  WAREHOUSE: ['dashboard.view', 'items.view', 'stock.view', 'stock.adjust', 'stock.transfer', 'stock.audit.post', 'purchase.grn', 'ai.use', 'field.cost.view', 'field.supplier.view'],
+  ACCOUNTANT: ['dashboard.view', 'dashboard.financial', 'sales.view', 'sales.view.all', 'purchase.view', 'payments.view', 'payments.create', 'expenses.create', 'expenses.approve', 'reports.view', 'reports.financial', 'reports.export', 'customers.view', 'suppliers.view', 'ai.use', 'field.cost.view', 'field.margin.view', 'field.contact.view', 'field.finance.view', 'field.supplier.view', 'field.notes.view'],
+  DELIVERY: ['dashboard.view', 'sales.view', 'customers.view', 'ai.use', 'field.contact.view'],
   OTHER: ['dashboard.view']
 };
 
@@ -1289,6 +1290,24 @@ window.MockAPI = {
   'auth.me': () => SESSION,
   'auth.changePassword': () => true,
 
+  'fields.matrix': function () {
+    const FAMILIES = [
+      { key: 'cost', label: 'Cost price / lagat', perm: 'field.cost.view' },
+      { key: 'margin', label: 'Margin / profit', perm: 'field.margin.view' },
+      { key: 'contact', label: 'Customer contact', perm: 'field.contact.view' },
+      { key: 'finance', label: 'Financial internals', perm: 'field.finance.view' },
+      { key: 'supplier', label: 'Supplier internals', perm: 'field.supplier.view' },
+      { key: 'notes', label: 'Internal notes', perm: 'field.notes.view' }
+    ];
+    const ov = permOverrides();
+    const matrix = {};
+    ROLES.forEach(function (r) {
+      const perms = (ov[r] || ROLE_PERMS[r] || []);
+      matrix[r] = {};
+      FAMILIES.forEach(function (f) { matrix[r][f.key] = perms.indexOf('*') > -1 || perms.indexOf(f.perm) > -1; });
+    });
+    return { families: FAMILIES, roles: ROLES, matrix: matrix };
+  },
   'users.perms': function () {
     const ov = permOverrides();
     const matrix = {};

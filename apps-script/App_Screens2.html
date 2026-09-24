@@ -2026,7 +2026,7 @@ App.registerScreen('users', {
     let tab = 'users';
     const host = h('div');
     const seg = h('div', { class: 'seg' },
-      ...[['users', 'Users'], ['groups', 'Groups & Rights'], ['perms', 'Permissions'], ['audit', 'Audit Log']].map(([id, lbl]) =>
+      ...[['users', 'Users'], ['groups', 'Groups & Rights'], ['perms', 'Permissions'], ['fields', 'Field visibility'], ['audit', 'Audit Log']].map(([id, lbl]) =>
         h('button', { class: id === 'users' ? 'on' : '', onclick: e => {
           tab = id; Array.from(seg.children).forEach(b => b.classList.remove('on')); e.target.classList.add('on'); load();
         } }, lbl)));
@@ -2067,6 +2067,29 @@ App.registerScreen('users', {
               h('code', { style: { background: 'var(--bg-2)', padding: '2px 6px', borderRadius: '5px' } },
                 'pos.discount, items.price.edit, reports.financial'),
               ' · ', h('b', null, '*'), ' = full admin')));
+        } else if (tab === 'fields') {
+          /* v2.30.5 (W5.T5) — Field visibility live matrix (Fields.gs ▸ fields.matrix) */
+          const m = await API.call('fields.matrix', {});
+          host.innerHTML = '';
+          const sc = h('div', { style: { overflowX: 'auto' } });
+          const t = h('table', { class: 'tbl', style: { width: '100%', minWidth: '640px' } });
+          t.appendChild(h('thead', null, h('tr', null, h('th', null, 'Field family'), h('th', null, 'Permission'),
+            ...(m.roles || []).map(r => h('th', { style: { textAlign: 'center' } }, r)))));
+          const tb = h('tbody');
+          (m.families || []).forEach(f => {
+            tb.appendChild(h('tr', null,
+              h('td', null, h('b', null, f.label)),
+              h('td', null, h('code', { style: { fontSize: 'var(--fs-xs)' } }, f.perm)),
+              ...(m.roles || []).map(r => h('td', { style: { textAlign: 'center' } },
+                (m.matrix[r] && m.matrix[r][f.key]) ? h('span', { class: 'badge ok' }, '\u2713') : h('span', { class: 'badge' }, '\u2014')))));
+          });
+          t.appendChild(tb); sc.appendChild(t);
+          host.appendChild(sc);
+          host.appendChild(h('div', { class: 'card-body' },
+            h('div', { style: { fontSize: 'var(--fs-xs)', color: 'var(--muted)' } },
+              'Live matrix: kaun sa role kin sensitive fields ka data dekhta hai \u2014 backend response par bhi yehi rok lagti hai (Fields.wrap). ',
+              'Kisi user/group ko extra ya denied fields dene ke liye Users / Groups tab ke extra & denied permissions istemal karein. ',
+              '\u062d\u0633\u0627\u0633 \u0641\u06cc\u0644\u0688\u0632 (\u0644\u0627\u06af\u062a\u060c \u0645\u0627\u0631\u06af\u0646\u060c \u0631\u0627\u0628\u0637\u06c1) \u0631\u0648\u0644 \u06a9\u06d2 \u0645\u0637\u0627\u0628\u0642 \u062f\u06cc\u06a9\u06be\u0627\u0626\u06cc \u062c\u0627\u062a\u06cc \u06c1\u06cc\u06ba\u06d4')));
         } else if (tab === 'perms') {
           const meta = await API.call('users.perms', {}, { offlineFallback: () => null });
           if (!meta) { host.innerHTML = ''; host.appendChild(h('div', { class: 'empty' }, '⚠ Permissions load nahi hui')); return; }

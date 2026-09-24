@@ -172,6 +172,32 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   fhost2.appendChild(win.UI2.form({ values: {}, fields: [{ key: 'costPrice', label: 'Cost price', type: 'number', family: 'cost' }] }).el);
   ok('UI2.form: allowed family ka field render hota hai (control)', /Cost price/.test(fhost2.textContent));
 
+  section('F ▸ FIELD VISIBILITY TAB (Users & Security) — live matrix + demo/backend parity');
+  /* parity: asli backend Fields.matrix vs demo-mock fields.matrix */
+  const beMxRaw = api('fields.matrix', { token: OWN });
+  const beMx = (beMxRaw && beMxRaw.ok !== undefined) ? beMxRaw.data : beMxRaw;
+  win.App.state.session = { userId: 'U1', username: 'owner', role: 'OWNER', permissions: ['*'], locationIds: [] };
+  const feMx = await win.API.call('fields.matrix', {});
+  ok('families ki parity (backend = demo, key/label/perm)',
+    JSON.stringify(beMx.families) === JSON.stringify(feMx.families),
+    JSON.stringify(beMx.families).slice(0, 60) + ' vs ' + JSON.stringify(feMx.families).slice(0, 60));
+  ok('matrix parity — OWNER sab / CASHIER cost nahi / CASHIER contact yes',
+    feMx.matrix.OWNER.cost === true && feMx.matrix.CASHIER.cost === false && feMx.matrix.CASHIER.contact === true
+    && beMx.matrix.CASHIER.cost === feMx.matrix.CASHIER.cost,
+    'BE cashier.cost=' + beMx.matrix.CASHIER.cost + ' FE=' + feMx.matrix.CASHIER.cost);
+  /* rendered DOM: users screen ▸ Field visibility tab */
+  await win.App.go('users');
+  await wait(500);
+  const segBtns = Array.from(win.document.querySelectorAll('#view .seg button'));
+  const fbtn = segBtns.find(b => /Field visibility/.test(b.textContent));
+  ok('Field visibility tab ka button render hua', !!fbtn, segBtns.map(b => b.textContent).join('|'));
+  if (fbtn) { fbtn.click(); await wait(700); }
+  const vtxt = (win.document.getElementById('view') || {}).textContent || '';
+  ok('matrix table render — teen families (cost/margin/notes) nazar',
+    /Cost price \/ lagat/.test(vtxt) && /Margin \/ profit/.test(vtxt) && /Internal notes/.test(vtxt), vtxt.slice(0, 80));
+  ok('sab role columns nazar (OWNER…OTHER)', /OWNER/.test(vtxt) && /CASHIER/.test(vtxt) && /WAREHOUSE/.test(vtxt) && /OTHER/.test(vtxt));
+  ok('bilingual note bhi render', /Fields\.wrap/.test(vtxt) && /حساس/.test(vtxt));
+
   section('E ▸ SOURCE contracts (desktop + PWA)');
   const src = f => fs.readFileSync(path.join(ROOT, 'apps-script', f), 'utf8');
   ok('App_Core mein App.field + App.FIELD_PERMS mojood', /App\.field = function/.test(src('App_Core.html')) && /App\.FIELD_PERMS/.test(src('App_Core.html')));

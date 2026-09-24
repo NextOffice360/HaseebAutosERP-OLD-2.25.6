@@ -81,9 +81,9 @@ App_/Pwa_ split) + `docs/ARCHITECTURE.md` (conventions + data flow). Saare waves
 (tbl.reload() rowActions me, Clear filters emptyAction). **Sabak:** UI2.table wrap
 return karta hai — append lazmi (DOM-probe debugging se pakra). Chrome-libs restore:
 fetch_chrome_libs ke atspi/avahi gaps manually .deb se bhare (libnspr/nss/atk/atspi/
-avahi/cairo/pango). Quota: 41.3MB effective (stale display ignore). **W4 COMPLETE (v2.30.5):** T4.1/T4.2/T4.3 ticks + T4.4 app-wide apply —
-audit ab gate (0/0/0); 10 display sites convert; PWA.fmtDT helper (settings-sync
-carry-over open). Regression: datetime 44/0 · timestamps 16/0 · pos_multi 23/0 ·
-pwa_shared 16/0 · table_states 11/0 · e2e 22/0 · modals 91/0. Quota sach
-43.4MB effective — display STALE; koi safe deletion nahi (3-zip rule).
-**Agla: W5 Vis engine (T5.1 `Vis.can()/apply()` + T5.2 sensitive registry).**
+avahi/cairo/pango). Quota: 41.3MB effective (stale display ignore). **W5 COMPLETE (v2.30.5):** T5.1–T5.5 ✔ — asli system `Fields.gs` (v2.28/2.29
+se shipped, TODO stale tha). Aaj: demo-mock parity (ROLE_PERMS field.* keys +
+fields.matrix mirror) + Users & Security me "Field visibility" live-matrix tab +
+gate F assertions → test_field_visibility **58/0 GREEN**. Audit tool me stale
+metric ka note. **Agla: W2.T2 error/retry (UI.errBox) ya T2.4 progress — phir
+W9 data-reactivity sweep (T3.5). Live GAS deploy verify user ke sath pending.**
