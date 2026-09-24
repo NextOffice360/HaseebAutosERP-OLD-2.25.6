@@ -1,9 +1,9 @@
 # 🚩 RESUME-HERE — environment reset / naye session ke baad PEHLE ye parhein
 
-**Project:** Haseeb Autos ERP & POS · **Current version:** **v2.29.0** (Utils.gs ▸ `AppConfig.VERSION`)
-**Last shipped:** 2026-09-24 · v2.29.0 = **W4 Global Date/Time System** · full suite **67 gates · ALL GREEN ✔ (1224s)** (`tmp/verify290.log`)
+**Project:** Haseeb Autos ERP & POS · **Current version:** **v2.29.1** (Utils.gs ▸ `AppConfig.VERSION`)
+**Last shipped:** 2026-09-24 · v2.29.1 = **W6.T3 Sidebar responsive matrix** (1440/1280/1024/768/390 × light+dark; taps ≥48 · text ≥10.8) + verify.sh false-green fix · full suite **67 gates · ALL GREEN ✔ (1248s)** (`tmp/verify291.log`) · gate `sidebar-states` **52/0**
 **Spec:** `APPLICATION-WIDE-SPEC.md` (1540 L · md5 `69b50b821565d1654d2e3bed82f10e9c`) — har todo se pehle parhein
-**Agla kaam:** **W6 — sidebar responsive states** (A§10: expanded → partially collapsed → mobile off-canvas), phir W9/W13 → W10 → W11/W12
+**Agla kaam:** **W7** (shared systems app-wide apply: busy/table/forms/settings) → W9/W13 → W10 → W11/W12 · **push pending:** GitHub par bhejne ke liye `PUSH-NOW.html` / `tools/connect_dashboard.py` (port 8034) dekhein
 
 ---
 
@@ -59,11 +59,16 @@ authentication chahiye (token sandbox mein nahi hota).
 # A) Agent ke sath (token sirf is command mein use hota hai, save nahi hota):
 GITHUB_TOKEN=ghp_xxx  bash tools/git_push.sh
 
-# B) Apni machine par (token apne paas rehta hai) — bundle download kar ke:
-git clone release/haseeb-autos-v2.29.0.bundle haseeb-autos && cd haseeb-autos
-git remote set-url origin https://github.com/NextOffice360/HaseebAutosERP-OLD-2.25.6.git
+# B) Apni machine par, token apne paas rakh kar — release zip download kar ke:
+unzip haseeb-autos-v2.29.0.zip -d haseeb-autos && cd haseeb-autos
+git init -b main && git add -A && git commit -m "Haseeb Autos ERP v2.29.0"
+git remote add origin https://github.com/NextOffice360/HaseebAutosERP-OLD-2.25.6.git
 git push -u origin main
 ```
+
+**Bundles:** `bash tools/git_push.sh --bundle` ek downloadable `release/haseeb-autos-vX.Y.Z.bundle`
+(poori history ke sath) bana deta hai — jab chahein. Filhal bundle working tree se hata diya gaya hai
+(workspace snapshot cap ke andar rehne ke liye); 1 second mein dobara ban jata hai.
 
 Token: GitHub ▸ Settings ▸ Developer settings ▸ Personal access tokens ▸ **repo** scope
 (fine-grained token mein: **Contents = Read and write**).
@@ -105,3 +110,29 @@ JS source mein emoji literal na rakhein · `.gs`/`<script>` patches assert-guard
 | W6 · W9/W13 · W10 · W11/W12 | aage (A§18 order) | — | — |
 
 Tafseel: `TODO-PERF-SHARED-UI.md` (chal raha kaam + shipped blocks) · `MASTER-REQUIREMENTS.md` (18+16 sections → waves)
+
+---
+
+## 7 ▸ Workspace cap (data-loss ka asli sabab)
+
+Platform turn-end snapshot **~128 MB (+ ~10,000 files)** par best-effort capped hai. 2026-09-24 par workspace
+**255 MB** ho gaya tha (12 purane zips 65 MB + 47 MB bundle + `.git` 48 MB) → isi liye files truncate hone ka khatra tha.
+
+**Kya kiya:** `release/archive/` ke 10 purane zips (v2.25.2–v2.25.11) **working tree se** hata diye —
+**zero data loss**, kyunke wo sab `.git` history (commit `9b41980`) ke andar mehfooz hain.
+Wapas laane ke liye: `git checkout HEAD -- release/archive/<filename>`. Record: `release/archive/REMOVED.txt`.
+Workspace ab **108 MB** — cap ke andar (headroom ~20 MB).
+
+Nayi cheez add karne se pehle: `bash tools/workspace_guard.sh` (aur `--prune` / `--prune-archives`).
+
+---
+
+## 8. Push help tools (2026-09-24, sandbox-side)
+
+- `tools/connect_dashboard.py` (port **8034**) — GitHub device-code worker: code generate karta hai, har 2s par poll, approve hote hi **khud `git push`** karta hai; code expire ho to naya code khud banata hai. Endpoints: `/status`, `/list`, `/upload`.
+- `tools/control_center.py` (port **8035**) — ek page = status proxy + live code + QR (`/qr.png`) + upload inbox + downloads (`/download/bundle`, `/download/zip`). 8034 se server-side proxy (CORS-free).
+- `tools/upload_inbox_server.py` (port **8033**) — standalone drag&drop upload (root + project `uploads/`).
+- `PUSH-NOW.html` — user ke liye 3-step card (code + QR + backup links).
+- Temporary mirrors (72h, litterbox): bundle `https://litter.catbox.moe/npagtq.bundle` · zip `https://litter.catbox.moe/k00n3r.zip` (regenerate: `git bundle create /tmp/x.bundle --all`).
+- **Preview proxy requires `e2b-traffic-access-token`** → sirf LIVE PREVIEW panel se reach hota hai; raw URL normal browser mein 403 deta hai. Is liye user ko plain-text URL/QR dena behtar hai.
+- Credentials: sandbox mein koi GitHub credential nahi (no gh, no token, no .netrc). Deploy key staged at `~/.ssh/haseeb_deploy` (public key user ne add ki to SSH push chal jayega).

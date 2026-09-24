@@ -38,7 +38,7 @@
 | **W3** | Dynamic data-aware UI (field→value→dependency→data→UI) | A§5–7, B§7, D | ✅ **SHIPPED v2.27.0** — `Deps` core · T1 shared item search · T2 AI Setup cascade · T3 **`Shared` accessors 12 modules** · T4 **PWA parity** (`PWA.shared` + offline contract) — gates `dyn-deps` **51/0** (SENS 20/31) + `pwa-shared` **16/0**; full suite **65/65 GREEN** |
 | **W5** | Field visibility/permissions **backend-enforced** | A§9, B§1, E | ✅ **SHIPPED v2.28.0** — `Fields.gs` (6 families · wrap/scrub · kill-switch) + `Code.gs ▸ api()` single point + `UI2.table/form` family filter + PWA parity — gate **`fields` 52/0** (rendered DOM + write-guard + cache-mutation regression); full suite **66/66 GREEN** |
 | **W4** | Global date/time/timestamp system | A§8, D | ✅ **SHIPPED v2.29.0** — `U.disp/stamp` + `DT` layer + `UI2.stampRow` + 6 naye `dt.*` settings — gate **`datetime` 44/0** (FE↔BE parity 100 combos + rendered DOM) |
-| **W6** | Sidebar responsive states (Expanded → Partially Collapsed → Off-canvas) | A§10, D, E | 🟡 v2.25.8 mein icon-only ho gaya; partial-collapse behaviour + tablet/off-canvas verify baaqi (gate `sidebar-states` 19/0 mojood) |
+| **W6** | Sidebar responsive states (Expanded → Partially Collapsed → Off-canvas) | A§10, D, E | ✅ **v2.29.1** — responsive matrix 1440/1280/1024/768/390 × light+dark: 0 overflow, taps ≥48, text ≥10.8px, laptop (1024) par collapse available; gate **`sidebar-states` 52/0** |
 | **W9** | UX polish: design-system components (loading/empty/error/retry/validation/tooltip/help/confirm/notify/table/filter/pagination/button/dropdown/modal/nav), self-descriptive field hints, **in-app official doc links** | A§11–13, B§1, B§16 | ⏳ |
 | **W10** | Full testing matrix + evidence | A§17, B§16 | ⏳ (partial gates mojood) |
 | **W8** | Naming/architecture consistency audit | A§14 | ⏳ |
@@ -122,9 +122,9 @@ Neeche har item ka **status + evidence** hai.
 | 5 | Missing configurable timestamps / time display | ✅ W4 (v2.29.0) | `datetime` gate 44/0 |
 | 6 | Missing global field/data **visibility** controls | ✅ W5 (v2.28.0) | `Fields.gs` + gate `fields` 52/0 |
 | 7 | Role/scope protection of cost price + customer info (**backend**) | ⏳ W5 | backend/API level par, CSS sirf nahi |
-| 8 | Sidebar collapse/expand incorrect | 🟡 W6 | v2.25.8 icon-only ✔; partial-collapse + persist verify baaqi (`sidebar-states` 19/0) |
-| 9 | Desktop partial-collapse = icons **only** (no text) | 🟡 W6 | gate isi par; screenshots se confirm |
-| 10 | Off-canvas sidebar proper show/hide | 🟡 W6 | controls + persistence baaqi |
+| 8 | Sidebar collapse/expand incorrect | ✅ W6 | v2.25.8 icon-only ✔ · v2.29.1 par matrix verify ✔ (gate 52/0) |
+| 9 | Desktop partial-collapse = icons **only** (no text) | ✅ W6 | gate assert (rail + hover par bhi icons-only) |
+| 10 | Off-canvas sidebar proper show/hide | ✅ W6 | ☰/scrim/Esc + persistence gate mein ✔ |
 
 ## 6.2 "Loading UX requirements" (line 635) — 9 shartein
 

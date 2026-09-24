@@ -179,7 +179,7 @@ audit: `parties.balance` / `parties.customerHistory` PWA ki **3 screens (POS/Fie
 | **W13 module wave (B§5–13)** | pending | invoice/credit logic · quick view · multi-select · conversion units · auto-reorder · AI providers · histories · salesman · dashboards |
 | W4 datetime | pending | — |
 | W5 visibility + backend | pending | — |
-| W6 sidebar rail/off-canvas | **T6.1 ✔ T6.2 ✔ T6.4 ✔** (T6.3 partial) | gate `sidebar-states` **19/0 (15s)** — rail icons-only · hover par bhi icons · persistence · Ctrl+B save · mobile drawer poore labels · scrim/Esc band · resize cycle |
+| W6 sidebar rail/off-canvas | **T6.1 ✔ T6.2 ✔ T6.3 ✔ T6.4 ✔** | gate `sidebar-states` **52/0 (37s)** — rail icons-only · hover par bhi icons · persistence · Ctrl+B save · mobile drawer poore labels · scrim/Esc band · resize cycle |
 | W7 app-wide apply | pending | — |
 | W8 verify + release | pending | — |
 
@@ -417,7 +417,7 @@ SONAME links gayab (`libatk-1.0.so.0`) aur har browser gate "Failed to launch th
 ### W6 — SIDEBAR STATE MACHINE (user ki repeat-shikayat) — target **v2.26.1**
 - [x] **T6.1 State model + persistence** ✔ — `applySb()` ek hi jagah (breakpoint + pref → class + `dataset.sbMode` + aria); pref `ha.sbCollapsed`; `matchMedia('(min-width:901px)')` change → re-apply + off-canvas band; `window.__haSetCollapsed` (Ctrl+B bhi isi se — ab SAVE hota hai). **Gate `tools/test_sidebar_states.js` 19/0.** — desktop `expanded | rail`, mobile `off-canvas open|closed`; `Store.sidebar.mode`, breakpoint memory, navigation par reset nahi. **Test:** `tools/test_sidebar_states.js`: expanded = icon+text; **rail = icons only — label `visibility/display` hidden + width ≤ 72px**; toggle cycle; reload/route change par persist; 390 → off-canvas closed; open/close/scrim/Esc; resize par conflict nahi. **~90 min**
 - [x] **T6.2 Rail polish** ✔ — rail: `.sb-logo` 34px + vertical brand (64px fit), collapse button 24px; nav par CSS tooltip (`data-tip` ::after), `title`/`data-tip` barqarar (gate mein a11y check).
-- [~] **T6.3 Responsive matrix** (partial) — `layout-desktop` · `layout-mobile` · `layout-dark` · `modals-close` green; 1440/1280/1024/768/390 sidebar checks gate mein. Baqi W8. — 1440/1280/1024/768/390 light+dark, 0 layout problems. **Test:** `bash tools/verify.sh layout` (+ sidebar checks T6.1). **~45 min**
+- [x] **T6.3 Responsive matrix** ✔ (v2.29.1) — 1440/1280/1024/768/390 × light+dark gate mein: mode sahi · **0 horizontal overflow** · taps ≥48 · text ≥10.8px. Fix: `.sb-name span` 10.5→11px · `.sb-user-meta em` 10.2→11px · `.sb-collapse` 28→48px · ⇤ ab **1024 par bhi** visible (breakpoint 1024→900) · ☰/⇤ 48×48 · topbar dense icons ka 48px HIT area · `.sb-user` min-height 48. **Gate:** `sidebar-states` **19 → 52/0** · `verify.sh layout` **5/5** (189s). Audit tool: `tools/audit_sidebar_matrix.js`. **Test:** `node tools/test_sidebar_states.js`.
 - [x] **T6.4 Off-canvas controls** ✔ — hamburger (`#sbToggle`) open · scrim · **Esc** band; desktop rail pref drawer ko shrink nahi karta (req 14); wapas desktop par pref barqarar. Gate mein 5 checks.
 
 ### W7 — APPLY SHARED SYSTEMS APP-WIDE (P3) — target **v2.26.2**

@@ -1,0 +1,684 @@
+  (chrome libs: /home/user/.chrome-libs/usr/lib/x86_64-linux-gnu)
+  (demo server 8021 pehle se chal raha hai)
+
+==============================================================
+ HASEEB AUTOS — FULL VERIFICATION
+==============================================================
+
+[1m▶ check[0m  (bash tools/check.sh)
+== Partial files: <style>/<script> leak check ==
+  ✔ 30 partials — koi CSS/JS block ke bahar nahi
+
+== Test harness: login-race lint ==
+  checked 83 tools   (RULE 1 hits: 2, RULE 2 hits: 0)
+  ✔ koi login-race pattern nahi (sab shared harness par)
+  [32m✔ gate passed: check[0m  [2m(2s)[0m
+
+[1m▶ schema[0m  (node tools/audit_schema.js)
+
+  ✔ koi masla nahi — har DB call declared columns ke andar hai
+
+==============================================================
+ PROBLEMS: 0
+==============================================================
+  [32m✔ gate passed: schema[0m  [2m(0s)[0m
+
+[1m▶ logic[0m  (node tools/test_logic.js)
+  ✔ manifest standalone hai (phone par poori app lage)
+  ✔ manifest mein icons hain (install ke liye)
+
+==============================================================
+PASS: 816   FAIL: 0
+==============================================================
+  [32m✔ gate passed: logic[0m  [2m(1s)[0m
+
+[1m▶ e2e[0m  (node tools/test_e2e.js)
+  ✔ §15: audit mein DAY_REPORT ka nishaan hai (§7)  → DAY_REPORT missing
+  ✔ koi cell [object Object] nahi (DB._cell serialization)  → serialize check
+
+══════════════════════════════════════════════════════════════════
+  §20 END-TO-END QA   PASS: 55   FAIL: 0
+══════════════════════════════════════════════════════════════════
+  [32m✔ gate passed: e2e[0m  [2m(0s)[0m
+
+[1m▶ routes[0m  (node tools/test_routes.js)
+  ✔ logo mein sirf image allow (text reject)
+  ✔ logo upload audit trail mein darj hota hai  → LOGO logged
+
+══════════════════════════════════════════════════════════════════
+  UNTESTED-ROUTE SWEEP   PASS: 62   FAIL: 0
+══════════════════════════════════════════════════════════════════
+  [32m✔ gate passed: routes[0m  [2m(0s)[0m
+
+[1m▶ route-audit[0m  (node tools/route_audit.js)
+     · warehouse.lot.receive
+     · warehouse.lots
+     · warehouse.save
+
+══════════════════════════════════════════════════════════════════
+  ✔ koi crash / missing route nahi
+  [32m✔ gate passed: route-audit[0m  [2m(0s)[0m
+
+[1m▶ settings-ui[0m  (node tools/test_settings_ui.js)
+  ✔ AI assistant: 24 fields 4 sections me bate hain  → 4+6+6+8 = 24
+  ✔ Settings ke group tabs maujood hain  → 14 groups
+
+══════════════════════════════════════════════════════════════════
+  SETTINGS RENDER   PASS: 16   FAIL: 0
+══════════════════════════════════════════════════════════════════
+  [32m✔ gate passed: settings-ui[0m  [2m(8s)[0m
+
+[1m▶ settings-defs[0m  (node tools/audit_settings_defs.js)
+  ✔ ④ Config.defs() `sec` ko aage pass karta hai (AI sub: 24/24)  → 24/24 fields ke sath sec
+  ✔ ⑤ koi sub-tab do baar define nahi hua  → 41 sub-tabs yakht
+
+══════════════════════════════════════════════════════════════════
+  SETTINGS SCHEMA   PASS: 6   FAIL: 0
+══════════════════════════════════════════════════════════════════
+  [32m✔ gate passed: settings-defs[0m  [2m(0s)[0m
+
+[1m▶ ui-polish[0m  (node tools/test_ui_polish.js)
+  ✔ UI2.confirm — Yes = true, Cancel = false (awaited guards sach mein rukte hain)  → {"yes":true,"no":false}
+  ✔ UI2.copyText — clipboard block hone par native prompt NAHI, selectable box  → {"box":true,"readonly":true,"val":"https://example.com/app"}
+
+══════════════════════════════════════════════════════════════════
+  UI POLISH (rendered)   PASS: 63   FAIL: 0
+══════════════════════════════════════════════════════════════════
+  [32m✔ gate passed: ui-polish[0m  [2m(137s)[0m
+
+[1m▶ typography[0m  (node tools/audit_typography.js 1440 900)
+══════════════════════════════════════════════════════════════════════
+
+══════════════════════════════════════════════════════════════════════
+  TOTAL PROBLEMS: 0
+  page errors: none
+══════════════════════════════════════════════════════════════════════
+  [32m✔ gate passed: typography[0m  [2m(39s)[0m
+
+[1m▶ charts-edge[0m  (node tools/test_charts_edge.js 1440 900)
+  ✔ progress · long label                   → 0 svg
+  ✔ kpiRing · 100%                          → 1 svg
+
+══════════════════════════════════════════════════════════════════
+  CHART EDGE-CASES   PASS: 21   FAIL: 0   (problems: 0)
+══════════════════════════════════════════════════════════════════
+  [32m✔ gate passed: charts-edge[0m  [2m(6s)[0m
+
+[1m▶ backend-perf[0m  (node tools/test_backend_perf.js)
+  ✔ DB.ss() memoized hai (openById bar bar nahi)  → spreadsheetId() + resetConnection() maujood
+  ✔ DB.ss() wahi object deta hai (1 openById per execution)  → same spreadsheet ✔
+
+══════════════════════════════════════════════════════════════════
+  BACKEND PERF   PASS: 10   FAIL: 0
+══════════════════════════════════════════════════════════════════
+  [32m✔ gate passed: backend-perf[0m  [2m(0s)[0m
+
+[1m▶ settings-perf[0m  (node tools/test_settings_perf.js)
+PASS successful range audit retained after later failure
+PASS performance diagnostic returns five bounded-scope checks
+PASS diagnostic does not rely on expensive or credential paths
+PASS beginner diagnostic RETURNS and logs same report
+PASS diagnostic timings are nonnegative measurements
+SETTINGS PERFORMANCE: 28 PASS, 0 FAIL
+  [32m✔ gate passed: settings-perf[0m  [2m(0s)[0m
+
+[1m▶ seed-recovery[0m  (node tools/test_seed_recovery.js)
+PASS repeat resumes from actual missing data and completes
+PASS concurrent recovery returns busy without releasing another lock
+PASS diagnostic reads physical sheets, returns AND logs report
+PASS schema auditor does not scan beyond variable/mapped batch argument
+PASS schema auditor still rejects real unknown literal fields
+SEED RECOVERY: 35 PASS, 0 FAIL
+  [32m✔ gate passed: seed-recovery[0m  [2m(0s)[0m
+
+[1m▶ report-dates[0m  (node tools/test_report_dates.js)
+PASS malformed legacy dates are labeled without breaking report
+PASS report routes still reject anonymous callers
+PASS deployment manifest matches public login page requirement
+PASS manifest declares scope required by native DriveApp exports
+PASS read-only Drive authorization helper returns and logs
+REPORT DATES: 29 PASS, 0 FAIL
+  [32m✔ gate passed: report-dates[0m  [2m(0s)[0m
+
+[1m▶ report-actions[0m  (node tools/test_report_actions.js)
+PASS PDF navigates reserved tab to returned Drive file
+PASS CSV button delivers data and filename
+PASS blocked popup gives visible advice without a server request
+PASS server failure closes placeholder and displays error
+PASS missing PDF URL is not falsely reported as success
+REPORT ACTIONS: 12 PASS, 0 FAIL
+  [32m✔ gate passed: report-actions[0m  [2m(1s)[0m
+
+[1m▶ cache-warm[0m  (node tools/test_cache_warm.js)
+PASS warm job defaults on with a 7..22 Karachi window (64 runs/day, under 90)
+PASS release is current (>=2.14)
+
+══════════════════════════════════════════════════════════════════
+  CACHE WARM   PASS: 17   FAIL: 0
+══════════════════════════════════════════════════════════════════
+  [32m✔ gate passed: cache-warm[0m  [2m(0s)[0m
+
+[1m▶ qr-thermal[0m  (node tools/test_scanner_thermal.js)
+PASS result closes the popup and detaches the listener (old nonce replay dead)
+PASS no scanner URL + in-app disabled still shows manual path (never a dead end)
+
+══════════════════════════════════════════════════════════════════
+  SCANNER+THERMAL   PASS: 26   FAIL: 0
+══════════════════════════════════════════════════════════════════
+  [32m✔ gate passed: qr-thermal[0m  [2m(1s)[0m
+
+[1m▶ pos-multi[0m  (node tools/test_pos_multi.js)
+PASS demo render: without liveUrl bulk degrades to in-app modal; Close ends cleanly
+PASS demo render: zero console/jsdom errors across the whole flow
+
+══════════════════════════════════════════════════════════════════
+  POS MULTI-ADD + BULK   PASS: 23   FAIL: 0
+══════════════════════════════════════════════════════════════════
+  [32m✔ gate passed: pos-multi[0m  [2m(5s)[0m
+
+[1m▶ raw-writes[0m  (node tools/test_raw_writes.js)
+  [32m✔[0m   ↳ Setup.gs:142 mehfooz  [2m→ DB.touch() maujood[0m
+  [32m✔[0m   ↳ Setup.gs:153 mehfooz  [2m→ DB.touch() maujood[0m
+
+════════════════════════════════════════════════════════════════
+  RAW WRITE GUARD   PASS: 9   FAIL: 0
+════════════════════════════════════════════════════════════════
+  [32m✔ gate passed: raw-writes[0m  [2m(0s)[0m
+
+[1m▶ metatags[0m  (node tools/test_metatags.js)
+  [32m✔[0m (D) demo mein koi <?= … ?> literal nahi bacha
+  [32m✔[0m (D) demo mein client-side meta upsert maujood hai
+
+══════════════════════════════════════════════════════════════
+  META TAG GUARD   PASS: 24   FAIL: 0
+══════════════════════════════════════════════════════════════
+  [32m✔ gate passed: metatags[0m  [2m(0s)[0m
+
+[1m▶ diagnose[0m  (node tools/test_diagnose.js)
+  ✔ doGet() ALLOWALL set karta hai
+  ✔ Pwa_Shell ke html,body rule mein 100vh/100dvh guard hai  → warna teenon PWA mobile par safaid page dikhati hain
+
+══════════════════════════════════════════════════════════════
+  DEPLOY DIAGNOSTICS   PASS: 19   FAIL: 0
+══════════════════════════════════════════════════════════════
+  [32m✔ gate passed: diagnose[0m  [2m(0s)[0m
+
+[1m▶ ai[0m  (node tools/test_ai.js)
+  [32m✔[0m 16 · missing provider key never reports mock success
+  [32m✔[0m 16 · deleting one key preserves others
+
+══════════════════════════════════════════════════════════════
+  AI ADAPTERS   PASS: 75   FAIL: 0
+══════════════════════════════════════════════════════════════
+  [32m✔ gate passed: ai[0m  [2m(0s)[0m
+
+[1m▶ ai-hub[0m  (node tools/test_ai_hub.js)
+PASS Editing fallback profile does not change primary
+PASS Manual per-provider model and endpoint save independently
+PASS Write capability remains default OFF
+PASS Provider prefix detection is deterministic
+PASS Errors redact exact active key
+AI HUB: 35 PASS, 0 FAIL
+  [32m✔ gate passed: ai-hub[0m  [2m(0s)[0m
+
+[1m▶ ai-load-order[0m  (node tools/test_ai_load_order.js)
+PASS AI_Adapters → AI_ProviderHub → AI: setupAll reaches completion
+PASS AI_Adapters → AI_ProviderHub → AI: exact-provider wrapper operational
+PASS AI_Adapters → AI_ProviderHub → AI: test metadata saved once into profile
+PASS AI_Adapters → AI_ProviderHub → AI: chat operates with routing metadata
+PASS Hub alone defers safely instead of inventing an empty AI object
+AI LOAD ORDER: 49 PASS, 0 FAIL
+  [32m✔ gate passed: ai-load-order[0m  [2m(0s)[0m
+
+[1m▶ session[0m  (node tools/test_session.js)
+  ✔ ghalat signature reject hua
+  ✔ logout ke baad token REVOKED (signed hone ke bawajood)
+
+══════════════════════════════════════════════════════════════
+  SESSION PERSISTENCE   PASS: 10   FAIL: 0
+══════════════════════════════════════════════════════════════
+  [32m✔ gate passed: session[0m  [2m(0s)[0m
+
+[1m▶ cache[0m  (node tools/test_cache.js)
+  [32m✔[0m 6 · Users cache round-trip theek  [2m→ 9 rows[0m
+  [32m✔[0m 7 · Stock sheet cache mein gaya  [2m→ 1266 rows, 223 KB, 3 tukre[0m
+
+══════════════════════════════════════════════════════════════
+  CHUNKED SHEET CACHE   PASS: 21   FAIL: 0
+══════════════════════════════════════════════════════════════
+  [32m✔ gate passed: cache[0m  [2m(0s)[0m
+
+[1m▶ scale[0m  (node tools/test_scale.js)
+  ✔ 5000: koi API failure nahi  → clean
+
+══════════════════════════════════════════════════════════════════
+  §16 SCALE TEST   PASS: 15   FAIL: 0
+  page errors: none
+══════════════════════════════════════════════════════════════════
+  [32m✔ gate passed: scale[0m  [2m(24s)[0m
+
+[1m▶ icons[0m  (node tools/audit_icons.js)
+  ✔ ③ har icon aik hi codepoint ka hai  → 560 icons saf
+  ✔ ④ har nav item ka icon hai (koi "⚙business" jaisa nahi)  → 21 items, 0 bina icon
+
+══════════════════════════════════════════════════════════════════
+  ICONS   PASS: 5   FAIL: 0
+══════════════════════════════════════════════════════════════════
+  [32m✔ gate passed: icons[0m  [2m(0s)[0m
+
+[1m▶ static[0m  (node tools/test_static.js)
+  ✔ App boot hua (UI.toast ya App.state)  → App ok
+  ✔ app boot par JSONP call karta hai (backend se baat ho rahi hai)  → 2 call(s)
+  ✔ har JSONP URL sahi shape ka hai (?t=jsonp&cb=&a=&p=)  → https://script.google.com/macros/s/AKfycb_DEMO_TEST_EXAMPLE/exec?t=jsonp&cb=hacb_aotex0abdf9&a=system.loginCon
+  ✔ API.jsonp() se banaya gaya URL bhi maujood hai  → https://script.google.com/macros/s/AKfycb_DEMO_TEST_EXAMPLE/exec?t=jsonp&cb=hacb_v8fdh1f23k&a=items.list&p=%7B
+
+  STATIC BUILD RENDER (dist-static): PASS 8  FAIL 0
+  [32m✔ gate passed: static[0m  [2m(3s)[0m
+
+[1m▶ pwa[0m  (node tools/check_pwa.js)
+== Mobile ergonomics ==
+  ✔ tap targets: inputs/buttons >=48px, bottom bar >=56px
+  ✔ inputs 16px — iOS auto-zoom nahi hoga
+  ✔ safe-area insets (notch wale phones)
+
+  ✔ PWA checks: sab theek
+  [32m✔ gate passed: pwa[0m  [2m(0s)[0m
+
+[1m▶ pwa-ui[0m  (bash tools/run_pwa_ui.sh)
+  ✔ Offline: queue count barh gaya  → count=1
+  ✔ Offline: net badge "Offline" dikhata hai  → ⌛ 1 queued
+
+══════════════════════════════════════════════════════════════════
+  PASS: 66   FAIL: 0
+══════════════════════════════════════════════════════════════════
+  [32m✔ gate passed: pwa-ui[0m  [2m(11s)[0m
+
+[1m▶ ui[0m  (node tools/ui_audit.js)
+
+-- label/title problems (0) --
+
+-- empty/undefined content (0) --
+
+-- jsdom errors (0) --
+  [32m✔ gate passed: ui[0m  [2m(23s)[0m
+
+[1m▶ smoke[0m  (node tools/smoke.js)
+  ✔ parties click → Customers
+  ✔ parties click → Suppliers
+
+==============================================================
+CHECKS: 332   FAILED: 0
+==============================================================
+  [32m✔ gate passed: smoke[0m  [2m(128s)[0m
+
+[1m▶ tabs[0m  (node tools/audit_tabs.js)
+
+[1mDASHBOARD CHARTS[0m
+
+==============================================================
+AUDIT CHECKS: 656   FAILED: 0
+==============================================================
+  [32m✔ gate passed: tabs[0m  [2m(81s)[0m
+
+[1m▶ align[0m  (node tools/audit_align.js)
+[1mSTATIC CSS RULES[0m
+
+==============================================================
+ALIGNMENT CHECKS: 35   FAILED: 0
+==============================================================
+  [32m✔ gate passed: align[0m  [2m(14s)[0m
+
+[1m▶ punch[0m  (node tools/verify_punchlist.js)
+  ✅ 16. 🔐 Users & Security — allow / disallow rules (checkboxes)  [6/6]
+
+==============================================================
+ REQUIREMENTS: 16/16   CHECKS: 117/117   FAILED: 0
+ Report: release/punchlist-report.html
+==============================================================
+  [32m✔ gate passed: punch[0m  [2m(52s)[0m
+
+[1m▶ scan-coverage[0m  (node tools/audit_scan_coverage.js)
+  ✔ PWA Warehouse — hardware scan → item pick + field clear  → {"v":"","detached":true,"has":true,"toast":"📷 FL00000 — FLAMINGO DASHBOARD POLISH 450ML"}
+
+═══════════════════════════════════════════════════════════
+  SCAN COVERAGE   PASS: 21   FAIL: 0   SKIP: 0
+  Report: release/scan-coverage-report.html
+═══════════════════════════════════════════════════════════
+  [32m✔ gate passed: scan-coverage[0m  [2m(83s)[0m
+
+[1m▶ api-instrument[0m  (node tools/test_api_instrument.js)
+✔ fail path count hoti hai (unknown action → 1 fail)
+✔ zero page errors
+
+═══════════════════════════════════════════════════════════
+  API INSTRUMENT   PASS: 14   FAIL: 0
+═══════════════════════════════════════════════════════════
+  [32m✔ gate passed: api-instrument[0m  [2m(3s)[0m
+
+[1m▶ sidebar-states[0m  (node tools/test_sidebar_states.js)
+✔ T6.3 rail@1024: icons-only + 0 overflow + tap ≥48
+✔ zero page errors
+
+═══════════════════════════════════════════════════════════
+  SIDEBAR STATES   PASS: 52   FAIL: 0
+═══════════════════════════════════════════════════════════
+  [32m✔ gate passed: sidebar-states[0m  [2m(37s)[0m
+
+[1m▶ api-core[0m  (node tools/test_api_core.js)
+✔ API.parallel: sach mein parallel chala (inflight ≥ 2)
+✔ zero page errors
+
+═══════════════════════════════════════════════════════════
+  API CORE (assert)   PASS: 16   FAIL: 0
+═══════════════════════════════════════════════════════════
+  [32m✔ gate passed: api-core[0m  [2m(6s)[0m
+
+[1m▶ session-guard[0m  (node tools/test_session_guard.js)
+  ✔ shop dialog se page-error nahi aaya
+  ✔ account menu null session par khula  → Account✕U—— · 🔑 Change password⚙ SettingsLogoutClose
+  ✔ account menu mein undefined leak nahi
+  ✔ account menu se page-error nahi aaya
+
+SESSION GUARD  →  PASS: 15   FAIL: 0
+  [32m✔ gate passed: session-guard[0m  [2m(5s)[0m
+
+[1m▶ ui-run[0m  (node tools/test_ui_run.js)
+  ✔ ⑩ GRN post par shared busyLabel lagi hui hai
+  ✔ ⑩ PO save ka manual "Saving…" hack gaya
+  ✔ ⑩ Settings save manual hack gaya (UI.run par)
+  ✔ ⑩ is run mein zero page errors
+
+UI.RUN   →  PASS: 34   FAIL: 0
+  [32m✔ gate passed: ui-run[0m  [2m(9s)[0m
+
+[1m▶ ui-err[0m  (node tools/test_ui_err.js)
+  ✔ ⑥ POS pay write flag ke sath (double-sale warning)
+  ✔ ⑦ shared policy mojood (errKind + errBox + fail + write warning)
+  ✔ ⑦ toast err path classified ho raha hai
+  ✔ ⑦ is run mein zero page errors
+
+UI.ERR   →  PASS: 30   FAIL: 0
+  [32m✔ gate passed: ui-err[0m  [2m(5s)[0m
+
+[1m▶ perf-batch[0m  (node tools/test_perf_batch.js)
+  ✔ ④ backend: approveExpenseBatch ek hi DB.updateMany karta hai
+  ✔ ⑤ perf audit: frontend GENUINE N+1 = 0
+  ✔ ⑤ perf audit: backend per-row writes = 0
+  ✔ ⑥ zero page errors
+
+[32mW7 GATE: 34 pass / 0 fail[0m
+  [32m✔ gate passed: perf-batch[0m  [2m(6s)[0m
+
+[1m▶ dyn-deps[0m  (node tools/test_dyn_deps.js)
+  ✔ ⑤ Deps ke contract keys maujood (define/load/shared/bindSelect/when/wire/refresh/hardRefresh)
+  ✔ ⑤ kill-switch maujood (tests/SENS ke liye)
+  ✔ ⑤ HTML bundle mein Deps aya (demo build)
+  ✔ ⑥ zero page errors
+
+[32mW3 DYN-DEPS GATE: 51 pass / 0 fail[0m
+  [32m✔ gate passed: dyn-deps[0m  [2m(10s)[0m
+
+[1m▶ layout-desktop[0m  (node tools/audit_layout.js 1440 900)
+
+✔ AI  (0 problems)
+
+==============================================================
+ PROBLEMS: 0
+==============================================================
+  [32m✔ gate passed: layout-desktop[0m  [2m(26s)[0m
+
+[1m▶ layout-mobile[0m  (node tools/audit_layout.js 390 844)
+
+✔ AI  (0 problems)
+
+==============================================================
+ PROBLEMS: 0
+==============================================================
+  [32m✔ gate passed: layout-mobile[0m  [2m(26s)[0m
+
+[1m▶ layout-dark[0m  (node tools/audit_layout.js 1440 900 --dark)
+
+✔ AI  (0 problems)
+
+==============================================================
+ PROBLEMS: 0
+==============================================================
+  [32m✔ gate passed: layout-dark[0m  [2m(26s)[0m
+
+[1m▶ layout-overlays[0m  (node tools/audit_layout.js 1440 900 --overlays)
+
+✔ GRN DRAWER  (0 problems)
+
+==============================================================
+ PROBLEMS: 0
+==============================================================
+  [32m✔ gate passed: layout-overlays[0m  [2m(55s)[0m
+
+[1m▶ layout-overlays-m[0m  (node tools/audit_layout.js 390 844 --overlays)
+
+✔ GRN DRAWER  (0 problems)
+
+==============================================================
+ PROBLEMS: 0
+==============================================================
+  [32m✔ gate passed: layout-overlays-m[0m  [2m(55s)[0m
+
+[1m▶ pwa-layout[0m  (node tools/audit_layout.js 390 844 --pwa)
+
+✔ SALESMAN PWA ▸ Settle  (0 problems)
+
+==============================================================
+ PROBLEMS: 0
+==============================================================
+  [32m✔ gate passed: pwa-layout[0m  [2m(15s)[0m
+
+[1m▶ pwa-layout-dark[0m  (node tools/audit_layout.js 390 844 --pwa --dark)
+
+✔ SALESMAN PWA ▸ Settle  (0 problems)
+
+==============================================================
+ PROBLEMS: 0
+==============================================================
+  [32m✔ gate passed: pwa-layout-dark[0m  [2m(15s)[0m
+
+[1m▶ ai-ui[0m  (node tools/test_ai_ui.js)
+  [32m✔[0m Credentials blocked from JSONP URLs and persistent offline queue
+  [32m✔[0m Zero page/console errors poore flow mein
+
+==============================================================
+  AI AGENT UI (rendered)   PASS: 55   FAIL: 0
+==============================================================
+  [32m✔ gate passed: ai-ui[0m  [2m(20s)[0m
+
+[1m▶ auth-startup[0m  (node tools/test_auth_startup.js)
+PASS late old-session response cannot log out a new session
+PASS current-session expiration still triggers logout
+PASS logout clears personalized language and supplier cache
+PASS after logout no protected background loads resume
+PASS no uncaught browser errors
+AUTH STARTUP: 21 PASS, 0 FAIL
+  [32m✔ gate passed: auth-startup[0m  [2m(3s)[0m
+
+[1m▶ labels-live[0m  (node tools/test_labels_live.js)
+  ✔ raster cases: koi element frame se bahar nahi (bars + QR dono, 0 overflow)  → ["short-50x30:0/0","ean13-50x30:0/0","ean13+qr-50x30:0/0","price-40x25:0/0","long18-60x40:0/0","wh+qr-70x50:0/0","compact-30x20:0/0","price-50x25-ean13:0/0","inv-60x40-ean13:0/0","tiny-25x15-short:0/0","tiny-25x15-long:0/0"]
+  ✔ designer run mein zero page errors  → []
+
+═══════════════════════════════════════════════════════════
+  LABELS (live preview)   PASS: 30   FAIL: 0
+═══════════════════════════════════════════════════════════
+  [32m✔ gate passed: labels-live[0m  [2m(32s)[0m
+
+[1m▶ grn-drawer[0m  (node tools/test_grn_drawer.js)
+  ✔ F9 = Post GRN → success + drawer band  → {"toasts":"GRN posted — stock update ho gaya","drawerGone":true}
+  ✔ is run mein zero page errors  → []
+
+═══════════════════════════════════════════════════════════
+  GRN DRAWER   PASS: 23   FAIL: 0
+═══════════════════════════════════════════════════════════
+  [32m✔ gate passed: grn-drawer[0m  [2m(24s)[0m
+
+[1m▶ demands[0m  (node tools/test_demand.js)
+  ✔ walk-in customer save — naya customer + catalog item pick kar ke demand save ho jati hai (list +1)  → {"before":6,"after":7,"icode":"FL00000","cname":"","toast":"Naya customer ban gaya: Walk-in Test 471 | Demand save ho gayi ✅","confirms":"","closed":true}
+  ✔ is run mein zero page errors  → []
+
+═══════════════════════════════════════════════════════════
+  DEMANDS   PASS: 13   FAIL: 0
+═══════════════════════════════════════════════════════════
+  [32m✔ gate passed: demands[0m  [2m(33s)[0m
+
+[1m▶ salesman-stock[0m  (node tools/test_salesman_stock.js)
+  ✔ aathon Salesman tabs render hote hain (rows ya saaf empty-state, koi blank/broken tab nahi)  → {"missing":[],"broken":[],"noState":[],"perTab":["Stock Is=1","Current =4","Tours / =empty","Cust / A=empty","Sales / =empty","Returns=empty","Ledger=empty","Performa=empty"]}
+  ✔ is run mein zero page errors  → []
+
+═══════════════════════════════════════════════════════════
+  SALESMAN STOCK   PASS: 10   FAIL: 0
+═══════════════════════════════════════════════════════════
+  [32m✔ gate passed: salesman-stock[0m  [2m(30s)[0m
+
+[1m▶ scan-parity[0m  (node tools/test_scan_parity.js)
+  ✔ footer mein commit + Cancel — teenon mein (POS: Cancel/Add Selected to Cart · PO: Save PO/Cancel · GRN: Post GRN (F9)/Cancel)
+  ✔ is run mein zero page errors
+
+═══════════════════════════════════════════════════════════
+  SCAN PARITY (PO/GRN = POS)   PASS: 29   FAIL: 0
+═══════════════════════════════════════════════════════════
+  [32m✔ gate passed: scan-parity[0m  [2m(28s)[0m
+
+[1m▶ pay-ledger[0m  (node tools/test_pay_ledger.js)
+  ✔ G8c Pwa_POS posTopLayer: stale (invisible-open) layer ko skip karta hai
+  ✔ G8d Pwa_POS: teeno layers ke open/close par sweepStale (10 call-sites)
+
+═══════════════════════════════════════════════════════════
+  PAY LEDGER   PASS: 48   FAIL: 0
+═══════════════════════════════════════════════════════════
+  [32m✔ gate passed: pay-ledger[0m  [2m(50s)[0m
+
+[1m▶ fields[0m  (node tools/test_field_visibility.js)
+  ✔ fields.matrix route chalti hai (Users & Security tab ke liye)
+  ✔ permission catalog mein 6 field.* keys
+  ✔ naya group "fields" groups list mein
+  ✔ har field family ka apna permission key (spec: role → field)
+
+[32mW5 FIELD-VISIBILITY GATE: 52 pass / 0 fail[0m
+  [32m✔ gate passed: fields[0m  [2m(2s)[0m
+
+[1m▶ datetime[0m  (node tools/test_datetime.js)
+  ✔ stampRow App_UI2 mein define + 3 detail views mein adopt
+
+[1mF ▸ page errors[0m
+  ✔ zero page errors
+
+[32mW4 DATE/TIME GATE: 44 pass / 0 fail[0m
+  [32m✔ gate passed: datetime[0m  [2m(2s)[0m
+
+[1m▶ pwa-shared[0m  (node tools/test_pwa_shared.js)
+  ✔ ⑥ pwa-fo.html boot + PWA.shared aa gaya  → []
+  ✔ ① zero page errors (poore run mein)  → []
+
+═══════════════════════════════════════════════════════════
+  PWA SHARED CACHE   PASS: 16   FAIL: 0
+═══════════════════════════════════════════════════════════
+  [32m✔ gate passed: pwa-shared[0m  [2m(11s)[0m
+
+[1m▶ pwa-overlays[0m  (node tools/test_pwa_overlays_close.js)
+  ✔ pwa-wh.html ▸ Bulk Add modal → Scrim se band hua
+  ✔ pwa-wh.html — zero page errors
+
+═══════════════════════════════════════════════════════════
+  PWA OVERLAYS CLOSE   PASS: 124   FAIL: 0
+═══════════════════════════════════════════════════════════
+  [32m✔ gate passed: pwa-overlays[0m  [2m(66s)[0m
+
+[1m▶ modals-close[0m  (node tools/test_modals_close.js)
+✔ stale entry (bina close hataya gaya scrim) Esc ko block nahi karti — visible modal band hua
+✔ regression setup: modal khula + DOM mein invisible .gs-results/.img-lightbox mojood
+✔ invisible/stale node hone par bhi Esc modal band karta hai (root-cause fix)
+✔ close-sweep: zero page errors
+
+MODALS-CLOSE PASS 91 / FAIL 0
+  [32m✔ gate passed: modals-close[0m  [2m(23s)[0m
+
+[1m▶ timeouts[0m  (node tools/test_timeouts.js)
+PASS no automatic write retry
+PASS spinner/pending counter cleaned once despite late handlers
+PASS synchronous transport exception also cleans busy state
+PASS AI client timeout aligned above server budget, not old 25 seconds
+PASS rendered page no uncaught errors
+TIMEOUT + AMOUNTS: 32 PASS, 0 FAIL
+  [32m✔ gate passed: timeouts[0m  [2m(1s)[0m
+
+--- waqt (sab se dheema pehle) -----------------------------------------
+    137s  ui-polish
+    128s  smoke
+     83s  scan-coverage
+     81s  tabs
+     66s  pwa-overlays
+     55s  layout-overlays-m
+     55s  layout-overlays
+     52s  punch
+     50s  pay-ledger
+     39s  typography
+     37s  sidebar-states
+     33s  demands
+     32s  labels-live
+     30s  salesman-stock
+     28s  scan-parity
+     26s  layout-dark
+     26s  layout-mobile
+     26s  layout-desktop
+     24s  scale
+     24s  grn-drawer
+     23s  modals-close
+     23s  ui
+     20s  ai-ui
+     15s  pwa-layout-dark
+     15s  pwa-layout
+     14s  align
+     11s  pwa-shared
+     11s  pwa-ui
+     10s  dyn-deps
+      9s  ui-run
+      8s  settings-ui
+      6s  api-core
+      6s  charts-edge
+      6s  perf-batch
+      5s  ui-err
+      5s  session-guard
+      5s  pos-multi
+      3s  auth-startup
+      3s  api-instrument
+      3s  static
+      2s  check
+      2s  datetime
+      2s  fields
+      1s  logic
+      1s  report-actions
+      1s  timeouts
+      1s  qr-thermal
+      0s  routes
+      0s  pwa
+      0s  e2e
+      0s  ai-load-order
+      0s  seed-recovery
+      0s  route-audit
+      0s  cache
+      0s  ai
+      0s  settings-perf
+      0s  ai-hub
+      0s  report-dates
+      0s  metatags
+      0s  backend-perf
+      0s  diagnose
+      0s  cache-warm
+      0s  settings-defs
+      0s  session
+      0s  icons
+      0s  raw-writes
+      0s  schema
+  ----------------------------------------------------------------------
+   1248s  KUL (67 gate)
+  (ye waqt isi machine ke hain; --fast set isi tarah tune kiya gaya tha)
+
+==============================================================
+ ALL GATES GREEN ✔  (67 gate: full suite)
+==============================================================

@@ -232,15 +232,20 @@ fi
 keep() {
   [ ${#WANT[@]} -eq 0 ] && return 0
   local w
-  for w in "${WANT[@]}"; do [ "$w" = "$1" ] && return 0; done
+  for w in "${WANT[@]}"; do
+    [ "$w" = "$1" ] && return 0
+    case "$1" in "$w"*) return 0 ;; esac   # prefix: 'layout' → layout-desktop, layout-mobile, …
+  done
   return 1
 }
 
 TIMES=()          # "milliseconds name" — akhir mein sab se dheeme gates dikhayenge
 TOTAL_MS=0
+RAN=0             # kitne gates ASAL mein chale (false-green rok)
 for g in "${GATES[@]}"; do
   name="${g%%:*}"; cmd="${g#*:}"
   keep "$name" || continue
+  RAN=$((RAN + 1))
   printf "\n\033[1m▶ %s\033[0m  (%s)\n" "$name" "$cmd"
   t0=$(date +%s%N)
   out=$(eval "$cmd" 2>&1)
@@ -273,12 +278,18 @@ fi
 
 echo ""
 echo "=============================================================="
+if [ "$RAN" -eq 0 ]; then
+  printf " \033[31m✖ 0 gates match: %s\033[0m\n" "${WANT[*]}"
+  echo "   available: bash tools/verify.sh --list"
+  echo "=============================================================="
+  exit 2
+fi
 if [ -n "$FAILED" ]; then
   echo " GATE FAILED:$FAILED"
   echo "=============================================================="
   exit 1
 fi
-echo " ALL GATES GREEN ✔  (check · logic · ui · smoke · tabs · align · punch · layout)"
+echo " ALL GATES GREEN ✔  (${RAN} gate: ${WANT[*]:-full suite})"
 echo "=============================================================="
 if [ "${DEMO_STARTED:-0}" = "1" ] && [ -n "${DEMO_PID:-}" ]; then
   kill "$DEMO_PID" 2>/dev/null

@@ -156,6 +156,97 @@ const hoverRail = async (page, p) => {
   ok(p.sbW >= 240 && p.label && p.label.rects >= 1 && p.scrimHidden === true,
     'resize cycle (desktop→tablet→desktop): expanded wapas sahih, scrim hidden', JSON.stringify({ sbW: p.sbW, scrim: p.scrimHidden }));
 
+  /* ======================================================================
+     W6.T3 — RESPONSIVE MATRIX (1440 / 1280 / 1024 / 768 / 390 × light+dark)
+     Har combo par: sahi mode · 0 horizontal overflow · tap targets ≥48px ·
+     sidebar text ≥10.8px · ☰/⇤ control sirf apne range mein + 48px.
+     ====================================================================== */
+  const MATRIX_W = [1440, 1280, 1024, 768, 390];
+  const MATRIX_T = ['light', 'dark'];
+  const MX = () => {
+    const de = document.documentElement, shell = document.getElementById('shell');
+    const sb = document.getElementById('sidebar');
+    const vis = el => !!(el && el.getClientRects && el.getClientRects().length);
+    const box = sel => { const e = document.querySelector(sel); if (!vis(e)) return null;
+      const q = e.getBoundingClientRect(); return { h: Math.round(q.height), w: Math.round(q.width) }; };
+    const vw = de.clientWidth;
+    const over = Math.max(0, de.scrollWidth - vw);
+    let minFont = 999;
+    sb.querySelectorAll('*').forEach(el => {
+      if (!el.getClientRects || !el.getClientRects().length) return;
+      if (!el.textContent || !el.textContent.trim()) return;
+      if (el.children.length && el.children.length > 2) return;
+      const fs = parseFloat(getComputedStyle(el).fontSize || '0');
+      if (fs > 0 && fs < minFont) minFont = fs;
+    });
+    const after = (() => { const t = document.querySelector('.top-actions .icon-btn');
+      if (!vis(t)) return 0; const a = getComputedStyle(t, '::after');
+      return Math.round(parseFloat(a.width || '0')); })();
+    return { mode: shell ? shell.dataset.sbMode : '', over, vw, minFont: Math.round(minFont * 10) / 10,
+      navItem: box('.nav-item'), user: box('.sb-user'),
+      toggle: box('#sbToggle'), rail: box('#sbRail'), after48: after };
+  };
+  const mpage = async (w, theme) => {
+    const pg = await browser.newPage();
+    pg.on('pageerror', e => errs.push(`[${w}/${theme}] ${String(e.message).slice(0, 90)}`));
+    await pg.setViewport({ width: w, height: 900 });
+    await pg.goto(TARGET, { waitUntil: 'networkidle2', timeout: 45000 });
+    if (await pg.$('#lgUser')) {
+      await pg.click('#lgUser'); await pg.type('#lgUser', 'owner');
+      await pg.click('#lgPass'); await pg.type('#lgPass', 'admin123');
+      await pg.keyboard.press('Enter');
+    }
+    await pg.waitForFunction(() => window.App && App.state && App.state.session, { timeout: 20000 });
+    await pg.evaluate(t => document.documentElement.setAttribute('data-theme', t), theme);
+    await sleep(700);
+    const m = await pg.evaluate(MX);
+    await pg.close();
+    return m;
+  };
+
+  for (const w of MATRIX_W) {
+    for (const th of MATRIX_T) {
+      const m = await mpage(w, th);
+      const want = w >= 901 ? 'expanded' : 'offcanvas';
+      ok(m.mode === want && m.over === 0,
+        `T6.3 ${w}/${th}: mode=${want} + 0 horizontal overflow`,
+        JSON.stringify({ mode: m.mode, want, over: m.over }));
+      const tapOk = m.navItem && m.navItem.h >= 48 && m.user && m.user.h >= 48;
+      const ctrl = w >= 901
+        ? (m.rail && m.rail.h >= 48 && m.rail.w >= 48 && !m.toggle)
+        : (!m.rail && m.toggle && m.toggle.h >= 48 && m.toggle.w >= 48);
+      ok(tapOk && ctrl,
+        `T6.3 ${w}/${th}: taps ≥48 (nav+user) + ${w >= 901 ? '⇤ rail visible 48px' : '☰ toggle visible 48px'}`,
+        JSON.stringify({ nav: m.navItem, user: m.user, rail: m.rail, toggle: m.toggle }));
+      ok(m.minFont >= 10.8,
+        `T6.3 ${w}/${th}: sidebar text ≥10.8px (min ${m.minFont})`, String(m.minFont));
+    }
+  }
+
+  /* 1024 par bhi collapse mumkin (pehle ⇤ 1024 par ghayab tha — asli gap) */
+  const m1024 = await mpage(1024, 'light');
+  ok(m1024.rail && m1024.rail.h >= 48, 'T6.3 1024: laptop width par bhi ⇤ collapse available', JSON.stringify(m1024.rail));
+
+  /* rail state har desktop width par icons-only + 0 overflow */
+  for (const w of [1280, 1024]) {
+    const pg = await browser.newPage();
+    await pg.setViewport({ width: w, height: 900 });
+    await pg.goto(TARGET, { waitUntil: 'networkidle2', timeout: 45000 });
+    if (await pg.$('#lgUser')) {
+      await pg.click('#lgUser'); await pg.type('#lgUser', 'owner');
+      await pg.click('#lgPass'); await pg.type('#lgPass', 'admin123');
+      await pg.keyboard.press('Enter');
+    }
+    await pg.waitForFunction(() => window.App && App.state && App.state.session, { timeout: 20000 });
+    await pg.evaluate(() => { try { localStorage.setItem('ha.sbCollapsed', '1'); } catch (e) { } });
+    await pg.reload({ waitUntil: 'networkidle2' }); await sleep(1300);
+    const m = await pg.evaluate(MX);
+    ok(m.mode === 'rail' && m.over === 0 && m.navItem && m.navItem.h >= 48,
+      `T6.3 rail@${w}: icons-only + 0 overflow + tap ≥48`,
+      JSON.stringify({ mode: m.mode, over: m.over, nav: m.navItem }));
+    await pg.close();
+  }
+
   ok(errs.length === 0, 'zero page errors', JSON.stringify(errs).slice(0, 200));
 
   await browser.close();

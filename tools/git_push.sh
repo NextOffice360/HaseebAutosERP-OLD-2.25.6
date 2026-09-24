@@ -48,9 +48,16 @@ git remote remove origin 2>/dev/null || true
 git remote add origin "https://github.com/$REPO.git"
 
 echo "── local status ─────────────────────────────────"
-git add -A
-if ! git diff --cached --quiet; then
-  git commit -q -m "Update: $(date -u +'%Y-%m-%d %H:%M UTC')" || true
+# DEFAULT: HEAD waise hi push hota hai (auto-commit NAHI) — taake "all files" wala
+# commit apni jagah rahe. Naye kaam ko commit karna ho to: --commit flag dein.
+if [ "${2:-}" = "--commit" ] || [ "${1:-}" = "--commit" ]; then
+  git add -A
+  git diff --cached --quiet || git commit -q -m "Update: $(date -u +'%Y-%m-%d %H:%M UTC')"
+fi
+PENDING=$(git status --porcelain | wc -l)
+if [ "$PENDING" != "0" ]; then
+  echo "  note: $PENDING pending change(s) — ye push NAHI ho rahe (sirf committed state jata hai)."
+  echo "        Commit karna ho to: bash tools/git_push.sh --commit"
 fi
 echo "  files: $(git ls-files | wc -l) · size: $(du -sh .git | cut -f1)"
 git log --oneline -1 2>/dev/null || echo "  (koi commit nahi)"

@@ -1,0 +1,14 @@
+# Pruned from working tree on 2026-09-24 (to keep workspace under the 128MB snapshot cap).
+# ZERO data loss: ye poore zips git history (commit 9b41980) ke andar mehfooz hain.
+# Wapas laane ke liye:  git checkout HEAD -- release/archive/<filename>
+
+  haseeb-autos-v2.25.9.zip
+  haseeb-autos-v2.25.8.zip
+  haseeb-autos-v2.25.7.zip
+  haseeb-autos-v2.25.6.zip
+  haseeb-autos-v2.25.5.zip
+  haseeb-autos-v2.25.4.zip
+  haseeb-autos-v2.25.3.zip
+  haseeb-autos-v2.25.2.zip
+  haseeb-autos-v2.25.11.zip
+  haseeb-autos-v2.25.10.zip
