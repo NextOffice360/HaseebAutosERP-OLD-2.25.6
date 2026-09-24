@@ -116,6 +116,9 @@
         h('div', null, h('div', { class: 'muted', style: { fontSize: 'var(--fs-xs)' } }, 'Customer'), h('b', null, o.customerName || 'Walk-in')),
         h('div', null, h('div', { class: 'muted', style: { fontSize: 'var(--fs-xs)' } }, 'Status'), statusBadge(o.status)),
         h('div', null, h('div', { class: 'muted', style: { fontSize: 'var(--fs-xs)' } }, 'Total'), h('b', null, fmt.money(o.total)))));
+      /* v2.30.5 (T4.2) — record stamps: Created/Updated detail par (Settings dt.showRecords se) */
+      const sr = UI2.stampRow(o);
+      if (sr) host.appendChild(sr);
       host.appendChild(UI2.table({
         screen: 'order_lines', rows: res.items || [], height: '30vh',
         columns: [

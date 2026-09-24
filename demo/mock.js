@@ -1351,8 +1351,9 @@ window.MockAPI = {
   'items.get': p => decorate(ITEMS.find(i => i.id === p.id) || ITEMS[0]),
   'items.save': p => {
     const it = p.item || p;
-    if (it.id) { const f = ITEMS.find(i => i.id === it.id); Object.assign(f, it); return f; }
-    const n = Object.assign({ id: 'ITM' + Date.now(), status: 'ACTIVE', stock: 0 }, it);
+    if (it.id) { const f = ITEMS.find(i => i.id === it.id); Object.assign(f, it, { updatedAt: new Date().toISOString() }); return f; }
+    const n = Object.assign({ id: 'ITM' + Date.now(), status: 'ACTIVE', stock: 0,
+      createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }, it);
     ITEMS.push(n); return n;
   },
   'items.delete': p => { const i = ITEMS.findIndex(x => x.id === p.id); if (i > -1) ITEMS.splice(i, 1); return true; },
@@ -1659,7 +1660,8 @@ window.MockAPI = {
     if (p.onlyDue) rows = rows.filter(c => c.balance > 0);
     return { rows: rows.map(c => Object.assign({}, c, { balance: c.balance })), total: rows.length };
   },
-  'customers.save': p => Object.assign({ id: 'CUS' + Date.now() }, p.customer || p),
+  'customers.save': p => Object.assign({ id: 'CUS' + Date.now(),
+    createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }, p.customer || p),
   'customers.ledger': p => {
     const c = CUSTOMERS.find(x => x.id === p.id) || CUSTOMERS[0];
     let bal = Number(c.openingBalance || 0);
@@ -1693,9 +1695,10 @@ window.MockAPI = {
   },
   /* v2.30.4 — demo store: save par list mein bhi aa jaye (pehle sirf echo tha) */
   'suppliers.save': p => {
-    const rec = Object.assign({ id: 'SUP' + Date.now() }, p.supplier || p);
+    const rec = Object.assign({ id: 'SUP' + Date.now(),
+      createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }, p.supplier || p);
     const i = (SUPPLIERS || []).findIndex(x => x.id === rec.id);
-    if (i > -1) SUPPLIERS[i] = Object.assign(SUPPLIERS[i], rec); else SUPPLIERS.push(rec);
+    if (i > -1) SUPPLIERS[i] = Object.assign(SUPPLIERS[i], rec, { updatedAt: new Date().toISOString() }); else SUPPLIERS.push(rec);
     return rec;
   },
   'suppliers.ledger': p => MockAPI['customers.ledger'](p),
@@ -2349,7 +2352,8 @@ window.MockAPI = {
       if (rec.status === 'INVOICED') throw new Error('Invoiced order edit nahi ho sakti.');
       Object.assign(rec, { customerId: o.customerId || '', customerName: o.customerName || 'Walk-in Customer',
         phone: o.phone || '', expectedDate: o.expectedDate || '', subtotal, discount: disc, total,
-        advance, balance: money(total - advance), notes: o.notes || '' });
+        advance, balance: money(total - advance), notes: o.notes || '',
+        updatedAt: new Date().toISOString() });
       rec.items = items.map(i => Object.assign(i, { orderId: rec.id }));
       return MockAPI['orders.get']({ id: rec.id });
     }
@@ -2362,7 +2366,8 @@ window.MockAPI = {
       status: String(o.status || 'DRAFT').toUpperCase(), priority: String(o.priority || 'NORMAL').toUpperCase(),
       channel: String(o.channel || 'FIELD').toUpperCase(), subtotal, discount: disc, tax: 0, total,
       advance, balance: money(total - advance), saleId: '', invoiceNo: '', notes: o.notes || '',
-      source: 'MOBILE', createdBy: 'demo', createdAt: new Date().toISOString()
+      source: 'MOBILE', createdBy: 'demo',
+      createdAt: new Date().toISOString(), updatedAt: new Date().toISOString()
     };
     rec.items = items.map(i => Object.assign(i, { orderId: rec.id }));
     ORDERS.unshift(rec);
@@ -2396,6 +2401,7 @@ window.MockAPI = {
     if (!o) throw new Error('Order nahi mila');
     if (o.status === 'INVOICED') throw new Error('Invoiced order ka status nahi badalta.');
     o.status = String(p.status).toUpperCase();
+    o.updatedAt = new Date().toISOString();
     return o;
   },
   'orders.convert': p => {
@@ -2410,6 +2416,7 @@ window.MockAPI = {
       payments: advance > 0 ? [{ method: p.method || 'CASH', amount: advance }] : [],
       notes: 'Order ' + o.orderNo, source: 'ORDER' } });
     o.status = 'INVOICED'; o.saleId = sale.id; o.invoiceNo = sale.invoiceNo;
+    o.updatedAt = new Date().toISOString();
     return { order: o, sale: sale };
   },
   'orders.remove': p => {

@@ -403,10 +403,10 @@ SONAME links gayab (`libatk-1.0.so.0`) aur har browser gate "Failed to launch th
 - [ ] **T3.5 Data-change reactivity sweep** — jo tables/sections store change par update nahi hote unhe `Store.sub` par wire karna. **Test:** `tools/test_data_aware_sweep.js`. **~60 min**
 
 ### W4 — DATE & TIME SYSTEM (P2+P3) — target **v2.26.0**
-- [ ] **T4.1 `fmt.dt()` + `DateTime.cfg`** — modes (date/time/datetime/full), 12h/24h, seconds, timezone (Asia/Karachi default), custom format, global on/off. **Test:** `tools/test_datetime_fmt.js` (pure node, <5s). **~45 min**
-- [ ] **T4.2 Record stamps** — `createdAt`/`updatedAt` (full timestamp) har write path (.gs + demo mock) + display. **Test:** `tools/test_timestamps.js` (6 modules: create/update/monotonic). **~60 min**
-- [ ] **T4.3 Settings UI** — "Date & time" section: sab options + **live preview** + global on/off. **Test:** `tools/test_datetime_settings.js`. **~45 min**
-- [ ] **T4.4 App-wide apply** — ad-hoc date prints ko `fmt.dt` par laana. **Test:** `tools/audit_datetime_usage.js` (fmt ke bahar 0 direct `toLocaleDateString`). **~60 min**
+- [x] **T4.1 `fmt.dt()` + `DateTime.cfg`** ✔ (engine `DT.format` modes date/time/datetime/stamp/auto + 12h/24h + seconds + tz Asia/Karachi + `dt.showTime`/`showRecords` global on/off; `fmt.dt`/`fmt.date(v,true)` delegates). Test: `tools/test_datetime.js` (yahi contract, 44/0 GREEN — naam alag, kaam poora).
+- [x] **T4.2 Record stamps** ✔ (v2.30.5) — .gs side `DB.gs` central stamps (create/update dono, L293/330/374); demo mock parity: orders.save create+update, orders.status, orders.convert, items.save, customers.save, suppliers.save ab stamps lagate hain; display: orderDetail `UI2.stampRow(o)` (Masters/Screens2 pehle se the). **Test:** `tools/test_timestamps.js` 16/0 GREEN (orders create/update/status/convert · items · customers/suppliers · DOM stamp-row · zero page errors).
+- [x] **T4.3 Settings UI** ✔ (App_Config "Date & time" section — sab options + live preview `cfgOv` isi formatting code se guzarta hai; global on/off `dt.showTime`/`dt.showRecords`). Test coverage `tools/test_datetime.js` sections A/E (settings + route contracts) — 44/0 GREEN.
+- [ ] **T4.4 App-wide apply** — ad-hoc date prints ko `fmt.dt` par laana. **Test:** `tools/audit_datetime.js` (audit chal raha hai → tmp/datetime-audit.json; abhi bache: toLocale×17, manualSlice×35, getHours×2 — agla slice). **~60 min**
 
 ### W5 — VISIBILITY + ROLE/SCOPE (P2+P3+security) — target **v2.26.1**
 - [ ] **T5.1 `Vis` engine** — `role → module → section → field` + scope (`branch/warehouse`); `Vis.can()`, `Vis.apply(root)`. **Test:** `tools/test_vis_engine.js`. **~90 min**
