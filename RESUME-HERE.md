@@ -68,8 +68,10 @@ audit-first: 2 asli fixes (T13.1/T13.2), baqi pehle se complete. Quota round 3: 
 (259M) + npm cache (22M) hataye — disk 561M, snapshot-effective **~86M**. **W10.T1 matrix ✔:** `docs/TESTING-MATRIX.md` — 17 A§17 dimensions → gates/evidence;
 14/17 gated, gaps: roles (W10.T2 gate), scopes (live-GAS carry-over), prod parity (W12).
 Quota round 4: shallow re-clone (.git 55M→4.9M) — snapshot-effective **37MB**; zips tree me
-mehfooz. **Agla: W10.T2 role×screen gate → W11/W12 docs parity + secret scan → W8 naming audit →
-v2.30.5 tag.** Carry-overs: live GAS deploy, Zx10 printer drill, label read-back, mobile
+mehfooz. **W10.T2 roles gate ✔:** `test_roles_matrix.js` **8/0** = step 24 (asli Auth.gs:
+CASHIER 4 APIs backend-DENY, OWNER/MANAGER ALLOW, users.perms, nav App.can) — matrix
+**15/17 gated** (baqi: scopes live-GAS, prod parity W12). **Agla: W11/W12 docs parity +
+secret scan → W8 naming audit → v2.30.5 tag (full validate + package).** Carry-overs: live GAS deploy, Zx10 printer drill, label read-back, mobile
 POS cart→Pay→Esc, App_Orders L186 adoption.
 read-back, mobile POS cart→Pay→Esc, App_Orders L186 adoption.
 **PUSH HO CHUKA (2026-09-24):** GitHub `NextOffice360/HaseebAutosERP-OLD-2.25.6` (public) — remote `main` =

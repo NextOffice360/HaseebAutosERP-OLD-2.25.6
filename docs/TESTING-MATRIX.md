@@ -17,7 +17,7 @@
 | 7 | **retry** | `test_ui_err` · `test_table_states` 11/0 (fail→↻ Retry→recover, calls===2) · `test_notifications` (Retry) | ✅ | table-states step 21 |
 | 8 | **duplicate** (double submit/replay) | `test_ui_run` (dup block) · `test_busy_coverage` 13/0 (aria-busy disabled) · `test_offline_sync` (replay-duplicate) · `test_e2e_critical` | ✅ | busy-coverage step 4 |
 | 9 | **permissions** (field-level) | `test_field_visibility` 52/0 (backend-enforced + write-guard) · `audit_field_visibility` · settings key-strip (`test_settings_shared` 6/0) | ✅ | fields gate (W5) |
-| 10 | **roles** (role×screen) | routes perm filter (`test_routes`/`route_audit`) · sidebar perm-filter · settings defs groups (security→users.manage) | 🟡 | **gap:** explicit role×screen DOM matrix — W10.T2 |
+| 10 | **roles** (role×screen) | `test_roles_matrix` 8/0 (backend-enforced: CASHIER 4 APIs DENY · OWNER/MANAGER ALLOW · users.perms matrix) + routes perm filter + sidebar App.can filter | ✅ | roles gate (step 24) |
 | 11 | **scopes** (OAuth least-privilege) | `test_diagnose` (scope diagnostics) · `docs/OFFICIAL-DOCS.md` (recorded official links) | 🟡 | docs-level; live-scope check GAS deploy ke baad (carry-over) |
 | 12 | **dependent** (parent→child UI) | `test_data_aware` 9/0 (depOn + invalid-child clear) · `test_dyn_deps` 51/0 · `test_settings_shared` 6/0 (showWhen) | ✅ | data-aware step 16 |
 | 13 | **mobile** (390px PWA) | `test_sidebar_states` 52/0 (390/768/1024/1440 × light/dark) · `test_modals_close` 91/0 · `test_pwa_overlays_close` 124/0 · `test_pwa_shared` 16/0 | ✅ | sidebar matrix shots |
@@ -27,8 +27,8 @@
 | 17 | **offline** | `test_offline_sync` 11/0 (idempotent replay, partial fail, chip, auto-flush) · e2e offline leg · PWA cache fallback (`test_pwa_shared`) | ✅ | e2e step 18 |
 
 ## Coverage summary
-- ✅ gated: 14/17 dimensions
-- 🟡 partial: **roles** (W10.T2 — role×screen DOM matrix gate bana hai) · **scopes** (live-GAS check carry-over) · **prod** (W12 parity gate)
+- ✅ gated: 15/17 dimensions
+- 🟡 partial: **scopes** (live-GAS check carry-over) · **prod** (W12 parity gate)
 
 ## Kaise chalayein
 ```bash
@@ -46,4 +46,4 @@ node tools/test_w13_modules.js   # http://127.0.0.1:8021 par demo chal raha ho
 - Layout/typography audits: `audit_layout`, `audit_typography`, `audit_modals_layout` (rendered DOM)
 - Screenshots: sidebar matrix (52-check gate khud shots leta hai), PWA shots (`release/pwa-shot-*.png` history)
 
-— W10.T1 (2026-09-25) · agla: W10.T2 role×screen matrix gate
+— W10.T1 + W10.T2 (2026-09-25) · agla: W11/W12

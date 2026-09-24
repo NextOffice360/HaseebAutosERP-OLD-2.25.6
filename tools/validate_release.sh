@@ -119,6 +119,8 @@ else
   step "22. W9 help links + confirm sweep + tooltips (UI2.help, PWA.confirm)" node tools/test_w9_help.js
   # W13/T13.1 — B§8 conversion units: GRN direct lines BOX↔PCS auto-calc (PO v2.9 §8 parity)
   step "23. W13 B§8 conversion units (GRN pack auto-calc, backend base invariant)" node tools/test_w13_modules.js
+  # W10.T2 — roles × API enforcement matrix (real Auth.gs: cashier deny, owner allow)
+  step "24. W10 roles matrix (backend-enforced deny/allow + nav filter)" node tools/test_roles_matrix.js
 fi
 
 echo

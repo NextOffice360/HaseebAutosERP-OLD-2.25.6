@@ -172,7 +172,7 @@ audit: `parties.balance` / `parties.customerHistory` PWA ki **3 screens (POS/Fie
 | W4 datetime | pending | A§8 — ek global date/time system |
 | W6 sidebar | partial (v2.25.8 icon-only) | A§10 — partial-collapse + tablet/off-canvas verify |
 | **W9 UX/design-system + doc links** | **help links + confirm sweep + tooltips ✔ (v2.30.3)** — baqi design-system components (filter/pagination/button/dropdown) W13 me | A§11–13, B§3·4·14 |
-| **W10 testing matrix** | **T1 matrix ✔ (docs/TESTING-MATRIX.md)** — 14/17 gated, 3 gaps (roles/scopes/prod) | A§17 — T2 role×screen gate baqi |
+| **W10 testing matrix** | **T1 matrix ✔ + T2 roles gate ✔ (15/17 gated)** — baqi gaps: scopes (live-GAS), prod parity (W12) | A§17 |
 | **W8 naming/architecture audit** | pending | A§14 |
 | **W11 beginner docs pack** | pending | A§3 — per integration: setup → rollback |
 | **W12 deploy/config/rollback + secret scan** | pending | A§15, B§16 |
@@ -502,6 +502,12 @@ SONAME links gayab (`libatk-1.0.so.0`) aur har browser gate "Failed to launch th
       key save/test/status/presets (ai_naming **23/0** + settings gates) · B§12: salesman
       Ledger/History (ISSUE/RETURN/SALE timeline + Wasooli payments + collect) + PWA Udhaar
       wasooli (App_Salesman + Pwa_Salesman). Koi naya code nahi — jhoota dobara kaam nahi.
+- [x] **W10.T2 Roles gate** ✔ (v2.30.4) — `tools/test_roles_matrix.js` **8/0** = validate
+      **step 24**: asli Auth.gs sandbox par role×API matrix — CASHIER ko settings/users/
+      reports/suppliers **backend-block** (Auth.require "ijazat nahi"), apne actions chalte;
+      OWNER (*) sab ALLOW; MANAGER beech ka farq; SALESMAN users DENY; users.perms matrix;
+      client nav App.can filter (source + owner DOM). A§7 backend-enforcement usool.
+      TESTING-MATRIX roles row ab ✅ — **15/17 dimensions gated**.
 
 - [x] **T7.5 (W9) Help links + confirm sweep + tooltips** ✔ (v2.30.3) —
       **① PWA.confirm (shared):** Pwa_Shell me non-blocking promise dialog (`role=alertdialog`,
