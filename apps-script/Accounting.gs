@@ -125,22 +125,41 @@ var Accounting = {
   saveAccount: function (payload, s) {
     Auth.require(s, 'settings.manage');
     var rec = U.pick(payload, SCHEMA.Accounts);
-    if (!rec.name) throw new Error('Account name zaroori hai.');
-    if (!rec.code) {
+    /* v2.30.0 (N1/N2) — partial update safe:
+       pehle (a) naam lazmi tha update par bhi, (b) `rec.group = rec.group || 'ASSET'`
+       partial save par account ka group ASSET kar deta (data loss), (c) code naya
+       generate ho jata. Ab sirf di gayi keys update hoti hain. */
+    var existing = rec.id ? DB.byId('Accounts', rec.id) : null;
+    if (rec.id && !existing) throw new Error('Account not found');
+    var effName = rec.name !== undefined ? rec.name : (existing ? existing.name : '');
+    if (!U.str(effName)) throw new Error('Account name zaroori hai.');
+    var effGroup = rec.group !== undefined ? rec.group : (existing ? existing.group : 'ASSET');
+    var effCode = U.str(rec.code) || U.str(existing && existing.code);
+    if (!effCode) {
       var max = 0;
       DB.all('Accounts').forEach(function (a) { max = Math.max(max, U.num(a.code)); });
-      rec.code = String(max + 10);
+      effCode = String(max + 10);
+    }
+    if (rec.id) {
+      if (rec.code === undefined) delete rec.code;
+      if (rec.group === undefined) delete rec.group;
+      if (rec.type === undefined) delete rec.type;
+      if (rec.isCash === undefined) delete rec.isCash;
+      if (rec.isBank === undefined) delete rec.isBank;
+      if (rec.active === undefined) delete rec.active;
+    } else {
+      rec.code = effCode;
+      rec.group = effGroup;
+      rec.type = rec.type || 'GENERAL';
+      rec.isCash = String(rec.isCash === true || rec.isCash === 'true');
+      rec.isBank = String(rec.isBank === true || rec.isBank === 'true');
+      rec.active = rec.active === undefined ? 'true' : String(rec.active);
     }
     var dup = DB.findOne('Accounts', function (a) {
-      return U.str(a.code) === U.str(rec.code) && a.id !== rec.id;
+      return U.str(a.code) === U.str(effCode) && a.id !== rec.id;
     });
-    if (dup) throw new Error('Code ' + rec.code + ' pehle se maujood hai.');
-    rec.group = rec.group || 'ASSET';
-    rec.type = rec.type || 'GENERAL';
-    rec.normalSide = (rec.group === 'ASSET' || rec.group === 'EXPENSE') ? 'DR' : 'CR';
-    rec.isCash = String(rec.isCash === true || rec.isCash === 'true');
-    rec.isBank = String(rec.isBank === true || rec.isBank === 'true');
-    rec.active = rec.active === undefined ? 'true' : String(rec.active);
+    if (dup) throw new Error('Code ' + effCode + ' pehle se maujood hai.');
+    if (rec.group !== undefined) rec.normalSide = (rec.group === 'ASSET' || rec.group === 'EXPENSE') ? 'DR' : 'CR';
     if (rec.id) return DB.update('Accounts', rec.id, rec, s);
     rec.openingBalance = U.num(rec.openingBalance);
     return DB.insert('Accounts', Object.assign({ id: U.uid('ACC'), createdAt: U.iso() }, rec), s);

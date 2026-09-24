@@ -601,14 +601,33 @@ AI_ADAPTERS.OLLAMA = {
 /* ================================ MOCK ==================================== */
 /** Bina key/Internet — assistant aapke ASLI data par tools chala kar jawab deta hai */
 AI_ADAPTERS.MOCK = {
-  id: 'MOCK',
+  id: 'MOCK',                     /* id internal hai — routing/fallback isi par chalta hai */
+  /* v2.30.0 (N7) — naam/sharafat: ye 100% LOCAL rules engine hai, koi LLM nahi.
+     Pehle ise "Mock" kaha jata tha — user ka gumaan hota tha ke ye koi AI/LLM hai.
+     Ab UI/settings/help har jagah yehi naam: "Local Data Assistant". */
   meta: {
-    label: 'Mock (built-in)', tagline: 'Bina internet — rule-based, live data par tools',
+    label: 'Local Data Assistant',
+    tagline: 'Bina internet · bina LLM — rule-based jawab aap ke LIVE data par',
     needsKey: false,
-    help: 'Koi key nahi — sawal poochein, jawab aapke asli data se banega. Demo aur offline test ke liye behtareen.',
+    help: 'Koi internet, koi API key, koi LLM nahi. Ye app ka apna local rules engine hai: sawal ka matlab pehchan kar aap ke ASLI business data par tools chalata hai (sale, stock, udhaar, reports, expense).',
     modelSource: 'built-in',
-    apiModes: [{ id: 'MOCK', label: 'Built-in rules engine' }],
-    caps: { tools: true, offline: true }
+    apiModes: [{ id: 'MOCK', label: 'Built-in local rules engine' }],
+    caps: { tools: true, offline: true, llm: false },
+    /* Honest capabilities — UI (App_AIConfig) isi list ko dikhata hai.
+       Yahan sirf woh likho jo WAQAI hota hai. LLM ka koi dawa nahi. */
+    can: [
+      'Aaj / is mahine ki sale, profit, top items',
+      'Low stock, reorder suggestions, stock value',
+      'Customer / supplier udhaar aur ledger ka khulasa',
+      'Expense, cash aur shop-day reports ka khulasa',
+      'Aap ke pooche gaye periods ka hisaab (rules se)'
+    ],
+    cannot: [
+      'Internet ka general knowledge, khabrein, mausam',
+      'Nayi creative likhai (shayari, kahani, tasveer)',
+      'Aap ke data se bahar ka jawab ya raye',
+      'Khud se seekhna — koi training / koi hidden LLM nahi'
+    ]
   },
   run: function (ctx) { return AI._mock(ctx.message, ctx.s); },
   verify: function () { return { ok: true, note: 'offline engine — hamesha chalta hai' }; },

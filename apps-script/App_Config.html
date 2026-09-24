@@ -8,6 +8,29 @@
 (function () {
 'use strict';
 
+/* ============================================================================
+   v2.30.0 (N2) — Settings ka ASLI "Save all"
+   ----------------------------------------------------------------------------
+   Sirf wohi keys jati hain jo user ne ASAL mein badli (dirty) — sub-tabs ka
+   stash bhi shamil. Isi wajah se purani settings kabhi default par reset nahi
+   hoti. Ye function hi page bridge hai, is liye header ka shared Save all aur
+   page ka Save all button bilkul ek jaisa kaam karte hain.
+   Fail par error UPAR jata hai (engine Retry dikhata hai, dirty wahin rehta hai).
+   ========================================================================== */
+async function configSaveAllNow() {
+  const pack = UI2.dirtyPayload();
+  if (!pack.count) { UI.toast('Koi unsaved tabdeeli nahi — sab mehfooz hai', 'warn'); return { saved: 0 }; }
+  await API.call('config.save', { values: pack.values });
+  UI2.clearAllDirty();
+  UI.toast(pack.count + ' settings save ho gayin (' + pack.forms + ' section)', 'ok', 3600);
+  App._noDirtyGuard = true;
+  try { await Promise.all([API.pullSettings(), loadDefs()]); } finally { App._noDirtyGuard = false; }
+  try { applyTheme(); } catch (e) { }
+  App._noDirtyGuard = true;
+  try { App.refresh(); } finally { App._noDirtyGuard = false; }
+  return { saved: pack.count };
+}
+
 let DEFS = [];
 function loadDefs() {
   return API.call('config.defs', {}, { offlineFallback: () => [] })
@@ -19,8 +42,15 @@ App.registerScreen('settings', {
   title: 'Settings & Configuration', icon: '⚙', perm: 'settings.manage',
   subtitle: 'App ka har feature yahan se control hota hai',
   actions() {
+    /* v2.30.0 (N2) — is page ka page-level save bridge: header ka shared
+       "Save all" aur ye page action DONO isi ek function ko call karte hain
+       (do parallel logic nahi — jo bhi save hota hai, dono se same hota hai). */
+    App.setSaveBridge({ label: 'Settings', run: () => configSaveAllNow() });
     return [
-      { label: 'Save all', icon: '💾', cls: 'ok', onClick: () => UI.toast('Har tab par apna Save button hai', 'warn') },
+      /* v2.30.0 (N2) — ASLI Save All: page ke saare dirty fields (sab sub-tabs +
+         notifications/other forms) ek hi save mein. Pehle ye sirf toast tha. */
+      { label: 'Save all', icon: '💾', cls: 'ok', onClick: (ev) => UI.run(ev.currentTarget || ev.target,
+        () => configSaveAllNow(), { write: true, writeLabel: 'settings save all' }) },
       { label: 'Reload', icon: '↻', onClick: () => { loadDefs().then(() => App.refresh()); API.pullSettings(); } }
     ];
   },
@@ -31,12 +61,12 @@ App.registerScreen('settings', {
         /* labels/icons Config.defs() se aate hain — yahan kuch hardcode nahi */
         /* v2.6 §10/§11/§13 — 'pwa' group: mobile apps yahan se on/off */
         ...['business', 'pos', 'pwa', 'inventory', 'trade', 'modules', 'automation', 'security', 'backend'].map(id =>
-          ({ id: id, label: defLabel(id), icon: defIcon(id), render: c => renderGroup(c, id) })),
-        { id: 'customFields', label: 'Custom fields', icon: '🧩', render: renderCustomFields },
-        { id: 'menu', label: 'Menu builder', icon: '🗂', render: renderMenu },
-        { id: 'templates', label: 'Print templates', icon: '🖨', render: renderTemplates },
-        { id: 'lists', label: 'Lists & catalogs', icon: '📋', render: renderLists },
-        { id: 'data', label: 'Data & tools', icon: '🛠', render: renderData }
+          ({ id: id, label: defLabel(id), icon: defIcon(id), tint: defTint(id), render: c => renderGroup(c, id) })),
+        { id: 'customFields', label: 'Custom fields', icon: 'sliders', tint: '#5c7cfa', render: renderCustomFields },
+        { id: 'menu', label: 'Menu builder', icon: 'files', tint: '#c9a227', render: renderMenu },
+        { id: 'templates', label: 'Print templates', icon: 'printer', tint: '#557a95', render: renderTemplates },
+        { id: 'lists', label: 'Lists & catalogs', icon: 'clipboard', tint: '#8a8f5a', render: renderLists },
+        { id: 'data', label: 'Data & tools', icon: 'toolbox', tint: '#a05a7a', render: renderData }
       ];
       UI2.tabs(host, { level: 1, active: App.params && App.params.tab, tabs,
         onChange: (id) => { if (id === 'business') setTimeout(businessLogoBar, 60); } });
@@ -66,6 +96,12 @@ function defLabel(id, fallback) {
 function defIcon(id, fallback) {
   const g = _defs().find(x => x.id === id);
   return (g && g.icon) || fallback || '⚙';
+}
+/* v2.30.0 (N6) — har settings area ka apna halka rang (sirf icon par, tabs par nahi).
+   Rang backend se (Config.gs group ka `tint`) — yahan koi duplicate list nahi. */
+function defTint(id, fallback) {
+  const g = _defs().find(x => x.id === id);
+  return (g && g.tint) || fallback || '';
 }
 /** Fallback ke liye bhi kam se kam saaf-shuda label: 'customFields' → 'Custom Fields' */
 function _titleCase(id) {
@@ -154,10 +190,62 @@ function buildSections(fields) {
 
   const el = h('div', { class: 'cfg-secs' });
   parts.forEach(pn => el.appendChild(pn.box));
-  return {
+  /* v2.30.0 (N1/N2) — ASLI ROOT CAUSE:
+     Pehle ye wrapper sirf {el, values} return karta tha. Us par `changed` na
+     hone ki wajah se sub-tab ka Save POORE sub-tab ki values bhej deta tha —
+     aur jo setting UI mein render nahi hui / purani legacy value thi, wo
+     default par RESET ho jati thi (user ka asli bug). Ab wrapper har child form
+     ka poora API delegate karta hai, is liye Save/SAVE ALL sirf dirty keys
+     bhejte hain. */
+  const api = {
     el: el,
-    values: () => parts.reduce((acc, pn) => Object.assign(acc, pn.form.values()), {})
+    _parts: parts,
+    values: (opts) => parts.reduce((acc, pn) => Object.assign(acc, pn.form.values(opts)), {}),
+    changed: () => parts.reduce((acc, pn) => Object.assign(acc, (pn.form.changed ? pn.form.changed() : {})), {}),
+    dirtyKeys: () => parts.reduce((acc, pn) => acc.concat(pn.form.dirtyKeys ? pn.form.dirtyKeys() : []), []),
+    isDirty: (k) => parts.some(pn => pn.form.isDirty && pn.form.isDirty(k)),
+    markDirty: (k) => {
+      for (let i = 0; i < parts.length; i++) {
+        const fm = parts[i].form;
+        if (fm.refs && fm.refs[k] !== undefined && fm.markDirty) return fm.markDirty(k);
+      }
+      return false;
+    },
+    clearDirty: () => parts.forEach(pn => { try { pn.form.clearDirty && pn.form.clearDirty(); } catch (e) { } }),
+    set: (k, v, quiet) => {
+      for (let i = 0; i < parts.length; i++) {
+        const fm = parts[i].form;
+        if (fm.refs && fm.refs[k] !== undefined) return fm.set(k, v, quiet);
+      }
+      return false;
+    },
+    field: (k) => {
+      for (let i = 0; i < parts.length; i++) {
+        const fm = parts[i].form;
+        const fld = fm.field ? fm.field(k) : (fm.refs ? fm.refs[k] : null);
+        if (fld) return fld;
+      }
+      return null;
+    },
+    show: (k, on) => {
+      for (let i = 0; i < parts.length; i++) {
+        const fm = parts[i].form;
+        if (fm.refs && fm.refs[k] !== undefined && fm.show) return fm.show(k, on);
+      }
+      return false;
+    },
+    setOptions: (k, opts) => {
+      for (let i = 0; i < parts.length; i++) {
+        const fm = parts[i].form;
+        if (fm.refs && fm.refs[k] !== undefined && fm.setOptions) return fm.setOptions(k, opts);
+      }
+      return false;
+    }
   };
+  UI2._forms = UI2._forms || [];
+  UI2._forms.push(api);
+  if (UI2._forms.length > 60) UI2._forms.splice(0, UI2._forms.length - 60);
+  return api;
 }
 
 /* ============================ CONFIG GROUPS ================================ */
@@ -172,7 +260,7 @@ function renderGroup(c, groupId) {
   UI2.tabs(host, {
     level: 2,
     tabs: g.sub.map(s => ({
-      id: s.id, label: s.label, icon: s.icon || '▸',
+      id: s.id, label: s.label, icon: s.icon || '▸', tint: g.tint || '',
       render: cc => renderSub(cc, groupId, s)
     }))
   });
@@ -239,12 +327,28 @@ function renderSub(c, groupId, sub) {
 
   /* v2.25.9 W2.T2 — manual 'Saving…' + disabled hack hata diya: busy/dup-block
      shared UI.run deta hai. */
+  /* v2.30.0 (N1) — ROOT CAUSE FIX: pehle poore sub-tab ke saare fields bhejta tha.
+     Ab sirf wohi keys jati hain jo user ne ASAL mein badli (dirty) — warna
+     render/stale/legacy farq ki wajah se purani settings default par reset ho jati thin. */
   const saveBtn = h('button', { class: 'btn ok', onclick: () => UI.run(saveBtn, async () => {
-      try { await API.call('config.save', { values: f.values() });
-        UI.toast('Saved ✅', 'ok'); dirty.style.display = 'none';
-        await Promise.all([API.pullSettings(), loadDefs()]);
-        applyTheme(); App.refresh();
-      } catch (e) { UI.toast(e.message, 'err'); }
+      const payload = f.changed ? f.changed() : f.values();
+      if (!Object.keys(payload).length) { UI.toast('Koi tabdeeli nahi — sab pehle se save hai', 'warn'); return; }
+      try {
+        await API.call('config.save', { values: payload });
+        UI.toast(Object.keys(payload).length + ' setting save ho gayi ✅', 'ok');
+        dirty.style.display = 'none';
+        if (f.clearDirty) f.clearDirty();
+        App._noDirtyGuard = true;
+        try { await Promise.all([API.pullSettings(), loadDefs()]); } finally { App._noDirtyGuard = false; }
+        applyTheme();
+        App._noDirtyGuard = true;
+        try { App.refresh(); } finally { App._noDirtyGuard = false; }
+      } catch (e) {
+        UI.toast('Save nahi hua: ' + (e.message || ''), 'err', 5000);
+        UI2.retryToast && UI2.retryToast('Save nahi hua', e.message, () => {
+          try { saveBtn.click(); } catch (err) { }
+        });
+      }
   }, { write: true, writeLabel: 'settings save' }) }, '💾 Save ' + sub.label);
 
   c.appendChild(wrap);

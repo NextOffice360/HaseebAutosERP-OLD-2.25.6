@@ -279,6 +279,22 @@ a{color:var(--brand-text); text-decoration:none}
 .btn.ghost:hover{background:var(--bg-2)}
 .btn.danger{background:var(--err);color:var(--on-err)}
 .btn.ok{background:var(--ok);color:var(--on-ok)}
+/* v2.30.0 (N2) — app-wide SAVE ALL button (header). Sirf tab dikhta hai jab
+   page par asli unsaved tabdeeli ho; count badge ke sath. Tap target bada,
+   mobile par label chhota na ho is liye nowrap + min-height. */
+.sa-btn{display:inline-flex;align-items:center;gap:6px;white-space:nowrap;min-height:44px}
+.sa-btn[hidden]{display:none}
+.sa-btn .sa-n{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;
+  padding:0 6px;border-radius:10px;background:rgba(0,0,0,.22);font-size:var(--fs-xs);font-weight:700;line-height:1}
+.sa-btn .sa-n:empty{display:none}
+/* v2.30.0 (N7) — honest capability card (AI screen) */
+#aiCapCard{margin-top:12px}
+#aiCapCard .cap-h{display:block;margin:10px 0 4px;font-size:var(--fs-sm)}
+.cap-list{margin:0;padding-inline-start:20px}
+.cap-list li{font-size:var(--fs-xs);line-height:1.6;color:var(--muted)}
+.cap-list.ok li::marker{color:var(--ok)}
+.cap-list.no li::marker{color:var(--warn)}
+@media (max-width:520px){.sa-btn{padding:8px 10px}.sa-btn .sa-lbl{display:none}}
 .btn.block{width:100%}
 .btn .k{font-size: var(--fs-xs);opacity:.75;border:1px solid rgba(255,255,255,.4);border-radius:4px;padding:1px 4px}
 .icon-btn{position:relative;width:38px;height:38px;border-radius:11px;border:1px solid var(--line);
@@ -966,6 +982,21 @@ table.tbl tbody tr.clickable{cursor:pointer}
 .m-body{padding:16px;overflow:auto;flex:1}
 .m-foot{display:flex;gap:8px;justify-content:flex-end;padding:12px 18px;border-top:1px solid var(--line);
   background:var(--panel-2);border-radius:0 0 var(--r-xl) var(--r-xl);flex-wrap:wrap}
+/* v2.30.0 (N4/N5) — PAY MODAL: desktop par 2 columns (wide), narrow par single
+   column. Har section min-width:0 rakhta hai taake kuch clip na ho, aur horizontal
+   scroll kabhi na aaye. */
+.pay-cols{display:grid;gap:14px;grid-template-columns:minmax(0,1fr)}
+.pay-col{min-width:0;display:flex;flex-direction:column;gap:10px}
+.pay-col>*{min-width:0}
+@media (min-width:900px){
+  .pay-cols{grid-template-columns:minmax(320px,0.95fr) minmax(380px,1.05fr);align-items:start}
+}
+/* mobile/tablet: modal poori chaurai, andar hi vertical scroll (kuch bahar na jaye) */
+@media (max-width:640px){
+  .modal2.lg,.modal2.xl{max-width:96vw}
+  .modal2 .m-body{padding:12px}
+  .pay-cols{gap:10px}
+}
 
 /* ---------------------------- SMART TABLE -------------------------------- */
 .st2{border:1px solid var(--line);border-radius:var(--r-l);background:var(--panel);overflow:hidden;
@@ -1728,6 +1759,8 @@ table.tbl2 .num{text-align:right;font-variant-numeric:tabular-nums}
 .cust-bal-grid .cbg.close.warn .val{color:var(--warn)}
 .cust-bal-grid .cbg.close.due .val{color:var(--err)}
 .cb-phone{font-size:10.8px;color:var(--muted);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ps-points{background:var(--brand-soft);border-radius:8px;padding:4px 8px;margin-top:2px;color:var(--brand-text)}
+.ps-points b{color:var(--brand-text)}
 .ps-ledger{margin-top:8px;border:1px solid var(--line);border-radius:10px;padding:7px 9px;
   background:var(--panel-2)}
 .ps-ledger .ps-ld-title{font-size: var(--fs-xs);font-weight:800;letter-spacing:.4px;color:var(--muted-2);
@@ -2483,6 +2516,15 @@ html, body{overflow-x:hidden}
    long-op elapsed, aur success/error flash. Sirf button ke andar kaam karta hai —
    layout nahi hilta (button ka size lock ho jata hai). */
 .btn.is-busy, .btn:disabled{ cursor:progress; }
+/* W7.T1 (v2.29.2) — auto-busy engine ke liye busy state.
+   Sirf `.is-busy-ab` par spinner (UI.run wale buttons apna .ha-spin khud lagate hain
+   — un par double spinner nahi aata). */
+.is-busy-ab{ cursor:progress; position:relative; opacity:.92; }
+.is-busy-ab::after{ content:""; position:absolute; right:7px; top:50%; width:12px; height:12px; margin-top:-6px;
+  border:2px solid currentColor; border-right-color:transparent; border-radius:50%;
+  animation: haSpin .62s linear infinite; pointer-events:none; }
+@media (prefers-reduced-motion: reduce){ .is-busy-ab::after{ animation-duration:1.6s } }
+
 .btn.is-busy .ha-spin{
   display:inline-block; width:12px; height:12px; margin-right:6px; vertical-align:-1px;
   border:2px solid currentColor; border-right-color:transparent; border-radius:50%;

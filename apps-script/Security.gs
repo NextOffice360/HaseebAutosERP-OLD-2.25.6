@@ -232,6 +232,8 @@ var Security = {
     // safe user-facing validation messages (contain Urdu or known prefix)
     if (/^[A-Z_]+$/.test(msg) && Security.SAFE_CODES[msg]) return msg;
     // permission / validation messages are safe to show (they are intentional)
+    /* v2.30.0 — shop band hone ka message har role ko saaf dikhna chahiye */
+    if (msg.indexOf('SHOP_CLOSED|') === 0) return msg;
     if (msg.indexOf('ijazat') > -1 || msg.indexOf('zaroori') > -1 || msg.indexOf('Invalid') === 0 ||
         msg.indexOf('Unknown action') === 0 || msg.indexOf('Origin') === 0 ||
         msg.indexOf('Too many') === 0 || msg.indexOf('External integration') === 0) {

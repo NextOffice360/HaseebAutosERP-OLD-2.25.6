@@ -8,6 +8,9 @@
 
 const AI = { history: [], open: false, busy: false };
 
+/* v2.30.0 (N7) — provider ka dikhne wala naam shared helper se aata hai
+   (App_UI2 ▸ UI2.provLabel / window.provLabel) — yahan duplicate logic nahi. */
+
 function renderDrawer() {
   const d = $('#aiDrawer');
   d.innerHTML = '';
@@ -18,7 +21,8 @@ function renderDrawer() {
       h('div', { style: { fontSize: 'var(--fs-xs)', color: 'var(--muted)' } },
         (function () { const c = App.state.aiConfig || {};
           return c.usable === false ? 'Setup zaroori — AI Agent tab kholein'
-            : (c.provider === 'MOCK' ? 'Mock agent · live data par tools' : 'Live · ' + (c.model || '')); })())), 
+            : (c.provider === 'MOCK' ? provLabel('MOCK') + ' · live data par tools · bina LLM'
+              : 'Live · ' + (c.model || '')); })())), 
     h('button', { class: 'btn sm ghost', title: 'Clear chat', 'aria-label': 'Clear chat', onclick: clearChat }, '🗑'),
     h('button', { class: 'x btn sm ghost', onclick: App.closeAI }, '✕')));
 
@@ -50,7 +54,7 @@ function pushMsg(role, text, tools, info) {
   if (tools && tools.length) {
     el.appendChild(h('span', { class: 'tool' }, '🔧 ' + tools.map(t => t.tool).join(', ')));
   }
-  if(info) el.appendChild(h('span',{class:'tool'}, 'Answered by '+info.provider+' · '+info.model+(info.failover ? ' · fallback used' : '')+(info.provider==='MOCK' ? ' · rule-based, not live AI' : '')));
+  if(info) el.appendChild(h('span',{class:'tool'}, 'Answered by '+provLabel(info.provider)+' · '+info.model+(info.failover ? ' · fallback used' : '')+(info.provider==='MOCK' ? ' · local rules engine (no LLM)' : '')));
   body.appendChild(el);
   body.scrollTop = body.scrollHeight;
   return el;

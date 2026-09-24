@@ -468,13 +468,28 @@ function supplierBalanceCard() {
         h('span', null, en), node);
       const rows = h('div', { class: 'pb-rows' });
       rows.appendChild(row('Supplier', 'سپلائر', h('b', null, st.supplier.name || '—')));
+      /* v2.30.0 (N10) — supplier select karne par uski POORI configured maloomat
+         (contact · address · tax/NTN · terms · credit limit) yahan live aati hain —
+         PO aur GRN dono mein ek hi card (shared), taake dono ka behaviour same ho.
+         Sirf woh rows dikhti hain jinki value mojood ho (khali noise nahi). */
+      const sup = st.supplier || {};
+      const info = (en, ur, val) => { if (val === undefined || val === null || String(val).trim() === '') return; rows.appendChild(row(en, ur, h('b', null, String(val)))); };
+      info('Contact', 'رابطہ نمبر', sup.phone);
+      info('Email', 'ای میل', sup.email);
+      info('Address', 'پتہ', sup.address);
+      info('Tax / NTN', 'ٹیکس نمبر (NTN)', sup.ntn);
+      info('Payment terms', 'ادائیگی کی شرائط', sup.paymentTerms);
+      const limit = Number(sup.creditLimit || 0);
+      if (limit > 0) {
+        const avail = Math.max(0, limit - Number(st.closingBalance || 0));
+        rows.appendChild(row('Credit limit', 'ادھار کی حد', h('b', null, fmt.money(limit))));
+        rows.appendChild(row('Available credit', 'باقی حد', h('b', { class: avail > 0 ? 'ok' : 'err' }, fmt.money(avail))));
+      }
       rows.appendChild(row('Prev. balance', 'پچھلا بقایا (ادا کرنا ہے)',
         h('b', { class: (st.closingBalance || 0) > 0 ? 'err' : 'ok' }, fmt.money(st.closingBalance || 0))));
       rows.appendChild(row('Total purchases', 'کل خریداری', h('b', null, fmt.money(st.totalPurchased || 0))));
       rows.appendChild(row('Total paid', 'کل ادائیگی', h('b', null, fmt.money(st.totalPaid || 0))));
       el.appendChild(rows);
-      if (st.supplier.paymentTerms) el.appendChild(h('div', { class: 'pb-row muted', title: 'ادائیگی کی شرائط' },
-        h('span', null, 'Payment terms'), h('b', null, st.supplier.paymentTerms)));
     } catch (e) { el.style.display = 'none'; }
   };
   return el;
@@ -858,6 +873,10 @@ function grnForm(po) {
   const fTop = UI.form([
     { key: 'supplierId', label: 'Supplier *', type: 'select', required: true,
       options: [{ value: '', label: '— select supplier —' }].concat(supList.map(s => ({ value: s.id, label: s.name }))),
+      /* v2.30.0 (N10) — PO jaisa behaviour: supplier select karte hi uski contact /
+         address / tax / terms + pichhla baqaya upar card mein aa jata hai.
+         (Pehle GRN par ye sirf ek dafa load hota tha — badalne par update nahi hota tha.) */
+      onChange: (v) => { try { supBal.refresh(v); } catch (e) { } },
       hint: 'Credit (udhaar) ke liye supplier lazmi hai' },
     { key: 'invoiceNo', label: 'Supplier invoice no.', placeholder: 'INV-2291',
       hint: 'Bill number — audit aur search ke liye' },

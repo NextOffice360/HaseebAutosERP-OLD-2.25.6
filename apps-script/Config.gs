@@ -8,10 +8,33 @@
  * CONFIG_DEFS = settings UI ka schema (tabs → sub-tabs → sub-sub-tabs).
  */
 
+/* ============================================================================
+   v2.30.0 (N7) — DYNAMIC SELECT OPTIONS (ek hi source, koi duplicate list nahi)
+   ----------------------------------------------------------------------------
+   Field par `optionsFrom: 'aiProviders'` likh dein → defs() ke waqt list yahan
+   se aati hai. Ye function CALL TIME par chalta hai (us waqt saare .gs load ho
+   chuke hote hain), is liye provider ke asli naam ADAPTERS se aate hain — jab
+   bhi koi adapter ka meta.label badle, settings ka dropdown khud badal jata hai.
+   ========================================================================== */
+var CONFIG_OPTION_SOURCES = {
+  aiProviders: function () {
+    var ids = (typeof AI_PROVIDERS !== 'undefined' && AI_PROVIDERS.length) ? AI_PROVIDERS
+      : (typeof AI_ADAPTERS !== 'undefined')
+        ? Object.keys(AI_ADAPTERS).filter(function (k) { return k === k.toUpperCase() && k.indexOf('_') !== 0; })
+        : ['GEMINI', 'OPENAI', 'OPENROUTER', 'OLLAMA', 'MOCK'];
+    var out = {};
+    ids.forEach(function (id) {
+      var ad = (typeof AI_ADAPTERS !== 'undefined' && AI_ADAPTERS[id]) || null;
+      out[id] = (ad && ad.meta && ad.meta.label) || id;
+    });
+    return out;
+  }
+};
+
 var CONFIG_DEFS = [
   {
-    id: 'business', label: 'Business Profile', icon: '🏪', sub: [
-      { id: 'identity', label: 'Identity', fields: [
+    id: 'business', label: 'Business Profile', icon: '🏪', tint: '#d08a2c', sub: [
+      { id: 'identity', label: 'Identity', icon: 'store', fields: [
         { key: 'businessName', label: 'Business name', type: 'text', def: 'Haseeb Autos' , sec: { title: '① Naam aur pehchan', tone: 'ok' }},
         { key: 'businessNameUr', label: 'Name (Urdu)', type: 'text', def: 'حسیب آٹوز' , sec: { title: '① Naam aur pehchan', tone: 'ok' }},
         { key: 'tagline', label: 'Tagline', type: 'text', def: 'Auto Parts • Car & Bike Decoration' , sec: { title: '① Naam aur pehchan', tone: 'ok' }},
@@ -23,7 +46,7 @@ var CONFIG_DEFS = [
         { key: 'strn', label: 'STRN (sales tax reg. no.)', type: 'text', def: '' , sec: { title: '③ Tax registration', tone: 'warn' }},
         { key: 'logoUrl', label: 'Logo URL (receipt + login)', type: 'text', def: '' , sec: { title: '④ Logo', tone: 'fin' }}
       ]},
-      { id: 'invoice', label: 'Bank & invoice', fields: [
+      { id: 'invoice', label: 'Bank & invoice', icon: 'bank', fields: [
         { key: 'bankName', label: 'Bank name', type: 'text', def: '' },
         { key: 'bankTitle', label: 'Account title', type: 'text', def: '' },
         { key: 'bankAccount', label: 'Account number', type: 'text', def: '' },
@@ -34,7 +57,7 @@ var CONFIG_DEFS = [
         { key: 'invoiceTerms', label: 'Terms & conditions (invoice footer)', type: 'textarea',
           def: 'Goods once sold will not be taken back without original invoice.' }
       ]},
-      { id: 'localization', label: 'Localization', fields: [
+      { id: 'localization', label: 'Localization', icon: 'map', fields: [
         { key: 'defaultLanguage', label: 'Default language', type: 'select', options: 'en,ur', def: 'en' , sec: { title: '① Zaban (language)', tone: 'ok' }},
         { key: 'languages', label: 'Enabled languages', type: 'text', def: 'en,ur' , sec: { title: '① Zaban (language)', tone: 'ok' }},
         { key: 'currency', label: 'Currency code', type: 'text', def: 'PKR' , sec: { title: '② Currency', tone: 'fin' }},
@@ -56,7 +79,7 @@ var CONFIG_DEFS = [
           sec: { title: '③ Tareekh & waqt', tone: 'info' }},
         { key: 'fiscalYearStart', label: 'Fiscal year start (MM-DD)', type: 'text', def: '07-01' , sec: { title: '③ Tareekh & waqt', tone: 'info' }}
       ]},
-      { id: 'appearance', label: 'Appearance', fields: [
+      { id: 'appearance', label: 'Appearance', icon: 'eye', fields: [
         { key: 'theme', label: 'Default theme', type: 'select', options: 'light,dark', def: 'light' },
         { key: 'brandColor', label: 'Brand color', type: 'color', def: '#ff6a00' },
         { key: 'density', label: 'UI density', type: 'select', options: 'comfortable,compact', def: 'comfortable' },
@@ -67,8 +90,8 @@ var CONFIG_DEFS = [
     ]
   },
   {
-    id: 'pos', label: 'Point of Sale', icon: '🧾', sub: [
-      { id: 'billing', label: 'Billing behaviour', fields: [
+    id: 'pos', label: 'Point of Sale', icon: '🧾', tint: '#2f9e63', sub: [
+      { id: 'billing', label: 'Billing behaviour', icon: 'receipt', fields: [
         { key: 'pos.layout', label: 'POS layout', type: 'select', options: 'cards,list,both', def: 'cards' , sec: { title: '① Layout', tone: 'ok' }},
         { key: 'pos.defaultView', label: 'Opening tab', type: 'select', options: 'all,categories,favorites,recent', def: 'categories' , sec: { title: '① Layout', tone: 'ok' }},
         { key: 'pos.cardsPerRow', label: 'Product cards per row', type: 'number', def: 4 , sec: { title: '① Layout', tone: 'ok' }},
@@ -80,7 +103,7 @@ var CONFIG_DEFS = [
         { key: 'pos.quickKeys', label: 'Quick keys row (hot items)', type: 'switch', def: true , sec: { title: '③ Behaviour', tone: 'warn' }},
         { key: 'pos.confirmOnDelete', label: 'Confirm before removing line', type: 'switch', def: false , sec: { title: '③ Behaviour', tone: 'warn' }}
       ]},
-      { id: 'cards', label: 'Product cards & layout', fields: [
+      { id: 'cards', label: 'Product cards & layout', icon: 'card', fields: [
         { key: 'pos.defaultView', label: 'Opening tab', type: 'select', options: 'all,categories,favourites,recent', def: 'all' , sec: { title: '① Card layout', tone: 'ok' }},
         { key: 'pos.cardsPerRow', label: 'Cards per row', type: 'number', def: 4 , sec: { title: '① Card layout', tone: 'ok' }},
         { key: 'pos.showImageOnCard', label: 'Show image on card', type: 'switch', def: true , sec: { title: '② Card par kya dikhe', tone: 'info' }},
@@ -95,7 +118,7 @@ var CONFIG_DEFS = [
         { key: 'pos.cardMinWidth', label: 'Card ki min chaurai (px)', type: 'number', def: 150 , sec: { title: '① Card layout', tone: 'ok' }}
       ]},
       /* v2.16 — comprehensive POS/Cart UI toggles (admin controls visible/enabled) */
-      { id: 'cartui', label: 'Cart & UI controls', icon: '🛒', fields: [
+      { id: 'cartui', label: 'Cart & UI controls', icon: 'cart', fields: [
         { key: 'pos.cartInlineAdd', label: 'Inline Add Product field in cart (desktop + drawer)', type: 'switch', def: true, sec: { title: '① Cart features', tone: 'ok' }},
         { key: 'pos.cartPicker', label: 'Multi-select Add Items picker', type: 'switch', def: true, sec: { title: '① Cart features', tone: 'ok' }},
         { key: 'pos.cartBulkScan', label: 'Bulk scan button', type: 'switch', def: true, sec: { title: '① Cart features', tone: 'ok' }},
@@ -114,7 +137,7 @@ var CONFIG_DEFS = [
         { key: 'pos.showTax', label: 'Show tax row', type: 'switch', def: true, sec: { title: '④ Totals & modals', tone: 'inv' }},
         { key: 'pos.modalBehindFix', label: 'Payment modal always above drawer', type: 'switch', def: true, sec: { title: '④ Totals & modals', tone: 'inv' }}
       ]},
-      { id: 'posbehavior', label: 'POS behaviour & invoice', fields: [
+      { id: 'posbehavior', label: 'POS behaviour & invoice', icon: 'gear', fields: [
         { key: 'pos.invoiceSimpleConfirm', label: 'Simple invoice confirmation (Print/Share only)', type: 'switch', def: true, help: 'After sale: Print, Share, Send, Save, Create New Sale — design controls stay in Settings', sec: { title: '① Invoice confirmation', tone: 'ok' }},
         { key: 'pos.invoiceDesignInSettingsOnly', label: 'Invoice design only in Settings', type: 'switch', def: true, sec: { title: '① Invoice confirmation', tone: 'ok' }},
         { key: 'pos.cashMustBeFull', label: 'Cash sale must pay full', type: 'switch', def: true, sec: { title: '② Payment rules', tone: 'warn' }},
@@ -124,7 +147,7 @@ var CONFIG_DEFS = [
         { key: 'pos.retainCustomerAfterSale', label: 'Keep customer after sale', type: 'switch', def: false, sec: { title: '③ General behaviour', tone: 'info' }},
         { key: 'pos.performanceFastRender', label: 'Fast cart/invoice render', type: 'switch', def: true, help: 'Batch DOM + fragment + fast print path', sec: { title: '④ Performance', tone: 'inv' }}
       ]},
-      { id: 'payments', label: 'Payments', fields: [
+      { id: 'payments', label: 'Payments', icon: 'money', fields: [
         { key: 'defaultPaymentMethod', label: 'Default method', type: 'select', options: 'CASH,CARD,BANK', def: 'CASH' },
         { key: 'paymentMethods', label: 'Enabled methods (comma)', type: 'text', def: 'CASH,CARD,BANK,JAZZCASH,EASYPAISA,CHEQUE,CREDIT' },
         { key: 'allowCreditSale', label: 'Allow udhaar sale', type: 'switch', def: true },
@@ -133,7 +156,7 @@ var CONFIG_DEFS = [
         { key: 'tipsEnabled', label: 'Enable tips', type: 'switch', def: false },
         { key: 'changeSuggestions', label: 'Quick cash buttons', type: 'text', def: '500,1000,2000,5000' }
       ]},
-      { id: 'discounts', label: 'Discounts & tax', fields: [
+      { id: 'discounts', label: 'Discounts & tax', icon: 'tag', fields: [
         { key: 'taxRate', label: 'Default tax %', type: 'number', def: 0 , sec: { title: '① Tax', tone: 'warn' }},
         { key: 'taxLabel', label: 'Tax label', type: 'text', def: 'GST' , sec: { title: '① Tax', tone: 'warn' }},
         { key: 'discountBeforeTax', label: 'Bill discount before tax', type: 'switch', def: true,
@@ -146,7 +169,7 @@ var CONFIG_DEFS = [
         { key: 'allowLineDiscount', label: 'Line-level discount', type: 'switch', def: true , sec: { title: '② Discount', tone: 'ok' }},
         { key: 'allowCoupons', label: 'Enable coupon codes', type: 'switch', def: true , sec: { title: '② Discount', tone: 'ok' }}
       ]},
-      { id: 'receipt', label: 'Receipt / print', fields: [
+      { id: 'receipt', label: 'Receipt / print', icon: 'printer', fields: [
         { key: 'receiptHeader', label: 'Header text', type: 'text', def: 'Haseeb Autos' , sec: { title: '① Receipt ka matn', tone: 'info' }},
         { key: 'receiptFooter', label: 'Footer text', type: 'text', def: 'Shukriya! Phir aayein.' , sec: { title: '① Receipt ka matn', tone: 'info' }},
         { key: 'receiptSize', label: 'Paper size', type: 'select', options: '58mm,80mm,A4', def: '80mm' , sec: { title: '① Receipt ka matn', tone: 'info' }},
@@ -178,14 +201,29 @@ var CONFIG_DEFS = [
           hint: 'Scan karte hi document mil jata hai — tracking aur search dono aasan' , sec: { title: '⑤ Reports (shop open/close)', tone: 'inv' }},
         { key: 'dayReportAutoPrint', label: 'Report ban-te hi print dialog kholay',
           type: 'switch', def: true,
-          hint: '§7 — open/close ke foran baad print window aati hai (band bhi kar sakte hain)' , sec: { title: '⑤ Reports (shop open/close)', tone: 'inv' }}
+          hint: '§7 — open/close ke foran baad print window aati hai (band bhi kar sakte hain)' , sec: { title: '⑤ Reports (shop open/close)', tone: 'inv' }},
+        /* v2.30.0 — SHOP SESSION RULES + DEMO DATA VISIBILITY */
+        { key: 'shop.requireOpen', label: 'Shop band ho to sale/kaam block karo',
+          type: 'switch', def: true,
+          hint: 'Sale, receipt, expense sab ke liye shop OPEN lazmi. Off karne par sirf track hota hai, block nahi.' , sec: { title: '⑥ Shop session rules', tone: 'ok' }},
+        { key: 'shop.openPromptOnLogin', label: 'Login ke baad shop kholne ka prompt',
+          type: 'switch', def: true,
+          hint: 'Shop band mile to banner + open-shop dialog khud khul jata hai' , sec: { title: '⑥ Shop session rules', tone: 'ok' }},
+        { key: 'shop.defaultOpeningCash', label: 'Default opening cash (float)',
+          type: 'number', def: 0, hint: 'Open-shop form isi rakam se shuru hota hai' , sec: { title: '⑥ Shop session rules', tone: 'ok' }},
+        { key: 'data.showDemo', label: 'Demo users/data dashboards par dikhayen',
+          type: 'switch', def: true,
+          hint: 'Production mein off kar dein — demo customer/supplier/items/report counts se ghayab ho jate hain (data delete nahi hota)' , sec: { title: '⑦ Demo data visibility', tone: 'warn' }},
+        { key: 'data.seedDemo', label: 'Fresh install par demo data seed karo',
+          type: 'switch', def: true,
+          hint: 'Setup ▸ seedDemoData isi setting ko dekhta hai — naya deployment foran usable ho jata hai' , sec: { title: '⑦ Demo data visibility', tone: 'warn' }}
       ]}
     ]
   },
   /* ================= v2.6 §10/§11/§13 — MOBILE PWAs ===================== */
   {
-    id: 'pwa', label: 'Mobile apps (PWA)', icon: '📱', sub: [
-      { id: 'pwaapps', label: 'Kaun si apps chalein', fields: [
+    id: 'pwa', label: 'Mobile apps (PWA)', icon: '📱', tint: '#3b82c4', sub: [
+      { id: 'pwaapps', label: 'Kaun si apps chalein', icon: 'phone', fields: [
         { key: 'pwa.wh.enabled', label: 'Warehouse app (?app=wh)',
           type: 'switch', def: true,
           hint: 'Receive · Put-away · Count · Transfer — warehouse staff ke liye' },
@@ -199,7 +237,7 @@ var CONFIG_DEFS = [
           type: 'switch', def: true,
           hint: 'Dedicated POS — grid, barcode, cart drawer, hold, offline queue' }
       ]},
-      { id: 'pwaoffline', label: 'Offline behaviour', fields: [
+      { id: 'pwaoffline', label: 'Offline behaviour', icon: 'cloudOff', fields: [
         { key: 'pwa.offlineEnabled', label: 'Offline kaam chaloo rahe',
           type: 'switch', def: true,
           hint: 'Net na ho to entries phone mein save hongi, net aate hi sync' },
@@ -207,13 +245,13 @@ var CONFIG_DEFS = [
           type: 'number', def: 200,
           hint: 'Zyada hone par user ko sync karne ka message milega' }
       ]},
-      { id: 'scanner', label: 'Live camera scan (QR/barcode)', fields: [
+      { id: 'scanner', label: 'Live camera scan (QR/barcode)', icon: 'camera', fields: [
         { key: 'scanner.liveUrl', label: 'External scanner URL (HTTPS)', type: 'text', def: '', full: true,
           hint: 'pwa/qr-scanner/ folder ko GitHub Pages ya apne domain par host karein aur uska URL yahan paste karein. Phones par live camera ka ekmatr reliable hal — Google ka sandbox Apps Script ke andar camera block karta hai (guide: release/QR-LIVE-CAMERA-GUIDE.md).' },
         { key: 'scanner.inApp', label: 'In-app camera attempt (fallback)', type: 'switch', def: true,
           hint: 'External URL na ho to app ke andar browser camera azmaayein; sandbox block kare to manual entry khuli rehti hai.' }
       ]},
-      { id: 'pwahosting', label: 'Hosting & PWA URLs (dedicated)', icon: '🌐', fields: [
+      { id: 'pwahosting', label: 'Hosting & PWA URLs (dedicated)', icon: 'globe', fields: [
         { key: 'pwa.urls.frontend', label: 'Main frontend URL', type: 'text', def: '', full: true,
           hint: 'Main app kahan host hai — e.g. https://your-domain.com, https://owner.github.io/haseeb-autos, Netlify / self-hosted. Khali = auto (current origin). Owner settings mein bina code change ke badal sakta hai.',
           sec: { title: '① Core hosts', tone: 'ok' }},
@@ -242,8 +280,8 @@ var CONFIG_DEFS = [
     ]
   },
   {
-    id: 'inventory', label: 'Inventory & Warehouse', icon: '📦', sub: [
-      { id: 'stock', label: 'Stock rules', fields: [
+    id: 'inventory', label: 'Inventory & Warehouse', icon: '📦', tint: '#b0703a', sub: [
+      { id: 'stock', label: 'Stock rules', icon: 'warehouse', fields: [
         { key: 'allowNegativeStock', label: 'Allow negative stock', type: 'switch', def: false },
         { key: 'stockValuation', label: 'Valuation method', type: 'select', options: 'WAC,FIFO,LATEST', def: 'WAC' },
         { key: 'lowStockThreshold', label: 'Default low-stock qty', type: 'number', def: 5 },
@@ -253,13 +291,13 @@ var CONFIG_DEFS = [
         { key: 'trackSerial', label: 'Enable serial/IMEI tracking', type: 'switch', def: false },
         { key: 'transferApproval', label: 'Transfers need approval', type: 'switch', def: false }
       ]},
-      { id: 'audit', label: 'Counts & audits', fields: [
+      { id: 'audit', label: 'Counts & audits', icon: 'clipboard', fields: [
         { key: 'audit.freezeOnCount', label: 'Freeze stock during count', type: 'switch', def: true },
         { key: 'audit.varianceAlert', label: 'Alert on variance > (qty)', type: 'number', def: 3 },
         { key: 'audit.requireReason', label: 'Reason mandatory', type: 'switch', def: true },
         { key: 'audit.autoPost', label: 'Auto-post small variances', type: 'switch', def: false }
       ]},
-      { id: 'product', label: 'Product defaults', fields: [
+      { id: 'product', label: 'Product defaults', icon: 'box', fields: [
         { key: 'defaultUnit', label: 'Default UoM', type: 'text', def: 'PCS' },
         { key: 'defaultCategory', label: 'Default category', type: 'text', def: 'Car Care' },
         { key: 'defaultTaxCode', label: 'Default tax code', type: 'text', def: '' },
@@ -270,15 +308,15 @@ var CONFIG_DEFS = [
     ]
   },
   {
-    id: 'trade', label: 'Trade & Accounts', icon: '🤝', sub: [
-      { id: 'customers', label: 'Customers', fields: [
+    id: 'trade', label: 'Trade & Accounts', icon: '🤝', tint: '#7a5cd6', sub: [
+      { id: 'customers', label: 'Customers', icon: 'users', fields: [
         { key: 'customer.creditCheck', label: 'Enforce credit limit', type: 'switch', def: true },
         { key: 'customer.loyalty', label: 'Loyalty points per 1000', type: 'number', def: 1 },
         { key: 'customer.requirePhone', label: 'Phone mandatory', type: 'switch', def: false },
         { key: 'customer.autoCode', label: 'Auto customer codes', type: 'switch', def: true },
         { key: 'priceTiers', label: 'Price tiers (comma)', type: 'text', def: 'RETAIL,WHOLESALE,MECHANIC,CORPORATE' }
       ]},
-      { id: 'purchase', label: 'Purchase', fields: [
+      { id: 'purchase', label: 'Purchase', icon: 'truck', fields: [
         { key: 'purchase.budgetCheck', label: 'Enforce PO budget', type: 'switch', def: true },
         { key: 'purchase.approval', label: 'PO needs approval', type: 'switch', def: false },
         { key: 'purchase.grnUpdatesCost', label: 'GRN updates item cost', type: 'switch', def: true },
@@ -289,7 +327,7 @@ var CONFIG_DEFS = [
           type: 'switch', def: true,
           hint: 'Har line par Previous rate, Retail, Wholesale aur farq (Rs / %) record hota hai' }
       ]},
-      { id: 'paymethods', label: 'Payment methods', fields: [
+      { id: 'paymethods', label: 'Payment methods', icon: 'coins', fields: [
         { key: 'paymentMethods', label: 'Enabled methods (comma)', type: 'text',
           def: 'CASH,CARD,BANK,JAZZCASH,EASYPAISA,RAAST,CHEQUE,CREDIT' },
         { key: 'pay.settleSkipWeekend', label: 'Settlement mein weekend skip karein', type: 'switch', def: true },
@@ -298,7 +336,7 @@ var CONFIG_DEFS = [
         { key: 'pay.cheque.clearDays', label: 'Cheque clearing days', type: 'number', def: 2 },
         { key: 'pay.cheque.alertDays', label: 'Clearing overdue alert (days)', type: 'number', def: 5 }
       ]},
-      { id: 'loyalty', label: 'Loyalty points', fields: [
+      { id: 'loyalty', label: 'Loyalty points', icon: 'gift', fields: [
         { key: 'loyalty.enabled', label: 'Loyalty program', type: 'switch', def: true , sec: { title: '① Program on/off', tone: 'ok' }},
         { key: 'loyalty.perAmount', label: 'Har kitne Rs par points', type: 'number', def: 1000 , sec: { title: '② Points ka hisaab', tone: 'info' }},
         { key: 'loyalty.points', label: 'Kitne points milte hain', type: 'number', def: 1 , sec: { title: '② Points ka hisaab', tone: 'info' }},
@@ -308,7 +346,7 @@ var CONFIG_DEFS = [
         { key: 'loyalty.rounding', label: 'Rounding (DOWN/NEAREST/UP)', type: 'text', def: 'DOWN' , sec: { title: '② Points ka hisaab', tone: 'info' }},
         { key: 'loyalty.expiryMonths', label: 'Points expiry (mahine, 0 = kabhi nahi)', type: 'number', def: 0 , sec: { title: '③ Redeem (istamal)', tone: 'warn' }}
       ]},
-      { id: 'accounts', label: 'Accounts', fields: [
+      { id: 'accounts', label: 'Accounts', icon: 'book', fields: [
         { key: 'accounts.enableExpenses', label: 'Enable expense module', type: 'switch', def: true , sec: { title: '① Modules on/off', tone: 'ok' }},
         { key: 'accounts.cashSessions', label: 'Enable cash drawer sessions', type: 'switch', def: true , sec: { title: '① Modules on/off', tone: 'ok' }},
         { key: 'accounts.varianceAlert', label: 'Alert cash variance >', type: 'number', def: 100 , sec: { title: '① Modules on/off', tone: 'ok' }},
@@ -329,7 +367,7 @@ var CONFIG_DEFS = [
         { key: 'cashbook.includeExpenses', label: 'Cash book mein expenses bhi dikhayein', type: 'switch', def: true , sec: { title: '④ Cash book', tone: 'fin' }}
       ]},
       /* v2.5: wallet gateway — EasyPaisa / JazzCash (asli API, no hardcoding) */
-      { id: 'wallets', label: 'Wallets (EasyPaisa / JazzCash)', icon: '📲', fields: [
+      { id: 'wallets', label: 'Wallets (EasyPaisa / JazzCash)', icon: 'wallet', fields: [
         { key: 'wallet.autoPollSeconds', label: 'Status auto-check (seconds)', type: 'number', def: 5,
           hint: 'POS par request ke baad kitni der mein status check ho' , sec: { title: '① Status polling', tone: 'info' }},
         { key: 'wallet.pollAttempts', label: 'Kitni dafa status check karein', type: 'number', def: 24 , sec: { title: '① Status polling', tone: 'info' }},
@@ -371,7 +409,7 @@ var CONFIG_DEFS = [
         { key: 'wallet.JAZZCASH.maxAmount', label: 'Max amount per request', type: 'number', def: 0 , sec: { title: '③ JazzCash', tone: 'warn' }},
         { key: 'wallet.JAZZCASH.tokenMinutes', label: 'Token expiry (minutes)', type: 'number', def: 30 , sec: { title: '③ JazzCash', tone: 'warn' }}
       ]},
-      { id: 'coa', label: 'Chart of accounts', icon: '📒', fields: [
+      { id: 'coa', label: 'Chart of accounts', icon: 'chart', fields: [
         { key: 'acc.cash', label: 'Cash account code', type: 'text', def: '1000', hint: 'Cash in hand' , sec: { title: '① Cash & bank', tone: 'ok' }},
         { key: 'acc.bank', label: 'Default bank account code', type: 'text', def: '1100' , sec: { title: '① Cash & bank', tone: 'ok' }},
         { key: 'acc.receivable', label: 'Accounts receivable code', type: 'text', def: '1200' , sec: { title: '② Receivable / payable', tone: 'warn' }},
@@ -392,8 +430,8 @@ var CONFIG_DEFS = [
     ]
   },
   {
-    id: 'modules', label: 'Modules & Navigation', icon: '🧩', sub: [
-      { id: 'modules', label: 'Enable / disable modules', fields: [
+    id: 'modules', label: 'Modules & Navigation', icon: '🧩', tint: '#2f9db0', sub: [
+      { id: 'modules', label: 'Enable / disable modules', icon: 'puzzle', fields: [
         { key: 'mod.pos', label: 'Point of Sale', type: 'switch', def: true , sec: { title: '① Kaun se modules chalu hain', tone: 'ok' }},
         { key: 'mod.items', label: 'Items & products', type: 'switch', def: true , sec: { title: '① Kaun se modules chalu hain', tone: 'ok' }},
         { key: 'mod.inventory', label: 'Inventory', type: 'switch', def: true , sec: { title: '① Kaun se modules chalu hain', tone: 'ok' }},
@@ -407,7 +445,7 @@ var CONFIG_DEFS = [
         { key: 'mod.offline', label: 'Offline POS', type: 'switch', def: true , sec: { title: '② Reports, users aur zyada', tone: 'info' }},
         { key: 'mod.labels', label: 'Barcode labels', type: 'switch', def: true , sec: { title: '② Reports, users aur zyada', tone: 'info' }}
       ]},
-      { id: 'nav', label: 'Navigation', fields: [
+      { id: 'nav', label: 'Navigation', icon: 'layers', fields: [
         { key: 'nav.style', label: 'Sidebar style', type: 'select', options: 'expanded,compact,floating', def: 'expanded' },
         { key: 'nav.showIcons', label: 'Show nav icons', type: 'switch', def: true },
         { key: 'nav.groupLabels', label: 'Show group labels', type: 'switch', def: true },
@@ -416,8 +454,8 @@ var CONFIG_DEFS = [
     ]
   },
   {
-    id: 'automation', label: 'Automation & AI', icon: '🤖', sub: [
-      { id: 'comms', label: 'WhatsApp & SMS', fields: [
+    id: 'automation', label: 'Automation & AI', icon: '🤖', tint: '#e0662f', sub: [
+      { id: 'comms', label: 'WhatsApp & SMS', icon: 'chat', fields: [
         { key: 'comms.whatsapp.provider', label: 'WhatsApp provider', type: 'select',
           options: 'LINK,META,TWILIO,WEBHOOK', def: 'LINK' , sec: { title: '① WhatsApp', tone: 'ok' }},
         { key: 'comms.whatsapp.apiVersion', label: 'Meta API version', type: 'text', def: 'v20.0' , sec: { title: '① WhatsApp', tone: 'ok' }},
@@ -442,31 +480,34 @@ var CONFIG_DEFS = [
         { key: 'comms.reminderTemplate', label: 'Reminder template', type: 'textarea',
           def: 'Yaad-dahani: {{customer}}, invoice {{invoiceNo}} ki baqaya {{due}} reh gayi hai. {{link}}' , sec: { title: '⑤ Auto-send & templates', tone: 'fin' }}
       ]},
-      { id: 'priceimport', label: 'Price list import', fields: [
+      { id: 'priceimport', label: 'Price list import', icon: 'fileText', fields: [
         { key: 'price-import.minMarginPct', label: 'Min margin % (guard)', type: 'number', def: 5 },
         { key: 'price-import.autoCreate', label: 'Naye items auto banayein', type: 'switch', def: false },
         { key: 'price-import.defaultCategory', label: 'Default category', type: 'text', def: 'Uncategorised' },
         { key: 'price-import.defaultMarginPct', label: 'Default margin % (naye item par)', type: 'number', def: 25 },
         { key: 'price-import.gmailQuery', label: 'Gmail search query', type: 'text', def: 'has:attachment newer_than:30d' }
       ]},
-      { id: 'migration', label: 'Firebase migration', fields: [
+      { id: 'migration', label: 'Firebase migration', icon: 'flame', fields: [
         { key: 'migration.autoSync', label: 'Daily auto-sync to Firebase', type: 'switch', def: false },
         { key: 'migration.syncTables', label: 'Sync tables (comma)', type: 'text',
           def: 'Items,Customers,Sales,SaleItems,StockLedger,Payments' },
         { key: 'migration.reminderRows', label: 'Migrate-sochne ki had (rows)', type: 'number', def: 100000 }
       ]},
-      { id: 'exports', label: 'Export & share', fields: [
+      { id: 'exports', label: 'Export & share', icon: 'share', fields: [
         { key: 'exports.folder', label: 'Drive folder name', type: 'text', def: 'Haseeb Autos Exports' },
         { key: 'exports.shareLinks', label: 'Share links (anyone with link)', type: 'switch', def: true },
         { key: 'exports.invoiceTitle', label: 'Invoice title', type: 'text', def: 'TAX INVOICE' },
         { key: 'exports.invoiceTerms', label: 'Invoice terms', type: 'textarea',
           def: 'Goods once sold will not be taken back without original invoice.' }
       ]},
-      { id: 'ai', label: 'AI assistant', fields: [
+      { id: 'ai', label: 'AI assistant', icon: 'sparkles', fields: [
         /* ── ① Agent · provider · model ─────────────────────────────────── */
         { key: 'aiEnabled', label: 'Enable AI agent', type: 'switch', def: true,
           sec: { title: '① Agent · provider · model', tone: 'ok' } },
-        { key: 'aiProvider', label: 'Provider', type: 'select', options: 'GEMINI,OPENAI,OPENROUTER,MOCK', def: 'GEMINI',
+        /* v2.30.0 (N7) — provider ke naam ADAPTERS se aate hain (optionsFrom) —
+           MOCK ka asli naam "Local Data Assistant" wahan likha hai, yahan nahi. */
+        { key: 'aiProvider', label: 'Provider', type: 'select', options: 'GEMINI,OPENAI,OPENROUTER,OLLAMA,MOCK',
+          optionsFrom: 'aiProviders', def: 'GEMINI',
           sec: { title: '① Agent · provider · model', tone: 'ok' } },
         { key: 'aiModel', label: 'Model (khali = auto: provider se latest free model)', type: 'text', def: '',
           hint: 'AI Agent screen par "Refresh models" daba kar asli list lain — koi model code mein hardcode nahi',
@@ -512,7 +553,7 @@ var CONFIG_DEFS = [
           sec: { title: '④ Guardrails · limits (hifazat)', tone: 'err' } },
         { key: 'aiAutoSuggest', label: 'Auto suggestions (dashboard/chat)', type: 'switch', def: true,
           sec: { title: '④ Guardrails · limits (hifazat)', tone: 'err' } },
-        { key: 'aiFallbackMock', label: 'Key na ho to MOCK mode', type: 'switch', def: true,
+        { key: 'aiFallbackMock', label: 'Key na ho to Local Data Assistant', type: 'switch', def: true,
           sec: { title: '④ Guardrails · limits (hifazat)', tone: 'err' } },
         { key: 'aiRedact', label: 'Redact CNIC / phone / ids', type: 'switch', def: true,
           sec: { title: '④ Guardrails · limits (hifazat)', tone: 'err' } },
@@ -523,7 +564,7 @@ var CONFIG_DEFS = [
         { key: 'aiDataScope', label: 'Data scope (location ids, comma)', type: 'text', def: '',
           sec: { title: '④ Guardrails · limits (hifazat)', tone: 'err' } }
       ]},
-      { id: 'alerts', label: 'Alerts & notifications', fields: [
+      { id: 'alerts', label: 'Alerts & notifications', icon: 'bell', fields: [
         { key: 'alert.lowStock', label: 'Low stock alert', type: 'switch', def: true },
         { key: 'alert.outOfStock', label: 'Out of stock alert', type: 'switch', def: true },
         { key: 'alert.receivables', label: 'Receivable over (days)', type: 'number', def: 30 },
@@ -531,7 +572,7 @@ var CONFIG_DEFS = [
         { key: 'alert.cashVariance', label: 'Cash variance alert', type: 'switch', def: true },
         { key: 'alert.dailySummary', label: 'Daily summary to owner', type: 'switch', def: false }
       ]},
-      { id: 'reorder', label: 'Purchase reorder rules', fields: [
+      { id: 'reorder', label: 'Purchase reorder rules', icon: 'refresh', fields: [
         { key: 'autoReorderMethod', label: 'Suggestion method', type: 'select', options: 'VELOCITY,REORDER_POINT,MIN_MAX', def: 'VELOCITY' , sec: { title: '① Tareeqa (method)', tone: 'ok' }},
         { key: 'autoReorderLookback', label: 'Sales lookback (days)', type: 'number', def: 30 , sec: { title: '① Tareeqa (method)', tone: 'ok' }},
         { key: 'autoReorderCoverageDays', label: 'Cover stock for (days)', type: 'number', def: 30 , sec: { title: '① Tareeqa (method)', tone: 'ok' }},
@@ -542,7 +583,7 @@ var CONFIG_DEFS = [
         { key: 'autoReorderMinValue', label: 'Min order value per item', type: 'number', def: 0 , sec: { title: '③ Supplier & PO', tone: 'info' }},
         { key: 'autoReorderIncludeSlow', label: 'Include slow / no-movement items', type: 'switch', def: false , sec: { title: '③ Supplier & PO', tone: 'info' }}
       ]},
-      { id: 'jobs', label: 'Scheduled jobs (triggers)', fields: [
+      { id: 'jobs', label: 'Scheduled jobs (triggers)', icon: 'alarmClock', fields: [
         { key: 'job.dailyReorder', label: 'Rozana auto reorder', type: 'switch', def: true,
           help: 'Subah Reorder.run() chalta hai → suggestions + notification' },
         { key: 'job.dailyHour', label: 'Reorder ka waqt (0-23)', type: 'number', def: 7 },
@@ -551,7 +592,7 @@ var CONFIG_DEFS = [
         { key: 'job.alertsHour', label: 'Alerts ka waqt (0-23)', type: 'number', def: 6 },
         { key: 'job.timezone', label: 'Timezone', type: 'text', def: 'Asia/Karachi' }
       ]},
-      { id: 'numbering', label: 'Document numbering', fields: [
+      { id: 'numbering', label: 'Document numbering', icon: 'hash', fields: [
         { key: 'prefix.SALE', label: 'Invoice prefix', type: 'text', def: 'INV' },
         { key: 'prefix.RETURN', label: 'Sale return', type: 'text', def: 'RTN' },
         { key: 'prefix.PO', label: 'Purchase order', type: 'text', def: 'PO' },
@@ -564,8 +605,8 @@ var CONFIG_DEFS = [
     ]
   },
   {
-    id: 'security', label: 'Security & Sessions', icon: '🔐', sub: [
-      { id: 'access', label: 'Access', fields: [
+    id: 'security', label: 'Security & Sessions', icon: '🔐', tint: '#c0504d', sub: [
+      { id: 'access', label: 'Access', icon: 'shield', fields: [
         { key: 'sessionHours', label: 'Session length (hours)', type: 'number', def: 12 },
         { key: 'maxLoginAttempts', label: 'Max failed logins', type: 'number', def: 5 },
         { key: 'requireStrongPassword', label: 'Require strong password', type: 'switch', def: true },
@@ -573,15 +614,15 @@ var CONFIG_DEFS = [
         { key: 'auditRetentionDays', label: 'Keep audit logs (days)', type: 'number', def: 365 },
         { key: 'auditAllReads', label: 'Also log reads (heavy)', type: 'switch', def: false }
       ]},
-      { id: 'loginPage', label: 'Login page', fields: [
+      { id: 'loginPage', label: 'Login page', icon: 'door', fields: [
         { key: 'login.showDemo', label: 'Show demo login buttons / credentials on homepage', type: 'switch', def: true,
           hint: 'Production par OFF karein — demo buttons/credentials chhup jayenge (login functionality waise hi rahega). Default ON.' }
       ]}
     ]
   },
   {
-    id: 'backend', label: 'Backend & Integrations', icon: '🔗', sub: [
-      { id: 'connection', label: 'Connection (GAS / Sheet)', fields: [
+    id: 'backend', label: 'Backend & Integrations', icon: '🔗', tint: '#6b7a8f', sub: [
+      { id: 'connection', label: 'Connection (GAS / Sheet)', icon: 'wrench', fields: [
         { key: 'backend.gasUrl', label: 'GAS Web App URL (exec)', type: 'text', def: '', full: true,
           hint: 'External/static frontends is URL se backend ko call karte hain. Khali = auto (current exec URL). Owner bina code edit ke yahan badal sakta hai. https://script.google.com/macros/s/.../exec' , sec: { title: '① GAS Web App connection', tone: 'ok' }},
         { key: 'backend.sheetUrl', label: 'Google Sheet URL (optional)', type: 'text', def: '', full: true,
@@ -593,7 +634,7 @@ var CONFIG_DEFS = [
         { key: 'pwa.urls.backend', label: 'Backend API URL (alias)', type: 'text', def: '', full: true,
           hint: 'Backend alias — khali = backend.gasUrl. Change without code after deploy.' , sec: { title: '① GAS Web App connection', tone: 'ok' }}
       ]},
-      { id: 'external', label: 'External frontends', fields: [
+      { id: 'external', label: 'External frontends', icon: 'globe', fields: [
         { key: 'integration.enabled', label: 'Enable external frontends (Netlify / GitHub Pages / self-hosted)', type: 'switch', def: true,
           hint: 'OFF = sirf GAS-hosted app chalegi, JSONP/external calls block' , sec: { title: '② External access', tone: 'warn' }},
         { key: 'integration.allowedOrigins', label: 'Allowed origins (comma)', type: 'text', def: '', full: true,
@@ -605,7 +646,7 @@ var CONFIG_DEFS = [
         { key: 'integration.apiKey', label: 'Integration API key (shared secret)', type: 'password', def: '',
           hint: 'External frontends is key ko header/payload mein bhejenge. Server-side hashed, frontend par •••• dikhega. Khali = no extra key (auth token hi kafi).' , sec: { title: '② External access', tone: 'warn' }}
       ]},
-      { id: 'offline', label: 'Offline & self-hosted', fields: [
+      { id: 'offline', label: 'Offline & self-hosted', icon: 'archive', fields: [
         { key: 'integration.offlineEnabled', label: 'Enable offline queue (self-hosted / offline PC)', type: 'switch', def: true,
           hint: 'Net na ho to bills phone/PC par queue honge, net aate hi sync — local/offline use ke liye' , sec: { title: '③ Offline & local PC', tone: 'info' }},
         { key: 'pwa.offlineEnabled', label: 'PWA offline cache (duplicate control)', type: 'switch', def: true,
@@ -647,9 +688,12 @@ var Config = {
     CONFIG_DEFS.forEach(function (g) {
       if (g.id === 'security' && s && !Auth.can(s, 'users.manage')) return;
       if (g.id === 'automation' && s && !Auth.can(s, 'ai.use') && !Auth.can(s, 'settings.manage')) { /* still show numbering */ }
-      var clone = { id: g.id, label: g.label, icon: g.icon, sub: [] };
+      /* v2.30.0 (N6) — icon ke saath tint bhi frontend tak jaye (sirf icon ka rang) */
+      var clone = { id: g.id, label: g.label, icon: g.icon, tint: g.tint || '', sub: [] };
       (g.sub || []).forEach(function (t) {
-        var tt = { id: t.id, label: t.label, fields: [] };
+        /* v2.30.0 (N6) — yehi asli bug tha: sub-tab ka icon yahan drop ho jata tha,
+           is liye UI har sub-tab par fallback '▸' dikhata tha (icons "nahi aate thay"). */
+        var tt = { id: t.id, label: t.label, icon: t.icon || '', fields: [] };
         (t.fields || []).forEach(function (f) {
           var rawVal = cfg[f.key] !== undefined ? cfg[f.key] : f.def;
           // mask secrets before they reach frontend — never send raw passwords
@@ -658,10 +702,18 @@ var Config = {
           } else if (typeof Security !== 'undefined' && Security.isPasswordKey && Security.isPasswordKey(f.key)) {
             try { if (U.str(rawVal)) rawVal = Security.SENTINEL; } catch (e) {}
           }
+          /* v2.30.0 (N7) — select ke label: `optionLabels` (value → dikhne wala naam).
+             options khud sirf VALUES rehti hain (save/value-match asar nahi hota). */
+          var optLabels = null;
+          try {
+            if (f.optionLabels) optLabels = f.optionLabels;
+            else if (f.optionsFrom && CONFIG_OPTION_SOURCES[f.optionsFrom]) optLabels = CONFIG_OPTION_SOURCES[f.optionsFrom]();
+          } catch (eL) { optLabels = null; }
           var ff = {
             key: f.key, label: f.label, type: f.type, def: f.def, hint: f.hint || '',
             full: !!f.full,
             options: f.options ? String(f.options).split(',') : null,
+            optionLabels: optLabels,
             value: rawVal,
             sec: f.sec || null
           };
@@ -755,7 +807,11 @@ var Config = {
     var sheet = Config.LIST_ENTITIES[entity];
     if (!sheet) throw new Error('Unknown list: ' + entity);
     var payload = U.pick(rec, SCHEMA[sheet]);
-    if (!payload.name) throw new Error('Name zaroori hai.');
+    /* v2.30.0 (N1/N2) — partial update safe (masalan sirf `active` toggle karna) */
+    var existing = payload.id ? DB.byId(sheet, payload.id) : null;
+    if (payload.id && !existing) throw new Error('Record not found');
+    var effName = payload.name !== undefined ? payload.name : (existing ? existing.name : '');
+    if (!U.str(effName)) throw new Error('Name zaroori hai.');
     if (payload.id) return DB.update(sheet, payload.id, payload, s);
     payload.active = payload.active === false ? 'false' : 'true';
     return DB.insert(sheet, payload, s);
@@ -783,9 +839,19 @@ var Config = {
     Auth.require(s, 'settings.manage');
     var payload = U.pick(rec, ['entity', 'key', 'label', 'type', 'options', 'defaultValue',
       'required', 'showInTable', 'showInPos', 'showInForm', 'tab', 'sortOrder', 'active']);
+    /* v2.30.0 (N1/N2) — partial update safe (sirf showInPos/showInTable toggle
+       karne par pehle "Label zaroori hai" error aata tha) */
+    if (rec.id) {
+      var cfExisting = DB.byId('CustomFields', rec.id);
+      if (!cfExisting) throw new Error('Custom field not found');
+      var effLabel = payload.label !== undefined ? payload.label : cfExisting.label;
+      if (!U.str(effLabel)) throw new Error('Label zaroori hai.');
+      if (payload.label === undefined) delete payload.label;
+      if (payload.key === undefined) delete payload.key;
+      return DB.update('CustomFields', rec.id, payload, s);
+    }
     if (!payload.key) payload.key = 'cf_' + U.slug(payload.label || 'field').replace(/-/g, '_');
     if (!payload.label) throw new Error('Label zaroori hai.');
-    if (rec.id) return DB.update('CustomFields', rec.id, payload, s);
     payload.sortOrder = payload.sortOrder || DB.all('CustomFields').length + 1;
     payload.active = 'true';
     return DB.insert('CustomFields', payload, s);

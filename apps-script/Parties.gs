@@ -61,7 +61,13 @@ var Parties = {
 
   saveCustomer: function (payload, s) {
     Auth.require(s, 'customers.edit');
-    if (!payload.name) throw new Error('Customer name zaroori hai.');
+    /* v2.30.0 (N1/N2) — partial update safe: naam sirf tab lazmi jab naya record
+       ho ya user ne naam khud khali kiya ho; partial save par naya code bhi
+       generate nahi hota (pehle hota tha → customer ka code badal jata tha). */
+    var existing = payload.id ? DB.byId('Customers', payload.id) : null;
+    if (payload.id && !existing) throw new Error('Customer not found');
+    var effName = payload.name !== undefined ? payload.name : (existing ? existing.name : '');
+    if (!U.str(effName)) throw new Error('Customer name zaroori hai.');
     if (payload.phone) {
       var dup = DB.findOne('Customers', function (r) {
         return U.str(r.phone) === U.str(payload.phone) && r.id !== payload.id;
@@ -69,8 +75,11 @@ var Parties = {
       if (dup) throw new Error('Ye number already hai: ' + dup.name);
     }
     var rec = U.pick(payload, SCHEMA.Customers);
+    if (rec.id) {
+      if (rec.code === undefined) delete rec.code;      /* purana code waisa hi rahe */
+      return DB.update('Customers', rec.id, rec, s);
+    }
     if (!rec.code) rec.code = Parties.nextCode('CUSTOMER');
-    if (rec.id) return DB.update('Customers', rec.id, rec, s);
     rec.active = rec.active === false ? 'false' : 'true';
     return DB.insert('Customers', rec, s);
   },
@@ -106,10 +115,17 @@ var Parties = {
 
   saveSupplier: function (payload, s) {
     Auth.require(s, 'suppliers.edit');
-    if (!payload.name) throw new Error('Supplier name zaroori hai.');
+    /* v2.30.0 (N1/N2) — partial update safe (dekhein saveCustomer ka note) */
+    var existing = payload.id ? DB.byId('Suppliers', payload.id) : null;
+    if (payload.id && !existing) throw new Error('Supplier not found');
+    var effName = payload.name !== undefined ? payload.name : (existing ? existing.name : '');
+    if (!U.str(effName)) throw new Error('Supplier name zaroori hai.');
     var rec = U.pick(payload, SCHEMA.Suppliers);
+    if (rec.id) {
+      if (rec.code === undefined) delete rec.code;
+      return DB.update('Suppliers', rec.id, rec, s);
+    }
     if (!rec.code) rec.code = Parties.nextCode('SUPPLIER');
-    if (rec.id) return DB.update('Suppliers', rec.id, rec, s);
     return DB.insert('Suppliers', rec, s);
   },
 

@@ -91,29 +91,67 @@ var Inventory = {
   },
 
   /* =============================== LEVELS ================================== */
+  /* v2.30.0 (N10) — ROOT CAUSE FIX
+     ------------------------------------------------------------------------
+     Masla (user report): "naye install par Items/Inventory/Stock Levels khali —
+     jab tak PO → GRN se stock na aaye kuch nazar nahi aata."
+     Wajah: ye list SIRF `Stock` rows se banti thi (DB.all('Stock').map(...)).
+     Naye DB mein Stock table khali hoti hai — halaanke catalog (Items) mein
+     products mojood hote hain. Is liye 0-stock products gayab ho jate thay.
+
+     Ab ye list **Items (catalog) se** banti hai aur `Stock` sirf qty/cost/rack
+     ke liye LEFT JOIN hota hai:
+       scope: 'all'      → har item, chahe stock 0 ho  ("All Inventory")
+       scope: 'stocked'  → sirf jinke stock row mojood ho (purana Stock Levels view, default)
+     Har row par: `stocked` (catalog vs stock ka farq) aur
+     `stockStatus` = out | low | in. Purane saare fields aur filters
+     (q, category, lowOnly, zeroOnly, sort, dir) bilkul waise hi chalte hain. */
   levels: function (p, s) {
     Auth.require(s, 'stock.view');
     p = p || {};
     var locId = p.locationId || s.locationId;
-    var stock = DB.all('Stock').filter(function (r) { return !locId || r.locationId === locId; });
-    var items = {};
-    DB.all('Items').forEach(function (i) { items[i.id] = i; });
+    var stockRows = {};
+    DB.all('Stock').forEach(function (r) {
+      if (locId && r.locationId !== locId) return;
+      stockRows[r.itemId] = r;
+    });
+    var scope = U.str(p.scope || 'stocked').toLowerCase();
+    if (scope !== 'all') scope = 'stocked';
+    var status = U.str(p.stockStatus || 'all').toLowerCase();
 
-    var rows = stock.map(function (r) {
-      var it = items[r.itemId] || {};
-      return {
-        itemId: r.itemId, code: it.code || '', name: it.name || '(unknown)', brand: it.brand || '',
-        category: it.category || '', unit: it.unit || '', rack: r.rack || it.rack || '',
-        locationId: r.locationId, qty: U.num(r.qty), avgCost: U.num(r.avgCost),
-        value: U.round(U.num(r.qty) * U.num(r.avgCost), 2),
-        retailPrice: U.num(it.retailPrice), minStock: U.num(it.minStock),
-        reorderLevel: U.num(it.reorderLevel), status: it.status || '',
-        low: U.num(r.qty) <= U.num(it.reorderLevel, U.num(it.minStock, 0))
+    var rows = [];
+    DB.all('Items').forEach(function (it) {
+      if (U.str(it.status) === 'DELETED') return;
+      var r = stockRows[it.id];
+      if (scope === 'stocked' && !r) return;
+      var qty = r ? U.num(r.qty) : 0;
+      var reorder = U.num(it.reorderLevel, U.num(it.minStock, 0));
+      var avgCost = r ? U.num(r.avgCost) : 0;
+      var row = {
+        itemId: it.id, code: it.code || '', name: it.name || '(unknown)',
+        brand: it.brand || '', category: it.category || '', unit: it.unit || '',
+        rack: (r && r.rack) || it.rack || '',
+        locationId: locId || (r ? r.locationId : ''),
+        qty: qty, avgCost: avgCost, value: U.round(qty * avgCost, 2),
+        retailPrice: U.num(it.retailPrice), costPrice: U.num(it.costPrice),
+        minStock: U.num(it.minStock), reorderLevel: U.num(it.reorderLevel),
+        status: it.status || '', barcode: it.barcode || '',
+        /* `stocked` = is branch ke liye Stock ROW mojood hai (data-level farq)
+           `hasQty`  = qty > 0 (UI filter ke liye saaf boolean) */
+        stocked: !!r, hasQty: qty > 0,
+        stockStatus: qty <= 0 ? 'out' : (qty <= reorder ? 'low' : 'in'),
+        low: qty <= reorder
       };
+      if (status && status !== 'all') {
+        if (status === 'stocked') { if (!row.stocked) return; }
+        else if (row.stockStatus !== status) return;
+      }
+      rows.push(row);
     });
 
-    if (p.q) rows = rows.filter(function (r) { return U.matchAll(r.code + ' ' + r.name + ' ' + r.brand + ' ' + r.category, p.q); });
+    if (p.q) rows = rows.filter(function (r) { return U.matchAll(r.code + ' ' + r.name + ' ' + r.brand + ' ' + r.category + ' ' + (r.barcode || ''), p.q); });
     if (p.category) rows = rows.filter(function (r) { return r.category === p.category; });
+    if (p.brand) rows = rows.filter(function (r) { return r.brand === p.brand; });
     if (p.lowOnly) rows = rows.filter(function (r) { return r.low; });
     if (p.zeroOnly) rows = rows.filter(function (r) { return r.qty === 0; });
 

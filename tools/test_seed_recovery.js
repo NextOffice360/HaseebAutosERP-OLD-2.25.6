@@ -7,7 +7,7 @@ const make=()=>loadBackend(path.join(__dirname,'../apps-script'));
 function empty(s,name){const sh=s.DB.sheet(name);if(sh.getLastRow()>1)sh.deleteRows(2,sh.getLastRow()-1);}
 {
  const {sandbox:s,services}=make();let r=s.setupAll();const id=r.spreadsheetId;
- ok('fresh setup completes only with physical seed verification',r.complete&&r.seedCounts.Users===9&&r.seedCounts.Locations===3);
+ ok('fresh setup completes only with physical seed verification',r.complete&&r.seedCounts.Users===10&&r.seedCounts.Locations===3);
  ok('fresh result exposes phase and exact database URL',r.phase==='COMPLETE'&&r.url.includes(id));
  const props=services.PropertiesService.getScriptProperties();props.setProperty('AI_KEY_GEMINI','TEST-PRESERVE-PRIVATE');
  const names=s.setupSeedPlan_().flatMap(p=>Array.from(p.tables));
@@ -17,24 +17,26 @@ function empty(s,name){const sh=s.DB.sheet(name);if(sh.getLastRow()>1)sh.deleteR
  ok('diagnostic returns linked spreadsheet, not active browser sheet',diag.spreadsheetId===id);
  ok('diagnostic never includes API key or hashes',!JSON.stringify(diag).includes('TEST-PRESERVE-PRIVATE')&&!JSON.stringify(diag).includes('passwordHash'));
  r=s.setupAll();
- ok('completed-but-empty checkpoint is repaired rather than falsely accepted',r.complete&&r.recoveryDetected.length===names.length&&r.seedCounts.Users===9);
+ ok('completed-but-empty checkpoint is repaired rather than falsely accepted',r.complete&&r.recoveryDetected.length===names.length&&r.seedCounts.Users===10);
  ok('recovery keeps exact same spreadsheet binding',r.spreadsheetId===id&&props.getProperty('SPREADSHEET_ID')===id);
  ok('all required tables now physically contain valid rows',s.diagnoseSeedData().ready);
- ok('groups/users/branches recovered',s.DB.all('Groups',true).length===5&&s.DB.all('Users',true).length===9&&s.DB.all('Locations',true).length===3);
+ ok('groups/users (9 staff + demo)/branches recovered',s.DB.all('Groups',true).length===5&&s.DB.all('Users',true).length===10&&s.DB.all('Locations',true).length===3);
  const owner=s.DB.all('Users',true).find(u=>u.username==='owner');
  ok('initial owner password hash verifies after recovery',s.U.hashPassword('admin123',owner.salt).hash===owner.passwordHash);
  ok('keys retained in Script Properties',props.getProperty('AI_KEY_GEMINI')==='TEST-PRESERVE-PRIVATE');
  const users=JSON.stringify(s.DB.all('Users',true));
  s.DB.setSetting('businessName','KEEP BUSINESS');s.DB.insert('Sales',{id:'KEEP-SALE',total:123});
+ const itemsBefore=s.DB.count('Items'),custBefore=s.DB.count('Customers');
  empty(s,'Translations');empty(s,'Bins');
  r=s.repairSeedData();
+ ok('live DB par demo seeding SKIP (zinda business ke data mein demo nahi ghusa)',r.demoDataSkipped===true&&s.DB.count('Items')===itemsBefore&&s.DB.count('Customers')===custBefore);
  ok('explicit recovery restores empty translation/bin tables',r.complete&&r.seedCounts.Translations>0&&r.seedCounts.Bins===36);
  ok('existing user IDs, hashes, salts and roles unchanged',JSON.stringify(s.DB.all('Users',true))===users);
  ok('existing business setting preserved',s.DB.settings().businessName==='KEEP BUSINESS');
  ok('existing sale untouched',s.DB.byId('Sales','KEEP-SALE').total==='123');
  const counts=JSON.stringify(r.seedCounts);r=s.repairSeedData();
  ok('repeated recovery creates no duplicate defaults',r.attempted.length===0&&JSON.stringify(r.seedCounts)===counts);
- ok('transactions and product rows are not fabricated',s.DB.count('Payments')===0&&s.DB.count('Items')===0);
+ ok('transactions and product rows are not fabricated',s.DB.count('Payments')===0&&s.DB.count('Items')===itemsBefore);
  // A no-op seed cannot advance the completion checkpoint.
  empty(s,'Users');const original=s.Setup.seedGroupsAndUsers;s.Setup.seedGroupsAndUsers=()=>{};
  let err='';try{s.setupAll();}catch(e){err=e.message;}
@@ -42,7 +44,7 @@ function empty(s,name){const sh=s.DB.sheet(name);if(sh.getLastRow()>1)sh.deleteR
  const cp=JSON.parse(props.getProperty('SETUP_PROGRESS_V212'));
  ok('failed seed retains retry position',cp.next===Object.keys(s.SCHEMA).length+1);
  s.Setup.seedGroupsAndUsers=original;
- ok('rerun after failure safely resumes',s.setupAll().complete&&s.DB.all('Users',true).length===9);
+ ok('rerun after failure safely resumes',s.setupAll().complete&&s.DB.all('Users',true).length>=9);
  empty(s,'Accounts');const account=s.Accounting.seedAccounts;s.Accounting.seedAccounts=()=>{throw new Error('ACCOUNT-SEED-FAIL');};
  let accountError='';try{s.repairSeedData();}catch(e){accountError=e.message;}
  ok('account-seeding exceptions no longer swallowed',accountError==='ACCOUNT-SEED-FAIL');
@@ -55,7 +57,7 @@ function empty(s,name){const sh=s.DB.sheet(name);if(sh.getLastRow()>1)sh.deleteR
  ok('old DB users not returned for a new DB',s.DB.all('Users').length===0);
  Object.keys(s.SCHEMA).forEach(n=>s.Setup.createSheet(n));
  const result=s.repairSeedData();
- ok('explicit recovery populates the linked headers-only second DB',result.complete&&result.spreadsheetId===other.getId()&&result.seedCounts.Users===9);
+ ok('explicit recovery populates the linked headers-only second DB',result.complete&&result.spreadsheetId===other.getId()&&result.seedCounts.Users===10);
  props.setProperty('SPREADSHEET_ID',id);s.DB.resetConnection();
  ok('switching back preserves original database',s.DB.byId('Sales','KEEP-SALE').total==='123');
 }

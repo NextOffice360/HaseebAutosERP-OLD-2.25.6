@@ -519,7 +519,14 @@ var Purchase = {
       });
     });
     return {
-      supplier: { id: id, name: sup.name || '', phone: sup.phone || '',
+      /* v2.30.0 (N10) — GRN/PO par supplier select karne par uski POORI configured
+         maloomat (contact · email · address · tax/NTN · credit limit · terms)
+         frontend ko chahiye hoti hai. Pehle yahan sirf name/phone/terms aate thay,
+         is liye GRN ka card adhoora reh jata tha. Additive change — purane
+         consumers (reports) waise hi kaam karte hain. */
+      supplier: { id: id, code: sup.code || '', name: sup.name || '', phone: sup.phone || '',
+        email: sup.email || '', address: sup.address || '', ntn: sup.ntn || '',
+        creditLimit: U.num(sup.creditLimit), active: U.str(sup.active),
         openingBalance: U.num(sup.openingBalance), paymentTerms: sup.paymentTerms || '' },
       openingBalance: U.num(sup.openingBalance),
       rows: out,

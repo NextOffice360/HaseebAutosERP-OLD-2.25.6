@@ -532,6 +532,20 @@ var ROUTES = {
   'cash.session.current': function (p, s) { return Payments.currentSession(p.locationId, s); },
   'cash.session.close': function (p, s) { return Payments.closeSession(p, s); },
   'shop.dayReport': function (p, s) { return Payments.dayReport(p, s); },
+  /* v2.30.0 — SHOP SESSION RULES (login ke baad shop OPEN lazmi) */
+  'shop.status': function (p, s) { return Shop.status(p, s); },
+  'shop.open': function (p, s) { return Shop.open(p, s); },
+  'shop.close': function (p, s) { return Shop.close(p, s); },
+  'shop.lastReport': function (p, s) { return Shop.lastReport(p, s); },
+  'shop.seedStatus': function (p, s) { Auth.require(s, 'settings.view'); return Shop.seeded(); },
+  'system.setupStatus': function (p, s) { return Setup.wizardStatus(p, s); },
+  'system.wizardSave': function (p, s) { return Setup.wizardSave(p, s); },
+  'system.wizardAdminPassword': function (p, s) { return Setup.wizardSetAdminPassword(p, s); },
+  'setup.diag': function (p, s) { Auth.require(s, 'settings.view'); return Setup.diagnostics(p, s); },
+  /* demo data visibility + cleanup (Settings ▸ Demo Data) */
+  'admin.demoStats': function (p, s) { return Shop.demoStats(p, s); },
+  'admin.removeDemoData': function (p, s) { return Shop.removeDemoData(p, s); },
+  'admin.seedDemoData': function (p, s) { Auth.require(s, 'settings.manage'); return Setup.seedDemoData({ force: true }); },
   'shop.dayReport.pdf': function (p, s) { return Exports.dayReportPdf(p.sessionId || p.id, s); },
 
   /* ------------------------------- reports ------------------------------ */

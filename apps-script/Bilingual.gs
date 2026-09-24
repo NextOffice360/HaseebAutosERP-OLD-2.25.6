@@ -89,7 +89,7 @@ var Bilingual = {
     'aiPreferFree':            'Prefer free-tier models',
     'aiOpenaiPrefixes':        'OpenAI: families to list (comma separated)',
     'aiRequireApproval':       'Require approval (for every action)',
-    'aiFallbackMock':          'Use MOCK mode when no API key',
+    'aiFallbackMock':          'Use Local Data Assistant when no API key',
 
     /* Scheduled jobs */
     'job.dailyHour':           'Reorder job hour (0-23)',

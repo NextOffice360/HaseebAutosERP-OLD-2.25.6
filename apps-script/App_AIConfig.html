@@ -188,7 +188,7 @@ async function testConnInner(host) {
   ST.testBusy = true;
   try {
     const r = await API.call('ai.test', { provider: prov(), model: String(val('aiModel') || '') || undefined },
-      { offlineFallback: () => ({ ok: false, message: 'Demo ke liye Mock provider chunein — Setup ▸ Provider ▸ Mock.' }) });
+      { offlineFallback: () => ({ ok: false, message: 'Demo ke liye Local Data Assistant chunein — Setup ▸ Provider.' }) });
     ST.testRes = r || { ok: false, message: 'Backend jawab nahi de saka.' };
     if (r) { const fresh=await API.call('ai.agentConfig',{}); if(fresh){ST.cfg=fresh; if (window.Deps) Deps.hardRefresh('ai.models');} }
   } catch (e) { ST.testRes = { ok: false, message: e.message }; }
@@ -201,7 +201,7 @@ function paintTest(host) {
   host.appendChild(h('div', { class: 'ai-test ' + (r.ok ? 'ok' : 'err') },
     h('b', null, r.ok ? 'Connection KAAMYAB' : 'Connection FAIL'),
     h('span', null, r.message || ''),
-    r.fallback ? chip('Mock fallback', 'info') : '',
+    r.fallback ? chip('Local Data Assistant fallback', 'info') : '',
     r.hint ? h('div', { class: 'ai-test-hint' }, 'Salah: ' + r.hint) : '',
     r.sample ? h('div', { class: 'ai-test-hint', style: { opacity: '.75' } }, 'Sample: ' + r.sample) : '',
     (r.ms !== undefined && r.ok) ? h('div', { class: 'ai-test-hint', style: { opacity: '.65' } }, 'Latency: ' + r.ms + ' ms') : ''));
@@ -225,10 +225,10 @@ function renderSetupControls(c) {
       chip(meta.label || prov(), 'info'),
       chip(cfg.model || '—'),
       cfg.hasKey ? chip('Key set (' + (cfg.keyHint || '••••') + ')', 'ok')
-        : okUsable ? chip('Mock mode', 'info') : chip('Key chahiye', 'err'),
+        : okUsable ? chip('Local mode · no LLM', 'info') : chip('Key chahiye', 'err'),
       String(val('aiCanWrite')) === 'true' ? chip('Data par writes ON', 'warn') : chip('Read-only', 'ok')),
     (!okUsable) ? h('div', { class: 'f-hint', style: { color: 'var(--warn)' } },
-      'AI chalane ke liye ya to API key daalein, ya provider Mock chunein, ya Mock fallback on karein.') : '')));
+      'AI chalane ke liye ya to API key daalein, ya Local Data Assistant (bina LLM) chunein, ya uska fallback on karein.') : '')));
 
   /* ── provider cards ── */
   const pCards = h('div', { class: 'ai-prov' });
@@ -245,7 +245,7 @@ function renderSetupControls(c) {
         } },
         h('b', null, p.label || p.id),
         h('span', null, p.tagline || ''),
-        h('span', { class: 'ai-provc-tag' }, (cfg.profiles || {})[p.id] && cfg.profiles[p.id].lastTest ? (cfg.profiles[p.id].lastTest.ok ? 'Test passed' : 'Needs attention') : p.needsKey ? ((cfg.credentials || {})[p.id] && cfg.credentials[p.id].hasKey ? 'Key saved · test pending' : 'Not connected') : (p.id === 'MOCK' ? 'Rule-based demo' : 'Your server')),
+        h('span', { class: 'ai-provc-tag' }, (cfg.profiles || {})[p.id] && cfg.profiles[p.id].lastTest ? (cfg.profiles[p.id].lastTest.ok ? 'Test passed' : 'Needs attention') : p.needsKey ? ((cfg.credentials || {})[p.id] && cfg.credentials[p.id].hasKey ? 'Key saved · test pending' : 'Not connected') : (p.id === 'MOCK' ? 'Local rules · no LLM' : 'Your server')),
         (function () {
           const caps = p.caps || {};
           const tags = [];
@@ -264,7 +264,8 @@ function renderSetupControls(c) {
       'Select a connection to manage. Your primary provider stays unchanged until you save routing.'),
     pCards]));
 
-  /* ── API key — v2.27.0: shared [data-when] (MOCK par poora section chhupta hai) ── */
+  /* ── API key — v2.27.0: shared [data-when] (Local Data Assistant = id MOCK par
+     poora section chhupta hai — usay key ki zaroorat nahi hoti) ── */
   {
     const keyInput = h('input', { class: 'f-input', type: ST.showKey ? 'text' : 'password',
       'aria-label': 'API key', autocomplete: 'off', spellcheck: 'false',
@@ -395,7 +396,8 @@ function renderSetupControls(c) {
     tg('aiCanWrite', 'Drafts banane dein (writes)', 'Default OFF. Sirf draft banta hai; publish/cancel aap khud karte hain.', 'ai-tg-warn'),
     tg('aiRequireApproval', 'Approval zaroori', 'Draft par bhi confirmation talab ho.'),
     tg('aiAutoSuggest', 'Smart suggestions', 'Chat ke neeche sawal-chips dikhayein.'),
-    tg('aiFallbackMock', 'Mock fallback', 'Key na ho to rule-based jawab (aapke data par tools) — app AI ke bagair na ruke.'),
+    tg('aiFallbackMock', 'Local Data Assistant fallback',
+      'Key na ho to ye LOCAL rules engine (koi LLM nahi) aap ke asli data par rule-based jawab deta hai — app ruke na ruke.'),
     tg('aiRedact', 'Naam/fon chhupayein', 'Provider ko bhejte waqt customer phone mask ho.'),
     warnBox]));
 
@@ -550,8 +552,8 @@ function renderSetup(c) {
   if(prov()==='OLLAMA' && endpointCard) connection.appendChild(endpointCard);
   connection.appendChild(h('div',{class:'ai-connect-action'},
     h('button',{class:'btn',type:'button',disabled:ST.connecting,'data-action':'auto-connect',onclick:e=>connectProvider(e.currentTarget)},
-      ST.connecting ? 'Connecting…' : prov()==='MOCK' ? 'Configure Mock demo' : 'Connect & auto-configure'),
-    h('p',{class:'f-hint'},prov()==='MOCK' ? 'Rule-based demonstration only. No live AI service.' :
+      ST.connecting ? 'Connecting…' : prov()==='MOCK' ? 'Set up Local Data Assistant' : 'Connect & auto-configure'),
+    h('p',{class:'f-hint'},prov()==='MOCK' ? 'App ka apna LOCAL rules engine — koi internet, koi API key, koi LLM nahi.' :
       'Secure key check → discover models → choose & test → save. For cloud services, this uses the official endpoint.')));
   const testHost=legacy.querySelector('#aiTestHost'); if(testHost) connection.appendChild(testHost);
   if(modelCard)connection.appendChild(modelCard);
@@ -583,7 +585,7 @@ function pushMsg(host, role, text, tools, info) {
   if (tools && tools.length)
     el.appendChild(h('div', { class: 'ai-msg-tools' }, 'tools: ' + tools.map(t => t.tool).join(', ') +
       (tools.filter(t => t.result && t.result.error).length ? ' (' + tools.filter(t => t.result && t.result.error).length + ' error)' : '')));
-  if (info) el.appendChild(h('div', {class:'ai-msg-tools'}, 'Answered by ' + info.provider + ' · ' + info.model + (info.failover ? ' · fallback used' : '') + (info.provider === 'MOCK' ? ' · rule-based, not live AI' : '')));
+  if (info) el.appendChild(h('div', {class:'ai-msg-tools'}, 'Answered by ' + provLabel(info.provider) + ' · ' + info.model + (info.failover ? ' · fallback used' : '') + (info.provider === 'MOCK' ? ' · local rules engine (no LLM)' : '')));
   host.appendChild(el); host.scrollTop = host.scrollHeight;
   return el;
 }
@@ -627,14 +629,14 @@ function renderAssistant(c) {
     h('h3', null, 'Haseeb Assistant'),
     h('div', { style: { display: 'flex', gap: '6px', flexWrap: 'wrap' } },
       h('span', { class: 'badge ' + (cfg.usable ? 'ok' : 'warn') },
-        cfg.provider === 'MOCK' ? 'Mock agent' : (cfg.usable ? 'Live · ' + (cfg.model || '') : 'Setup zaroori')),
+        cfg.provider === 'MOCK' ? provLabel('MOCK') : (cfg.usable ? 'Live · ' + (cfg.model || '') : 'Setup zaroori')),
       h('button', { class: 'btn sm sec', onclick: () => {
         ST.hist = []; ST.tid = ''; App.refresh(); } }, 'New chat'),
       h('button', { class: 'btn sm ghost', onclick: () => goTab('setup') }, 'Setup'))));
   const host = h('div', { class: 'ai-msgs', id: 'aiMsgs' });
   if (!ST.hist.length)
     pushMsg(host, 'bot', 'Assalam-o-Alaikum! Main aapka business agent hoon — ' +
-      (cfg.provider === 'MOCK' ? 'Mock mode mein aapke LIVE data par tools chala kar jawab deta hoon.' :
+      (cfg.provider === 'MOCK' ? 'Main Local Data Assistant hoon — app ka LOCAL rules engine (koi LLM nahi). Aapke LIVE data par tools chala kar jawab deta hoon.' :
         meta.label + ' (' + (cfg.model || 'model') + ') se munsalik.') +
       '\nNeeche diye sawal aazmaayein, ya jo poochna ho likhein.');
   else ST.hist.forEach(mm => pushMsg(host, mm.role === 'user' ? 'user' : 'bot', mm.content));
@@ -655,6 +657,47 @@ function renderAssistant(c) {
     wrap.appendChild(h('div', { class: 'f-hint', style: { padding: '0 12px 8px' } },
       'History: ' + ST.threads.length + ' chat (Activity tab mein)'));
   c.appendChild(wrap);
+  c.appendChild(capabilitiesCard());
+}
+
+/* ==========================================================================
+   v2.30.0 (N7) — "YE KYA KAR SAKTA HAI / KYA NAHI" (honest capability card)
+   --------------------------------------------------------------------------
+   Aap ki shart: capabilities/limits honestly document — LLM ka dawa hargiz nahi.
+   Local engine (id MOCK) ke can/cannot lists backend ke adapter meta se aate hain
+   (`ai.agentConfig.providers`), is liye yahan koi string do jagah nahi likhi jati.
+   Bahar ke LLM provider par bhi saaf likha jata hai ke jawab model se aate hain,
+   data tools ke through jata hai (RBAC) aur ghalat jawab mumkin hai.
+   ========================================================================== */
+function capabilitiesCard() {
+  const prov = String((ST.cfg && ST.cfg.provider) || 'GEMINI');
+  const meta = (ST.cfg && (ST.cfg.providers || [])).filter(p => p.id === prov)[0] || provMeta(prov);
+  const isLocal = prov === 'MOCK';
+  const list = (arr, tone) => h('ul', { class: 'cap-list ' + (tone || '') },
+    (arr || []).map(x => h('li', null, x)));
+  const body = h('div', { class: 'card-body tight' },
+    h('div', { class: 'f-hint' },
+      isLocal
+        ? 'Abhi chal raha hai: ' + (meta.label || 'Local Data Assistant') +
+          ' — app ka apna LOCAL rules engine. Koi internet, koi API key, koi LLM nahi.'
+        : 'Abhi chal raha hai: ' + (meta.label || prov) + ' (bahar ka LLM provider). Jawab model banata hai; ' +
+          'aap ka data provider ko raw rows ki tarah nahi jata — assistant pehle apne tools (RBAC ke tehat) chalata hai aur sirf sawal/jawab ka text jata hai. LLM ghalat jawab bhi de sakta hai — ahem hisaab dekh kar confirm karein.'),
+    isLocal
+      ? h('div', null,
+          h('b', { class: 'cap-h' }, '✔ Kar sakta hai'),
+          list(meta.can, 'ok'),
+          h('b', { class: 'cap-h' }, '✖ Nahi kar sakta'),
+          list(meta.cannot, 'no'))
+      : h('div', null,
+          h('b', { class: 'cap-h' }, '✔ Aam taur par kar sakta hai'),
+          list(['Aap ke data par tools chalana aur us ka khulasa (permissions ke tehat)',
+                'Roman Urdu / English mein jawab', 'Draft banana (post/approve insaan karta hai)'], 'ok'),
+          h('b', { class: 'cap-h' }, '⚠ Dhyan rakhein'),
+          list(['Jawab model se aata hai — galti mumkin hai, numbers dobara check karein',
+                'Internet ke bagair kaam nahi karega (us waqt Local Data Assistant chunein)'], 'no')));
+  return h('div', { class: 'card', id: 'aiCapCard' },
+    h('div', { class: 'card-head' }, h('h3', null, 'Ye assistant kya kar sakta hai — aur kya nahi')),
+    body);
 }
 
 /* ============================== TOOLS TAB ================================== */
@@ -741,7 +784,7 @@ function renderActivity(c) {
 App.registerScreen('ai', {
   title: 'AI Agent', icon: '✨', perm: 'ai.use',
   subtitle: () => ST.cfg ? (provMeta(ST.cfg.provider).label || ST.cfg.provider) + ' · ' +
-    (ST.cfg.model || 'model') + ' · ' + (ST.cfg.hasKey ? 'key set' : (ST.cfg.usable ? 'mock mode' : 'setup zaroori')) : 'AI assistant',
+    (ST.cfg.model || 'model') + ' · ' + (ST.cfg.hasKey ? 'key set' : (ST.cfg.usable ? 'local mode · no LLM' : 'setup zaroori')) : 'AI assistant',
   render(body) {
     const paint = function () {
       if (!body.isConnected) return;
@@ -758,7 +801,16 @@ App.registerScreen('ai', {
       });
     };
     paint();                                       /* shell foran — cache se */
-    if (!ST.loaded) loadCfg().then(paint, function (e) { ST.err = String(e && e.message || e); paint(); });
+    if (!ST.loaded) { loadCfg().then(paint, function (e) { ST.err = String(e && e.message || e); paint(); }); }
+    else {
+      /* v2.30.0 (N7) — Settings mein provider badla to AI screen PURANA config na
+         dikhaye (pehla bug: ST cache ke pechhe GEMINI hi dikhta rehta tha jab tak
+         F5 na ho). App.state.settings settings-save ke baad fresh aata hai. */
+      const liveP = String((App.state.settings || {}).aiProvider || '').toUpperCase();
+      if (liveP && ST.cfg && ST.cfg.provider && liveP !== String(ST.cfg.provider).toUpperCase()) {
+        loadCfg(true).then(paint, function () { paint(); });
+      }
+    }
   }
 });
 

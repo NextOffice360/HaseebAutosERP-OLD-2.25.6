@@ -255,19 +255,34 @@ var Items = {
   save: function (payload, s) {
     Auth.require(s, 'items.create');
     var rec = U.pick(payload, Items.FIELDS);
-    if (!rec.name) throw new Error('Item name zaroori hai.');
-    if (!rec.code) rec.code = Items.nextCode(payload.brand || '', s);
-    if (!rec.barcode) rec.barcode = rec.code;
-    // duplicate code check
-    var dup = DB.findOne('Items', function (r) {
-      return U.norm(r.code) === U.norm(rec.code) && r.id !== rec.id;
-    });
-    if (dup) throw new Error('Code "' + rec.code + '" already exists (item: ' + dup.name + ').');
+    /* v2.30.0 (N1/N2 deep audit) — PARTIAL UPDATE ka asli bug:
+       ① `if (!rec.name) throw` update se PEHLE chalta tha → {id, barcode} jaisi
+          partial save hamesha fail ("Item name zaroori hai") — App_Masters ka
+          barcode edit, "Save extra fields" aur image-URL save isi wajah se tootay thay.
+       ② `if (!rec.code) rec.code = nextCode()` partial save par item ka CODE hi
+          badal deta tha (data corruption) — aur barcode bhi.
+       Ab: update mein sirf JO bheja gaya woh validate/update hota hai (merged
+       validation), code/barcode sirf naye record par generate hote hain. */
+    var existing = rec.id ? DB.byId('Items', rec.id) : null;
+    if (rec.id && !existing) throw new Error('Item not found');
+    var effName = rec.name !== undefined ? rec.name : (existing ? existing.name : '');
+    if (!U.str(effName)) throw new Error('Item name zaroori hai.');
+    if (!rec.id) {
+      if (!rec.code) rec.code = Items.nextCode(payload.brand || '', s);
+      if (!rec.barcode) rec.barcode = rec.code;
+    }
+    var effCode = U.str(rec.code) || U.str(existing && existing.code);
+    if (effCode) {
+      var dup = DB.findOne('Items', function (r) {
+        return U.norm(r.code) === U.norm(effCode) && r.id !== rec.id;
+      });
+      if (dup) throw new Error('Code "' + effCode + '" already exists (item: ' + dup.name + ').');
+    }
 
     if (rec.id) {
-      var existing = DB.byId('Items', rec.id);
-      if (!existing) throw new Error('Item not found');
-      if (U.num(rec.retailPrice) !== U.num(existing.retailPrice) && !Auth.can(s, 'items.price.edit')) {
+      /* price permission sirf tab jab price waqai bheja gaya ho */
+      if (rec.retailPrice !== undefined && U.num(rec.retailPrice) !== U.num(existing.retailPrice) &&
+          !Auth.can(s, 'items.price.edit')) {
         throw new Error('Price change ke liye ijazat nahi hai.');
       }
       rec.updatedAt = U.iso();

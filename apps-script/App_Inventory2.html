@@ -40,9 +40,14 @@ App.registerScreen('inventory', {
     const loc = () => App.state.tmpLoc || '';
 
     UI2.tabs(host, {
-      level: 1, active: 'stock',
+      level: 1, active: 'all',
       tabs: [
-        { id: 'stock', label: 'Stock levels', icon: '📦', render: c => renderStock(c, loc) },
+        /* v2.30.0 (N10) — "All inventory": POORI catalog, chahe stock 0 ho.
+           Wajah: naye install par (GRN se pehle) Stock levels khali dikhta tha,
+           jabke products Items mein mojood thay. Ab do views:
+             All inventory → har item (catalog) · Stock levels → stock-status view */
+        { id: 'all', label: 'All inventory', icon: 'layers', render: c => renderAll(c, loc) },
+        { id: 'stock', label: 'Stock levels', icon: 'box', render: c => renderStock(c, loc) },
         { id: 'moves', label: 'Stock ledger', icon: '🔁', render: c => renderMoves(c, loc) },
         { id: 'adjust', label: 'Adjustments', icon: '⚖', render: c => renderAdjust(c, loc) },
         { id: 'transfer', label: 'Transfers', icon: '🔄', render: c => renderTransfers(c, loc) },
@@ -53,15 +58,105 @@ App.registerScreen('inventory', {
   }
 });
 
+/* ========================= ALL INVENTORY (catalog) ========================
+   v2.30.0 (N10) — Permanent tab: har item (chahe stock 0 ho). "Stock levels"
+   sirf stock-status view ke liye alag rehta hai. Data dono views ka EK hi
+   source se aata hai (stock.levels route) → koi duplicate logic nahi. */
+function renderAll(c, loc) {
+  const host = h('div'); c.appendChild(host);
+  Shared.paint(host, { kind: 'loading', label: 'All inventory load ho raha hai…' });
+  API.call('stock.levels', { locationId: locId(loc), scope: 'all' }, { offlineFallback: () => [] }).then(rows => {
+    host.innerHTML = '';
+    rows = rows || [];
+    if (!rows.length) {
+      return Shared.paint(host, {
+        kind: 'empty', icon: '📦', title: 'Abhi koi item nahi',
+        hint: 'Items screen se products add karein — stock ke baghair bhi yahan nazar aayenge (0 stock ≈ Out of stock).'
+      });
+    }
+    const cats = Array.from(new Set(rows.map(r => r.category).filter(Boolean))).sort();
+    const brands = Array.from(new Set(rows.map(r => r.brand).filter(Boolean))).sort();
+    host.appendChild(UI2.table({
+      screen: 'inv_all', rows: rows, height: '58vh', exportName: 'all-inventory',
+      searchPlaceholder: '🔎 Code / naam / brand / barcode se dhoondein…',
+      filters: [
+        { key: 'category', label: 'Category', type: 'select', options: cats },
+        { key: 'brand', label: 'Brand', type: 'select', options: brands },
+        { key: 'stockStatus', label: 'Stock status', type: 'select',
+          options: [{ value: 'in', label: 'In stock' }, { value: 'low', label: 'Low stock' }, { value: 'out', label: 'Out of stock' }] },
+        { key: 'hasQty', label: 'Sirf stock wale (qty > 0)', type: 'switch' }
+      ],
+      columns: [
+        { key: 'code', label: 'Code' },
+        { key: 'barcode', label: 'Barcode' },
+        { key: 'name', label: 'Item', render: r => h('div', null, h('b', null, r.name),
+            h('div', { style: { fontSize: 'var(--fs-xs)', color: 'var(--muted)' } }, [r.brand, r.category].filter(Boolean).join(' · '))) },
+        { key: 'category', label: 'Category' },
+        { key: 'brand', label: 'Brand' },
+        { key: 'unit', label: 'Unit' },
+        { key: 'rack', label: 'Rack' },
+        { key: 'qty', label: 'Qty', num: true,
+          render: r => h('b', { style: { color: r.qty <= 0 ? 'var(--err)' : (r.low ? 'var(--warn)' : 'inherit') } }, fmt.num(r.qty)) },
+        { key: 'stockStatus', label: 'Status',
+          render: r => h('span', { class: 'badge ' + (r.stockStatus === 'out' ? 'err' : r.stockStatus === 'low' ? 'warn' : 'ok') },
+            r.stockStatus === 'out' ? 'OUT' : (r.stockStatus === 'low' ? 'LOW' : 'IN')) },
+        { key: 'stocked', label: 'Stock row', render: r => r.stocked ? 'Yes' : h('span', { class: 'muted' }, '—') },
+        { key: 'hasQty', label: 'Stock hai', render: r => r.hasQty ? h('span', { class: 'badge ok' }, 'Yes') : h('span', { class: 'badge err' }, 'No') },
+        { key: 'avgCost', label: 'Avg cost', num: true, render: r => fmt.money(r.avgCost) },
+        { key: 'value', label: 'Stock value', num: true, render: r => fmt.money(r.value) },
+        { key: 'retailPrice', label: 'Retail', num: true, render: r => fmt.money(r.retailPrice) },
+        { key: 'minStock', label: 'Min', num: true },
+        { key: 'reorderLevel', label: 'Reorder', num: true }
+      ],
+      rowActions: r => {
+        const a = [{ icon: '🏷', label: 'Labels', onClick: () => Print.labelFlow([r.itemId]) }];
+        if (App.can('stock.adjust')) a.unshift({ icon: '⚖', label: 'Count', onClick: () => quickCount(r) });
+        return a;
+      },
+      onRow: r => App.go('items', { open: r.itemId })
+    }));
+    const outN = rows.filter(r => r.stockStatus === 'out').length;
+    const lowN = rows.filter(r => r.stockStatus === 'low').length;
+    host.appendChild(h('div', { class: 'st2-foot' },
+      rows.length + ' products (catalog) · ' + outN + ' out of stock · ' + lowN + ' low · stock value ' +
+      fmt.money(rows.reduce((a, r) => a + Number(r.value || 0), 0))));
+  }).catch(e => Shared.paint(host, { kind: 'error', error: e, title: 'All inventory load nahi ho saka',
+    retry: () => { App.refresh(); } }));
+}
+
 function renderStock(c, loc) {
   const host = h('div'); c.appendChild(host);
-  API.call('stock.levels', { locationId: locId(loc) }, { offlineFallback: () => [] }).then(rows => {
+  /* v2.30.0 (N10) — pehle yahan sirf Stock rows aati thin aur naye install par
+     page BILKUL khali ho jata tha. Ab default wahi purana view hai (scope='stocked'),
+     magar ek switch se catalog/zero-stock items bhi isi table mein dekh sakte hain. */
+  const zeroShown = !!App.state.tmpStockAll;
+  const scopeBar = h('div', { class: 'filters', style: { marginBottom: '8px' } },
+    (function () {
+      const cb = h('input', { type: 'checkbox', id: 'stkZero' });
+      cb.checked = zeroShown;
+      cb.onchange = () => { App.state.tmpStockAll = cb.checked; App.refresh(); };
+      return h('label', { class: 'switch', title: 'Zero-stock items bhi is table mein dikhayein' }, cb, h('i'),
+        h('span', { style: { fontSize: 'var(--fs-xs)', fontWeight: '600' } }, 'Zero-stock items bhi dikhayein'),
+        h('span', { class: 'sw-state' }, cb.checked ? 'On' : 'Off'));
+    })());
+  c.insertBefore(scopeBar, host);
+  Shared.paint(host, { kind: 'loading', label: 'Stock levels load ho rahe hain…' });
+  API.call('stock.levels', { locationId: locId(loc), scope: zeroShown ? 'all' : 'stocked' }, { offlineFallback: () => [] }).then(rows => {
     host.innerHTML = '';
+    rows = rows || [];
+    if (!rows.length) {
+      return Shared.paint(host, {
+        kind: 'empty', icon: '📦', title: zeroShown ? 'Abhi koi item nahi' : 'Is branch mein koi stock nahi',
+        hint: zeroShown ? 'Items screen se products add karein.' : 'Items add karein ya GRN / stock adjustment se stock daalein — ya upar switch se zero-stock items dikhayein.'
+      });
+    }
     host.appendChild(UI2.table({
       screen: 'stock', rows: rows || [], height: '58vh', exportName: 'stock',
       filters: [
         { key: 'category', label: 'Category', type: 'select', options: Array.from(new Set((rows || []).map(r => r.category).filter(Boolean))) },
-        { key: 'low', label: 'Low stock only', type: 'switch' }
+        { key: 'low', label: 'Low stock only', type: 'switch' },
+        { key: 'stockStatus', label: 'Stock status', type: 'select',
+          options: [{ value: 'in', label: 'In stock' }, { value: 'low', label: 'Low stock' }, { value: 'out', label: 'Out of stock' }] }
       ],
       columns: [
         { key: 'code', label: 'Code' },
@@ -69,7 +164,9 @@ function renderStock(c, loc) {
             h('div', { style: { fontSize: 'var(--fs-xs)', color: 'var(--muted)' } }, [r.brand, r.category].filter(Boolean).join(' · '))) },
         { key: 'locationId', label: 'Branch', render: r => locNameOf(r.locationId) },
         { key: 'rack', label: 'Rack' },
-        { key: 'qty', label: 'Qty', num: true, render: r => h('b', { style: { color: r.qty <= 0 ? 'var(--err)' : 'inherit' } }, r.qty) },
+        { key: 'qty', label: 'Qty', num: true, render: r => h('b', { style: { color: r.qty <= 0 ? 'var(--err)' : 'inherit' } }, fmt.num(r.qty)) },
+        { key: 'stockStatus', label: 'Status', render: r => h('span', { class: 'badge ' + (r.stockStatus === 'out' ? 'err' : r.stockStatus === 'low' ? 'warn' : 'ok') },
+            r.stockStatus === 'out' ? 'OUT' : (r.stockStatus === 'low' ? 'LOW' : 'IN')) },
         { key: 'avgCost', label: 'Avg cost', num: true, render: r => fmt.money(r.avgCost) },
         { key: 'value', label: 'Value', num: true, render: r => fmt.money(r.value) },
         { key: 'low', label: 'Alert', render: r => r.low ? h('span', { class: 'badge err' }, 'LOW') : '' }
@@ -83,7 +180,8 @@ function renderStock(c, loc) {
     }));
     host.appendChild(h('div', { class: 'st2-foot' }, 'Total value: ' +
       fmt.money((rows || []).reduce((a, r) => a + Number(r.value || 0), 0)) + ' · ' + (rows || []).length + ' rows'));
-  }).catch(e => host.appendChild(h('div', { class: 'empty' }, '⚠ ' + e.message)));
+  }).catch(e => Shared.paint(host, { kind: 'error', error: e, title: 'Stock levels load nahi ho sake',
+    retry: () => { App.refresh(); } }));
 }
 
 function renderMoves(c, loc) {

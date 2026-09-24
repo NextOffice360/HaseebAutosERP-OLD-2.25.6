@@ -18,7 +18,7 @@
 | P2 | **Reuse existing architecture, no duplicate systems** (A§1.3–4) | Shared cores: `API.call`/`UI.run`/`UI.errBox`, PWA `PWA.run` — page-specific patches hata diye | ✅ v2.25.9–11 |
 | P3 | **Official docs first, record links** (A§2) | `docs/` folder + in-app help links (task **W9.T2**) | 🟡 partial (task bana diya) |
 | P4 | **Beginner-friendly documentation** (A§3): what/why/setup/config/env/permissions/testing/deploy/troubleshoot/rollback + official links, **no secrets** | Task **W11** (docs pack: GAS, Sheets, AI providers, deploy, rollback) | 🟡 planned |
-| P5 | **Test everything: normal/empty/large/slow/fail/timeout/retry/duplicate/permissions/roles/scopes/dependent/mobile/sidebar/local/prod** (A§17) | Task **W10** (testing matrix gates) — duplicate ✅(ui-run), fail/retry ✅(ui-err), timeout ✅, large ✅(scale) | 🟡 partial |
+| P5 | **Test everything: normal/empty/large/slow/fail/timeout/retry/duplicate/permissions/roles/scopes/dependent/mobile/sidebar/local/prod** (A§17) | Task **W10** (testing matrix gates) — duplicate ✅(ui-run + busy-coverage), fail/retry ✅(ui-err), timeout ✅, large ✅(scale), sidebar ✅(sidebar-states 52/0) | 🟡 partial |
 | P6 | **Naming & architecture consistency** (A§14) | Task **W8** (naming audit + conventions doc) | 🟡 planned |
 | P7 | **Stale-node visibility (PWA parity)** — desktop ka `UI2.dismissTop` sabak PWA par bhi (user hardening demand 2026-09-24) | `PWA.layerVisible/layerReport/sweepStale` (Pwa_Shell) + `posTopLayer()` open AND visible; pay-ledger gate ka Section G | ✅ done (pay-ledger 48/0, pwa-overlays 124/0; pre-fix negative proof mojood) |
 | P7 | **No hardcoded secrets; env/config management** (A§15) | Task **W12** (config/env + rollback docs; secret scan gate) | 🟡 planned |

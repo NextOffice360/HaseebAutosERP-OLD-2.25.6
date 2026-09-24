@@ -67,15 +67,27 @@ App.registerScreen('items', {
 
     (async () => {
       let rows = [];
+      /* v2.30.0 — pehle loading state, phir error/empty state (pehle error nigal
+         jata tha aur safha khali dikhta tha — wohi asli blank-page bug tha). */
+      Shared.paint(host, { kind: 'loading', label: 'Items load ho rahe hain…' });
       try {
         const cats = await API.call('config.list', { entity: 'categories' }, { offlineFallback: () => [] });
         App.state.categories = cats || [];
       } catch (e) { App.state.categories = []; }
-      try {
-        const res = await Shared.raw('items.list', { pageSize: 0, withStock: true },   /* v2.27.0 W3.T3 */
-          { offline: () => ({ rows: (App.state.catalog.items || []).map(mapCatItem) }) });
-        rows = (res && res.rows) || [];
-      } catch (e) { rows = []; }
+      const fr = await Shared.fetchList('items.list', { pageSize: 0, withStock: true },   /* v2.27.0 W3.T3 */
+        { offline: () => ({ rows: (App.state.catalog.items || []).map(mapCatItem) }) });
+      if (!fr.ok) {
+        return Shared.paint(host, { kind: 'error', error: fr.error, title: 'Items load nahi ho sake',
+          retry: () => { App.refresh(); } });
+      }
+      rows = fr.rows || [];
+      if (!rows.length) {
+        return Shared.paint(host, {
+          kind: 'empty', icon: '📦', title: 'Koi item nahi mila',
+          hint: 'Naya item add karein ya Excel/CSV se import karein (Items ▸ Import).',
+          action: App.can('items.create') ? { label: '➕ Naya item', onClick: () => itemForm(null, () => App.refresh()) } : null
+        });
+      }
 
       host.innerHTML = '';
       host.appendChild(UI2.table({

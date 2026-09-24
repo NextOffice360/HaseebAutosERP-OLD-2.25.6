@@ -2,6 +2,7 @@
  * HASEEB AUTOS - ERP / POS  ::  AI AGENT
  * ---------------------------------------------------------------------------
  * Pluggable provider: GEMINI (default) / OPENAI / OPENROUTER / MOCK
+ * (MOCK = "Local Data Assistant" — app ka apna local rules engine, koi LLM nahi)
  * API key Script Properties mein: AI_API_KEY  (kabhi sheet mein nahi likhi jati)
  *
  * Agent sirf WHITELISTED tools chala sakta hai — har tool user ke RBAC session
@@ -490,7 +491,7 @@ var AI = {
     var routes = AI.routing(), readyFallback = routes.enabled && routes.order.some(function(id) { return id !== cfg.provider && AI.providerProfile(id).configured && AI.providerProfile(id).enabled; });
     if (cfg.needsKey && !cfg.mockFallback && !readyFallback) {
       return {
-        reply: 'AI abhi keyless hai aur fallback bhi band hai.\n\nDo kaam:\n1) AI Agent ▸ Setup mein provider chunein aur API key daalein (Gemini key: https://aistudio.google.com/apikey — bilkul free tier hai), ya\n2) "Mock mode" on karke app key ke bagair rule-based jawabon ke sath chalein.\n\nSetup ▸ Test Connection dabakar confirm karein.',
+        reply: 'AI abhi keyless hai aur fallback bhi band hai.\n\nDo kaam:\n1) AI Agent ▸ Setup mein provider chunein aur API key daalein (Gemini key: https://aistudio.google.com/apikey — bilkul free tier hai), ya\n2) \"Local Data Assistant\" on karke app key ke bagair chalein (bina LLM — rule-based jawab aap ke data par).\n\nSetup ▸ Test Connection dabakar confirm karein.',
         toolResults: [], needsKey: true
       };
     }
@@ -734,7 +735,7 @@ var AI = {
     return messages;
   },
 
-  /* v2.10 — Rule-based MOCK agent: sawal ka matlab pehchan kar ASLI tools
+  /* v2.10 — Local Data Assistant (id: MOCK): sawal ka matlab pehchan kar ASLI tools
    * chalaata hai aur un ke natijon se jawab banata hai (koi fabricated figure
    * nahi). Yehi wajah hai ke Mock mode demo aur live dono mein data deta hai.
    * Real model lagane par yehi tools uske paas jaate hain (function calling). */
@@ -817,7 +818,7 @@ var AI = {
           return (ix + 1) + '. ' + i.name + ' (' + i.code + ') — stock ' + U.num(i.stock) + ', retail ' + money(U.num(i.retail)); }).join('\n') };
       }
     }
-    return { text: 'Main (Mock mode) aapki LIVE business data par tools chala kar jawab deta hoon. Aazmaayein:\n' +
+    return { text: 'Main Local Data Assistant hoon (bina LLM — app ka local rules engine). Aapki LIVE business data par tools chala kar jawab deta hoon. Aazmaayein:\n' +
       '• "aaj ki sale"\n• "low stock"\n• "udhaar kitna hai"\n• "inventory value"\n• "profit"\n• "top selling"\n' +
       'Live LLM chahiye to Setup mein Gemini/OpenAI/OpenRouter/Ollama provider connect karein.' };
   },
@@ -997,7 +998,7 @@ AI.catalog = function (provider) {
   }
   if (!out.length && provider === 'MOCK') {
     /* MOCK hamara apna offline provider hai — is ka model vendor model nahi */
-    out = [{ id: 'mock', label: 'Mock (offline, no key)', status: 'stable', free: true, note: 'Rules-based answers' }];
+    out = [{ id: 'mock', label: 'Local rules (offline, no key)', status: 'stable', free: true, note: 'Rule-based answers · no LLM' }];
   }
   return out;
 };
@@ -1124,6 +1125,9 @@ AI.agentConfig = function (s) {
     enabled: cfg.enabled, provider: cfg.provider, model: cfg.model,
     hasKey: cfg.hasKey, keyHint: cfg.keyHint, canWrite: cfg.canWrite, credentials: cfg.credentials,
     profiles: AI.profileMap(), routing: AI.routing(),
+    /* v2.30.0 (N7) — provider ke metadata (label + can/cannot) frontend tak.
+       UI ka naam/help ab yahin se aata hai — koi string do jagah likhi nahi jati. */
+    providers: AI.providers(),
     /* tunables */
     values: {
       aiEnabled: get('aiEnabled'), aiProvider: get('aiProvider'), aiModel: get('aiModel'),

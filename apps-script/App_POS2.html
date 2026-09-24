@@ -1317,9 +1317,18 @@ function pay(method) {
       [String(App.state.settings.taxLabel || 'Tax'), fmt.money(tax)],
       ['Total', fmt.money(total)]
     ];
+    /* v2.30.0 (N4) — redeem kiye gaye points bill summary mein saaf dikhein
+       (display-only line — paisa hamesha LOYALTY payment row se aata hai, yahan
+       sirf nazar aata hai, is liye double-counting ka koi sawal nahi). */
+    const loyPtsRow = payments.filter(p => String(p.method || '').toUpperCase() === 'LOYALTY')
+      .reduce((a, p) => a + (Number(p.points) || 0), 0);
+    const loyValRow = payments.filter(p => String(p.method || '').toUpperCase() === 'LOYALTY')
+      .reduce((a, p) => a + (Number(p.amount) || 0), 0);
+    if (loyPtsRow > 0) rows.push(['POINTS', loyPtsRow + ' pts (\u2212 ' + fmt.money(loyValRow) + ')']);
     summaryEl.innerHTML = '';
     rows.forEach(([k, v], i) => summaryEl.appendChild(
-      h('div', { class: 'ps-row' + (i === rows.length - 1 ? ' ps-total' : '') },
+      h('div', { class: 'ps-row' + (i === rows.length - 1 && k === 'Total' ? ' ps-total' : '') +
+          (k === 'POINTS' ? ' ps-points' : '') },
         h('span', null, k), h('b', null, v))));
     if (S.customer) {
       const prev = Number(S.__prevBalance || 0);
@@ -1353,6 +1362,8 @@ function pay(method) {
   });
 
   let validationErrors = {};
+  /* v2.30.0 (N4) — loyalty summary Complete tak carry (points cap/derive ke liye) */
+  let loySum = null;
   function calc() {
     const paid = payments.reduce((a, p) => a + (Number(p.amount) || 0), 0);
     const prev = Number(S.__prevBalance||0);
@@ -1435,6 +1446,7 @@ function pay(method) {
       API.call('loyalty.summary', { customerId: S.customer.id, total: total },
         { offlineFallback: () => ({ points: 0, usablePoints: 0, rate: 1 }) })
         .then(sum => {
+          loySum = sum || null;
           const body = loyaltyRow.querySelector('.loy-body');
           if (!body) return;
           body.innerHTML = '';
@@ -1445,9 +1457,22 @@ function pay(method) {
               fmt.money(sum.usableValue || 0) + ') use ho sakte hain'));
           const ptsInput = h('input', { class: 'f-input', type: 'number', min: '0',
             max: String(sum.usablePoints || 0), value: String(pointsInput.value||'0'), style: { width: '110px' }, 'aria-label': 'Redeem points' });
-          // also sync pointsInput visible in modal's POINTS row
-          ptsInput.addEventListener('input', ()=>{ pointsInput.value = ptsInput.value; });
-          pointsInput.addEventListener('input', ()=>{ ptsInput.value = pointsInput.value; if(Number(ptsInput.value)> (sum.usablePoints||0)) ptsInput.value = String(sum.usablePoints||0); });
+          /* v2.30.0 (N4) — dono inputs ek hi cap share karte hain (pehle ek taraf
+             clamp hota tha, doosra raw reh jata tha → sale mein galat points). */
+          const capPts = () => Number(sum.usablePoints || 0);
+          const clampBoth = (from) => {
+            const max = capPts();
+            let v = Number((from === 'pts' ? ptsInput : pointsInput).value || 0);
+            if (v > max) {
+              v = max;
+              if (from === 'pts') { ptsInput.value = String(v); } else { pointsInput.value = String(v); }
+              UI.toast('Is bill par max ' + fmt.num(max) + ' points redeem ho sakte hain', 'warn', 2600);
+            }
+            if (v < 0) v = 0;
+            ptsInput.value = String(v); pointsInput.value = String(v);
+          };
+          ptsInput.addEventListener('input', () => clampBoth('pts'));
+          pointsInput.addEventListener('input', () => clampBoth('row'));
           body.appendChild(h('div', { class: 'loy-actions' }, ptsInput,
             h('button', { class: 'btn sm ok', onclick: () => {
               const pts = Number(ptsInput.value || 0);
@@ -1460,6 +1485,10 @@ function pay(method) {
               paint(); calc();
               UI.toast(pts + ' points redeem ho gaye (' + fmt.money(Math.min(val, total)) + ')', 'ok');
             } }, 'Redeem')));
+          try {
+            setPointsHint('1 point = ' + fmt.money(sum.rate || 1) + ' · balance ' + fmt.num(sum.points || 0) + ' pts' +
+              (sum.usablePoints ? ' · is bill par max ' + fmt.num(sum.usablePoints) : ''));
+          } catch (e) { }
         }).catch(() => { });
     }
     calc(); paintSummary();
@@ -1474,12 +1503,20 @@ function pay(method) {
       // points input sync: if loyalty exists, set pointsInput value
       const loy = payments.find(p=>String(p.method).toUpperCase()==='LOYALTY');
       if(loy && pointsInput && document.activeElement!==pointsInput) pointsInput.value = String(loy.points||0);
-      // settlement hint
-      const hint = pointsWrap.querySelector('span.muted');
-      if(hint){
-        const dv = promisedInput.value || new Date().toISOString().slice(0,10);
-        hint.textContent = 'Koi fee nahi - settlement ' + dv;
-      }
+      // v2.30.0 (N4) — hint = loyalty ka sach (pehle yahan credit settlement likha tha)
+      try {
+        const loyRow = payments.find(p => String(p.method || '').toUpperCase() === 'LOYALTY');
+        if (loyRow && Number(loyRow.points || 0) > 0) {
+          setPointsHint(Number(loyRow.points) + ' points lagaye (\u2212 ' + fmt.money(Number(loyRow.amount || 0)) + ')');
+        } else if (loySum && loySum.enabled) {
+          setPointsHint('1 point = ' + fmt.money(loySum.rate || 1) + ' · balance ' + fmt.num(loySum.points || 0) + ' pts' +
+            (loySum.usablePoints ? ' · is bill par max ' + fmt.num(loySum.usablePoints) : ''));
+        } else if (!S.customer) {
+          setPointsHint('Customer select karein — points redeem ke liye');
+        } else {
+          setPointsHint('Loyalty off hai (Settings \u25B8 Trade \u25B8 Loyalty)');
+        }
+      } catch (e) { }
     }catch(e){}
   }
 
@@ -1505,13 +1542,34 @@ function pay(method) {
   const loyaltyRow = h('div', { class: 'loy-row' });
   // promised date and points row setup
   const promisedWrap = h('div', { style: { display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '8px' } }, h('label', { style: { fontSize: '11px', letterSpacing: '.4px', fontWeight: '700', color: 'var(--muted)' } }, 'PROMISED PAYMENT DATE'), promisedInput);
-  const pointsWrap = h('div', { style: { display: 'flex', gap: '8px', alignItems: 'center', marginTop: '8px', flexWrap: 'wrap' } }, h('label', { style: { fontSize: '11px', fontWeight: '700', minWidth: '56px' } }, 'POINTS'), pointsInput, h('span', { class: 'muted', style: { fontSize: '11px', whiteSpace: 'nowrap' } }, 'Koi fee nahi - settlement ' + (promisedInput.value || new Date().toISOString().slice(0,10))));
+  /* v2.30.0 (N4) — is row par pehle CREDIT settlement ka text chipka hua tha
+     ("Koi fee nahi - settlement <date>") jo points se bilkul be-taaluq tha.
+     Ab ye hint sirf loyalty ka sach batata hai (rate / balance / applied points). */
+  const pointsHint = h('span', { class: 'muted points-hint', style: { fontSize: '11px', whiteSpace: 'nowrap' } },
+    'Customer select karein — points redeem ke liye');
+  /* v2.30.0 (N4) — setter: paint() pehle chalta hai (const se pehle), is liye
+     seedha variable ke bajaye class se element dhoondo (koi TDZ crash nahi). */
+  function setPointsHint(t) {
+    try {
+      const el = document.querySelector('.modal-scrim .modal2 .points-hint') ||
+        document.querySelector('.modal2 .points-hint');
+      if (el) el.textContent = String(t == null ? '' : t);
+    } catch (e) { }
+  }
+  const pointsWrap = h('div', { style: { display: 'flex', gap: '8px', alignItems: 'center', marginTop: '8px', flexWrap: 'wrap' } },
+    h('label', { style: { fontSize: '11px', fontWeight: '700', minWidth: '56px' } }, 'POINTS'), pointsInput, pointsHint);
 
+  /* v2.30.0 (N4/N5) — desktop par WIDE modal + 2 hisse (left: bill summary +
+     quick chips + note · right: payment methods + POINTS + loyalty + footer).
+     900px se neeche CSS khud single column kar deta hai (mobile responsive). */
+  const payFoot = h('div', { class: 'pay-footer', style: { display: 'flex', justifyContent: 'space-between', gap: '10px', padding: '10px', border: '1.5px dashed var(--line)', borderRadius: '12px', background: 'var(--panel-2)', fontWeight: '800', fontSize: '13px', marginTop: '8px' } }, h('span', { style: { color: 'var(--ok)' } }, 'PAID BY Loyalty Points ', h('b', { id: 'payLoyAmt2' }, 'Rs 0')), h('span', { style: { color: 'var(--err)' } }, 'Current Due (udhaar) ', h('b', { id: 'payDue2' }, 'Rs 0')));
   UI2.modal({
     title: 'Payment — ' + fmt.money(total),
     subtitle: (S.customer ? S.customer.name : 'Walk-in') + ' · ' + S.cart.reduce((a, l) => a + l.qty, 0) + ' items',
-    size: 'sm',
-    body: h('div', null, summaryEl, promisedWrap, rowsHost, pointsWrap, quickHost, h('div', { class: 'pay-footer', style: { display: 'flex', justifyContent: 'space-between', gap: '10px', padding: '10px', border: '1.5px dashed var(--line)', borderRadius: '12px', background: 'var(--panel-2)', fontWeight: '800', fontSize: '13px', marginTop: '8px' } }, h('span', { style: { color: 'var(--ok)' } }, 'PAID BY Loyalty Points ', h('b', { id: 'payLoyAmt2' }, 'Rs 0')), h('span', { style: { color: 'var(--err)' } }, 'Current Due (udhaar) ', h('b', { id: 'payDue2' }, 'Rs 0'))), paidEl, dueEl, chgEl, noteInput, loyaltyRow),
+    size: 'xl',
+    body: h('div', { class: 'pay-cols' },
+      h('div', { class: 'pay-col pay-col-a' }, summaryEl, quickHost, noteInput),
+      h('div', { class: 'pay-col pay-col-b' }, promisedWrap, rowsHost, pointsWrap, payFoot, paidEl, dueEl, chgEl, loyaltyRow)),
     actions: [
       { label: 'Cancel', cls: 'ghost', onClick: c => c() },
       { label: '✅ Complete', cls: 'ok', onClick: async c => {
@@ -1578,8 +1636,27 @@ function pay(method) {
         try{
           const dv = promisedInput.value || '';
           if(dv) rowsForValidate.forEach(p=>{ if(String(p.method).toUpperCase()==='CREDIT') p.dueDate=dv; });
-          const pts = Number(pointsInput.value||0);
-          if(pts>0) rowsForValidate.forEach(p=>{ if(String(p.method).toUpperCase()==='LOYALTY'){ p.points=pts; p.pointsRedeemed=pts; }});
+          /* v2.30.0 (N4) — ASLI MATH BUG FIX:
+             Pehle POINTS textbox ki value seedhi sale mein copy ho jati thi. User
+             cap se zyada likh deta to sale mein points 500 record hote aur
+             customer ke poore points kat jate, magar bill par sirf 89 points ki
+             value lagti thi (deduction ≠ value). Ab: amount authoritative hai,
+             points usi se derive hote hain, usablePoints par CAP, aur invoice se
+             zyada value kabhi nahi lagti. */
+          const loyRow = rowsForValidate.find(p => String(p.method).toUpperCase() === 'LOYALTY');
+          if (loyRow) {
+            const rate = Number((loySum && loySum.rate) || App.state.settings['loyalty.rate'] || 1) || 1;
+            const cap = loySum ? Number(loySum.usablePoints || 0) : 0;
+            const typed = Number(pointsInput.value || 0);
+            let pts = typed > 0 ? Math.floor(typed) : Math.floor(Number(loyRow.amount || 0) / rate);
+            if (cap && pts > cap) { UI.toast('Points cap: is bill par max ' + fmt.num(cap), 'warn', 2600); pts = cap; }
+            if (pts < 0) pts = 0;
+            const others = rowsForValidate.reduce((a, pp) => a + (String(pp.method).toUpperCase() === 'LOYALTY' ? 0 : Number(pp.amount || 0)), 0);
+            const value = Math.max(0, Math.min(Math.round(pts * rate * 100) / 100, Math.max(0, total - Math.min(others, total))));
+            loyRow.points = pts; loyRow.pointsRedeemed = pts;
+            if (value > 0) loyRow.amount = value;
+            if (pointsInput.value !== String(pts)) pointsInput.value = String(pts);
+          }
         }catch(e){}
         c(); submit(rowsForValidate, noteInput.value.trim());
       } }
@@ -1694,14 +1771,21 @@ async function submit(payments, note) {
     const dueDateVal = (pdEl && pdEl.value) ? pdEl.value : (typeof promisedInput!=='undefined' && promisedInput.value ? promisedInput.value : '');
     if(dueDateVal) payments.forEach(p=>{ if(String(p.method).toUpperCase()==='CREDIT') p.dueDate=dueDateVal; });
   }catch(e){}
-  // ensure loyalty points attached if any loyalty payment
+  /* v2.30.0 (N4) — points ka EK hi source of truth: LOYALTY row.
+     (Pehle yahan textbox ki value dobara copy hoti thi — wahi bug dobara aa sakta tha.) */
   try{
-    const ptsEl = document.getElementById('payPoints') || (typeof pointsInput!=='undefined'?pointsInput:null);
-    const ptsVal = ptsEl ? Number(ptsEl.value||0) : 0;
-    if(ptsVal>0) payments.forEach(p=>{ if(String(p.method).toUpperCase()==='LOYALTY'){ p.points=ptsVal; p.pointsRedeemed=ptsVal; } });
+    const rate0 = Number((loySum && loySum.rate) || App.state.settings['loyalty.rate'] || 1) || 1;
+    const cap0 = loySum ? Number(loySum.usablePoints || 0) : 0;
+    payments.forEach(p => {
+      if (String(p.method).toUpperCase() !== 'LOYALTY') return;
+      let pts = Number(p.points || 0) || Math.floor(Number(p.amount || 0) / rate0);
+      if (cap0 && pts > cap0) pts = cap0;
+      if (pts < 0) pts = 0;
+      p.points = pts; p.pointsRedeemed = pts;
+    });
   }catch(e){}
   const tDueDate = (function(){ try{ const el=document.getElementById('payDueDate')||document.querySelector('input[type="date"]'); return el? el.value : ''; }catch(e){ return ''; } })();
-  const tLoyPts = (function(){ try{ const el=document.getElementById('payPoints'); return el? Number(el.value||0):0; }catch(e){ return 0; } })();
+  const tLoyPts = payments.reduce((a, p) => a + (String(p.method).toUpperCase() === 'LOYALTY' ? Number(p.points || 0) : 0), 0);
   const payload = {
     locationId: App.state.locationId,
     customerId: S.customer ? S.customer.id : '',

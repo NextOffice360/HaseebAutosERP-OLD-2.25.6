@@ -64,6 +64,13 @@ var Sales = {
     var locId = payload.locationId || s.locationId;
     if (!Auth.canAccessLocation(s, locId)) throw new Error('Is branch ka access nahi hai.');
 
+    /* v2.30.0 — SHOP RULES: shop band ho to sale nahi; khuli ho to session
+       isi user ke against attach ho (har amal tracked). Setting:
+       `shop.requireOpen` (default true) — Settings ▸ Shop & Session se off. */
+    var shopCtx = null;
+    try { shopCtx = Shop.requireOpen(s, locId, 'sale'); }
+    catch (e) { if (e && e.shopClosed) throw e; shopCtx = null; }
+
     // --- offline duplicate guard ---
     if (payload.offlineId) {
       var dup = DB.findOne('Sales', function (r) { return r.notes && r.notes.indexOf('OFFLINE:' + payload.offlineId) > -1; });
@@ -255,7 +262,8 @@ var Sales = {
       paymentMethod: (payments.map(function (p) { return p.method; })).join('+') || 'CASH',
       payments: JSON.stringify(payments), status: status,
       salespersonId: payload.salespersonId || s.userId, cashierId: s.userId,
-      sessionId: payload.sessionId || '', notes: (payload.notes || '') + (payload.offlineId ? ' OFFLINE:' + payload.offlineId : ''),
+      sessionId: payload.sessionId || (shopCtx ? shopCtx.sessionId : ''),
+      notes: (payload.notes || '') + (payload.offlineId ? ' OFFLINE:' + payload.offlineId : ''),
       source: payload.source || 'POS', createdAt: U.iso()
     }, s);
 
@@ -311,7 +319,9 @@ var Sales = {
           date: sale.date, type: 'SALE_RECEIPT',
           partyType: payload.customerId ? 'CUSTOMER' : '', partyId: payload.customerId || '',
           partyName: payload.customerName || 'Walk-in', amount: U.num(pm.amount), method: pm.method || 'CASH',
-          reference: pm.reference || invoiceNo, locationId: locId, sessionId: payload.sessionId || '',
+          reference: pm.reference || invoiceNo, locationId: locId,
+          /* v2.30.0 — receipt isi shop session ke against (closing report isi se banti hai) */
+          sessionId: (shopCtx ? shopCtx.sessionId : '') || payload.sessionId || '',
           notes: 'Auto from ' + invoiceNo,
           /* v2.2: method-specific fields (wallet/cheque/bank/raast/card) */
           bankName: pm.bankName || '', accountNo: pm.accountNo || '',

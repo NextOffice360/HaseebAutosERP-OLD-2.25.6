@@ -204,6 +204,8 @@ async function startApp() {
   updateNotif();
   /* session mil gayi — header ka shop icon ab sahi state dikhayega */
   if (window.loadShopState) loadShopState();
+  /* v2.30.0 — shop band ho to banner/prompt + pehla din ho to Setup Wizard */
+  if (window.ShopUI) setTimeout(() => { try { ShopUI.afterLogin(); } catch (e) { } }, 400);
 }
 
 async function updateNotif() {
@@ -470,6 +472,7 @@ function wireShell() {
   /* ---- shop open/close: header pill + quick open/close dialog ---- */
   const shopBtn = $('#btnShop');
   window.loadShopState = loadShopState;
+  window.shopQuickDialog = shopQuickDialog;   /* v2.30.0 — banner/wizard isi ko call karte hain */
   if (shopBtn) {
     shopBtn.onclick = () => shopQuickDialog();
     loadShopState();
@@ -527,8 +530,14 @@ function wireShell() {
           { label: '🔓 Open shop', cls: 'ok', onClick: async c => {
             const v = f.values();
             try {
-              await API.call('cash.session.open', { openingCash: Number(v.openingCash) || 0, notes: v.notes || '' });
+              const op = await API.call('cash.session.open', { openingCash: Number(v.openingCash) || 0, notes: v.notes || '' });
               UI.toast('Shop open ho gayi ✅', 'ok'); c(); after();
+              /* v2.30.0 — opening report foran pesh (closing ki tarah): print /
+                 PDF / WhatsApp sab usi modal se; print setting-driven hai. */
+              if (String(App.state.settings.dayReportAutoOpen) !== 'false') {
+                const sid = (op && (op.sessionId || op.id)) || (window.__shopSession && window.__shopSession.id) || '';
+                setTimeout(() => { try { dayReportModal(sid); } catch (e) { } }, 420);
+              }
             } catch (e) { UI.toast(e.message, 'err'); }
           } },
           { label: 'Full screen', onClick: c => { c(); App.go('shop'); } },
@@ -628,6 +637,172 @@ function changePassword() {
     } }]
   });
 }
+
+/* ============================================================================
+   v2.30.0 — SHOP RULES UI + FIRST-RUN SETUP WIZARD
+   ----------------------------------------------------------------------------
+   Aap ki shart:
+     · "login ke baad, user ka assigned shop OPEN hona chahiye — tab hi sale ya
+        operational activity ho sakay."
+     · "Add a first-run frontend Setup/Configuration Wizard."
+   Yahan:
+     · ShopUI.afterLogin() — login ke foran baad shop status check karta hai.
+       Band ho to upar banner + seedha prompt (ek click par khul jaye).
+     · ha:shop-closed event (server gate se) — banner foran zaahir.
+     · Wizard: business info → admin password → shop open → demo data.
+   ============================================================================ */
+const ShopUI = {
+  el: null,
+
+  show(msg, kind, acts) {
+    acts = acts || { shop: true, wizard: false };
+    const ur = (App.state.lang === 'ur');
+    if (!this.el) {
+      this.el = h('div', { id: 'shopBanner', role: 'status',
+        style: { position: 'sticky', top: '0', zIndex: '40', display: 'flex', alignItems: 'center',
+          gap: '10px', flexWrap: 'wrap', padding: '10px 14px', margin: '0 0 10px',
+          borderRadius: '10px', fontSize: 'var(--fs-sm)',
+          background: 'var(--warn-bg, #fff7e6)', color: 'var(--warn-fg, #7a4b00)',
+          border: '1px solid var(--warn-br, #f0c36d)' } });
+      const shell = document.getElementById('shell');
+      const view = document.getElementById('view');
+      if (shell && view && view.parentNode) view.parentNode.insertBefore(this.el, view);
+      else document.body.appendChild(this.el);
+    }
+    this.el.dataset.kind = kind || 'warn';
+    this.el.innerHTML = '';
+    this.el.appendChild(h('span', { style: { fontWeight: '700' } }, kind === 'block' ? '🔒' : '⏳'));
+    this.el.appendChild(h('span', { style: { flex: '1 1 240px' } }, msg));
+    if (acts.shop !== false && App.can && App.can('pos.cash.manage')) {
+      this.el.appendChild(h('button', { class: 'btn sm ok', onclick: () => {
+        try { window.shopQuickDialog(); } catch (e) { UI.toast('Shop dialog nahi khula', 'err'); }
+      } }, ur ? 'دکان کھولیں' : '🔓 Open shop'));
+    }
+    if (acts.wizard) {
+      this.el.appendChild(h('button', { class: 'btn sm', onclick: () => {
+        try { ShopUI.wizard(ShopUI.wizardStatus || {}); } catch (e) { UI.toast('Wizard nahi khula: ' + (e.message || ''), 'err'); }
+      } }, ur ? 'سیٹ اپ وزرڈ' : '🧭 Setup Wizard'));
+    }
+    this.el.appendChild(h('button', { class: 'btn sm ghost', title: 'Band karein', onclick: () => this.hide() }, '✕'));
+    this.el.hidden = false;
+  },
+
+  hide() { if (this.el) this.el.hidden = true; },
+
+  /**
+   * login ke foran baad — shop + wizard check.
+   * DESIGN (v2.30.0, W7.T1 regression-safe): yahan koi modal KHUD NAHI khulta —
+   * shell khaali rehta hai, sirf ek banner (ek click → dialog/wizard). Modal
+   * wahin khulta hai jab ASAL mein koi amal block ho (`ha:shop-closed`) ya jab
+   * user khud banner ka button dabaye. Isi wajah se mojooda screens/gates
+   * (sidebar, tabs, layout) par koi scrim nahi girta.
+   */
+  async afterLogin() {
+    let shopSt = null;
+    try {
+      shopSt = await API.call('shop.status', {}, { offlineFallback: () => null });
+      if (shopSt && shopSt.open) window.__shopSession = shopSt.session;
+      else window.__shopSession = null;
+    } catch (e) { /* shop status na mila — app phir bhi chale */ }
+
+    let wiz = null;
+    try {
+      if (App.can && App.can('settings.manage')) {
+        wiz = await API.call('system.setupStatus', {}, { offlineFallback: () => null });
+      }
+    } catch (e) { wiz = null; }
+    this.wizardStatus = wiz;
+
+    const closed = !!(shopSt && shopSt.open === false && shopSt.requireOpen !== false);
+    const firstRun = !!(wiz && wiz.needsWizard);
+    if (!closed && !firstRun) { this.hide(); return; }
+
+    const parts = [];
+    if (closed) parts.push(ur0 => ur0 ? 'دکان بند ہے — Sale se pehle shop kholain.' : 'Shop band hai — sale ya koi operational kaam karne se pehle shop kholain (opening cash ke sath).');
+    if (firstRun) parts.push(() => 'Pehla din: Setup Wizard chalayein (business info, password, shop open, demo data).');
+    this.show(parts.map(f => f(App.state.lang === 'ur')).join('  ·  '), closed ? 'block' : 'warn', { shop: closed && App.can('pos.cash.manage'), wizard: firstRun });
+  },
+
+  /** First-run Setup / Configuration Wizard */
+  wizard(status) {
+    status = status || {};
+    const ur = (App.state.lang === 'ur');
+    const st = App.state.settings || {};
+    const bus = h('input', { class: 'inp', placeholder: 'Haseeb Autos', value: st.businessName || '' });
+    const shopName = h('input', { class: 'inp', placeholder: 'Sadiqabad City Branch', value: st['shop.name'] || (status.shopName || '') });
+    const phone = h('input', { class: 'inp', placeholder: '0300-1234567', value: st['shop.phone'] || '' });
+    const addr = h('input', { class: 'inp', placeholder: 'Main Bazar, Sadiqabad', value: st['shop.address'] || '' });
+    const pw = h('input', { class: 'inp', type: 'password', placeholder: 'Naya password (khali chhorein to nahi badle ga)' });
+    const cash = h('input', { class: 'inp', type: 'number', min: '0', value: String(st['shop.defaultOpeningCash'] || 0) });
+    let demoChoice = 'keep';
+    const rKeep = h('input', { type: 'radio', name: 'wizDemo', checked: true, onchange: () => { demoChoice = 'keep'; } });
+    const rDrop = h('input', { type: 'radio', name: 'wizDemo', onchange: () => { demoChoice = 'remove'; } });
+
+    const step = (n, title, hint, ...kids) => h('div', { class: 'card', style: { marginBottom: '10px' } },
+      h('div', { class: 'card-head' }, h('h4', null, n + '. ' + title)),
+      h('div', { class: 'card-body tight' },
+        hint ? h('div', { class: 'muted', style: { fontSize: 'var(--fs-xs)', marginBottom: '8px' } }, hint) : '',
+        ...kids));
+
+    const body = h('div', null,
+      step(1, 'Business info', 'Receipts, reports aur header mein yehi naam use hota hai.',
+        h('label', { class: 'pf-lab' }, 'Business name'), bus,
+        h('label', { class: 'pf-lab' }, 'Shop / branch ka naam'), shopName,
+        h('div', { class: 'row2' },
+          h('div', null, h('label', { class: 'pf-lab' }, 'Phone'), phone),
+          h('div', null, h('label', { class: 'pf-lab' }, 'Address'), addr))),
+      step(2, 'Admin password', 'Demo password (admin123) production mein na rakhein — yahin badal lein.',
+        h('label', { class: 'pf-lab' }, 'Owner ka naya password'), pw),
+      step(3, 'Shop kholain', 'Sale/operational kaam se pehle shop OPEN lazmi hai (v2.30.0 ka rule).',
+        h('label', { class: 'pf-lab' }, 'Opening cash (drawer float)'), cash),
+      step(4, 'Demo data', 'Demo customer / supplier / items hataen ya training ke liye rakhein. Kabhi bhi Settings ▸ Demo Data se badla ja sakta hai.',
+        h('label', { style: { display: 'flex', gap: '8px', alignItems: 'center' } }, rKeep,
+          h('span', null, 'Demo data rakhein (seekhne/training ke liye behtar)')),
+        h('label', { style: { display: 'flex', gap: '8px', alignItems: 'center' } }, rDrop,
+          h('span', null, 'Demo data hata dein — sirf real data rahe'))),
+      h('div', { class: 'muted', style: { fontSize: 'var(--fs-xs)' } },
+        'Seeded: users ' + ((status.seeded || {}).users || 0) + ' · items ' + ((status.seeded || {}).items || 0) +
+        ' · customers ' + ((status.seeded || {}).customers || 0) + ' · settings ' + ((status.seeded || {}).settings || 0)));
+
+    const m = UI2.modal({
+      title: '🧭 Setup Wizard — pehla din', size: 'lg', sticky: true, body,
+      actions: [
+        { label: '⏭ Baad mein', cls: 'ghost', onClick: c => c() },
+        { label: '✅ Mukammal karein', cls: 'ok', onClick: async c => {
+            const out = { businessName: bus.value.trim(), 'shop.name': shopName.value.trim(),
+              'shop.phone': phone.value.trim(), 'shop.address': addr.value.trim(),
+              'shop.defaultOpeningCash': String(Number(cash.value) || 0), demoDecision: demoChoice, done: true };
+            const saved = await API.call('system.wizardSave', out);
+            if (pw.value.trim()) {
+              try { await API.call('system.wizardAdminPassword', { username: 'owner', password: pw.value.trim() }); }
+              catch (e) { UI.toast('Password change nahi hua: ' + (e.message || ''), 'warn', 4000); }
+            }
+            /* shop open (agar band hai) */
+            try {
+              const stx = await API.call('shop.status', {}, { offlineFallback: () => null });
+              if (stx && stx.open === false) {
+                const r = await API.call('shop.open', { openingCash: Number(cash.value) || 0 });
+                if (r && r.report) setTimeout(() => dayReportModal(r.session.id), 400);
+              }
+            } catch (e) { UI.toast(e.message, 'warn', 4200); }
+            try {
+              const boot = await API.call('system.bootstrap', { include: '' }, { noCache: true });
+              App.state.settings = boot.settings || App.state.settings;
+              if (window.__applyTheme) window.__applyTheme();
+            } catch (e) { }
+            UI.toast('Setup mukammal ✅', 'ok');
+            try { loadShopState(); } catch (e) { }
+            c();
+          } }
+      ]
+    });
+    return m;
+  }
+};
+window.ShopUI = ShopUI;
+window.addEventListener('ha:shop-closed', () => {
+  ShopUI.show('Shop band hai — ye kaam block ho gaya. Shop kholain aur dobara koshish karein.', 'block');
+});
 
 /* -------------------------------- BOOT ----------------------------------- */
 (async function boot() {

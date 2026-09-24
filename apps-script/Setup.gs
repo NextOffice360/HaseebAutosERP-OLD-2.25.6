@@ -63,6 +63,8 @@ var Setup = {
         nextStep: complete?'':state.next<sheets.length?'createSheet: '+sheets[state.next]:(seeds[state.next-sheets.length]||'installTriggers'),
         seedCounts: seedStatus?Object.keys(seedStatus.tables).reduce(function(out,name){out[name]=seedStatus.tables[name].rows;return out;},{}):{},
         missingSeedTables: seedStatus?seedStatus.missing:[], recoveryDetected: recovery,
+        demoDataSkipped: seedStatus?(seedStatus.skipped||[]).length>0:false,
+        seedSkips: seedStatus?(seedStatus.skipped||[]):[],
         message: complete ? 'Setup complete. Ab Deploy > New deployment > Web app karein.' :
           'Progress mehfooz: ' + state.next + '/' + total + '. Setup.gs > setupAll > Run dobara karein; wahi database resume ho ga.' };
     } finally { lock.releaseLock(); }
@@ -184,7 +186,10 @@ var Setup = {
     Setup.seedCustomFields();
     Setup.seedTranslations();
     Setup.seedAccounts();
-    return 'Seeded: locations, users, catalog, warehouses, templates, custom fields, chart of accounts.';
+    /* v2.30.0 — fresh install foran usable: demo customer/supplier/items.
+       Ye khud ko gate karta hai (data.seedDemo + live DB) — { skipped:true } wapas. */
+    try { Setup.seedDemoData(); } catch (e) { Logger.log('seedDemoData skipped: ' + e.message); }
+    return 'Seeded: locations, users, catalog, warehouses, templates, custom fields, chart of accounts, demo data.';
   },
 
   /** v2.5: default chart of accounts (Accounting module) */
@@ -384,7 +389,9 @@ var Setup = {
 
   /* ============================ DEMO / TRAINING =========================== */
   /** Demo items import karna ho (training mode) */
-  seedDemoItems: function () {
+  seedDemoItems: function (opts) {
+    opts = opts || {};
+    var demoFlag = opts.markDemo ? 'true' : '';
     var locations = DB.all('Locations');
     var sample = [
       ['HLG-001', 'LED Headlight H4 60/55W', 'Car Lights', 'Philips', 'LIGHTING', 'Universal', '', 850, 1200, 1050],
@@ -406,7 +413,7 @@ var Setup = {
         costPrice: s[7], retailPrice: s[8], wholesalePrice: s[9], minPrice: s[7], taxRate: '0', hsn: '',
         minStock: '5', reorderLevel: '10', rack: 'A1', defaultLocationId: 'LOC-SDQ',
         trackSerial: 'false', hasExpiry: 'false', imageUrl: '', notes: '', status: 'ACTIVE',
-        createdAt: U.iso(), updatedAt: U.iso()
+        createdAt: U.iso(), updatedAt: U.iso(), isDemo: demoFlag
       };
     });
     DB.insertMany('Items', rows);
@@ -415,10 +422,114 @@ var Setup = {
       rows.forEach(function (it, i) {
         var qty = [40, 25, 60, 12, 18, 30, 45, 22, 70, 55][i] || 20;
         DB.insert('Stock', { id: U.uid('STK'), itemId: it.id, locationId: loc.id, qty: String(qty),
-          avgCost: it.costPrice, rack: 'A1', lastCountedAt: '', updatedAt: U.iso() });
+          avgCost: it.costPrice, rack: 'A1', lastCountedAt: '', updatedAt: U.iso(), isDemo: demoFlag });
       });
     });
     return { items: rows.length, message: 'Demo items + stock added.' };
+  },
+
+  /* ------------------------------------------------------------------------
+     v2.30.0 — DEMO DATA (fresh install foran usable ho)
+     Aap ki shikayat: "fresh setup ne spreadsheet banai magar data nahi tha;
+     login fail hua; DEMO customer maujood nahi tha."
+     Ab fresh install par ye cheezein seed hoti hain (sab isDemo='true'):
+       · 2 demo customers (DEMO-WALKIN walk-in + DEMO-CASH) + 1 demo supplier
+       · 10 demo items + opening stock (teeno branches)
+       · 1 demo user (demo / demo123, role CASHIER) — sirf training ke liye
+     Setting `data.seedDemo` = false karne se ye step chhup jata hai.
+     Production jaane se pehle: Settings ▸ Demo Data ▸ "Demo data hatao"
+     (ya Setup.gs ▸ removeDemoData ▸ Run) — sirf isDemo rows jati hain.
+     ---------------------------------------------------------------------- */
+  seedDemoData: function (opts) {
+    opts = opts || {};
+    var st = {};
+    try { st = DB.settings() || {}; } catch (e) { st = {}; }
+    if (!opts.force && U.str(st['data.seedDemo']) === 'false') {
+      return { skipped: true, reason: 'data.seedDemo = false' };
+    }
+    /* v2.30.0 — zinda business ke data mein demo rows nahi ghusate */
+    if (!opts.force && typeof Setup.isFreshDb_ === 'function' && !Setup.isFreshDb_()) {
+      return { skipped: true, reason: 'Live database (sales/payments mojood) — demo data skip' };
+    }
+    var made = { customers: 0, suppliers: 0, items: 0, stock: 0, users: 0 };
+
+    /* demo customers — walk-in aur cash */
+    if (!DB.findOne('Customers', function (r) { return r.code === 'DEMO-WALKIN'; })) {
+      var types = DB.all('CustomerTypes');
+      var walkType = (types[0] || {}).id || '';
+      DB.insert('Customers', {
+        id: U.uid('CUS'), code: 'DEMO-WALKIN', name: 'Walk-in Customer (Demo)',
+        phone: '0300-0000000', email: '', address: 'Counter sale', cnic: '', ntn: '',
+        customerTypeId: walkType, openingBalance: '0', creditLimit: '0', membershipId: '',
+        points: '0', priceTier: 'RETAIL', notes: 'Demo record — Settings ▸ Demo data se hata sakte hain',
+        active: 'true', customFields: '', isDemo: 'true'
+      });
+      made.customers++;
+    }
+    if (!DB.findOne('Customers', function (r) { return r.code === 'DEMO-CASH'; })) {
+      var t2 = DB.all('CustomerTypes');
+      DB.insert('Customers', {
+        id: U.uid('CUS'), code: 'DEMO-CASH', name: 'Demo Cash Customer',
+        phone: '0300-1111111', email: '', address: 'Sadiqabad', cnic: '', ntn: '',
+        customerTypeId: (t2[1] || t2[0] || {}).id || '', openingBalance: '0',
+        creditLimit: '50000', membershipId: '', points: '0', priceTier: 'RETAIL',
+        notes: 'Demo record', active: 'true', customFields: '', isDemo: 'true'
+      });
+      made.customers++;
+    }
+
+    /* demo supplier */
+    if (!DB.findOne('Suppliers', function (r) { return r.code === 'DEMO-SUP'; })) {
+      DB.insert('Suppliers', {
+        id: U.uid('SUP'), code: 'DEMO-SUP', name: 'Demo Supplier (Flamingo)',
+        phone: '0300-2222222', email: 'sales@flamingo-parts.example', address: 'Multan Road, Lahore',
+        ntn: '1234567-8',
+        openingBalance: '0', creditLimit: '250000', paymentTerms: '30 days', ledgerAccount: '',
+        notes: 'Demo record', active: 'true', customFields: '', isDemo: 'true'
+      });
+      made.suppliers++;
+    }
+
+    /* demo user (sirf training/testing — real staff upar seed hote hain) */
+    if (!DB.findOne('Users', function (r) { return r.username === 'demo'; })) {
+      var h = U.hashPassword('demo123');
+      var loc = (DB.all('Locations')[0] || {});
+      DB.insert('Users', {
+        id: U.uid('USR'), username: 'demo', fullName: 'Demo User (training)',
+        passwordHash: h.hash, salt: h.salt, email: 'demo@haseebautos.pk', phone: '',
+        role: 'CASHIER', groupId: 'GRP-SAL', locationIds: U.str(loc.id),
+        defaultLocationId: U.str(loc.id), commissionRate: '0', discountLimit: '2',
+        active: 'true', createdAt: U.iso(), isDemo: 'true'
+      });
+      made.users++;
+    }
+
+    /* demo items + opening stock (seedDemoItems ka logic reuse, isDemo mark ke sath) */
+    var before = DB.count('Items');
+    if (before === 0) {
+      var res = Setup.seedDemoItems({ markDemo: true });
+      made.items = (res && res.items) || 0;
+    }
+    /* opening stock rows par bhi flag (Stock rows itemId se match karte hain) */
+    var demoItemIds = {};
+    DB.all('Items').forEach(function (r) { if (U.str(r.isDemo) === 'true') demoItemIds[r.id] = true; });
+    DB.all('Stock').forEach(function (r) {
+      if (demoItemIds[r.itemId] && U.str(r.isDemo) !== 'true') {
+        DB.update('Stock', r.id, { isDemo: 'true' });
+      }
+    });
+    made.stock = DB.all('Stock').filter(function (r) { return U.str(r.isDemo) === 'true'; }).length;
+
+    return {
+      seeded: true, made: made,
+      message: 'Demo data tayyar: demo customer, demo supplier, 10 demo items + stock' +
+        (made.users ? ', demo user (demo/demo123)' : '') + '.'
+    };
+  },
+
+  /** Demo data hatao — sirf isDemo rows (real data safe rehta hai) */
+  removeDemoData: function () {
+    return Shop.removeDemoData({}, { userId: 'setup', role: 'OWNER', permissions: ['*'], locationIds: [] });
   },
 
   /** Password reset (owner ke liye) */
@@ -561,9 +672,30 @@ function setupSeedPlan_() {
     {method:'seedTemplates',tables:['PrintTemplates']},
     {method:'seedCustomFields',tables:['CustomFields']},
     {method:'seedTranslations',tables:['Translations']},
-    {method:'seedAccounts',tables:['Accounts']}
+    {method:'seedAccounts',tables:['Accounts']},
+    /* v2.30.0 — fresh install foran usable: demo customer + supplier + items + stock.
+       `freshOnly: true` — sirf NAYE (khali) database par. Recovery `repairSeedData`
+       kisi zinda (live) business ke data mein demo rows NAHI ghusata. */
+    {method:'seedDemoData',tables:['Customers','Suppliers','Items','Stock'],freshOnly:true}
   ];
 }
+
+/**
+ * v2.30.0 — kya database "naya" hai? (demo data sirf naye DB par)
+ * Live business ka data (sale / payment / PO / GRN) ho to demo seeding skip.
+ */
+Setup.isFreshDb_ = function () {
+  try {
+    var probes = ['Sales', 'SaleReturns', 'Payments', 'Expenses', 'PurchaseOrders', 'GRN'];
+    for (var i = 0; i < probes.length; i++) {
+      if (DB.count(probes[i]) > 0) return false;
+    }
+    return true;
+  } catch (e) { return true; }
+};
+
+/** Aakhri seed run mein kaun se step skip hue (diagnostics/message ke liye) */
+Setup.lastSeedSkips_ = [];
 
 /** Direct sheet read, NEVER cache. Reports counts/header names, not account data. */
 function setupSeedTableStatus_(ss, name) {
@@ -579,13 +711,137 @@ function setupSeedTableStatus_(ss, name) {
   return {rows:rows,ready:rows>0 && missing.length===0,missingSheet:false,missingColumns:missing};
 }
 function setupSeedStatus_(ss) {
-  var plan=setupSeedPlan_(), tables={}, missing=[], first=-1;
-  plan.forEach(function(step,i){step.tables.forEach(function(name){
-    var status=setupSeedTableStatus_(ss,name);tables[name]=status;
-    if(!status.ready){missing.push(name);if(first<0)first=i;}
-  });});
-  return {ready:missing.length===0,tables:tables,missing:missing,firstMissingStep:first};
+  var plan=setupSeedPlan_(), tables={}, missing=[], first=-1, skipped=[];
+  var fresh=Setup.isFreshDb_();
+  plan.forEach(function(step,i){
+    /* freshOnly step (demo data) live DB par lazmi NAHI — warna har recovery
+       demo tables ko "missing" batati rehti. */
+    if(step.freshOnly && !fresh){skipped.push(step.method);return;}
+    step.tables.forEach(function(name){
+      var status=setupSeedTableStatus_(ss,name);tables[name]=status;
+      if(!status.ready){missing.push(name);if(first<0)first=i;}
+    });});
+  return {ready:missing.length===0,tables:tables,missing:missing,firstMissingStep:first,skipped:skipped,freshDb:fresh};
 }
+
+/* ============================================================================
+   v2.30.0 — FIRST-RUN WIZARD STATUS + ONE-CLICK DIAGNOSTICS
+   ----------------------------------------------------------------------------
+   Aap ki shart: "Add a first-run frontend Setup/Configuration Wizard that
+   guides the admin through initial application configuration."
+   Frontend (App_Boot) ye route login ke baad call karta hai aur `needsWizard`
+   true hone par wizard kholta hai — steps wahi jo aap ne maange:
+     1 business info  2 admin password  3 shop open  4 demo data  5 done
+   ============================================================================ */
+Setup.wizardStatus = function (p, s) {
+  var st = {};
+  try { st = DB.settings() || {}; } catch (e) { st = {}; }
+  var counts = {};
+  [['users', 'Users'], ['items', 'Items'], ['customers', 'Customers'], ['suppliers', 'Suppliers'],
+   ['settings', 'Settings'], ['locations', 'Locations'], ['sales', 'Sales'], ['stock', 'Stock']]
+    .forEach(function (pair) { try { counts[pair[0]] = DB.count(pair[1]); } catch (e) { counts[pair[0]] = 0; } });
+  var shop = null;
+  try { shop = Shop.status(p || {}, s); } catch (e) { shop = { open: false, error: e.message }; }
+  var owner = DB.findOne('Users', function (u) { return U.str(u.username) === 'owner'; });
+  var steps = {
+    business: !!U.str(st.businessName),
+    admin: !!(owner && U.str(st['setup.adminPasswordSet']) === 'true'),
+    shopOpen: !!(shop && shop.open),
+    demo: U.str(st['setup.demoDecision']) !== '',       /* decide: rakhna ya hatana */
+    done: U.str(st['setup.wizardDone']) === 'true'
+  };
+  return {
+    version: CONFIG.VERSION,
+    needsWizard: !steps.done,
+    steps: steps,
+    seeded: counts,
+    shop: shop,
+    demoVisible: Shop.demoVisible(),
+    businessName: U.str(st.businessName),
+    shopName: U.str(st['shop.name']),
+    message: steps.done ? 'Setup mukammal hai.' : 'First-run wizard baqi hai (business info + shop open).'
+  };
+};
+
+/** Wizard ke steps ko ek hi jagah save karo (settings + optional shop open) */
+Setup.wizardSave = function (p, s) {
+  Auth.require(s, 'settings.manage');
+  p = p || {};
+  var vals = {};
+  ['businessName', 'shop.name', 'shop.phone', 'shop.address', 'receiptHeader'].forEach(function (k) {
+    if (p[k] !== undefined) vals[k] = U.str(p[k]);
+  });
+  if (p.demoDecision !== undefined) {
+    vals['data.showDemo'] = String(p.demoDecision) !== 'false' ? 'true' : 'false';
+    vals['setup.demoDecision'] = String(p.demoDecision) !== 'false' ? 'keep' : 'remove';
+  }
+  if (p.done) vals['setup.wizardDone'] = 'true';
+  if (Object.keys(vals).length) DB.setSettings(vals, s);
+  var out = { saved: Object.keys(vals), status: Setup.wizardStatus({}, s) };
+  if (p.demoDecision !== undefined && String(p.demoDecision) === 'false') {
+    try { out.demoRemoved = Shop.removeDemoData({}, s); } catch (e) { out.demoRemoveError = e.message; }
+  }
+  return out;
+};
+
+/** Wizard office: admin password badlo (owner ke liye) + step flag */
+Setup.wizardSetAdminPassword = function (p, s) {
+  Auth.require(s, 'users.manage');
+  p = p || {};
+  var pw = U.str(p.password);
+  if (pw.length < 6) throw new Error('Password kam az kam 6 characters ka hona chahiye.');
+  var owner = DB.findOne('Users', function (u) { return U.str(u.username) === U.str(p.username || 'owner'); });
+  if (!owner) throw new Error('Owner user nahi mila.');
+  var h = U.hashPassword(pw);
+  DB.update('Users', owner.id, { passwordHash: h.hash, salt: h.salt }, s);
+  DB.setSettings({ 'setup.adminPasswordSet': 'true' }, s);
+  return { ok: true, username: owner.username };
+};
+
+/* ----------------------------------------------------------------------------
+   One-click diagnostics — deployed app mein "safha blank kyun hai?" ka jawab.
+   Har SCHEMA table ka row count + missing columns + shop/demo/seed status.
+   (Reports/tables mein account data nahi jata — sirf counts + headers.)
+   -------------------------------------------------------------------------- */
+Setup.diagnostics = function (p, s) {
+  var props = PropertiesService.getScriptProperties();
+  var id = props.getProperty('SPREADSHEET_ID');
+  var ss = id ? SpreadsheetApp.openById(id) : null;
+  var tables = {}, problems = [];
+  Object.keys(SCHEMA).forEach(function (name) {
+    if (!ss) { tables[name] = { rows: 0, missingSheet: true }; return; }
+    var stat = setupSeedTableStatus_(ss, name);
+    tables[name] = { rows: stat.rows, missingSheet: !!stat.missingSheet, missingColumns: stat.missingColumns };
+    if (stat.missingSheet) problems.push('MISSING SHEET: ' + name);
+    else if (stat.missingColumns.length) problems.push('MISSING COLUMNS [' + name + ']: ' + stat.missingColumns.join(', '));
+  });
+  var shop = null;
+  try { shop = Shop.status(p || {}, s); } catch (e) { shop = { error: e.message }; }
+  var seed = null;
+  try { seed = setupSeedStatus_(ss); } catch (e) { seed = { error: e.message }; }
+  var out = {
+    version: CONFIG.VERSION,
+    spreadsheetId: id || '(none)',
+    linked: !!id,
+    tables: tables,
+    seedReady: !!(seed && seed.ready),
+    seedMissing: (seed && seed.missing) || [],
+    shop: shop,
+    demoVisible: Shop.demoVisible(),
+    counts: {
+      Users: tables.Users ? tables.Users.rows : 0,
+      Items: tables.Items ? tables.Items.rows : 0,
+      Customers: tables.Customers ? tables.Customers.rows : 0,
+      Sales: tables.Sales ? tables.Sales.rows : 0
+    },
+    problems: problems,
+    fix: problems.length
+      ? 'Setup.gs ▸ repairSeedData ▸ Run chalayein (mojooda spreadsheet rehti hai; kuch reset nahi hota).'
+      : 'Koi structural masla nahi mila. Safha blank ho to Items screen ke error box se "Diagnostics copy" karein.'
+  };
+  Logger.log(JSON.stringify(out));
+  return out;
+};
 
 /** Editor: Setup.gs > diagnoseSeedData > Run. Read-only; RETURNS and logs. */
 function diagnoseSeedData() {
@@ -613,13 +869,16 @@ function repairSeedData() {
     plan.forEach(function(step){step.tables.forEach(function(name){DB.touch(name);});});
     for(var i=0;i<plan.length && Date.now()<deadline;i++){
       var step=plan[i];
-      if(step.tables.some(function(name){return !before.tables[name].ready;})){
+      /* v2.30.0 — freshOnly (demo) step live DB par skip: attempted mein bhi na aaye */
+      if(step.freshOnly && !Setup.isFreshDb_()) continue;
+      if(step.tables.some(function(name){return !before.tables[name] || !before.tables[name].ready;})){
         setupRunSeedStep_(ss,step);attempted.push(step.method);
       }
     }
     var after=setupSeedStatus_(ss);
     var result={complete:after.ready,spreadsheetId:id,url:ss.getUrl(),version:CONFIG.VERSION,
-      attempted:attempted,missingSeedTables:after.missing,
+      attempted:attempted,missingSeedTables:after.missing,seedSkips:after.skipped||[],
+      demoDataSkipped:(after.skipped||[]).length>0,
       seedCounts:Object.keys(after.tables).reduce(function(out,name){out[name]=after.tables[name].rows;return out;},{}),
       message:after.ready?'Default rows verified in the EXISTING spreadsheet. No existing passwords or transactions were reset. Change initial passwords before use.':
         'Recovery progress saved in the sheet. Run Setup.gs > repairSeedData > Run again. Missing: '+after.missing.join(', ')};
@@ -629,6 +888,10 @@ function repairSeedData() {
 
 /** Shared seed execution: clear cache, create missing headers, verify physical rows. */
 function setupRunSeedStep_(ss,step) {
+  if(step.freshOnly && !Setup.isFreshDb_()){
+    Setup.lastSeedSkips_.push({method:step.method,reason:'live DB — demo data skip'});
+    return {skipped:true,method:step.method,reason:'live DB — demo data skip'};
+  }
   step.tables.forEach(function(name){
     var table=ss.getSheetByName(name);
     var status=table?setupSeedTableStatus_(ss,name):null;

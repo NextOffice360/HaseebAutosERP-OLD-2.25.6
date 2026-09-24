@@ -36,7 +36,12 @@ var Reports = {
     var tomorrow = new Date(today.getTime()); tomorrow.setDate(tomorrow.getDate() + 1);
     var week = U.daysAgo(6), month = U.daysAgo(29);
 
-    var sales = DB.all('Sales').filter(function (x) { return U.str(x.status) !== 'VOID'; });
+    /* v2.30.0 — DEMO VISIBILITY: setting `data.showDemo` false ho to demo
+       items/customers/sales dashboard se ghayab (production ke liye). */
+    var demoOn = (typeof Shop !== 'undefined' && Shop.demoVisible) ? Shop.demoVisible() : true;
+    var sales = DB.all('Sales').filter(function (x) {
+      return U.str(x.status) !== 'VOID' && (demoOn || U.str(x.isDemo) !== 'true');
+    });
     var viewable = Auth.can(s, 'sales.view.all') ? sales : sales.filter(function (x) { return x.cashierId === s.userId; });
     var locId = p.locationId || s.locationId;
 
@@ -83,6 +88,7 @@ var Reports = {
     // low stock
     var stock = Inventory.stockMap(locId);
     var lowStock = DB.all('Items').filter(function (it) {
+      if (!demoOn && U.str(it.isDemo) === 'true') return false;
       return U.str(it.status) === 'ACTIVE' && U.num(stock[it.id], 0) <= U.num(it.reorderLevel, U.num(it.minStock, 0));
     }).map(function (it) { return { id: it.id, code: it.code, name: it.name, qty: U.num(stock[it.id], 0), reorderLevel: U.num(it.reorderLevel, U.num(it.minStock, 0)) }; })
       .slice(0, 10);
@@ -111,8 +117,9 @@ var Reports = {
         inventoryValue: val.costValue,
         inventoryRetail: val.retailValue,
         lowStockCount: lowStock.length,
-        itemsCount: DB.count('Items'),
-        customersCount: DB.count('Customers'),
+        itemsCount: demoOn ? DB.count('Items') : DB.all('Items').filter(function (x) { return U.str(x.isDemo) !== 'true'; }).length,
+        customersCount: demoOn ? DB.count('Customers') : DB.all('Customers').filter(function (x) { return U.str(x.isDemo) !== 'true'; }).length,
+        demoHidden: !demoOn,
         pendingDue: U.round(U.sum(inLoc.filter(function (x) { return U.num(x.due) > 0; }), 'due'), 2)
       },
       trend: trend,

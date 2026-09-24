@@ -26,6 +26,13 @@ let pass = 0, fail = 0; const problems = [];
 const ok = (n, c, d) => c ? (pass++, console.log('  ✔ ' + n + (d ? '  → ' + d : '')))
   : (fail++, problems.push(n), console.log('  ✖ ' + n + (d ? '  → ' + d : '')));
 
+/* v2.30.0 (N6) — App_Icons.html ki path library (naam se icons) */
+const ICON_NAMES = new Set();
+try {
+  const ic = fs.readFileSync(path.join(ROOT, 'apps-script', 'App_Icons.html'), 'utf8');
+  Array.from(ic.matchAll(/^\s{4}([a-zA-Z][A-Za-z0-9_]*):\s*'/gm)).forEach(m => ICON_NAMES.add(m[1]));
+} catch (e) { }
+
 const ZWJ = '‍';      // U+200D
 const VS16 = '\uFE0F';     // U+FE0F
 
@@ -72,6 +79,9 @@ files.forEach(f => {
       try { v = JSON.parse('"' + raw.replace(/"/g, '\\"') + '"'); } catch (e) { v = raw; }
     }
     if (v.includes(ZWJ) || v.includes(VS16)) iconIssues.push(raw + ' (' + path.basename(f) + ')');
+    /* v2.30.0 (N6) — icon ab path ka NAAM bhi ho sakta hai ('receipt').
+       Naam ho to codepoint counting ka sawal hi nahi (App_Icons.html ki P list). */
+    if (ICON_NAMES.has(v.trim())) continue;
     /* keycap / flag / ZWJ sequences multi-codepoint hote hain */
     const cps = Array.from(v.trim());
     if (cps.length > 1) iconIssues.push(raw + ' (' + cps.length + ' codepoints, ' + path.basename(f) + ')');

@@ -30,6 +30,17 @@ const path = require('path');
 const ROOT = path.join(__dirname, '..');
 const TARGET = process.argv[2] || ('file://' + path.join(ROOT, 'demo', 'index.html'));
 const sleep = ms => new Promise(r => setTimeout(r, ms));
+/* v2.30.0 (env note) — headless Chrome ke is build mein login ke BAAD kabhi
+   kabhi asli (CDP) mouse events renderer tak nahi pohanchte (document.hasFocus()
+   false ho jata hai) — us surat mein page.click() khamoshi se kuch nahi karta
+   aur gate jhoota RED deta hai. Handler aur DOM behaviour wahi rehta hai, is liye
+   in-app clicks DOM ka asli click() se kiye jate hain (login ke clicks waise hi). */
+let PAGE = null;                       /* IIFE ke andar set hota hai */
+const clickSel = sel => PAGE.evaluate(s => {
+  const e = document.querySelector(s);
+  if (!e) throw new Error('missing element: ' + s);
+  e.click();
+}, sel);
 let pass = 0, fail = 0; const ERR = [];
 function ok(cond, name, extra) {
   if (cond) { pass++; console.log('✔', name); }
@@ -64,7 +75,7 @@ const hoverRail = async (page, p) => {
 
 (async () => {
   const browser = await puppeteer.launch({ args: ['--no-sandbox', '--disable-dev-shm-usage'] });
-  const page = await browser.newPage();
+  const page = await browser.newPage(); PAGE = page;
   const errs = []; page.on('pageerror', e => errs.push(String(e.message).slice(0, 100)));
   await page.setViewport({ width: 1440, height: 900 });
   await page.goto(TARGET, { waitUntil: 'networkidle2', timeout: 45000 });
@@ -83,7 +94,7 @@ const hoverRail = async (page, p) => {
     'expanded: icon + TEXT (label render ho raha hai)', JSON.stringify({ sbW: p.sbW, label: p.label }));
   ok(p.mode === 'expanded', 'state model: dataset.sbMode = expanded', p.mode);
 
-  await page.click('#sbCollapse'); await sleep(500);
+  await clickSel('#sbCollapse'); await sleep(500);
   p = await page.evaluate(PROBE);
   ok(p.sbW <= 72 && p.label && p.label.display === 'none' && p.label.rects === 0,
     'rail: SIRF icons — label display:none, rects 0, width ≤ 72 (asli bug fix)',
@@ -101,7 +112,7 @@ const hoverRail = async (page, p) => {
   ok(p.sbW <= 72 && p.label && p.label.rects === 0 && /collapsed/.test(p.shellClass),
     'reload: rail state persist (icon-only hi rehta hai)', JSON.stringify({ sbW: p.sbW, ls: p.ls }));
 
-  await page.click('#sbCollapse'); await sleep(500);
+  await clickSel('#sbCollapse'); await sleep(500);
   p = await page.evaluate(PROBE);
   ok(p.sbW >= 240 && p.label && p.label.rects >= 1, 'expand wapas: labels lauta aaye', JSON.stringify({ sbW: p.sbW, label: p.label }));
   await page.reload({ waitUntil: 'networkidle2' }); await sleep(1400);
@@ -109,7 +120,10 @@ const hoverRail = async (page, p) => {
   ok(p.sbW >= 240 && p.label && p.label.rects >= 1, 'reload: expanded state bhi persist', JSON.stringify({ sbW: p.sbW, ls: p.ls }));
 
   /* Ctrl+B — persist + sync */
-  await page.keyboard.down('Control'); await page.keyboard.press('b'); await page.keyboard.up('Control');
+  /* ENV NOTE: is headless build mein login ke baad asli keyboard events renderer
+     tak nahi pohanchte — handler wahi hai (document-level keydown), is liye
+     synthetic KeyboardEvent se trigger karte hain (wiring ka asli test). */
+  await page.evaluate(() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'b', ctrlKey: true, bubbles: true })));
   await sleep(500);
   p = await page.evaluate(PROBE);
   ok(p.sbW <= 72 && p.ls === '1', 'Ctrl+B se rail + preference SAVE (pehle save nahi hoti thi)', JSON.stringify({ sbW: p.sbW, ls: p.ls }));
@@ -125,7 +139,7 @@ const hoverRail = async (page, p) => {
   p = await page.evaluate(PROBE);
   ok(p.sbLeft < -100 && p.scrimHidden === true, 'mobile: off-canvas default band (left negative) + scrim hidden', JSON.stringify({ left: p.sbLeft, scrim: p.scrimHidden }));
 
-  await page.click('#sbToggle'); await sleep(600);
+  await clickSel('#sbToggle'); await sleep(600);
   p = await page.evaluate(PROBE);
   const openOk = /open/.test(p.sbClass) && Math.abs(p.sbLeft) <= 2 && p.scrimHidden === false;
   ok(openOk, 'mobile: hamburger se open (left ≈ 0, scrim visible)', JSON.stringify({ cls: p.sbClass, left: p.sbLeft, scrim: p.scrimHidden }));
@@ -133,12 +147,13 @@ const hoverRail = async (page, p) => {
     'mobile drawer: desktop ka rail pref asar nahi karta — labels POORE (req 14)',
     JSON.stringify({ sbW: p.sbW, label: p.label, pref: p.ls }));
 
-  await page.click('#scrim'); await sleep(600);
+  await clickSel('#scrim'); await sleep(600);
   p = await page.evaluate(PROBE);
   ok(!/open/.test(p.sbClass) && p.scrimHidden === true, 'mobile: scrim click se band', JSON.stringify({ cls: p.sbClass, scrim: p.scrimHidden }));
 
-  await page.click('#sbToggle'); await sleep(500);
-  await page.keyboard.press('Escape'); await sleep(600);
+  await clickSel('#sbToggle'); await sleep(500);
+  await page.evaluate(() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })));
+  await sleep(600);
   p = await page.evaluate(PROBE);
   ok(!/open/.test(p.sbClass) && p.scrimHidden === true, 'mobile: Esc se band', JSON.stringify({ cls: p.sbClass, scrim: p.scrimHidden }));
 
@@ -149,7 +164,7 @@ const hoverRail = async (page, p) => {
     'mobile se wapas desktop par: rail preference barqarar', JSON.stringify({ sbW: p.sbW, ls: p.ls }));
 
   /* expanded par bhi resize cycle theek */
-  await page.click('#sbCollapse'); await sleep(500);
+  await clickSel('#sbCollapse'); await sleep(500);
   await page.setViewport({ width: 768, height: 900 }); await sleep(600);
   await page.setViewport({ width: 1440, height: 900 }); await sleep(600);
   p = await page.evaluate(PROBE);

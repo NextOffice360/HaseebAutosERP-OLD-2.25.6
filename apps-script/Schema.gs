@@ -19,7 +19,8 @@ var SCHEMA = {
     'locationIds', 'defaultLocationId', 'commissionRate', 'discountLimit', 'active', 'lastLogin', 'createdAt',
     /* v2.1 */ 'prefs',
     /* v2.5: per-user rules — role ke upar allow (extra) ya disallow (denied) */
-    'extraPermissions', 'deniedPermissions'],
+    'extraPermissions', 'deniedPermissions',
+    /* v2.30.0 — demo data flag (demo/training user) */ 'isDemo'],
   AuditLog: ['id', 'ts', 'userId', 'username', 'action', 'entity', 'entityId', 'before', 'after', 'ip', 'locationId'],
 
   /* ------------------------- v2.3: COMMS / LOYALTY / IMPORT / MIGRATION --- */
@@ -38,6 +39,7 @@ var SCHEMA = {
     'costPrice', 'retailPrice', 'wholesalePrice', 'minPrice', 'taxRate', 'hsn',
     'minStock', 'reorderLevel', 'rack', 'defaultLocationId', 'trackSerial', 'hasExpiry',
     'imageUrl', 'notes', 'status', 'createdAt', 'updatedAt',
+    /* v2.30.0 — demo data flag (Settings ▸ data.showDemo) */ 'isDemo',
     /* v2 */ 'size', 'conversionFactor', 'primarySupplierId', 'barcodeType', 'binId',
     'isBundle', 'isService', 'allowDiscount', 'warranty', 'origin', 'weight',
     'gallery', 'variants', 'customFields', 'favourite', 'sortOrder',
@@ -50,7 +52,8 @@ var SCHEMA = {
     'usageLimit', 'used', 'appliesTo', 'active'],
 
   /* --------------------------------- INVENTORY -------------------------- */
-  Stock: ['id', 'itemId', 'locationId', 'qty', 'avgCost', 'rack', 'binId', 'lastCountedAt', 'updatedAt'],
+  Stock: ['id', 'itemId', 'locationId', 'qty', 'avgCost', 'rack', 'binId', 'lastCountedAt', 'updatedAt',
+    /* v2.30.0 — demo data flag */ 'isDemo'],
 
   /* ------------------------ v2: catalog, warehouse, config ---------------- */
   Categories: ['id', 'code', 'name', 'parentId', 'imageUrl', 'sortOrder', 'active'],
@@ -82,9 +85,11 @@ var SCHEMA = {
   /* ---------------------------------- PARTIES --------------------------- */
   Customers: ['id', 'code', 'name', 'phone', 'email', 'address', 'cnic', 'ntn', 'customerTypeId',
     'openingBalance', 'creditLimit', 'membershipId', 'points', 'priceTier', 'notes', 'active',
-    'customFields', 'createdAt'],
+    'customFields', 'createdAt',
+    /* v2.30.0 — demo data flag */ 'isDemo'],
   Suppliers: ['id', 'code', 'name', 'phone', 'email', 'address', 'ntn', 'openingBalance', 'creditLimit',
-    'paymentTerms', 'ledgerAccount', 'notes', 'active', 'customFields', 'createdAt'],
+    'paymentTerms', 'ledgerAccount', 'notes', 'active', 'customFields', 'createdAt',
+    /* v2.30.0 — demo data flag */ 'isDemo'],
   Ledger: ['id', 'date', 'partyType', 'partyId', 'refType', 'refId', 'description',
     'debit', 'credit', 'balance', 'locationId', 'createdAt'],
 
@@ -92,7 +97,8 @@ var SCHEMA = {
   Sales: ['id', 'invoiceNo', 'date', 'locationId', 'customerId', 'customerName', 'customerType',
     'subtotal', 'discount', 'discountCode', 'tax', 'total', 'paid', 'change', 'due',
     'paymentMethod', 'payments', 'status', 'salespersonId', 'cashierId', 'sessionId',
-    'notes', 'source', 'createdAt'],
+    'notes', 'source', 'createdAt',
+    /* v2.30.0 — demo data flag */ 'isDemo'],
   SaleItems: ['id', 'saleId', 'itemId', 'code', 'name', 'qty', 'price', 'cost', 'discount',
     'tax', 'taxRate', 'lineBase', 'lineTotal', 'salespersonId', 'serial', 'notes'],
   SaleReturns: ['id', 'returnNo', 'date', 'saleId', 'invoiceNo', 'locationId', 'customerId',
@@ -321,7 +327,18 @@ var DEFAULT_SETTINGS = {
   'demand.notifyOnArrival': 'true',
   'demand.allowDuplicateOpen': 'false',
   /* v2.9.2 — production login: show/hide demo credentials */
-  'login.showDemo': 'true'
+  'login.showDemo': 'true',
+  /* v2.30.0 — DEMO DATA visibility + SHOP SESSION rules + first-run wizard */
+  'data.showDemo': 'true',        /* demo users/data dashboards+reports mein dikhein? */
+  'data.seedDemo': 'true',        /* fresh install par demo data seed ho? */
+  'shop.requireOpen': 'true',     /* shop band ho to operational writes block */
+  'shop.defaultOpeningCash': '0',
+  'shop.openPromptOnLogin': 'true',/* login ke baad shop band ho to prompt */
+  'setup.wizardDone': 'false',    /* first-run wizard chala? */
+  'businessName': '',
+  'shop.name': '',
+  'shop.phone': '',
+  'shop.address': ''
 };
 
 /** Roles → permission keys (RBAC). Group.permissions in ko override kar sakta hai. */

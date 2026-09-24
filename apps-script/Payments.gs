@@ -85,7 +85,14 @@ var Payments = {
       partyId: payload.partyId || '',
       partyName: payload.partyName || Payments._partyName(payload) || '',
       amount: amount, method: method, reference: payload.reference || '',
-      locationId: payload.locationId || s.locationId, sessionId: payload.sessionId || '',
+      locationId: payload.locationId || s.locationId,
+      /* v2.30.0 — receipt shop session se auto-jure (explicit sessionId jeetta hai) */
+      sessionId: U.str(payload.sessionId) || (function () {
+        try {
+          var cur = Payments.currentSessionRaw(payload.locationId || s.locationId, s.userId);
+          return (cur && U.str(cur.status) === 'OPEN') ? U.str(cur.id) : '';
+        } catch (e) { return ''; }
+      })(),
       notes: payload.notes || '', createdBy: s ? s.userId : '', createdAt: U.iso(),
       /* v2.2 */
       status: status, fee: fee, fed: fed, net: net, settleDate: calc.settleDate || '',
@@ -416,7 +423,18 @@ var Payments = {
        `expenses` pehle se by-category ARRAY hai (UI isi naam se use karta hai),
        is liye number ke liye naya naam `expenseTotal` — koi breaking change nahi. */
     var t = sum.totals || {};
+    /* v2.30.0 — is session ka SAVE SHUDA report (OPEN/CLOSE) — UI title + share
+       ke liye: opening report ko "closing" kehna galat tha. */
+    var saved = null;
+    try {
+      var reps = DB.all('DayReports').filter(function (x) { return x.sessionId === ses.id; });
+      reps.sort(function (a, b) { return U.str(a.generatedAt) > U.str(b.generatedAt) ? -1 : 1; });
+      saved = reps[0] || null;
+    } catch (e) { saved = null; }
     return Object.assign({}, sum, {
+      reportId: saved ? saved.id : '',
+      reportNo: saved ? saved.reportNo : '',
+      reportKind: saved ? U.upper(U.str(saved.kind)) : '',
       cashSales: U.num(t.cashSales), creditSales: U.num(t.creditSales),
       refunds: U.num(t.refunds), expenseTotal: U.num(t.expenses),
       cashIn: U.num(t.cashIn), cashOut: U.num(t.cashOut),

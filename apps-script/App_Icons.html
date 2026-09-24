@@ -57,6 +57,27 @@
     briefcase: '<path d="M16 20V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/><rect x="2" y="6" width="20" height="14" rx="2"/>',
     /* Payments & cash — wallet */
     wallet: '<path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/>',
+    /* v2.30.0 (N6) — settings areas ke apne icons (ek hi Lucide stroke style) */
+    /* Business Profile — dukaan (storefront) */
+    shop: '<path d="M3 9.5 4.5 4h15L21 9.5"/><path d="M4 9.5V20a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V9.5"/><path d="M9 21v-6h6v6"/><path d="M3 9.5h18"/>',
+    /* Price list import — list/table wali file */
+    fileText: '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v5h6"/><path d="M8 13h8"/><path d="M8 17h5"/>',
+    /* Firebase migration — aag (Firebase ka nishan) */
+    flame: '<path d="M12 2c1.5 3 4.5 4.5 4.5 8a4.5 4.5 0 0 1-9 0c0-1.2.4-2.2 1-3-2 1.2-3.5 3.3-3.5 6a7.5 7.5 0 0 0 15 0c0-4.5-3.5-8-8-11Z"/>',
+    /* Export & share — share nodes */
+    share: '<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4"/><path d="m15.4 6.5-6.8 4"/>',
+    /* Scheduled jobs / triggers — alarm clock */
+    alarmClock: '<circle cx="12" cy="13" r="7"/><path d="M12 10v3l2 2"/><path d="M5 3 3 5"/><path d="m19 3 2 2"/>',
+    /* Hosting / frontends — globe */
+    globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.5 2.5 3.8 5.6 3.8 9S14.5 18.5 12 21c-2.5-2.5-3.8-5.6-3.8-9S9.5 5.5 12 3Z"/>',
+    /* Offline — cloud par slash */
+    cloudOff: '<path d="M17.5 19H7a4 4 0 0 1-.4-8A5.5 5.5 0 0 1 16 8.5c.4 0 .8 0 1.2.1"/>',
+    /* AI assistant — sparkles */
+    sparkles: '<path d="M12 3l1.9 4.6L18.5 9.5l-4.6 1.9L12 16l-1.9-4.6L5.5 9.5l4.6-1.9Z"/><path d="M18 15l.9 2.1L21 18l-2.1.9L18 21l-.9-2.1L15 18l2.1-.9Z"/>',
+    /* Custom fields — sliders (knobs) */
+    sliders: '<path d="M4 21v-7"/><path d="M4 10V3"/><path d="M12 21v-9"/><path d="M12 8V3"/><path d="M20 21v-5"/><path d="M20 12V3"/><path d="M1 14h6"/><path d="M9 8h6"/><path d="M17 16h6"/>',
+    /* Data & tools — toolbox */
+    toolbox: '<path d="M3 10h18v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/><path d="M9 10V7a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v3"/><path d="M3 14h18"/>',
     /* Accounting — khuli kitab */
     book: '<path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/>',
     /* Dashboards / insights — upar jata chart */
@@ -210,7 +231,17 @@
     '\uD83D\uDCAC': 'chat', '\uD83D\uDCF7': 'camera', '\uD83D\uDD00': 'shuffle',
     '\uD83D\uDCD6': 'bookOpen', '\uD83D\uDCDA': 'books',
     '\uD83D\uDD58': 'clock', '\u267B': 'recycle', '\uD83D\uDD12': 'lock',
-    '\uD83D\uDCD1': 'bookmark', '\uD83D\uDDFA': 'map'
+    '\uD83D\uDCD1': 'bookmark', '\uD83D\uDDFA': 'map',
+    /* v2.30.0 (N6) — settings areas ke emoji → apne icons (koi ambiguity nahi) */
+    '\uD83C\uDFEA': 'shop',        /* 🏪 Business Profile (pehle ghalati se 'door') */
+    '\uD83D\uDCC3': 'fileText',    /* 📃 Price list import */
+    '\uD83D\uDD25': 'flame',       /* 🔥 Firebase migration */
+    '\uD83D\uDCEE': 'share',       /* 📮 Export & share (📤 upload ka matlab waisa hi rahe) */
+    '\u23F0': 'alarmClock',         /* ⏰ Scheduled jobs / triggers */
+    '\uD83C\uDF9B': 'sliders',     /* 🎛 Custom fields */
+    '\uD83E\uDDF0': 'toolbox',     /* 🧰 Data & tools */
+    '\uD83E\uDD16': 'bot',         /* 🤖 AI assistant */
+    '\uD83D\uDCAC': 'chat'         /* 💬 WhatsApp & SMS */
   };
 
   function svg(name, size, color) {
@@ -242,6 +273,10 @@
   }
   function tabIcon(emoji, size) {
     try {
+      /* v2.30.0 (N6) — ab icon seedha path ka naam bhi ho sakta hai (masalan
+         'receipt'). Emoji→naam wala map bhi barqarar hai (purani definitions
+         waisi hi kaam karti rahengi). */
+      if (emoji && Object.prototype.hasOwnProperty.call(P, emoji)) return svg(emoji, size || 20);
       var n = BY_EMOJI[emoji];
       if (n) return svg(n, size || 20);
     } catch (e) { }

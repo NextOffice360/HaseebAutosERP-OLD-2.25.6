@@ -882,10 +882,16 @@ function shopDayReportCard() {
 async function shopDayReportRefresh(bodyEl) {
   bodyEl.innerHTML = '';
   bodyEl.appendChild(UI2.skeleton ? UI2.skeleton(3) : h('div', { class: 'empty' }, 'Load ho raha hai…'));
+  /* v2.30.0 — error chhupta nahi (pehle `catch (e) { rows = []; }` tha) */
   let rows = [];
   try {
     rows = await API.call('dayreport.list', { limit: 30 }, { offlineFallback: () => [] }) || [];
-  } catch (e) { rows = []; }
+  } catch (e) {
+    bodyEl.innerHTML = '';
+    bodyEl.appendChild(Shared.stateCard({ kind: 'error', error: e, title: 'Reports load nahi ho sakeen',
+      retry: () => shopDayReportRefresh(bodyEl) }));
+    return;
+  }
   bodyEl.innerHTML = '';
   if (!rows.length) {
     bodyEl.appendChild(h('div', { class: 'tbl-empty' },
@@ -990,8 +996,13 @@ function shopClosedCard(onDone) {
       h('button', { class: 'btn ok', onclick: async () => {
         const v = f.values();
         try {
-          await API.call('cash.session.open', { openingCash: Number(v.openingCash) || 0, notes: v.notes || '' });
+          const op = await API.call('cash.session.open', { openingCash: Number(v.openingCash) || 0, notes: v.notes || '' });
           UI.toast('Shop open ho gayi ✅', 'ok'); loadShopState(); onDone();
+          /* v2.30.0 — opening report bhi foran (auto report setting ke sath) */
+          if (String(App.state.settings.dayReportAutoOpen) !== 'false') {
+            const sid = (op && op.sessionId) || (op && op.id) || '';
+            setTimeout(() => dayReportModal(sid), 400);
+          }
         } catch (e) { UI.toast(e.message, 'err'); }
       } }, '🔓 Open shop'),
       h('span', { class: 'sp' }),
@@ -1482,8 +1493,10 @@ async function dayReportModal(sessionId) {
   const acts = await dayReportActions(r);
   const body = h('div', { class: 'print-preview', style: { maxHeight: '62vh' } },
     h('div', { class: 'pp-paper', style: { transform: 'scale(.62)' } }, rawHtmlModule(acts.html)));
+  const rk = String(r.reportKind || '').toUpperCase();
+  const rTitle = rk === 'OPEN' ? '🌅 Shop OPENING report' : (rk === 'CLOSE' ? '🌆 Shop CLOSING report' : '📄 Shop day report');
   UI2.modal({
-    title: '📄 Day closing report — ' + (r.sessionNo || ''), size: 'xl', body,
+    title: rTitle + ' — ' + (r.sessionNo || ''), size: 'xl', body,
     actions: [
       { label: '🖨 Print', cls: 'sec', onClick: () => acts.openPrint() },
       { label: '📑 PDF', cls: 'ok', onClick: async () => { await acts.makePdf(); } },

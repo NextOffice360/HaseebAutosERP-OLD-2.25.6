@@ -179,7 +179,8 @@ audit: `parties.balance` / `parties.customerHistory` PWA ki **3 screens (POS/Fie
 | **W13 module wave (B§5–13)** | pending | invoice/credit logic · quick view · multi-select · conversion units · auto-reorder · AI providers · histories · salesman · dashboards |
 | W4 datetime | pending | — |
 | W5 visibility + backend | pending | — |
-| W6 sidebar rail/off-canvas | **T6.1 ✔ T6.2 ✔ T6.3 ✔ T6.4 ✔** | gate `sidebar-states` **52/0 (37s)** — rail icons-only · hover par bhi icons · persistence · Ctrl+B save · mobile drawer poore labels · scrim/Esc band · resize cycle |
+| W6 sidebar rail/off-canvas | **T6.1 ✔ T6.2 ✔ T6.3 ✔ T6.4 ✔** | gate `sidebar-states` **52/0 (37s)**
+| W7 busy coverage (auto-busy engine) | **T7.1 ✔** (v2.29.2) | gate `busy-coverage` **13/0 (31s)** · audit 78 sites — rail icons-only · hover par bhi icons · persistence · Ctrl+B save · mobile drawer poore labels · scrim/Esc band · resize cycle |
 | W7 app-wide apply | pending | — |
 | W8 verify + release | pending | — |
 
@@ -421,7 +422,7 @@ SONAME links gayab (`libatk-1.0.so.0`) aur har browser gate "Failed to launch th
 - [x] **T6.4 Off-canvas controls** ✔ — hamburger (`#sbToggle`) open · scrim · **Esc** band; desktop rail pref drawer ko shrink nahi karta (req 14); wapas desktop par pref barqarar. Gate mein 5 checks.
 
 ### W7 — APPLY SHARED SYSTEMS APP-WIDE (P3) — target **v2.26.2**
-- [ ] **T7.1 Busy coverage** — POS/GRN/PO/SO/settings ke har fetch-button par `UI.run`. **Test:** `tools/audit_busy_coverage.js` (0 raw async onclick). **~60 min**
+- [x] **T7.1 Busy coverage** ✔ (v2.29.2) — audit (`tools/audit_busy_coverage.js`, acorn AST) ne **78 gher-wrapped action sites** pakre. Hal per-page patch nahi, **SHARED auto-busy engine** (`App_Core.html`): `onclick/onchange/onsubmit/oninput/onkeydown` handlers (`h()` ke addEventListener path + property path, dono) wrap hote hain; **Promise return karne wale handler** ke doran element par `aria-busy` + `.is-busy-ab` spinner + `disabled` (duplicate submit block) · min-busy 320ms · safety 120s · `UI.run` skip · `data-nobusy` opt-out · kill-switch `UI._features.autoBusy`. **Gate:** `tools/test_busy_coverage.js` **13/0** (dono attachment paths + real-screen sweep + dup-block + kill/opt-out) · regression: `ui-run` · `ui-err` · `smoke` · `modals-close` · `pay-ledger` · `sidebar-states` sab green. **~60 min**
 - [ ] **T7.2 Table states** — shared table: skeleton rows (fetch), empty-state, store-change re-render. **Test:** `tools/test_table_states.js`. **~60 min**
 - [ ] **T7.3 Forms** — shared validation + deps customer/supplier/product/PO/GRN forms par (16px inputs / 48px taps barqarar). **Test:** `tools/test_forms_shared.js` + `smoke`/`ui-polish`. **~90 min**
 - [ ] **T7.4 Settings consume shared** — datetime + visibility + deps; `settings-defs` gate update. **~60 min**

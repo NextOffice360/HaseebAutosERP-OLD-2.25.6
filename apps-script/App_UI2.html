@@ -45,20 +45,59 @@ UI2.tabs = function (host, cfg) {
     render();
     cfg.onChange && cfg.onChange(id);
   }
+  /* ---------------------------------------------------------------------
+     v2.30.0 (N2) — UNSAVED EDITS KA SURAKH (asli data-loss bug)
+     ---------------------------------------------------------------------
+     Pehle: body.innerHTML = '' se purana panel poori tarah DESTROY ho jata
+     tha — khule panel mein user ki ki hui tabdeeliyan (jo abhi Save nahi
+     huin) chupke se GAYAB ho jati thin, aur SAVE ALL un tak pohanch hi nahi
+     sakta tha. Ab switch se pehle dirty values stash hoti hain aur wapas us
+     tab par aane par (re-render ke baad) wahi values dobara lag jati hain +
+     dirty mark rehti hain — user ka kaam kabhi zaya nahi hota.
+     Freshness waisi hi rehti hai (panel phir bhi re-render hota hai). */
+  function collectDirty(root) {
+    const bag = {};
+    try {
+      (UI2._forms || []).forEach(f => {
+        if (!f || !f.el || !root.contains(f.el) || typeof f.dirtyKeys !== 'function') return;
+        if (!f.dirtyKeys().length) return;
+        Object.assign(bag, f.changed ? f.changed() : {});
+      });
+    } catch (e) { }
+    return bag;
+  }
+  function applyDirty(root, bag) {
+    if (!bag) return;
+    Object.keys(bag).forEach(k => {
+      const f = (UI2._forms || []).filter(x => x && x.el && root.contains(x.el) && x.refs && x.refs[k] !== undefined)[0];
+      if (!f) return;
+      try { f.set && f.set(k, bag[k]); } catch (e) { }
+      try { f.markDirty && f.markDirty(k); } catch (e) { }
+    });
+  }
   function render() {
+    UI2._tabStash = UI2._tabStash || {};
+    const sKey = stashKey();
+    /* jaane wale panel ki unsaved values bachao */
+    const bag = collectDirty(body);
+    if (Object.keys(bag).length) UI2._tabStash[sKey] = Object.assign(UI2._tabStash[sKey] || {}, bag);
     body.innerHTML = '';
     const t = cfg.tabs.filter(x => x.id === active)[0] || cfg.tabs[0];
     if (!t) return;
     const content = h('div', { class: 'tabpanel' });
     body.appendChild(content);
-    Promise.resolve(t.render(content)).catch(e =>
+    Promise.resolve(t.render(content)).then(() => {
+      applyDirty(content, UI2._tabStash[sKey]);
+    }).catch(e =>
       content.appendChild(h('div', { class: 'empty' }, '⚠ ' + e.message)));
   }
+  function stashKey() { return (App.current || 'x') + ':L' + level; }
   (cfg.tabs || []).forEach(t => {
     bar.appendChild(h('button', { class: 'tab' + (t.id === active ? ' on' : ''), dataset: { id: t.id },
       onclick: () => select(t.id) },
       /* v2.6 QA — tab icon bhi SVG (emoji har device par alag dikhte hain) */
-      t.icon ? h('span', { class: 'ti', html: tabIcon(t.icon) }) : '',
+      /* v2.30.0 (N6) — t.tint = sirf icon ka rang (label/tab ka rang waisa hi) */
+      t.icon ? h('span', { class: 'ti', style: t.tint ? ('color:' + t.tint) : '', html: tabIcon(t.icon) }) : '',
       h('span', null, t.label),
       t.badge ? h('span', { class: 'tbadge' }, t.badge) : ''));
   });
@@ -1158,6 +1197,49 @@ UI2.table = function (cfg) {
 
 UI2.toastMini = function (msg) { UI.toast(msg, '', 1200); };
 
+/* ============================================================================
+ * v2.30.0 — NOTIFICATION SERVICE (N8) + RETRY TOAST (N3)
+ * ----------------------------------------------------------------------------
+ * Aap ki shart: "Create one reusable notification service … consistent
+ * appearance, auto-dismiss where appropriate, persistent for important
+ * failures, Retry/action buttons where useful, no duplicate spam."
+ *
+ * Ye service UI.toast ke upar bani hai (wahi look/position/a11y), magar:
+ *   · kind mapping ek jagah (success/error/warning/info/progress)
+ *   · duplicate-suppression (2.5s ke andar wahi message dobara nahi)
+ *   · error/progress notices persistent rah sakte hain + Retry action
+ *   · sab notifications ek history mein (Settings ▸ Notifications + debug)
+ * ========================================================================== */
+UI2._notifSeen = {};
+UI2._notifLog = [];
+UI2.notify = function (msg, kind, opts) {
+  opts = opts || {};
+  const map = { success: 'ok', error: 'err', warning: 'warn', info: 'info', progress: 'info' };
+  const t = map[kind] || kind || 'info';
+  const text = String(msg === undefined || msg === null ? '' : msg);
+  const key = t + '|' + text;
+  const now = Date.now();
+  if (!opts.force && UI2._notifSeen[key] && (now - UI2._notifSeen[key]) < (opts.dedupeMs || 2500)) {
+    return null;                               /* duplicate spam block */
+  }
+  UI2._notifSeen[key] = now;
+  UI2._notifLog.push({ at: now, kind: t, msg: text });
+  if (UI2._notifLog.length > 100) UI2._notifLog.shift();
+  /* progress = persistent jab tak user band na kare (koi action na ho to 8s) */
+  const ms = opts.ms !== undefined ? opts.ms
+    : (t === 'err' ? (opts.action ? 9000 : 6000) : (kind === 'progress' ? 8000 : 3000));
+  return UI.toast(text, t, { action: opts.action || null, ms: ms });
+};
+
+/** failure + Retry: "Unable to … — Retry" (button dabane par wahi kaam dobara) */
+UI2.retryToast = function (title, detail, retryFn, opts) {
+  opts = opts || {};
+  const msg = title + (detail ? ' — ' + String(detail).replace(/^.*?:\s*/, '') : '');
+  return UI2.notify(msg, 'error', Object.assign({
+    force: true, action: retryFn ? { label: '↻ Retry', onClick: retryFn } : null
+  }, opts));
+};
+
 /* ============================== FILTER BAR ================================= */
 /** Quick chips row (category / brand / status …) */
 UI2.chips = function (items, active, onPick, opts) {
@@ -1186,9 +1268,28 @@ UI2.form = function (cfg) {
   const host = h('div', { class: 'form2' });
   const panels = {};
   let apiRef = null;          // niche return wala api (handlers runtime par use karte hain)
-  function vals() {
+
+  /* ==========================================================================
+     v2.30.0 (N1) — DIRTY TRACKING
+     --------------------------------------------------------------------------
+     Aap ki shikayat: "A=ON, B=OFF, C=ON the; ek toggle badla aur Save dabaya —
+     pehle se ON wale settings OFF ho gaye."
+     Asli wajah: Save POORI sub-tab ke saare fields bhejta tha (dirty sirf ek).
+     Jo field DOM mein stored value se mukhtalif render hui (purana/unknown
+     select option, stale state, format farq) wo chupke se overwrite ho jati thi.
+     Hal: har field par apna dirty flag. Save sirf wohi keys bhejta hai jo
+     user ne ASAL mein badli. (API waisi hi rehti hai — sirf payload chhota
+     aur safe hota hai.)
+     ========================================================================== */
+  const dirty = new Set();
+  let dirtySuspended = false;      // setVal/rollback ke doran dirty NA lage
+  function markDirty(k) { if (!dirtySuspended && k) dirty.add(k); }
+
+  function vals(opts) {
+    const dirtyOnly = !!(opts && opts.dirtyOnly);
     const out = {};
     Object.keys(refs).forEach(k => {
+      if (dirtyOnly && !dirty.has(k)) return;
       const el = refs[k];
       if (!el) return;
       if (el.tagName === 'LABEL') {                       // purana switch wrapper (back-compat)
@@ -1205,7 +1306,19 @@ UI2.form = function (cfg) {
     });
     return out;
   }
+  function dirtyKeys() { return Array.from(dirty); }
+  function isDirty(k) { return k === undefined ? dirty.size > 0 : dirty.has(k); }
+  function clearDirty() { dirty.clear(); try { host.dispatchEvent(new CustomEvent('form:dirty', { bubbles: true, detail: { keys: [] } })); } catch (e) { } }
+  /** sirf wahi keys jo dirty hain (Save/SAVE ALL ka safe payload) */
+  function changed() { return vals({ dirtyOnly: true }); }
   function setVal(k, v, quiet) {
+    const el = refs[k];
+    if (!el) return false;
+    /* programmatic set dirty NAHI karta (warna save-all bina wajah payload bhejta) */
+    const prevSusp = dirtySuspended; dirtySuspended = true;
+    try { return setValInner(k, v, quiet); } finally { dirtySuspended = prevSusp; }
+  }
+  function setValInner(k, v, quiet) {
     const el = refs[k];
     if (!el) return false;
     if (el.tagName === 'LABEL') { const cb = el.querySelector('input[type=checkbox]'); if (cb) cb.checked = !!v; }
@@ -1301,9 +1414,26 @@ UI2.form = function (cfg) {
     }
     if (f.type === 'select') {
       input = h('select', { id, class: 'f-input' });
-      (f.options || []).forEach(o => {
+      const opts = (f.options || []).slice();
+      /* v2.30.0 (N1) — stored value options mein na ho to usay ZAYA na karo.
+         Pehle browser pehla option chun leta tha aur Save usay likh deta tha
+         (yahi "purani setting khud badal gayi" ka ek asli sabab tha). */
+      const hasVal = opts.some(o => String(typeof o === 'object' ? o.value : o) === String(val));
+      if (!hasVal && val !== undefined && val !== null && String(val) !== '') {
+        opts.unshift({ value: String(val), label: String(val) + '  (mojooda)' });
+      }
+      /* v2.30.0 (N7) — `optionLabels`: value → dikhne wala naam (masalan provider
+         id 'MOCK' ka asli naam "Local Data Assistant"). Value waise hi rehti hai. */
+      const lblMap = (f && f.optionLabels) || null;
+      opts.forEach(o => {
         const v = typeof o === 'object' ? o.value : o;
-        const l = typeof o === 'object' ? o.label : o;
+        const l0 = typeof o === 'object' ? o.label : o;
+        /* optionLabels wali value par curated naam JEETTA hai — string options ki
+           tarah soort l0 (jo aksar value khud hoti hai) isay chhupa nahi sakta.
+           (N7 pehla attempt: sirf khaali l0 par label — string options mein l0
+           khali hota hi nahi, is liye map kabhi lagta hi nahi tha.) */
+        const l = (lblMap && lblMap[String(v)] !== undefined) ? lblMap[String(v)]
+          : (l0 === undefined || l0 === null || l0 === '') ? String(v) : l0;
         input.appendChild(h('option', { value: v, selected: String(val) === String(v) }, l));
       });
     } else if (f.type === 'textarea') {
@@ -1484,15 +1614,28 @@ UI2.form = function (cfg) {
     }
     refs[f.key] = input;
     const field = h('div', { class: 'f-col' + ((f.full || f.type === 'switch') ? ' full' : ''),
+      'data-fk': f.key || '' ,
         style: f.hidden ? { display: 'none' } : null },
       (f.type !== 'switch') ? h('label', { for: id, class: f.required ? 'req' : '',
         title: tipOf(f) }, f.label) : '',
       switchWrap || input,
       (f.type !== 'switch') ? hintNode(f) : '');
     input.__col = field;
-    /* v2.24.0 — per-field hook: f.onChange(value, api, allValues) */
+    /* v2.24.0 — per-field hook: f.onChange(value, api, allValues)
+       v2.30.0 (N10) — BUG FIX: hook `apiRef` se value leta tha, magar `apiRef`
+       sirf UI2.form ke AAKHIR mein assign hota hai. Jo forms UI.form (legacy
+       wrapper) se banti hain un mein apiRef hamesha null rehta tha →
+       `(apiRef ? apiRef.values() : {})[f.key]` = undefined → hook chup-chaap
+       kuch nahi karta tha (GRN par supplier badalne se info card update na hone
+       ki asli wajah yehi thi). Ab value seedha field element se bhi li jati hai. */
     if (typeof f.onChange === 'function') {
-      const fire = () => { try { f.onChange((apiRef ? apiRef.values() : {})[f.key], apiRef, apiRef ? apiRef.values() : {}); } catch (e) { } };
+      const fire = () => {
+        try {
+          const vals = apiRef ? apiRef.values() : null;
+          const v = vals ? vals[f.key] : ((f.type === 'switch') ? !!input.checked : input.value);
+          f.onChange(v, apiRef, vals || {});
+        } catch (e) { }
+      };
       input.addEventListener(f.type === 'search' ? 'haselect' : 'change', fire);
       if (f.type !== 'select' && f.type !== 'switch' && f.type !== 'search') input.addEventListener('input', fire);
     }
@@ -1524,11 +1667,37 @@ UI2.form = function (cfg) {
     host.append(bar, bodyHost);
   }
 
+  /* v2.30.0 (N1/N2) — user ki asli tabdeeli par dirty mark karo + form registry
+     (SAVE ALL page ke saare dirty forms ek sath uthata hai) */
+  const keyOf = el => el && (el.id || '').replace(/^f_/, '');
+  const markFromEvent = ev => {
+    const t = ev.target;
+    if (!t || !t.nodeType) return;
+    const col = t.closest ? (t.closest('[data-fk]') || t.closest('.f-col')) : null;
+    const k = (col && col.dataset && col.dataset.fk) || keyOf(t);
+    if (k && refs[k] !== undefined) {
+      markDirty(k);
+      try { host.dispatchEvent(new CustomEvent('form:dirty', { bubbles: true, detail: { keys: dirtyKeys() } })); } catch (e) { }
+    }
+  };
+  host.addEventListener('input', markFromEvent, true);
+  host.addEventListener('change', markFromEvent, true);
+
   apiRef = {
     el: host,
     values: vals,
+    changed,                       /* sirf dirty keys ka payload */
+    dirtyKeys,
+    markDirty,                     /* public: programmatic re-apply ke baad dirty mark karna */
+    isDirty,
+    clearDirty,
     set: setVal,
     show: showField,
+    /* v2.30.0 (N2) — page-level SAVE ALL ka fallback handler (screen `f.onSave`
+       set kar de to yahi section apne aap SAVE ALL mein shamil ho jata hai) */
+    onSave: (typeof cfg.onSave === 'function') ? cfg.onSave : null,
+    saveLabel: cfg.saveLabel || cfg.title || '',
+    _registered: true,
     field: k => refs[k],
     setOptions(k, opts) {                                 /* dependent dropdown */
       const el = refs[k];
@@ -1543,7 +1712,145 @@ UI2.form = function (cfg) {
     },
     refs
   };
+  UI2._forms = UI2._forms || [];
+  UI2._forms.push(apiRef);
+  /* NOTE (v2.30.0): yahan prune NAHI karte — form abhi DOM se juda nahi hota
+     (buildSections pehle form banata hai, baad mein append karta hai). Zinda
+     forms ki chhantni query ke waqt hoti hai (UI2.formsDirty). Sirf cap lagao. */
+  if (UI2._forms.length > 60) UI2._forms.splice(0, UI2._forms.length - 60);
   return apiRef;
+};
+
+/* ============================================================================
+   v2.30.0 (N2) — GLOBAL "SAVE ALL"
+   ----------------------------------------------------------------------------
+   Aap ki shart: "Every editable page should have a consistent SAVE ALL action
+   that saves all unsaved changes on that page, even when individual Save
+   buttons exist."
+   Yahan ek hi jagah: page ke SAARE dirty forms (settings ke sab sub-tabs,
+   notifications prefs, koi bhi form) ka dirty payload jama karke EK save
+   call bhejta hai. Unchanged fields payload mein aate hi nahi — is liye
+   purani settings kabhi default par reset nahi hoti.
+   ========================================================================== */
+UI2.formsDirty = function (root) {
+  const forms = (UI2._forms || []).filter(f => f && f.el && f.el.isConnected !== false &&
+    (!root || root.contains(f.el)) && typeof f.dirtyKeys === 'function' && f.dirtyKeys().length);
+  return forms;
+};
+/* Stash mein bache hue (jaane wale panel ke) edits bhi payload mein aate hain —
+   warna SAVE ALL se poora kaam save hona reh jata. */
+UI2.stashValues = function () {
+  const out = {};
+  const st = UI2._tabStash || {};
+  Object.keys(st).forEach(k => {
+    const e = st[k];
+    if (e && (!e.__screen || e.__screen === App.current)) Object.assign(out, e);
+  });
+  return out;
+};
+UI2.dirtyPayload = function (root) {
+  const out = {};
+  let n = 0;
+  UI2.formsDirty(root).forEach(f => { const v = f.changed ? f.changed() : {}; Object.assign(out, v); n += Object.keys(v).length; });
+  const live = Object.keys(out);
+  const stash = UI2.stashValues();
+  Object.keys(stash).forEach(k => { if (live.indexOf(k) === -1) { out[k] = stash[k]; n++; } });
+  return { values: out, keys: Object.keys(out), count: n, forms: UI2.formsDirty(root).length, stashed: Object.keys(stash).length };
+};
+UI2.clearAllDirty = function (root) {
+  UI2.formsDirty(root).forEach(f => { try { f.clearDirty(); } catch (e) { } });
+  const st = UI2._tabStash || {};
+  Object.keys(st).forEach(k => { if (!st[k] || !st[k].__screen || st[k].__screen === App.current) delete st[k]; });
+};
+
+/* ============================================================================
+   v2.30.0 (N2) — "SAVE ALL" (shared engine, app-wide)
+   ----------------------------------------------------------------------------
+   Aap ki shart: har editable page par ek hi, consistent SAVE ALL jo page ki
+   SAARI unsaved tabdeeliyan save kare — chahe page par apne Save buttons
+   mojood hon. Yahan sirf ek jagah likha logic:
+     1) page bridge (screen apna save function `App.setSaveBridge()` se de)
+        — isi payload se chalta hai jo nav-guard dikhata hai (forms + sub-tab
+        stash), is liye jo UI par dikh raha hai wohi save hota hai.
+     2) fallback: har dirty form ka apna `onSave` (agar screen ne diya ho).
+     3) kuch bhi na ho to JHOOOT nahi bolte — saaf toast ke sath button bhi
+        nazar nahi aata (`UI2.saveAllReady()`).
+   Section fail ho to: sirf wohi section dirty rehta hai + Retry (poora page
+   dobara nahi likha jata), duplicate submit blocked, progress 1/2, 2/2 …
+   ========================================================================== */
+UI2.runners = function (root) {
+  const forms = UI2.formsDirty(root);
+  const groups = [];                       /* ek save handler = ek section */
+  const leftover = { values: {}, keys: [], forms: [] };
+  forms.forEach(f => {
+    let vals = {};
+    try { vals = f.changed ? f.changed() : {}; } catch (e) { vals = {}; }
+    const keys = Object.keys(vals);
+    if (!keys.length) return;
+    if (typeof f.onSave !== 'function') {
+      Object.assign(leftover.values, vals);
+      leftover.keys = leftover.keys.concat(keys);
+      leftover.forms.push(f);
+      return;
+    }
+    let g = null;
+    for (let i = 0; i < groups.length; i++) if (groups[i].fn === f.onSave) { g = groups[i]; break; }
+    if (!g) { g = { fn: f.onSave, label: f.saveLabel || ('Section ' + (groups.length + 1)),
+      values: {}, keys: [], forms: [] }; groups.push(g); }
+    Object.assign(g.values, vals);
+    g.keys = g.keys.concat(keys);
+    g.forms.push(f);
+  });
+  return { forms: forms, groups: groups, leftover: leftover,
+    bridge: root ? null : (window.App && App.saveBridge ? App.saveBridge : null) };
+};
+/** SAVE ALL ka koi asli rasta mojood hai? (warna button dikhana = jhoot) */
+UI2.saveAllReady = function (root) {
+  try { const r = UI2.runners(root); return !!(r.bridge || r.groups.length); } catch (e) { return false; }
+};
+UI2._saBusy = false;
+UI2.saveAll = async function (opts) {
+  opts = opts || {};
+  if (UI2._saBusy) { UI.toast('SAVE ALL pehle se chal raha hai — intezar karein', 'warn'); return { skipped: true }; }
+  const pack = UI2.dirtyPayload(opts.root);
+  const r = UI2.runners(opts.root);
+  if (!pack.count) { UI.toast('Koi unsaved tabdeeli nahi — sab mehfooz hai', 'warn'); return { ok: true, count: 0 }; }
+  if (!r.bridge && !r.groups.length) {
+    UI.toast('Is page par SAVE ALL available nahi — apne Save button se save karein', 'warn', 4200);
+    return { ok: false, count: pack.count, noRunner: true };
+  }
+  UI2._saBusy = true;
+  const total = (r.bridge ? 1 : 0) + r.groups.length;
+  const failed = [];
+  let done = 0, saved = 0;
+  const step = label => { done++; try { UI.toast('SAVE ALL ' + done + '/' + total + ' — ' + label + '…', 'info', 1500); } catch (e) { } };
+  try {
+    if (r.bridge) {
+      step(r.bridge.label || App.current);
+      try { await r.bridge.run(pack); saved += pack.count; }
+      catch (e) { failed.push({ label: r.bridge.label || 'Page', message: (e && e.message) || String(e), bridge: true }); }
+    }
+    for (let i = 0; i < r.groups.length; i++) {
+      const g = r.groups[i];
+      step(g.label);
+      try {
+        await g.fn(g.values, g.keys);
+        g.forms.forEach(f => { try { f.clearDirty(); } catch (e) { } });
+        saved += g.keys.length;
+      } catch (e) { failed.push({ label: g.label, message: (e && e.message) || String(e), group: g }); }
+    }
+  } finally { UI2._saBusy = false; }
+  const left = UI2.dirtyPayload(opts.root);
+  if (!failed.length) UI.toast(saved + ' tabdeeli save ho gayi (' + total + ' section)', 'ok', 3200);
+  else UI.toast('SAVE ALL adhoora: ' + failed.length + '/' + total + ' section fail — ' +
+    failed.map(f => f.label).join(', ') + ' baqi hai', 'err', 6000);
+  if (failed.length && UI2.retryToast) {
+    try { UI2.retryToast('SAVE ALL adhoora (' + failed.length + '/' + total + ')', failed[0].message,
+      () => { UI2.saveAll(opts); }); } catch (e) { }
+  }
+  const out = { ok: !failed.length, saved: saved, failed: failed, remaining: left.count, total: total };
+  try { if (opts.then) opts.then(out); } catch (e) { }
+  return out;
 };
 
 /* ============================= COMMAND PALETTE ============================= */
@@ -1614,6 +1921,19 @@ UI2.palette = function () {
 };
 
 /* ================================ HELPERS ================================== */
+/* v2.30.0 (N7) — provider ka dikhne wala naam EK jagah se.
+   Asli label AI adapters ke meta se aata hai (`ai.agentConfig.providers`), is liye
+   naam badalne par sirf adapter badalta hai — UI har jagah khud theek ho jati hai.
+   Internal id 'MOCK' = "Local Data Assistant" (local rules engine, koi LLM nahi). */
+UI2.provLabel = function (id, fallback) {
+  try {
+    const ps = (window.App && App.state && App.state.aiConfig && App.state.aiConfig.providers) || [];
+    const m = ps.filter(function (p) { return p.id === id; })[0];
+    if (m && m.label) return m.label;
+  } catch (e) { }
+  return id === 'MOCK' ? 'Local Data Assistant' : (fallback || id || '');
+};
+window.provLabel = function (id, fallback) { return UI2.provLabel(id, fallback); };
 function U_norm(s) { return String(s === null || s === undefined ? '' : s).toLowerCase().replace(/[\s\-_\/\\.#]/g, ''); }
 window.__uNorm = U_norm;   // shared with POS / other modules
 

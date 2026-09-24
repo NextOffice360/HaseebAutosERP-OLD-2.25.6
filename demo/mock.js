@@ -42,6 +42,10 @@ const SETTINGS = {
   'pos.autoFocusSearch': 'true', 'pos.quickKeys': 'true', 'pos.allowCreditSale': 'true',
   'pos.receiptWidth': '80mm', 'pos.quickCashButtons': '500,1000,2000,5000',
   'pos.lowStockBadge': 'true', 'pos.showProfit': 'true',
+  /* v2.30.0 — shop session rules + demo data visibility (asli app jaisa) */
+  'shop.requireOpen': 'true', 'shop.openPromptOnLogin': 'true', 'shop.defaultOpeningCash': '0',
+  'data.showDemo': 'true', 'data.seedDemo': 'true', 'setup.wizardDone': 'false',
+  'dayReportAutoOpen': 'true', 'dayReportAutoClose': 'true', 'dayReportAutoPrint': 'true',
   'tax.rate': '0', 'tax.label': 'GST', 'tax.inclusive': 'false', 'tax.discountBeforeTax': 'true',
   'inventory.allowNegativeStock': 'false',
   'autoReorder': 'true', 'autoReorderMethod': 'VELOCITY', 'autoReorderLookback': '30',
@@ -161,6 +165,20 @@ const ITEMS = (PRODUCT_SEED || []).map((p, i) => ({
   stock: s[10]
 })));
 
+/* v2.30.0 (N10) — 2 "catalog only" demo products (stock abhi 0):
+   All Inventory + "Out of stock" filter aur PO→GRN se pehle ka asli scenario. */
+[['CAT-001', 'Seat Cover Set (Universal)', 'Interior', 'AutoStyle', 3800, 5200],
+ ['CAT-002', 'Roof Rack Cross Bars', 'Accessories', 'Rhino', 6400, 8800]
+].forEach((c, k) => ITEMS.push({
+  id: 'ITM9' + (100 + k), code: c[0], name: c[1], nameUr: '', category: c[2], subCategory: '',
+  brand: c[3], partType: 'ACCESSORY', make: 'Universal', model: '', yearFrom: '', yearTo: '', engine: '', chassis: '',
+  unit: 'PCS', barcode: c[0], altBarcodes: '', costPrice: c[4], retailPrice: c[5], wholesalePrice: c[4],
+  minPrice: c[4], taxRate: 0, hsn: '', minStock: 5, reorderLevel: 10, rack: 'B1',
+  defaultLocationId: 'LOC-SDQ', trackSerial: 'false', hasExpiry: 'false', imageUrl: '',
+  notes: 'Catalog item — stock 0 (GRN se pehle)', status: 'ACTIVE',
+  createdAt: '2026-09-01T10:00:00', updatedAt: '2026-09-01T10:00:00', stock: 0
+}));
+
 const NAMES = ['Ahmad Ali','Bilal Khan','Haji Rafiq','Usman Sheikh','Kamran Motors','Zeeshan Autos','Imran Bhatti',
   'Sajjad Workshop','New City Motors','Faisal Traders','Rana Autos','Tariq Mehmood','Shahid Cycle Store',
   'Javed Iqbal','Al-Madina Motors','Sunny Car Care','Nadeem Electrician','Waqas Ali'];
@@ -176,8 +194,9 @@ const SUPNAMES = ['Karachi Auto Traders','Lahore Parts House','Punjab Autos','Mu
   'Pak China Motors','Ravi Engineering','Super Star Imports'];
 const SUPPLIERS = SUPNAMES.map((n, i) => ({
   id: 'SUP' + (1000 + i), code: 'SUP-' + String(i + 1).padStart(4, '0'), name: n,
-  phone: '0321' + String(2000000 + i * 311).slice(0, 7), email: '', address: 'Karachi',
-  ntn: '', openingBalance: 0, paymentTerms: '30 days', ledgerAccount: '', notes: '',
+  phone: '0321' + String(2000000 + i * 311).slice(0, 7),
+  email: 'sales' + (i + 1) + '@supplier.example', address: 'Multan Road, Lahore',
+  ntn: '1234567-' + (i + 1), openingBalance: 0, creditLimit: 250000, paymentTerms: '30 days', ledgerAccount: '', notes: '',
   active: 'true', createdAt: '2026-01-01T10:00:00',
   balance: -(i % 3 === 0 ? Math.floor(rnd() * 180000) : 0)
 }));
@@ -1059,10 +1078,27 @@ window.MockAPI = {
       modelSource: 'live (server /api/tags)',
       apiModes: [{ id: 'NATIVE', label: 'Native /api/chat' }],
       caps: { tools: true, private: true } },
-    { id: 'MOCK', label: 'Mock (built-in)', tagline: 'Bina internet — rule-based, live data par tools', needsKey: false,
-      help: 'Koi key nahi — jawab aapke asli (demo) data se banta hai.', modelSource: 'built-in',
-      apiModes: [{ id: 'MOCK', label: 'Built-in rules engine' }],
-      caps: { tools: true, offline: true } }
+    /* v2.30.0 (N7) — asli adapter (AI_Adapters.gs MOCK) ka mirror: wahi naam,
+       tagline, caps + honest can/cannot. Demo production se alag nahi ho sakta. */
+    { id: 'MOCK', label: 'Local Data Assistant',
+      tagline: 'Bina internet · bina LLM — rule-based jawab aap ke LIVE data par', needsKey: false,
+      help: 'Koi internet, koi API key, koi LLM nahi. Ye app ka apna local rules engine hai: sawal ka matlab pehchan kar aap ke ASLI business data par tools chalata hai (sale, stock, udhaar, reports, expense).',
+      modelSource: 'built-in',
+      apiModes: [{ id: 'MOCK', label: 'Built-in local rules engine' }],
+      caps: { tools: true, offline: true, llm: false },
+      can: [
+        'Aaj / is mahine ki sale, profit, top items',
+        'Low stock, reorder suggestions, stock value',
+        'Customer / supplier udhaar aur ledger ka khulasa',
+        'Expense, cash aur shop-day reports ka khulasa',
+        'Aap ke pooche gaye periods ka hisaab (rules se)'
+      ],
+      cannot: [
+        'Internet ka general knowledge, khabrein, mausam',
+        'Nayi creative likhai (shayari, kahani, tasveer)',
+        'Aap ke data se bahar ka jawab ya raye',
+        'Khud se seekhna — koi training / koi hidden LLM nahi'
+      ] }
   ],
   'ai.config': () => demoAiCfg(),
   'ai.suggest': () => ['Aaj ki sale kitni hui?', 'Low stock items batao', 'Top 5 selling parts is month', 'Kon se customer ka udhaar sab se zyada hai?', 'Inventory value kitni hai?', 'Is month ka profit report'],
@@ -1211,6 +1247,37 @@ window.MockAPI = {
     counts: { items: ITEMS.length, customers: CUSTOMERS.length, suppliers: SUPPLIERS.length }
   }),
   'system.settings.get': () => SETTINGS,
+  /* v2.30.0 — demo mein bhi shop rules UI asli ki tarah chale */
+  'shop.status': () => ({ open: !!(window.__demoSessionOpen), requireOpen: true, locationName: 'Sadiqabad City',
+    seeded: { items: (window.ITEMS || []).length, users: 9, customers: 2, settings: 61 }, demo: true,
+    session: window.__demoSessionOpen || null }),
+  'shop.open': p => { window.__demoSessionOpen = { id: 'SES-DEMO-1', sessionNo: 'CS-SDQ-DEMO', openingCash: Number((p || {}).openingCash || 0), openedAt: new Date().toISOString() };
+    return { session: window.__demoSessionOpen, autoPrint: false,
+      report: { id: 'DRP-DEMO-1', reportNo: 'DRP-SDQ-DEMO', kind: 'OPEN', date: new Date().toISOString().slice(0, 10), locationId: 'LOC-SDQ', userId: 'USR-1',
+        summary: { openingCash: Number((p || {}).openingCash || 0), cashSales: 0, creditSales: 0, refunds: 0, netSales: 0, expenseTotal: 0, invoices: 0, sessionNo: 'CS-SDQ-DEMO' } },
+      share: 'SHOP OPEN REPORT' };
+  },
+  'shop.close': p => { const ses = window.__demoSessionOpen || { id: 'SES-DEMO-1', sessionNo: 'CS-SDQ-DEMO', openingCash: 0 };
+    window.__demoSessionOpen = null;
+    return { session: Object.assign({}, ses, { status: 'CLOSED', closedAt: new Date().toISOString() }), autoPrint: false,
+      report: { id: 'DRP-DEMO-2', reportNo: 'DRP-SDQ-DEMO2', kind: 'CLOSE', date: new Date().toISOString().slice(0, 10), locationId: 'LOC-SDQ', userId: 'USR-1',
+        summary: { openingCash: Number(ses.openingCash || 0), expectedCash: 0, closingCash: Number((p || {}).closingCash || 0), variance: 0, cashSales: 0, creditSales: 0, refunds: 0, netSales: 0, expenseTotal: 0, invoices: 0, sessionNo: ses.sessionNo } },
+      share: 'SHOP CLOSE REPORT' };
+  },
+  'system.setupStatus': () => ({ version: 'demo', needsWizard: String(SETTINGS['setup.wizardDone']) !== 'true',
+    steps: { business: true, admin: true, shopOpen: !!window.__demoSessionOpen, demo: true, done: String(SETTINGS['setup.wizardDone']) === 'true' },
+    seeded: { users: 9, items: (window.ITEMS || []).length, customers: 2, suppliers: 1, settings: 61, locations: 3, sales: 0, stock: 0 },
+    shop: { open: !!window.__demoSessionOpen }, demoVisible: String(SETTINGS['data.showDemo']) !== 'false',
+    businessName: SETTINGS.businessName, shopName: '', message: 'demo' }),
+  'system.wizardSave': p => { const v = (p || {}); if (v['businessName']) SETTINGS.businessName = v['businessName'];
+    if (v['shop.name']) SETTINGS['shop.name'] = v['shop.name']; if (v.demoDecision) SETTINGS['data.showDemo'] = String(v.demoDecision) !== 'false' ? 'true' : 'false';
+    if (v.done) SETTINGS['setup.wizardDone'] = 'true'; return { saved: Object.keys(v) }; },
+  'system.wizardAdminPassword': p => ({ ok: true, username: 'owner' }),
+  'admin.demoStats': () => ({ visible: String(SETTINGS['data.showDemo']) !== 'false',
+    counts: { Items: 10, Customers: 2, Suppliers: 1, Stock: 30, Sales: 0, Users: 1 }, total: 44 }),
+  'admin.removeDemoData': () => ({ removed: { Items: 10, Customers: 2, Suppliers: 1, Stock: 30, Sales: 0, Users: 1 },
+    message: 'Demo data hata diya gaya (demo).' }),
+  'setup.diag': () => ({ version: 'demo', linked: true, problems: [], counts: { Users: 10, Items: 25, Customers: 7, Sales: 12 }, shop: { open: !!window.__demoSessionOpen } }),
   'system.settings.save': p => Object.assign(SETTINGS, p.values || {}),
 
   'auth.login': p => {
@@ -1312,12 +1379,39 @@ window.MockAPI = {
   })
     .map(i => Object.assign({}, i, { suggestQty: 20 - i.stock, estCost: (20 - i.stock) * i.costPrice })),
 
-  'stock.levels': p => ITEMS.filter(i => !p.q || norm(i.code + i.name).includes(norm(p.q))).map(i => ({
-    itemId: i.id, code: i.code, name: i.name, brand: i.brand, category: i.category, unit: i.unit,
-    rack: i.rack, locationId: p.locationId || 'LOC-SDQ', qty: i.stock, avgCost: Number(i.costPrice),
-    value: money(i.stock * i.costPrice), retailPrice: Number(i.retailPrice), minStock: i.minStock,
-    reorderLevel: i.reorderLevel, low: i.stock <= (i.reorderLevel || i.minStock)
-  })),
+  /* v2.30.0 (N10) — asli backend (Inventory.levels) jaisa hi:
+     scope 'all' = poora catalog (0 stock par bhi) · 'stocked' = sirf stock wale (purana view) */
+  'stock.levels': p => {
+    p = p || {};
+    const locId = p.locationId || 'LOC-SDQ';
+    const scope = norm(p.scope || 'stocked') === 'all' ? 'all' : 'stocked';
+    let rows = ITEMS.map(i => {
+      const qty = Number(i.stock) || 0;
+      const reorder = Number(i.reorderLevel != null ? i.reorderLevel : i.minStock) || 0;
+      const cost = Number(i.costPrice) || 0;
+      return {
+        itemId: i.id, code: i.code, name: i.name, brand: i.brand, category: i.category, unit: i.unit,
+        rack: i.rack, locationId: locId, qty: qty, avgCost: cost, value: money(qty * cost),
+        retailPrice: Number(i.retailPrice) || 0, costPrice: cost,
+        minStock: Number(i.minStock) || 0, reorderLevel: reorder, status: i.status || 'ACTIVE',
+        barcode: i.barcode || '', stocked: qty > 0, hasQty: qty > 0,
+        stockStatus: qty <= 0 ? 'out' : (qty <= reorder ? 'low' : 'in'), low: qty <= reorder
+      };
+    });
+    if (scope === 'stocked') rows = rows.filter(r => r.stocked);
+    if (p.stockStatus && norm(p.stockStatus) !== 'all') {
+      if (norm(p.stockStatus) === 'stocked') rows = rows.filter(r => r.stocked);
+      else rows = rows.filter(r => r.stockStatus === norm(p.stockStatus));
+    }
+    if (p.q) rows = rows.filter(r => norm(r.code + ' ' + r.name + ' ' + r.brand + ' ' + r.category + ' ' + r.barcode).includes(norm(p.q)));
+    if (p.category) rows = rows.filter(r => r.category === p.category);
+    if (p.brand) rows = rows.filter(r => r.brand === p.brand);
+    if (p.lowOnly) rows = rows.filter(r => r.low);
+    if (p.zeroOnly) rows = rows.filter(r => r.qty === 0);
+    const key = p.sort || 'name';
+    const dir = p.dir === 'desc' ? -1 : 1;
+    return rows.slice().sort((a, b) => (a[key] > b[key] ? 1 : a[key] < b[key] ? -1 : 0) * dir);
+  },
   'stock.moves': () => ITEMS.slice(0, 40).map((i, k) => ({
     id: 'MOV' + k, date: new Date(Date.now() - k * 3600e3).toISOString(), itemId: i.id, code: i.code, name: i.name,
     qtyIn: k % 3 === 0 ? 10 : 0, qtyOut: k % 3 === 0 ? 0 : 2, balance: i.stock, cost: i.costPrice,
@@ -1441,8 +1535,10 @@ window.MockAPI = {
     const sup = (SUPPLIERS || []).find(x => x.id === p.supplierId) || { name: '—' };
     const opening = Number(sup.openingBalance || 0);
     return {
-      supplier: { id: sup.id, name: sup.name, phone: sup.phone || '', openingBalance: opening,
-        paymentTerms: sup.paymentTerms || '' },
+      supplier: { id: sup.id, code: sup.code || '', name: sup.name, phone: sup.phone || '',
+        email: sup.email || '', address: sup.address || '', ntn: sup.ntn || '',
+        creditLimit: Number(sup.creditLimit || 0), active: sup.active || 'true',
+        openingBalance: opening, paymentTerms: sup.paymentTerms || '' },
       openingBalance: opening, closingBalance: opening, closingPayable: opening,
       rows: [], totalPurchased: 0, totalPaid: 0
     };

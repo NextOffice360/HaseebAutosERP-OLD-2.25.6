@@ -3,6 +3,16 @@
 **Project:** Haseeb Autos ERP & POS · **Current version:** **v2.29.1** (Utils.gs ▸ `AppConfig.VERSION`)
 **Last shipped:** 2026-09-24 · v2.29.1 = **W6.T3 Sidebar responsive matrix** (1440/1280/1024/768/390 × light+dark; taps ≥48 · text ≥10.8) + verify.sh false-green fix · full suite **67 gates · ALL GREEN ✔ (1248s)** (`tmp/verify291.log`) · gate `sidebar-states` **52/0**
 **Spec:** `APPLICATION-WIDE-SPEC.md` (1540 L · md5 `69b50b821565d1654d2e3bed82f10e9c`) — har todo se pehle parhein
+**N-series (2026-09-24, v2.30.0 — uncommitted):** N1 ✅ · **N2 ✅ APP-WIDE** (header ka shared *Save all*: page bridge
+`App.setSaveBridge` + engine `UI2.saveAll` + per-form `onSave`; fail par sirf wohi section dirty + Retry; dup-block;
+nav-guard; jhoota button nazar nahi aata — gate `tools/test_saveall_pages.js` **16/0**, wired as step 12) ·
+**N4 ✅ (gate 40/0)** · **N5 ✅ (modal audit gate)** · **N6 ✅ (settings icons: root cause + 55 tabs SVG + tints,
+static+DOM gates wired into `validate_release.sh` steps 7/8; duplicate `icon:` keys tidy + assert)** ·
+**N7 ✅ ("MOCK" → "Local Data Assistant": naam ek source se — adapter meta + `UI2.provLabel`; honest
+can/cannot capability card AI screen par; koi user-facing "Mock"/LLM-dawa nahi; saath mein UI2 select
+`optionLabels` bug + AI-screen stale-provider bug fix; gate `test_ai_naming.js` **23/0**, wired step 13) ·
+**N1/N2-ext ✅** (partial-save backend round: 6 endpoints; gate `tools/test_partial_save.js` **48/0** (stale/concurrent writes samet), wired as step 11)
+Agla: **N3/N8** (action loading/retry + notification service adoption, shared `UI.run` par) → N9 (offline sync) → app-wide data-aware baqi → N11 (math audit) → N12 (final E2E) → T8 docs/ZIP → T10 release.
 **Agla kaam:** **W7** (shared systems app-wide apply: busy/table/forms/settings) → W9/W13 → W10 → W11/W12 · **push pending:** GitHub par bhejne ke liye `PUSH-NOW.html` / `tools/connect_dashboard.py` (port 8034) dekhein
 
 ---
