@@ -81,7 +81,12 @@ App_/Pwa_ split) + `docs/ARCHITECTURE.md` (conventions + data flow). Saare waves
 (tbl.reload() rowActions me, Clear filters emptyAction). **Sabak:** UI2.table wrap
 return karta hai — append lazmi (DOM-probe debugging se pakra). Chrome-libs restore:
 fetch_chrome_libs ke atspi/avahi gaps manually .deb se bhare (libnspr/nss/atk/atspi/
-avahi/cairo/pango). Quota: 41.3MB effective (stale display ignore). **QUOTA PROTOCOL (2026-09-25, over-budget hua tha):** counter ab node_modules +
+avahi/cairo/pango). Quota: 41.3MB effective (stale display ignore). **ROUND-START RULE (user hukum, 2026-09-25):** har lambe kaam/todo se PEHLE
+capacity check: python-walk (koi exclusion nahi, .cache bhi dekho) + node_modules/
+.npm mojood hon to pehle safai. Limit 128MB/10k files. **W2.T3 error/retry ✔**
+(tools/test_error_retry.js naya gate 26/0; impl pehle se thi). **Agla: W2.T4
+UI.progress (sach me missing — grep zero) → T3.5 data-reactivity sweep.**
+**QUOTA PROTOCOL (2026-09-25, over-budget hua tha):** counter ab node_modules +
 npm-cache BHI ginta hai (131.3MB hua tha, 53 files drop). Is liye: (1) bootstrap
 ab npm cache /tmp par karta hai (.npm kabhi workspace me nahi banta); (2) ROUND
 KE AKHIR me jab test runs mukammal hon to `rm -rf node_modules` karke turn

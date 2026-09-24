@@ -58,6 +58,10 @@ else
 fi
 
 # ── 2) npm dependencies (reset par gayab ho jati hain) ─────────────────────
+# quota: npm ki HAR cheez (cache + debug-logs + notifier) /tmp me — workspace me .npm kabhi na bane
+export npm_config_cache=/tmp/npm-cache
+export npm_config_logs_dir=/tmp/npm-cache/_logs
+export npm_config_update_notifier=false
 hdr "2) npm dependencies (jsdom · puppeteer …)"
 NEED_NPM=0
 [ -d node_modules ] && [ -f node_modules/jsdom/package.json ] || NEED_NPM=1

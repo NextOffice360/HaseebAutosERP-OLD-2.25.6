@@ -392,7 +392,7 @@ SONAME links gayab (`libatk-1.0.so.0`) aur har browser gate "Failed to launch th
 `tools/fix_chrome_libs.py` (idempotent repair) + `verify.sh` har run se pehle chalata hai (`ldd chrome` not-found = 0).
 
 **T2.2 `UI.run(el, fn)` / `UI.busy(el)`** — action-specific: 50ms ke andar button par spinner + `aria-busy`, disable + duplicate click block, success(✓)/error(!) transient state, `finally` par restore. **Test:** `tools/test_busy_state.js` (double-click = 1 call · sibling button untouched). **~60 min**
-- [ ] **T2.3 Error/retry policy** — `UI.errBox(err, retryFn)`; "Retry" sirf retryable + idempotent par; toast dedupe; error text insani zaban mein. **Test:** `tools/test_error_retry.js`. **~45 min**
+- [x] **T2.3 Error/retry policy** — `UI.errBox(err, retryFn)`; "Retry" sirf retryable + idempotent par; toast dedupe; error text insani zaban mein. **Test:** `tools/test_error_retry.js`. **~45 min** ✔ (impl v2.25.11 se shipped tha — errKind/errText/errBox/fail/toast-classify/dedupe; aaj GATE bana). **Test:** `tools/test_error_retry.js` 26/0 GREEN (7-kind classification matrix · retry-button sirf jaiz par + click → fn · duplicate-box block · write-refresh warning · toast dedupe · errStats reset · PWA parity).
 - [ ] **T2.4 Long-op progress** — `UI.progress()` (chunked + yield): label 240 copies, CSV import, bulk stock. **Test:** `tools/test_progress.js` (main thread block < 100ms). **~60 min**
 
 ### W3 — DYNAMIC / DATA-AWARE DEPENDENCIES (P2+P3) — target **v2.26.0**
