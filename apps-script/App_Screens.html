@@ -114,7 +114,8 @@ function itemForm(item) {
       { label: 'Save', onClick: async (c) => {
         const v = f.values();
         if (!v.name) return UI.toast('Name zaroori hai', 'err');
-        try { await API.call('items.save', { item: v }); UI.toast('Saved ✅', 'ok'); c(); App.refresh(); API.pullCatalog(true); }
+        /* N9.1 — offline conflict merge ke liye asli-loaded record sath jata hai */
+        try { await API.call('items.save', { item: v, __base: isNew ? null : JSON.parse(JSON.stringify(item)) }); UI.toast('Saved ✅', 'ok'); c(); App.refresh(); API.pullCatalog(true); }
         catch (e) { UI.toast(e.message, 'err'); }
       } }
     ].filter(Boolean)

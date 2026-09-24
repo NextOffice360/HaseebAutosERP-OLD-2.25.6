@@ -29,8 +29,35 @@ showWhen; adopt: Transfer to-branch, Account bank fields, Item subCategory; gate
 ④partial-return commission poora reverse (proportional, cumulative, sirf PENDING). Recon baqi sab
 areas verified-correct (tax engine, AVG costing, loyalty, numbering, valuation, party balances,
 GRN/purchase-return costing, day report). Regression: 12 gates ALL GREEN.**
-Agla: **N12** (final E2E critical flows — fresh setup → … → build/ZIP) → N9.1 leftovers (server-side
-conflict merge + retry backoff) → T8 docs/ZIP → T10 release v2.30.x.
+**N12 ✅ FINAL E2E (gate `test_e2e_critical.js` **22/0**, wired step 18) + FIX #5: overpaid tender
+receipt APPLIED amount par (pehle tendered → ledger −4 / drawer +4); applied=0 → receipt skip;
+LOYALTY redeem pro-rate. N11 gate ne ye regression khud pakra. Regression: 15 gates ALL GREEN.**
+**N9.1 ✅ DONE (offline sync hardening):** per-field 3-way conflict merge (`__base` stamps:
+items/customers/suppliers forms → `OfflineSync._mergeUpdate`, CONFLICT → server wins + audit +
+toast), stale flag (AuditLog touch), retry backoff (`sync.backoffBase`, 60→120→…600s, reset on
+success) — gate `test_offline_sync.js` **17/0** (⑫a–f), regression 8 gates GREEN.
+**W7.T2-perf ✅ (GRN waterfall):** `purchase.priceInfoBatch` (N lines ka price history EK call)
++ FE `fetchPrevBatch` (PO-load/demand add-all) — gate `test_perf_batch.js` **39/0**, regression
+(supplier_autofill 19 · release_flow 62 · e2e 22 · data_aware 9 · modals 91) sab GREEN.
+**T7.3 Forms ✅ (shared validation):** `UI2.validate` engine (highlight `.f-err-mark` + aria-invalid
++ focus + `(+N aur)` key-dedupe toast; structural→content order; msgs barqarar) — 6 adoptions:
+transfer/GRN/PO/purchase-return/item/customer-supplier. Gate `test_forms_shared.js` **14/0** (step 19), regression 6 gates GREEN.
+**T7.4 Settings ✅ (shared consumption):** declarative showWhen {key,eq|ne} (JSON-safe) +
+UI2 object-form + **cross-form depsRoot** (sectioned sub-tabs) — aiOpenaiPrefixes(OPENAI),
+integration fields(ON) · DT live preview (`DT.format(v,mode,cfgOv)` — save ke baghair am/pm,
+date-only rules) · visibility pehle se (page perm + config.save strip + defs group perm).
+Gates: `audit_settings_defs` **10/0** + `test_settings_shared` **6/0** (step 20); regression 9
+gates GREEN. **T7.2 Table states ✅ (W9 slice):** `UI2.table` shared `load` → delayed skeleton / error+Retry
+(`wrap.reload()`)/onLoad — Demand ▸ Reports 3 tables adopted; gate `test_table_states.js` **11/0**
+(step 21); regression report_actions/release_flow 62/e2e 22/modals 91 GREEN.
+**v2.30.3 SHIP (2026-09-25):** T7.3 forms-validate + T7.4 settings-shared + T7.2 table-states +
+**W9 (T7.5)** — PWA.confirm shared (3 raw native confirm khatam), **📖 Madad modal** (sidebar ▸ ❓:
+repo docs/ + official links, `help.docsUrl` setting), tooltip sweep 9/9 icon-btns. Gates:
+`test_w9_help` **10/0** = step 22 · table_states 11/0 = step 21. VERSION = 2.30.3.
+**Agla: W13 module wave (B§5–13) → W10 testing matrix + evidence → W11/W12 docs parity +
+secret scan.** Carry-overs: live GAS deploy, Zx10 printer drill, label read-back, mobile
+POS cart→Pay→Esc, App_Orders L186 adoption.
+read-back, mobile POS cart→Pay→Esc, App_Orders L186 adoption.
 **PUSH HO CHUKA (2026-09-24):** GitHub `NextOffice360/HaseebAutosERP-OLD-2.25.6` (public) — remote `main` =
 **3b7b40e** (v2.30.0 commit c07e4fc + git_push.sh stale-info fix 3b7b40e) · 424 files · poora project.
 **Agla kaam:** **N3/N8** (action loading/retry + notification service) → N9 (offline sync) → app-wide data-aware baqi → N11 → N12 → T8 docs/ZIP → T10 release → W7.T2 → T7.3/T7.4 → W9/W13 → W10 → W11/W12

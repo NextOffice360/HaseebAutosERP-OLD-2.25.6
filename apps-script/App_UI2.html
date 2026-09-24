@@ -935,8 +935,13 @@ UI2.copyText = function (text, label) {
 /**
  * UI2.table({
  *   screen, columns, rows, filters:[{key,label,type,options,value}],
- *   onRow, rowActions, pageSize, height, exportName, onRefresh, savedViews:true
+ *   onRow, rowActions, pageSize, height, exportName, onRefresh, savedViews:true,
+ *   load: fn|Promise, onLoad: fn            — v2.30.2 (T7.2) table states
  * })
+ * - v2.30.2 (T7.2) — SHARED TABLE STATES: `load` diya ho to table khud sambhalta
+ *   hai — pending par skeleton rows (200ms delayed, flash nahi), fail par error
+ *   block + ↻ Retry (reload), kamyabi par rows (+onLoad). wrap.reload() se dobara
+ *   fetch (store-change re-render bhi isi se); wrap.refresh(rows) pehle jaisa.
  * - as-you-type quick filter over ALL columns (tokens AND)
  * - chips for extra filters, column picker, density, CSV export, pagination
  */
@@ -957,6 +962,9 @@ UI2.table = function (cfg) {
     q: '', page: 1, size: cfg.pageSize || 25, sort: cfg.sort || null, dir: 'asc',
     filters: {}, hidden: Store.get('cols_' + (cfg.screen || 'x'), []), density: Store.get('density', 'comfortable')
   };
+  /* v2.30.2 (T7.2) — table states: loading / loadErr / data (cfg.rows se init) */
+  let data = (cfg.rows || []).slice();
+  let loading = false, loadErr = '';
   (cfg.filters || []).forEach(f => state.filters[f.key] = f.value !== undefined ? f.value : '');
 
   const wrap = h('div', { class: 'st2 d-' + state.density });
@@ -1080,7 +1088,7 @@ UI2.table = function (cfg) {
   }
 
   function filtered() {
-    let rows = (cfg.rows || []).slice();
+    let rows = data.slice();
     // quick filter: every token must appear in SOME field
     if (state.q) {
       const tokens = U_norm(state.q).split(' ').filter(Boolean);
@@ -1113,6 +1121,27 @@ UI2.table = function (cfg) {
   }
 
   function paint() {
+    /* v2.30.2 (T7.2) — LOADING: delayed-mount skeleton (UI.skeleton jaisa, par
+       table ke andar — flash nahi hota, data jaldi aaya to kuch bhi nazar nahi
+       aata). Toolbar qayam rehta hai (search waghera available). */
+    if (loading) {
+      body.innerHTML = '';
+      const sk = h('div', { class: 'skel-wrap', style: { padding: '10px 6px' } });
+      for (let i = 0; i < 6; i++) sk.appendChild(h('div', { class: 'skel',
+        style: { height: '14px', margin: '9px 0', width: (100 - i * 6) + '%' } }));
+      body.appendChild(sk);
+      foot.innerHTML = ''; foot.style.display = 'none';
+      return;
+    }
+    /* v2.30.2 (T7.2) — ERROR: block + ↻ Retry (wahi load dobara — koi data zaya nahi) */
+    if (loadErr) {
+      body.innerHTML = '';
+      body.appendChild(h('div', { class: 'empty err' }, h('span', { class: 'big' }, '⚠'),
+        h('div', null, 'Load nahi hua: ' + loadErr),
+        h('button', { class: 'btn sm', style: { marginTop: '10px' }, onclick: () => reload() }, '↻ Retry')));
+      foot.innerHTML = ''; foot.style.display = 'none';
+      return;
+    }
     const rows = filtered();
     const cols = visibleCols();
     const total = rows.length;
@@ -1193,7 +1222,23 @@ UI2.table = function (cfg) {
     UI2.toastMini('CSV downloaded');
   }
 
-  wrap.refresh = rows => { if (rows) cfg.rows = rows; paint(); };
+  wrap.refresh = rows => { if (rows) { data = rows.slice(); cfg.rows = rows; } paint(); };
+  /* v2.30.2 (T7.2) — reload(): `load` dobara chalao (store-change re-render bhi isi se) */
+  function reload() {
+    if (!cfg.load) return;
+    loading = true; loadErr = '';
+    paint();
+    Promise.resolve(typeof cfg.load === 'function' ? cfg.load() : cfg.load)
+      .then(r => {
+        loading = false; loadErr = '';
+        data = (r || []).slice(); cfg.rows = data;
+        paint();
+        if (cfg.onLoad) { try { cfg.onLoad(data); } catch (eO) { } }
+      })
+      .catch(e => { loading = false; loadErr = (e && e.message) || String(e); paint(); });
+  }
+  wrap.reload = reload;
+  if (cfg.load) setTimeout(reload, 0);
   paint();
   return wrap;
 };
@@ -1757,11 +1802,29 @@ UI2.form = function (cfg) {
     });
   }
   function showSync() {
-    const v = vals();
+    /* v2.30.2 (T7.4) — sectioned layouts me parent field DOOSRI form me ho sakta
+       hai; depsRoot diya ho to merged values se evaluate karo (App_Config wire
+       karta hai — warna pehle jaisa sirf apni values). */
+    const v = (typeof apiRef === 'object' && apiRef && typeof apiRef.depsRoot === 'function')
+      ? Object.assign(vals(), apiRef.depsRoot()) : vals();
     n10Fields.forEach(f => {
-      if (typeof f.showWhen !== 'function') return;
+      /* v2.30.2 (T7.4) — showWhen ab OBJECT-form bhi leta hai: { key, eq|ne }
+         (Config.defs JSON se aata hai — function serialize nahi hota). Function
+         form (N10) waisi hi qayam. eq array ho to 'in' samjho. */
+      let vis = null;
+      if (typeof f.showWhen === 'function') vis = !!f.showWhen(v);
+      else if (f.showWhen && typeof f.showWhen === 'object') {
+        const val = v[f.showWhen.key];
+        if (f.showWhen.ne !== undefined) vis = String(val) !== String(f.showWhen.ne);
+        else if (f.showWhen.eq !== undefined) {
+          vis = Array.isArray(f.showWhen.eq)
+            ? f.showWhen.eq.map(String).indexOf(String(val)) > -1
+            : String(val) === String(f.showWhen.eq);
+        }
+      }
+      if (vis === null) return;
       const col = colOf(refs[f.key]);
-      if (col) col.style.display = f.showWhen(v) ? '' : 'none';
+      if (col) col.style.display = vis ? '' : 'none';
     });
   }
   /* initial: showWhen talli + dep TEXT datalists banao (SELECT clear nahi hota) */
@@ -1784,6 +1847,11 @@ UI2.form = function (cfg) {
     clearDirty,
     set: setVal,
     show: showField,
+    /* v2.30.2 (T7.4) — sectioned forms me cross-form deps ke liye (App_Config
+       wrapper ise har change par chalata hai — provider ek form me, dependent
+       doosri me ho to bhi visibility sync). depsRoot ko wrapper set karta hai. */
+    syncShowWhen: showSync,
+    depsRoot: null,
     /* v2.30.0 (N2) — page-level SAVE ALL ka fallback handler (screen `f.onSave`
        set kar de to yahi section apne aap SAVE ALL mein shamil ho jata hai) */
     onSave: (typeof cfg.onSave === 'function') ? cfg.onSave : null,
@@ -1944,6 +2012,65 @@ UI2.saveAll = async function (opts) {
   return out;
 };
 
+/* ==========================================================================
+   v2.30.2 (T7.3) — SHARED FORM VALIDATION (ek engine, sab bade forms)
+   --------------------------------------------------------------------------
+   Pehle har form apne inline `if (!v.x) return UI.toast(…)` se validate karta
+   tha — msgs alag, field highlight nahi, focus nahi, order har jagah apni.
+   Ab: UI2.validate(rules, { getValue, form, toastKey })
+     rules: function rule (v) => 'msg' | ''        (dynamic — lines/qty waghera)
+         ya { key, required?, min?, msg }          (form field rule)
+     fail  → pehla msg toast (+kitni aur), fields par .f-err-mark +
+             aria-invalid, pehla ghalt field focus, { ok:false, errors }
+     pass  → { ok:true, value }
+   Rule order hi save-order hai (structural pehle, content baad — N10 rule).
+   ========================================================================== */
+UI2.validate = function (rules, opts) {
+  opts = opts || {};
+  const v = opts.getValue ? opts.getValue() : {};
+  const badField = (r, val) => {
+    if (r.required && (val === undefined || val === null || String(val).trim() === '')) return true;
+    if (r.min !== undefined && val !== '' && val !== undefined && val !== null && Number(val) < Number(r.min)) return true;
+    return false;
+  };
+  const errors = [];
+  (rules || []).forEach(r => {
+    if (typeof r === 'function') {
+      const m = r(v);
+      if (m) errors.push({ key: '', msg: String(m) });
+    } else if (r.test) {
+      const m = r.test(v);
+      if (m) errors.push({ key: r.key || '', msg: String(m) });
+    } else if (badField(r, v[r.key])) {
+      errors.push({ key: r.key, msg: r.msg || 'Ye field durust karein' });
+    }
+  });
+  if (errors.length) {
+    errors.forEach(e => {
+      if (!e.key || !opts.form || !opts.form.field) return;
+      const el = opts.form.field(e.key);
+      if (el) { try { el.classList.add('f-err-mark'); el.setAttribute('aria-invalid', 'true'); } catch (e2) { } }
+    });
+    /* agli tabdeeli par us field ka mark khud mit jaye */
+    if (opts.form && opts.form.el && !opts.form.el.__errWired) {
+      opts.form.el.__errWired = true;
+      opts.form.el.addEventListener('change', ev => {
+        try { ev.target.classList.remove('f-err-mark'); ev.target.removeAttribute('aria-invalid'); } catch (e3) { }
+      }, true);
+    }
+    UI.notify({ key: 'validate.' + (opts.toastKey || 'form'), tone: 'warn',
+      msg: errors[0].msg + (errors.length > 1 ? '  (+' + (errors.length - 1) + ' aur)' : '') });
+    const first = errors.find(e => e.key && opts.form && opts.form.field && opts.form.field(e.key));
+    if (first) {
+      const el = opts.form.field(first.key);
+      try { el.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e4) { }
+      try { el.focus({ preventScroll: true }); } catch (e5) { }
+    }
+    return { ok: false, errors: errors, value: v };
+  }
+  return { ok: true, errors: [], value: v };
+};
+
 /* ============================= COMMAND PALETTE ============================= */
 UI2.palette = function () {
   const inp = h('input', { class: 'pal-q', type: 'text', placeholder: 'Item, customer, invoice ya screen dhoondain… (↑↓ Enter)' });
@@ -2009,6 +2136,63 @@ UI2.palette = function () {
   });
   setTimeout(() => inp.focus(), 60);
   run('');
+};
+
+/* ================================ HELP (W9.T2) ============================= */
+/* v2.30.3 — in-app Madad/Help: app guides (repo docs/) + OFFICIAL doc links
+   (docs/OFFICIAL-DOCS.md me recorded). Link naya tab me (GAS iframe ke andar
+   navigation nahi). Base link admin Settings ▸ Appearance ▸ help.docsUrl se
+   badal sakta hai (repo private ho to apna docs link dein). */
+UI2.help = function () {
+  const docsBase = (App.state.settings && App.state.settings['help.docsUrl']) ||
+    'https://github.com/NextOffice360/HaseebAutosERP-OLD-2.25.6/tree/main/docs';
+  const A = (href, label, sub) => h('a', { class: 'hlp-a', href, target: '_blank', rel: 'noopener' },
+    h('b', null, label), h('span', null, sub));
+  const sec = (title, ...kids) => h('div', { class: 'hlp-sec' }, h('h4', { class: 'hlp-h' }, title), ...kids);
+
+  const guides = h('div', { class: 'hlp-grid' }, [
+    A(docsBase + '/01-OVERVIEW.md', 'Overview', 'Ye app kya karta hai — modules ka jaiza'),
+    A(docsBase + '/02-SETUP-GUIDE.md', 'Setup guide', 'Nayi sheets/script se shuruat — step by step'),
+    A(docsBase + '/03-CONFIGURATION.md', 'Configuration', 'Settings, shop, invoice, tax'),
+    A(docsBase + '/04-ENVIRONMENT.md', 'Environment', 'Clasp, editor, properties'),
+    A(docsBase + '/05-PERMISSIONS.md', 'Permissions', 'Roles aur access — kaun kya dekhe'),
+    A(docsBase + '/06-TESTING.md', 'Testing', 'Gates aur QA tarika'),
+    A(docsBase + '/07-DEPLOY.md', 'Deploy', 'Web app deploy + versioning'),
+    A(docsBase + '/08-TROUBLESHOOTING.md', 'Troubleshooting', 'Aam masail aur hal'),
+    A(docsBase + '/09-ROLLBACK.md', 'Rollback', 'Purane version par wapas jana'),
+    A(docsBase + '/OFFICIAL-DOCS.md', 'Official docs index', 'Tamam official links ek jagah')
+  ]);
+
+  const official = h('div', { class: 'hlp-grid' }, [
+    A('https://developers.google.com/apps-script/guides', 'Apps Script guides', 'Official guide — script, triggers, services'),
+    A('https://developers.google.com/apps-script/guides/services/quotas', 'Apps Script quotas', '6 min/runtime had — bare reports isliye batch hain'),
+    A('https://developers.google.com/apps-script/guides/web', 'Web apps', 'Deploy URL, access kaun (anyone/Domain)'),
+    A('https://developers.google.com/apps-script/guides/html', 'HTML Service', 'Sandboxed iframe — is app ki base'),
+    A('https://developers.google.com/apps-script/guides/services/locks', 'Lock Service', 'Parallel writes se bachao'),
+    A('https://developers.google.com/apps-script/reference/spreadsheet', 'Sheets reference', 'Spreadsheet-as-DB ka official API'),
+    A('https://github.com/google/clasp', 'clasp', 'Command-line se develop/deploy'),
+    A('https://developer.mozilla.org/en-US/docs/Web/Progressive_web_apps/Manifest', 'PWA manifest (MDN)', 'Offline app ki pehchan'),
+    A('https://developer.mozilla.org/en-US/docs/Web/API/Service_Worker_API', 'Service worker (MDN)', 'Offline queue/cache ka engine'),
+    A('https://developers.google.com/apps-script/guides/services/authorization', 'OAuth scopes', 'Least-privilege permission model')
+  ]);
+
+  const keys = h('div', { class: 'hlp-keys' }, [
+    h('span', { class: 'hlp-key' }, 'Quick find: ', h('kbd', null, 'Ctrl+K')),
+    h('span', { class: 'hlp-key' }, 'Sidebar: ', h('kbd', null, 'Ctrl+B')),
+    h('span', { class: 'hlp-key' }, 'Full screen: ', h('kbd', null, 'F11')),
+    h('span', { class: 'hlp-key' }, 'Search: ', h('kbd', null, '/'))
+  ]);
+
+  return UI2.modal({
+    title: '📖 Madad / Help',
+    subtitle: 'Guides aur official documentation — naye tab mein khulti hain',
+    size: 'lg',
+    body: h('div', null,
+      sec('App guides — repo docs/', guides),
+      sec('Official documentation', official),
+      sec('Keyboard shortcuts', keys)),
+    actions: [{ label: 'Band karein', onClick: c => c() }]
+  });
 };
 
 /* ================================ HELPERS ================================== */

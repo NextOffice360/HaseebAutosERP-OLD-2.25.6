@@ -85,7 +85,10 @@ var CONFIG_DEFS = [
         { key: 'density', label: 'UI density', type: 'select', options: 'comfortable,compact', def: 'comfortable' },
         { key: 'fontSize', label: 'Base font size (px)', type: 'number', def: 14 },
         { key: 'sidebarCollapsed', label: 'Sidebar collapsed by default', type: 'switch', def: false },
-        { key: 'animations', label: 'Enable animations', type: 'switch', def: true }
+        { key: 'animations', label: 'Enable animations', type: 'switch', def: true },
+        /* v2.30.3 (W9.T2) — Madad modal ke app-guides links ka base (repo private ho to apna docs link) */
+        { key: 'help.docsUrl', label: 'Madad docs ka base link (khali = repo docs/)', type: 'text', def: '',
+          hint: 'Sidebar ▸ ❓ Madad modal mein "App guides" isi link ke sath khulti hain' }
       ]}
     ]
   },
@@ -520,6 +523,8 @@ var CONFIG_DEFS = [
           sec: { title: '② Model list (catalog)', tone: 'warn' } },
         { key: 'aiOpenaiPrefixes', label: 'OpenAI: kin families ko list karein (comma)', type: 'text',
           def: 'gpt-,o1,o3,o4,chatgpt,computer-use',
+          /* v2.30.2 (T7.4) — shared deps: sirf OPENAI provider par relevant */
+          showWhen: { key: 'aiProvider', eq: 'OPENAI' },
           sec: { title: '② Model list (catalog)', tone: 'warn' } },
         { key: 'aiModelCacheMins', label: 'Model list cache (minutes)', type: 'number', def: 720,
           sec: { title: '② Model list (catalog)', tone: 'warn' } },
@@ -646,16 +651,23 @@ var CONFIG_DEFS = [
         { key: 'integration.allowedOrigins', label: 'Allowed origins (comma)', type: 'text', def: '', full: true,
           hint: 'Jin domains ko API call ki ijazat hai: https://your-site.netlify.app,https://owner.github.io — khali = koi origin limit nahi (phir bhi auth zaroori). Strict mode ON par origin bina allow-list ke block.' , sec: { title: '② External access', tone: 'warn' }},
         { key: 'integration.requireToken', label: 'Require API token for external calls', type: 'switch', def: false,
+          showWhen: { key: 'integration.enabled', eq: true },
           hint: 'ON = external frontends ko har request par integration.apiKey bhejni hogi' , sec: { title: '② External access', tone: 'warn' }},
+        /* v2.30.2 (T7.4) — shared deps: integration OFF par ye teen be-maqsad */
         { key: 'integration.strictOrigin', label: 'Strict origin check (block if origin not in list)', type: 'switch', def: false,
+          showWhen: { key: 'integration.enabled', eq: true },
           hint: 'ON = allowedOrigins khali na ho to bina origin ke requests block' , sec: { title: '② External access', tone: 'warn' }},
         { key: 'integration.apiKey', label: 'Integration API key (shared secret)', type: 'password', def: '',
+          showWhen: { key: 'integration.enabled', eq: true },
           hint: 'External frontends is key ko header/payload mein bhejenge. Server-side hashed, frontend par •••• dikhega. Khali = no extra key (auth token hi kafi).' , sec: { title: '② External access', tone: 'warn' }}
       ]},
       { id: 'offline', label: 'Offline & self-hosted', icon: 'archive', fields: [
         /* v2.30.0 (N9) — background auto sync ka control (status chip header mein) */
         { key: 'sync.autoFlush', label: 'Background auto sync (har 1 min)', type: 'switch', def: true,
           hint: 'Queue mein pending kaam ho to app khud 1 min baad sync karti hai (online hone par)' },
+        /* v2.30.2 (N9.1) — fail hone par retry ka exponential backoff (base seconds) */
+        { key: 'sync.backoffBase', label: 'Sync retry backoff (seconds)', type: 'number', def: 60,
+          hint: 'Sync fail par dobara koshish ka intezar — 60 → 120 → 240… (max 600s). Zyada = server par bojh kam; kamyab sync par reset' },
         { key: 'integration.offlineEnabled', label: 'Enable offline queue (self-hosted / offline PC)', type: 'switch', def: true,
           hint: 'Net na ho to bills phone/PC par queue honge, net aate hi sync — local/offline use ke liye' , sec: { title: '③ Offline & local PC', tone: 'info' }},
         { key: 'pwa.offlineEnabled', label: 'PWA offline cache (duplicate control)', type: 'switch', def: true,
@@ -724,7 +736,10 @@ var Config = {
             options: f.options ? String(f.options).split(',') : null,
             optionLabels: optLabels,
             value: rawVal,
-            sec: f.sec || null
+            sec: f.sec || null,
+            /* v2.30.2 (T7.4) — declarative showWhen {key, eq|ne} (JSON-safe;
+               UI2.form object-form samajhta hai — function serialize nahi hota) */
+            showWhen: f.showWhen || null
           };
           if (ff.type === 'switch') ff.value = (String(ff.value) === 'true' || ff.value === true);
           if (ff.type === 'number') ff.value = U.num(ff.value);

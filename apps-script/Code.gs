@@ -440,6 +440,7 @@ var ROUTES = {
   'purchase.grn.list': function (p, s) { return Purchase.listGRN(p, s); },
   /* v2.6 §3 — PO/GRN line ke liye live price context (pichhli rate + retail/wholesale) */
   'purchase.priceInfo': function (p, s) { return Purchase.priceInfo(p, s); },
+  'purchase.priceInfoBatch': function (p, s) { return Purchase.priceInfoBatch(p, s); },
   'purchase.supplierCompare': function (p, s) { return Purchase.supplierCompare(p, s); },
   'sales.itemActivity': function (p, s) { return Sales.itemActivity(p, s); },
   'purchase.grn.save': function (p, s) { return Purchase.saveGRN(p.grn || p, s); },

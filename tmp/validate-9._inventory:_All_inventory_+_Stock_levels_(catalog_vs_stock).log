@@ -1,0 +1,46 @@
+
+[1mPART 1 — backend: catalog har item dikhata hai (naya install)[0m
+  ✔ ① har catalog item levels mein (scope:all)
+  ✔ ② catalog view kam az kam stock view jitna bara hai
+  ✔ ③ scope:stocked = sirf stock wale (purana view)
+  ✔ ④ catalog item bana (stock ke baghair)
+  ✔ ⑤ is item ki koi Stock row NAHI (yehi asli bug scenario tha)
+  ✔ ⑥ 0-stock item banaya gaya to All Inventory mein foran nazar aata hai (YEHI BUG THA)
+  ✔ ⑦ qty 0 · stocked false · hasQty false · stockStatus out
+  ✔ ⑧ Stock levels (scope:stocked) mein nahi aata — dono views ka farq saaf
+  ✔ ⑧b hasQty boolean sahi (UI ka "sirf stock wale" filter)
+  ✔ ⑨ default (koi scope nahi) purana view deta hai — backward compatible
+  ✔ ⑩ stockStatus=out filter: sirf out-of-stock rows
+  ✔ ⑪ stockStatus=in filter kaam karta hai
+  ✔ ⑫ stockStatus=low filter kaam karta hai
+  ✔ ⑬ purane saare fields barqarar (kuch hataya nahi)
+  ✔ ⑭ q search kaam karta hai (code se)
+  ✔ ⑮ category filter barqarar
+  ✔ ⑯ brand filter (naya, All Inventory ke liye)
+  ✔ ⑰ zeroOnly filter barqarar
+  ✔ ⑱ sorting barqarar (dir:desc)
+  ✔ ⑲ Items screen (items.list) bhi 0-stock item dikhata hai
+  ✔ ⑳ GRN jaisa posting ke baad Stock levels mein aa gaya (qty 7)
+  ✔ ㉑ 7 qty (reorder 4) → stockStatus in
+  ✔ ㉒ ab wahi item "out of stock" filter se nikal gaya
+
+[1mPART 2 — rendered DOM: All inventory + Stock levels[0m
+  ✔ ① "All inventory" tab maujood
+  ✔ ② "Stock levels" tab bhi maujood (purani feature nahi hui)
+  ✔ ③ All inventory default tab hai (kholte hi catalog dikhta hai)
+  ✔ ④ All inventory mein rows aaye (naye install par bhi catalog)
+  ✔ ⑤ Qty aur Status columns mojood (catalog vs stock ka farq saaf)
+  ✔ ⑥ 0-stock product par "OUT" badge + qty 0 (catalog item GRN se pehle bhi nazar aata hai)
+  ✔ ⑥b stock wala product IN/LOW badge ke sath (dono halat ek hi table mein)
+  ✔ ⑦ footer mein catalog totals (products · out of stock · low · stock value)
+  ✔ ⑧ "Out of stock" filter: sirf OUT rows
+  ✔ ⑨ filtered rows ka Qty column sirf 0 hai
+  ✔ ⑩ search filter kaam karta hai (aur clear karne par wapas)
+  ✔ ⑪ column show/hide kaam karta hai (Columns button)
+  ✔ ⑫ Stock levels tab abhi bhi kaam karta hai
+  ✔ ⑬ Stock levels (default) mein 0-stock item nahi hota (purana view waisa hi)
+  ✔ ⑬b "Zero-stock items bhi dikhayein" switch ke baad wahi item is table mein bhi aa jata hai
+  ✔ ⑭ Items screen par products nazar aate hain (catalog)
+  ✔ ⑮ zero page errors
+
+[1mSUMMARY:[0m 40 pass · 0 fail · [32mGREEN[0m

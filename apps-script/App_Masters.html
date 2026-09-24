@@ -551,8 +551,12 @@ function itemForm(item, after) {
       h('button', { class: 'btn ghost', onclick: () => { } }, 'Cancel'),
       h('button', { class: 'btn', onclick: async () => {
         const vals = f.values();
-        if (!vals.name) return UI.toast('Name zaroori hai', 'err');
+        /* v2.30.2 (T7.3) — shared validate (field highlight + focus ke sath) */
+        const chk = UI2.validate([{ key: 'name', required: true, msg: 'Name zaroori hai' }],
+          { getValue: () => vals, form: f, toastKey: 'item' });
+        if (!chk.ok) return;
         if (item) vals.id = item.id;
+        const baseSnap = item ? JSON.parse(JSON.stringify(item)) : null;  /* N9.1 conflict merge */
         if (cfFields('ITEM', v).length) vals.customFields = JSON.stringify(cfValues(vals));
         // image just picked (not yet uploaded): hold it out of the sheet, upload AFTER save
         const imgRef = f.refs && f.refs.imageUrl;
@@ -560,7 +564,7 @@ function itemForm(item, after) {
         if (pendingImg) vals.imageUrl = (item && item.imageUrl) || vals.imageUrl || '';
         const clearPending = () => { if (imgRef) imgRef.__pendingData = null; };
         try {
-          const saved = await API.call('items.save', { item: vals });
+          const saved = await API.call('items.save', { item: vals, __base: baseSnap });
           if (pendingImg && saved && saved.id) {
             try {
               const up = await API.call('items.uploadImage', { itemId: saved.id, data: pendingImg, mime: 'image/jpeg', slot: 'main' });
@@ -872,11 +876,16 @@ function partyForm(type, p, after) {
     footer: h('div', null,
       h('button', { class: 'btn', onclick: async () => {
         const vals = f.values();
-        if (!vals.name) return UI.toast('Name zaroori hai', 'err');
+        /* v2.30.2 (T7.3) — shared validate */
+        const chk = UI2.validate([{ key: 'name', required: true, msg: 'Name zaroori hai' }],
+          { getValue: () => vals, form: f, toastKey: 'party' });
+        if (!chk.ok) return;
         if (p) vals.id = p.id;
         try {
+          /* N9.1 — base snapshot: doosre device ki tabdeeli per-field merge hogi */
+          const pBase = p ? JSON.parse(JSON.stringify(p)) : null;
           await API.call(type === 'CUSTOMER' ? 'customers.save' : 'suppliers.save',
-            type === 'CUSTOMER' ? { customer: vals } : { supplier: vals });
+            type === 'CUSTOMER' ? { customer: vals, __base: pBase } : { supplier: vals, __base: pBase });
           UI.toast('Saved ✅', 'ok');
           document.querySelectorAll('.offcanvas').forEach(o => o.remove());
           document.querySelectorAll('.oc-scrim').forEach(o => o.remove());

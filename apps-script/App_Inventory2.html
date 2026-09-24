@@ -363,11 +363,15 @@ function transferForm() {
     body: h('div', null, f.el, h('div', { class: 'f-col' }, h('label', null, 'Items'), picker), listEl),
     footer: h('div', null, h('button', { class: 'btn', onclick: async () => {
       const v = f.values();
-      /* v2.30.0 (N10) — validate-before-save: STRUCTURAL errors pehle (branches),
-         phir content (items). Backend ka rule UI par bhi. */
-      if (!v.fromLocationId || !v.toLocationId) return UI.toast('From aur To branch dono chunein', 'warn');
-      if (String(v.fromLocationId) === String(v.toLocationId)) return UI.toast('Source aur destination alag honi chahiye', 'warn');
-      if (!items.length) return UI.toast('Items add karein', 'warn');
+      /* v2.30.0 (N10) + v2.30.2 (T7.3) — validate-before-save ab SHARED engine se
+         (STRUCTURAL pehle, content baad; msg wahi — koi behavior change nahi). */
+      const chk = UI2.validate([
+        { key: 'fromLocationId', required: true, msg: 'From aur To branch dono chunein' },
+        { key: 'toLocationId', required: true, msg: 'From aur To branch dono chunein' },
+        vv => (String(vv.fromLocationId) === String(vv.toLocationId) ? 'Source aur destination alag honi chahiye' : ''),
+        () => (items.length ? '' : 'Items add karein')
+      ], { getValue: () => Object.assign({}, v), form: f, toastKey: 'transfer' });
+      if (!chk.ok) return;
       try { await API.call('stock.transfer.save', { transfer: Object.assign(v, { items }) });
         UI.toast('Transfer created ✅', 'ok');
         document.querySelectorAll('.offcanvas').forEach(o => o.remove());

@@ -1,0 +1,18 @@
+
+[1mW9 · HELP + CONFIRM + TOOLTIP GATE (v2.30.3)[0m
+
+  [1mPART 1 — source contract[0m
+  ✔ ① Pwa_Shell: shared PWA.confirm (promise overlay + export + CSS)  → Pwa_Shell.html
+  ✔ ② Pwa_Warehouse + Pwa_POS: raw native confirm() ZERO (3 sites shared par)  → adopted=3
+  ✔ ③ UI2.help: repo docs/ guides + OFFICIAL links, sab target=_blank rel=noopener (A-helper par)  → links=20 official=7 helper-blank=true
+  ✔ ④ sbHelp button (title + aria-label) + wiring + help.docsUrl (Config.gs + Schema.gs)  → Index + App_Boot + Config.gs + Schema.gs
+  ✔ ⑤ Tooltip sweep: Index.html har icon-btn + sbUser par title  → 9/9 icon-btns + sbUser
+
+  [1mPART 2 — rendered DOM[0m
+  ✔ ⑤ sbHelp nazar aur tap-size OK; click → Madad modal (title + ≥20 links + official href)  → Madad modal open with official links
+  ✔ ⑤b Dark theme par bhi readable (card surface white NAHI, label ink light)  → dark: surface=panel-2, ink light
+  ✔ ⑥ Modal close kaam karta hai (Band karein → overlay gaya)
+  ✔ ⑦ PWA.confirm DOM: overlay dikhta hai, OK=true, Esc=false (non-blocking)  → Pwa_Shell shared dialog (danger btn + Esc cancel)
+  ✔ ⑧ Zero page errors (desktop + PWA)  → clean
+
+[1mSUMMARY:[0m 10 pass · 0 fail · [32mGREEN[0m

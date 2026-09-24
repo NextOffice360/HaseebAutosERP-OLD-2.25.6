@@ -304,24 +304,39 @@ var Sales = {
     }
 
     // ---- payments ----
+    /* v2.30.2 (N12) — overpaid tender: receipt sirf APPLIED amount par (jo waqai
+       invoice kam karta hai). Pehle tendered (1300 cash par 1296 ka bill) receipt
+       banta tha → customer ledger −4 (jhoota advance) aur drawer expected +4
+       (change wapas ja chuki thi). Change sale.change me mehfooz rehta hai. */
+    var remaining = total;
     payments.forEach(function (pm) {
+      var tender = U.num(pm.amount);
       /* Loyalty points se payment → customer ke points debit karo (redeem already posts customer ledger — skip duplicate Payments ledger) */
-      if (U.str(pm.method).toUpperCase() === 'LOYALTY' && U.num(pm.amount) > 0) {
+      if (U.str(pm.method).toUpperCase() === 'LOYALTY' && tender > 0) {
+        var appliedL = U.round(Math.min(tender, Math.max(0, remaining)), 2);
+        if (appliedL <= 0) return; /* bill pehle hi poori tarah cover ho chuka */
         try {
-          var usedPts = U.num(pm.points) || Loyalty.cashToPoints(pm.amount);
+          var usedPts = pm.points
+            ? U.round(U.num(pm.points) * (appliedL / tender), 0)
+            : Loyalty.cashToPoints(appliedL);
           Loyalty.redeem({ customerId: payload.customerId, points: usedPts,
             refId: saleId, refType: 'SALE', locationId: locId,
             note: 'POS redemption on ' + invoiceNo }, s);
         } catch (e) {
           throw new Error('Loyalty redeem fail: ' + e.message);
         }
+        remaining = U.round(remaining - appliedL, 2);
         return; // LOYALTY ledger already via Loyalty.redeem — don't create duplicate Payments receipt
       }
-      if (U.num(pm.amount) > 0) {
+      if (tender > 0) {
+        var applied = U.round(Math.min(tender, Math.max(0, remaining)), 2);
+        remaining = U.round(remaining - applied, 2);
+        /* applied 0 (poora-discount bill, token tender) → receipt nahi, sale chalti rahe */
+        if (applied <= 0) return;
         var payRec = Payments.create({
           date: sale.date, type: 'SALE_RECEIPT',
           partyType: payload.customerId ? 'CUSTOMER' : '', partyId: payload.customerId || '',
-          partyName: payload.customerName || 'Walk-in', amount: U.num(pm.amount), method: pm.method || 'CASH',
+          partyName: payload.customerName || 'Walk-in', amount: applied, method: pm.method || 'CASH',
           reference: pm.reference || invoiceNo, locationId: locId,
           /* v2.30.0 — receipt isi shop session ke against (closing report isi se banti hai) */
           sessionId: (shopCtx ? shopCtx.sessionId : '') || payload.sessionId || '',

@@ -755,14 +755,16 @@ function renderReports(c) {
 }
 
 function reportTable(c, type) {
+  /* v2.30.2 (T7.2) — shared table STATES: load/onLoad (skeleton→rows→error+Retry
+     sab UI2.table ke andar); pehle UI.skeleton + .then haath se tha */
   const host = h('div'); c.appendChild(host);
-  host.appendChild(UI.skeleton(4));
-  API.call('demand.reports', { type, limit: 100, locationId: App.state.locationId }).then(r => {
-    host.innerHTML = '';
-    host.appendChild(h('div', { style: { marginBottom: '8px', display: 'flex', gap: '6px' } }, h('span', { class: 'badge' }, 'Rows: ' + (r.total||r.rows?.length||0)), h('span', { class: 'badge brand' }, type.replace(/_/g,' '))));
-    const rows = r.rows || [];
-    host.appendChild(UI2.table({
-      screen: 'demand_rep_' + type, rows, height: '48vh', exportName: 'demand-' + type,
+  const nEl = h('span', { class: 'badge' }, 'Rows: —');
+  host.appendChild(h('div', { style: { marginBottom: '8px', display: 'flex', gap: '6px' } },
+    nEl, h('span', { class: 'badge brand' }, type.replace(/_/g, ' '))));
+  host.appendChild(UI2.table({
+    screen: 'demand_rep_' + type, height: '48vh', exportName: 'demand-' + type,
+    load: () => API.call('demand.reports', { type, limit: 100, locationId: App.state.locationId })
+      .then(r => { const rws = r.rows || []; nEl.textContent = 'Rows: ' + (r.total !== undefined ? r.total : rws.length); return rws; }),
       columns: [
         { key: 'demandNo', label: 'Demand #' },
         { key: 'date', label: 'Date', render: x => fmt.date(x.date) },
@@ -774,18 +776,16 @@ function reportTable(c, type) {
         { key: 'daysOpen', label: 'Age', num: true, render: x => x.daysOpen + 'd' }
       ],
       onRow: x => openDetail(x.id)
-    }));
-  }).catch(e => { host.innerHTML = ''; host.appendChild(h('div', { class: 'empty err' }, '⚠ ' + e.message)); });
+  }));
 }
 
 function waitingReport(c) {
+  /* v2.30.2 (T7.2) — shared states (load) */
   const host = h('div'); c.appendChild(host);
-  host.appendChild(UI.skeleton(3));
-  API.call('demand.reports', { type: 'waiting_customers', limit: 100, locationId: App.state.locationId }).then(r => {
-    host.innerHTML = '';
-    const rows = r.customers || [];
-    host.appendChild(UI2.table({
-      screen: 'demand_waiting', rows, height: '48vh', exportName: 'waiting-customers',
+  host.appendChild(UI2.table({
+    screen: 'demand_waiting', height: '48vh', exportName: 'waiting-customers',
+    load: () => API.call('demand.reports', { type: 'waiting_customers', limit: 100, locationId: App.state.locationId })
+      .then(r => r.customers || []),
       columns: [
         { key: 'customerName', label: 'Customer', render: x => h('b', null, x.customerName) },
         { key: 'customerPhone', label: 'Phone', render: x => x.customerPhone || '—' },
@@ -793,26 +793,23 @@ function waitingReport(c) {
         { key: 'items', label: 'Products', render: x => h('span', { style: { fontSize: '12px' } }, x.items.slice(0,3).map(i => i.itemName + ' (' + i.qty + ')').join(', ') + (x.items.length>3 ? ' +' + (x.items.length-3) : '')) },
         { key: 'earliest', label: 'Since', render: x => fmt.date(x.earliest) }
       ]
-    }));
-  }).catch(e => { host.innerHTML = ''; host.appendChild(h('div', { class: 'empty err' }, '⚠ ' + e.message)); });
+  }));
 }
 
 function supplierReport(c) {
+  /* v2.30.2 (T7.2) — shared states (load) */
   const host = h('div'); c.appendChild(host);
-  host.appendChild(UI.skeleton(3));
-  API.call('demand.reports', { type: 'supplier_status', limit: 100, locationId: App.state.locationId }).then(r => {
-    host.innerHTML = '';
-    const rows = r.rows || [];
-    host.appendChild(UI2.table({
-      screen: 'demand_supplier', rows, height: '48vh', exportName: 'supplier-demand-status',
+  host.appendChild(UI2.table({
+    screen: 'demand_supplier', height: '48vh', exportName: 'supplier-demand-status',
+    load: () => API.call('demand.reports', { type: 'supplier_status', limit: 100, locationId: App.state.locationId })
+      .then(r => r.rows || []),
       columns: [
         { key: 'supplierName', label: 'Supplier' },
         { key: 'poStatus', label: 'PO status', render: x => h('span', { class: 'badge' }, x.poStatus) },
         { key: 'demandCount', label: 'Demands', num: true },
         { key: 'poCount', label: 'POs', num: true }
       ]
-    }));
-  }).catch(e => { host.innerHTML = ''; host.appendChild(h('div', { class: 'empty err' }, '⚠ ' + e.message)); });
+  }));
 }
 
 /* ============================ POS HOOK ================================== */

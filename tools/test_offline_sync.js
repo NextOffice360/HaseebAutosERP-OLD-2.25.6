@@ -96,6 +96,54 @@ console.log('\x1b[1mPART 1 — backend: idempotency + partial fail\x1b[0m');
     '⑤ mixed queue: results per-entry sahi; sirf fail wala dobara bheja', JSON.stringify({ ok: okIds.length, fail: failIds.length }));
 }
 
+/* PART 3 — v2.30.2 (N9.1): server-side 3-way conflict merge + stale flag + retry backoff */
+console.log('\x1b[1mPART 3 — N9.1: conflict merge (server) + retry backoff (DOM)\x1b[0m');
+try {
+  const p3 = loadBackend(path.join(ROOT, 'apps-script'));
+  const s3 = p3.sandbox;
+  s3.Setup.setupAll();
+  const l3 = s3.api('auth.login', { username: 'owner', password: 'admin123' });
+  const T3 = l3.data.token;
+  const api3 = (a, p) => { const r = s3.api(a, Object.assign({ token: T3 }, p || {}));
+    if (!r || !r.ok) throw new Error(a + ': ' + ((r && r.error && r.error.message) || 'fail')); return r.data; };
+  api3('shop.open', {});
+  const C = api3('customers.save', { customer: { name: 'N91 Base', phone: '0300-9110001', notes: 'purana' } });
+  const baseSnap = { id: C.id, name: 'N91 Base', phone: '0300-9110001', notes: 'purana' };
+
+  /* device-2 (online) beech me phone badal deta hai */
+  api3('customers.save', { customer: { id: C.id, phone: '0300-9110002' } });
+
+  /* device-1 ka offline edit: name + phone dono (base purani values ke sath) */
+  const sync = api3('offline.sync', { queue: [ { clientId: 'N91-C1', action: 'customers.save',
+    payload: { customer: { id: C.id, name: 'N91 Naya Naam', phone: '0300-9110099' }, __base: baseSnap } } ] });
+  const r0 = (sync.results || [])[0] || {};
+  const clist = api3('customers.list', {});
+  const after = (clist.rows || clist.data || clist.list || (Array.isArray(clist) ? clist : [])).filter(x => x.id === C.id)[0] || {};
+  ok(sync.succeeded === 1 && after.name === 'N91 Naya Naam' && after.phone === '0300-9110002'
+    && r0.conflict && (r0.conflict.fields || []).indexOf('phone') > -1,
+    '\u246b N9.1 3-way merge: naam (client) laga, phone (server) qayam, conflict report',
+    JSON.stringify({ name: after.name, phone: after.phone, cf: r0.conflict }));
+  const aud = s3.DB.all('AuditLog').filter(x => x.action === 'SYNC_CONFLICT' && x.entity === 'Customers' && x.entityId === C.id).length;
+  ok(aud >= 1, '\u246bb SYNC_CONFLICT audit record (kaun/kab/kya)', 'audit=' + aud);
+
+  /* stale flag (bina __base ke): server newer than entry.createdAt */
+  s3.api('customers.save', { token: T3, customer: { id: C.id, notes: 'server pehle badal gaya' } });
+  const sync2 = api3('offline.sync', { queue: [ { clientId: 'N91-C2', action: 'customers.save',
+    createdAt: new Date(Date.now() - 3600e3).toISOString(),
+    payload: { customer: { id: C.id, name: 'Purana offline edit' } } } ] });
+  const r2 = (sync2.results || [])[0] || {};
+  ok(sync2.succeeded === 1 && r2.stale === true,
+    '\u246bc stale flag (server newer than offline edit) — blind last-write nahi, report ke sath',
+    JSON.stringify({ stale: r2.stale }));
+
+  /* clean config.save per-key persist (backoff field bhi) */
+  api3('config.save', { values: { 'sync.backoffBase': '45' } });
+  ok(String(s3.DB.settings()['sync.backoffBase']) === '45', '\u246bd sync.backoffBase setting persist (Config)', String(s3.DB.settings()['sync.backoffBase']));
+} catch (e) {
+  ok(false, 'PART 3 setup fail', String(e.message || e).slice(0, 150));
+}
+
+
 (async () => {
   console.log('\x1b[1mPART 2 — rendered DOM: chip + queue + persist + auto-flush\x1b[0m');
   const puppeteer = require('puppeteer');
@@ -184,6 +232,40 @@ console.log('\x1b[1mPART 1 — backend: idempotency + partial fail\x1b[0m');
   });
   ok(a1.afterOff === 1 && a1.afterOn === 0,
     '⑩ sync.autoFlush OFF → tick nahi chalta; ON → flush', JSON.stringify(a1));
+
+  /* \u246be N9.1 retry backoff (DOM): fail streak par tick RUKTA hai, window guzarne par chalta hai */
+  const b1 = await page.evaluate(async () => {
+    App._noDirtyGuard = true;
+    App.go('settings');
+    await new Promise(r => setTimeout(r, 1200));
+    App.state.settings['sync.backoffBase'] = '60';
+    let calls = 0; const oc = API.call;
+    API.call = function (a) { if (a === 'offline.sync') { calls++; return Promise.resolve({ received: 1, succeeded: 1, failed: 0, results: [{ clientId: 'x', ok: true }] }); } return oc.apply(this, arguments); };
+    App.state.queue = [{ clientId: 'x', action: 'config.save', payload: { values: { theme: 'dark' } }, createdAt: new Date().toISOString() }];
+    API._failStreak = 2; API._lastFailAt = Date.now();          /* 60x2=120s window */
+    App.autoSyncTick();
+    await new Promise(r => setTimeout(r, 400));
+    const during = calls;
+    API._lastFailAt = Date.now() - 121 * 1000;                   /* window guzar gaya */
+    App.autoSyncTick();
+    await new Promise(r => setTimeout(r, 400));
+    const after = calls;
+    API.call = oc; App.state.queue = []; Store.set('queue', []);
+    /* settings ▸ Backend ▸ Offline sub-tab khol kar field tasalli */
+    const click = (sel, re) => { const t = Array.from(document.querySelectorAll(sel)).find(x => re.test(x.textContent || '')); if (t) { t.click(); return true; } return false; };
+    click('.tabbar-l1 .tab', /backend|integration/i);
+    await new Promise(r => setTimeout(r, 1100));
+    click('.tabbar-l2 .tab', /offline/i);
+    await new Promise(r => setTimeout(r, 1100));
+    const fld = document.getElementById('f_sync.backoffBase');
+    App._noDirtyGuard = false;
+    return { during, after, fldExists: !!fld };
+  });
+  ok(b1.during === 0 && b1.after === 1,
+    '\u246be backoff: streak 2 \u2192 tick nahi chala (120s window); window guzri \u2192 flush',
+    JSON.stringify(b1));
+  ok(b1.fldExists, '\u246bf sync.backoffBase ki settings field DOM me (Offline tab)', 'fld=' + b1.fldExists);
+
 
   /* cleanup */
   await page.evaluate(() => { App.state.queue = []; Store.set('queue', []); App.updateSyncUI(); });

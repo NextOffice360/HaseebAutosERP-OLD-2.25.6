@@ -119,6 +119,25 @@ var Purchase = {
     return Purchase._linePricing(p.itemId, p.supplierId || '', U.num(p.rate), p.excludeGrnId || '');
   },
 
+  /* v2.30.2 (W7.T2) — N lines ka price-history EK hi call me (pehle har line
+     ka alag round-trip hota tha: PO load / demand add-all par waterfall).
+     `items` = [{ itemId, rate }] → { rows: [{ itemId, ...pricing }] }.
+     Ek line ka data na mile to bhi baqi wapas (kabhi poora fail nahi). */
+  priceInfoBatch: function (p, s) {
+    Auth.require(s, 'purchase.view');
+    var items = (p && p.items) || [];
+    var sup = (p && p.supplierId) || '';
+    var rows = items.map(function (it) {
+      var out = { itemId: it.itemId || '' };
+      try {
+        var pr = Purchase._linePricing(it.itemId, sup, U.num(it.rate), p.excludeGrnId || '');
+        Object.keys(pr).forEach(function (k) { out[k] = pr[k]; });
+      } catch (e) { out.error = String(e.message || e).slice(0, 120); }
+      return out;
+    });
+    return { rows: rows, count: rows.length };
+  },
+
   /* v2.9.1 §11 — item ke liye supplier-wise purchase price muqabla.
    * Sirf REAL GRN history se (avg/min/max/last per supplier); jitna zyada
    * data utna zyada rows. Kuch nahi mila to rows: [] — kabhi fabricate nahi. */

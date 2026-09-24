@@ -171,7 +171,7 @@ audit: `parties.balance` / `parties.customerHistory` PWA ki **3 screens (POS/Fie
 | W5 visibility | pending | A§9 — backend-enforced role→scope→module→section→field |
 | W4 datetime | pending | A§8 — ek global date/time system |
 | W6 sidebar | partial (v2.25.8 icon-only) | A§10 — partial-collapse + tablet/off-canvas verify |
-| **W9 UX/design-system + doc links** | pending | A§11–13, B§3·4·14 |
+| **W9 UX/design-system + doc links** | **help links + confirm sweep + tooltips ✔ (v2.30.3)** — baqi design-system components (filter/pagination/button/dropdown) W13 me | A§11–13, B§3·4·14 |
 | **W10 testing matrix** | pending | A§17 — 17 scenarios (kuch gates mojood) |
 | **W8 naming/architecture audit** | pending | A§14 |
 | **W11 beginner docs pack** | pending | A§3 — per integration: setup → rollback |
@@ -423,9 +423,60 @@ SONAME links gayab (`libatk-1.0.so.0`) aur har browser gate "Failed to launch th
 
 ### W7 — APPLY SHARED SYSTEMS APP-WIDE (P3) — target **v2.26.2**
 - [x] **T7.1 Busy coverage** ✔ (v2.29.2) — audit (`tools/audit_busy_coverage.js`, acorn AST) ne **78 gher-wrapped action sites** pakre. Hal per-page patch nahi, **SHARED auto-busy engine** (`App_Core.html`): `onclick/onchange/onsubmit/oninput/onkeydown` handlers (`h()` ke addEventListener path + property path, dono) wrap hote hain; **Promise return karne wale handler** ke doran element par `aria-busy` + `.is-busy-ab` spinner + `disabled` (duplicate submit block) · min-busy 320ms · safety 120s · `UI.run` skip · `data-nobusy` opt-out · kill-switch `UI._features.autoBusy`. **Gate:** `tools/test_busy_coverage.js` **13/0** (dono attachment paths + real-screen sweep + dup-block + kill/opt-out) · regression: `ui-run` · `ui-err` · `smoke` · `modals-close` · `pay-ledger` · `sidebar-states` sab green. **~60 min**
-- [ ] **T7.2 Table states** — shared table: skeleton rows (fetch), empty-state, store-change re-render. **Test:** `tools/test_table_states.js`. **~60 min**
-- [ ] **T7.3 Forms** — shared validation + deps customer/supplier/product/PO/GRN forms par (16px inputs / 48px taps barqarar). **Test:** `tools/test_forms_shared.js` + `smoke`/`ui-polish`. **~90 min**
-- [ ] **T7.4 Settings consume shared** — datetime + visibility + deps; `settings-defs` gate update. **~60 min**
+- [x] **T7.2 Table states** ✔ (v2.30.2, W9 slice) — `UI2.table` me SHARED states: `load: fn|Promise`
+      (auto-start) → pending par **delayed skeleton** (200ms, flash nahi; toolbar qayam), fail par **error
+      block + ↻ Retry** (`wrap.reload()` — wahi load dobara, koi data zaya nahi), kamyabi par rows +
+      `onLoad(rows)` hook; `wrap.refresh(rows)` pehle jaisa (backward compat — cfg.rows/filtered/export
+      sab salamat). **Adoption:** Demand ▸ Reports teeno tables (outstanding/fulfilled/pending_procurement/
+      waiting/supplier) — hand-rolled `UI.skeleton + .then` hata (Rows badge onLoad me update). Baqi demand
+      lists apna filter-bar flow rakhti hain (scope nahi). **Gate:** `tools/test_table_states.js` **11/0** =
+      validate **step 21** (skeleton→rows, error→retry→recover, refresh/empty regression, real Reports
+      screen, zero errors). Regression: report_actions GREEN · release_flow 62/0 · e2e_critical 22/0 ·
+      modals_close 91/0 · data_aware 9/0 · saveall_pages 16/0.
+- [x] **T7.3 Forms** ✔ (v2.30.2) — SHARED validation engine `UI2.validate(rules, {getValue, form, toastKey})`:
+      function rules (dynamic — lines/qty) + field rules (required/min); fail → pehla msg + `(+N aur)` (N8 key
+      `validate.*` — dedupe), ghalt fields `.f-err-mark` + `aria-invalid` (clear-on-change), pehla ghalt field
+      FOCUS; structural pehle / content baad (N10 order); **msgs wahi** (koi behavior change nahi). Adopted 6:
+      transfer (App_Inventory2) · GRN post · PO save · purchase return (App_Screens2) · item form ·
+      customer/supplier form (App_Masters). 16px inputs/48px taps barqarar (sirf mark+focus). Gate
+      `tools/test_forms_shared.js` **14/0** = validate step 19. Regression: data_aware 9/0 (transfer msgs
+      gate-compatible) · supplier_autofill 19/0 · modals_close 91/0 · saveall_pages 16/0 · partial_save 48/0 ·
+      e2e_critical 22/0.
+- [x] **T7.4 Settings consume shared** ✔ (v2.30.2) — **DEPS:** Config.defs me declarative
+      `showWhen {key, eq|ne}` (JSON-safe — function serialize nahi hota) + `UI2.form.showSync` ka
+      object-form support + **cross-form `depsRoot`** (sectioned sub-tab me provider ek chunk-form me,
+      dependent doosre me — merged values se evaluate + wrapper par delegated change-sync).
+      Adoptions: `aiOpenaiPrefixes` → provider OPENAI; `integration.strictOrigin/requireToken/apiKey`
+      → integrations ON. **DATETIME:** localization sub-tab me LIVE preview — poora preview shared
+      `DT.format(v, mode, cfgOv)` (naya override param) se; save ki zaroorat nahi; showTime off →
+      datetime khud date-only (app-wide rule). **VISIBILITY:** settings pehle se consume karta hai —
+      page perm (`settings.manage`) + `config.save` ka server-side key-strip (non-manage sirf theme
+      waghera) + defs groups (`security` sirf `users.manage` ko). **Gates:** `audit_settings_defs.js`
+      10/0 (⑥ showWhen JSON-passthrough ⑦ dt.* + preview source) + naya `test_settings_shared.js`
+      **6/0** = validate step 20 (DOM: integration OFF→chhupe/ON→nazar · GEMINI/OPENAI prefix ·
+      hour12 am/pm live · showTime date-only · zero errors). Regression: saveall_pages 16/0 ·
+      notifications 11/0 · data_aware 9/0 · forms_shared 14/0 · settings_icons 55 tabs GREEN ·
+      supplier_autofill 19/0 · modals_close GREEN · e2e_critical 22/0 · math_logic 21/0.
+- [x] **T7.5 (W9) Help links + confirm sweep + tooltips** ✔ (v2.30.3) —
+      **① PWA.confirm (shared):** Pwa_Shell me non-blocking promise dialog (`role=alertdialog`,
+      danger variant, Esc/backdrop cancel, 44px taps) — native `confirm()` sandboxed WebView me
+      block/chup ho sakta tha; Pwa_Warehouse (2) + Pwa_POS (1) adopted → **raw native confirm PWA
+      me ZERO**. **② UI2.help (Madad modal):** sidebar ▸ ❓ Madad — repo `docs/` guides (01–09 +
+      OFFICIAL-DOCS) + official GAS/Sheets/PWA/clasp links (sab `target=_blank rel=noopener` —
+      GAS iframe me navigation nahi) + keyboard shortcuts; base link = setting **`help.docsUrl`**
+      (Appearance; khali = repo docs/ — repo private hone par admin apna link de). Dark theme me
+      bhi readable (panel-2 surface — computed-style assert). **③ Tooltip sweep:** Index.html
+      **9/9 icon-btns + sbUser** par `title` (sbToggle pehle khali tha). **Gate:**
+      `tools/test_w9_help.js` **10/0** = validate **step 22** (source contract + rendered DOM +
+      dark computed-style + PWA.confirm OK/Esc + zero errors). Regression: pwa_shared 16/0 ·
+      modals_close 91/0 · audit_settings_defs 10/0 · settings_shared 6/0 · data_aware 9/0 ·
+      saveall_pages 16/0.
+
+- [x] **T7.2-perf: GRN price-info waterfall khatam (W7.T2 slice, v2.30.2)** — `loadPoIntoGrn` +
+      demand "Add all" har line ka **alag** `purchase.priceInfo` round-trip bhejte the (N lines = N
+      calls). Ab backend `purchase.priceInfoBatch` (EK call, per-line wahi natija) + FE `fetchPrevBatch`
+      (PO-load/demand-add-all); single-line add wala `fetchPrev` qayam (feature intact). Gate
+      `test_perf_batch.js` **39/0** (⑦: 8 rows 1 call, single-call ke barabar, wiring + single qayam).
 
 ### W8 — VERIFY (P4) + RELEASE — target **v2.26.2**
 - [ ] **T8.1 Local** — har wave par `--fast` (~39s) + mutalliqua gate; full 56-gate **sirf tag par** (background, no edits).

@@ -421,6 +421,9 @@ function wireShell() {
     }
   });
 
+  // v2.30.3 (W9.T2) — Madad/Help (guides + official doc links)
+  $('#sbHelp').onclick = () => { try { UI2.help(); } catch (e) { UI.toast && UI.toast('Help khul nahi saki', 'err'); } };
+
   // user menu
   $('#sbUser').onclick = () => {
     const me = App.sessionMeta();

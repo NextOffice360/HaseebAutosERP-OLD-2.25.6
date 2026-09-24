@@ -1,0 +1,25 @@
+[1mPART 1 — backend math (exact)[0m
+  ✔ ① subtotal/tax/total/change exact (1270 / 153 / 1296 / 4 / PAID)
+  ✔ ①b line-wise allocation exact (A: tax153 disc100 tot1053 · B: tax0 disc57 tot243 · sum=total)
+  ✔ ② tax-inclusive: total 1270 ke andar tax 145.30 (1000 − 1000/1.17)
+  ✔ ③ bill discount subtotal par CLAMP (5000 maanga → 300 laga, total 0)
+  ✔ ④ credit limit: 600 udhaar → "Sale blocked (previous+due vs limit)"; 400 udhaar → chal gaya
+  ✔ ⑤ loyalty: earn floor(1296/100)=12 → redeem 5 + earn(300)=3 → balance 10
+  ✔ ⑤b LoyaltyLedger: 2 EARN (12+3) + 1 REDEEM(5); LOYALTY payment ka DOUBLE ledger NAHI
+  ✔ ⑥ AVG costing: (10×100+10×200)/20 = 150.00 avg; COGS 2×150 = 300
+  ✔ ⑦ return: total 500, stock 14→16 (wahi 150.00 cost par wapas), REFUND_OUT 500
+  ✔ ⑦b discounted bill return (bina price): refund = NET unit 400 (pehle 500 hota — over-refund)
+  ✔ ⑦c explicit price ab bhi honored (manual adjust feature qayam)
+  ✔ ⑧ reports.sales grossProfit == raw-tables recompute (returns NET)
+  ✔ ⑧b dashboard monthProfit == wahi recompute
+  ✔ ⑧c scenario mein returns ka asar ZERO nahi (test pre-fix formula ko pakar sakta hai)
+  ✔ ⑫a commission accrue 10% × 1000 = 100 PENDING
+  ✔ ⑫b partial return (1/4) → commission 75 PENDING (pehle poori 100 REVERSED hoti)
+  ✔ ⑫c poori qty wapas → commission REVERSED (purana behavior full return par qayam)
+  ✔ ⑨ numbering: series +1 per location; doosri branch ki apni series
+  ✔ ⑩ day report expectedCash = opening + netCash (session math self-consistent)
+[1mPART 2 — FE↔BE parity (POS cart vs backend)[0m
+  ✔ ⑪ FE↔BE parity: POS cart DOM ka subtotal/total == backend ka hisaab (probe sale void)
+  ✔ ⑫ zero page errors
+
+[1mSUMMARY:[0m 21 pass · 0 fail · [32mGREEN[0m

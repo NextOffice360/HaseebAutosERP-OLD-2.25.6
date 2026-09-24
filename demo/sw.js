@@ -2,7 +2,7 @@
  * - app shell (index.html + assets) cache-first  → app bina internet ke bhi khulti hai
  * - API calls (google.script.run / API_URL) hamesha network se
  * Naya build? CACHE name badlo → purana cache auto-clear ho jayega.            */
-const CACHE = 'haseeb-autos-v2.29.2';
+const CACHE = 'haseeb-autos-v2.30.3';
 const SHELL = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => {

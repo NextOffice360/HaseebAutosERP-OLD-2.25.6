@@ -34,7 +34,7 @@
 |---|---|---|---|
 | **W1** | Perf audit + instrumentation (E1–E11) | A§4 audit, D | ✅ v2.25.8 |
 | **W2** | Shared fetch core · busy UI · error/retry | A§4 required UX, D | ✅ v2.25.9/10/11 (gates `api-core` 16/0, `ui-run` 34/0, `ui-err` 30/0) |
-| **W7** | **Perf apply: call-sites → `API.parallel`, backend N+1, batch writes** | A§4 (N+1, duplicate requests, blocking ops, large payloads), B§1, B§15 | ✅ **v2.26.0** (gate `perf-batch` 34/0; 24 req → 1) |
+| **W7** | **Perf apply: call-sites → `API.parallel`, backend N+1, batch writes** | A§4 (N+1, duplicate requests, blocking ops, large payloads), B§1, B§15 | ✅ **v2.26.0 + W7.T2 slice v2.30.2** (GRN price-info N→1 batch `purchase.priceInfoBatch`; gate `perf-batch` **39/0**; 24 req → 1) |
 | **W3** | Dynamic data-aware UI (field→value→dependency→data→UI) | A§5–7, B§7, D | ✅ **SHIPPED v2.27.0** — `Deps` core · T1 shared item search · T2 AI Setup cascade · T3 **`Shared` accessors 12 modules** · T4 **PWA parity** (`PWA.shared` + offline contract) — gates `dyn-deps` **51/0** (SENS 20/31) + `pwa-shared` **16/0**; full suite **65/65 GREEN** |
 | **W5** | Field visibility/permissions **backend-enforced** | A§9, B§1, E | ✅ **SHIPPED v2.28.0** — `Fields.gs` (6 families · wrap/scrub · kill-switch) + `Code.gs ▸ api()` single point + `UI2.table/form` family filter + PWA parity — gate **`fields` 52/0** (rendered DOM + write-guard + cache-mutation regression); full suite **66/66 GREEN** |
 | **W4** | Global date/time/timestamp system | A§8, D | ✅ **SHIPPED v2.29.0** — `U.disp/stamp` + `DT` layer + `UI2.stampRow` + 6 naye `dt.*` settings — gate **`datetime` 44/0** (FE↔BE parity 100 combos + rendered DOM) |

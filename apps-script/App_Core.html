@@ -196,10 +196,13 @@ const DT = {
       return { y: d.getFullYear(), mo: d.getMonth() + 1, d: d.getDate(), h: d.getHours(), mi: d.getMinutes(), s: d.getSeconds() };
     }
   },
-  /** mode: 'date' | 'time' | 'datetime' | 'stamp' | 'auto' */
-  format(v, mode) {
+  /** mode: 'date' | 'time' | 'datetime' | 'stamp' | 'auto'
+      cfgOv (v2.30.2 T7.4): Settings ke live-preview ke liye override — {format,
+      dateStyle, hour12, seconds, showTime} — warNA saved settings. Preview bhi
+      ISI formatting code se guzarta hai (ek hi system, do implementation nahi). */
+  format(v, mode, cfgOv) {
     if (v === undefined || v === null || v === '') return '';
-    const c = DT.cfg();
+    const c = cfgOv ? Object.assign(DT.cfg(), cfgOv) : DT.cfg();
     const p = DT.parts(v, c.tz);
     if (!p) return String(v);
     if (!mode || mode === 'auto') mode = c.format || 'datetime';
@@ -868,15 +871,24 @@ const API = {
       const n = res.succeeded || 0, f = res.failed || 0;
       App.state.lastSync = new Date().toLocaleTimeString();
       App.state.syncFailed = f;
+      /* v2.30.2 (N9.1) — backoff streak: fail par barhta hai, kamyab par reset */
+      if (f) { API._failStreak = (API._failStreak || 0) + 1; API._lastFailAt = Date.now(); }
+      else { API._failStreak = 0; API._lastFailAt = 0; }
+      /* v2.30.2 (N9.1) — conflict merge ka natija user ko SAAF batao (koi silent clobber nahi) */
+      const cf = (res.results || []).filter(r => r.conflict).length;
+      if (cf) UI.notify({ key: 'sync.conflict', tone: 'warn',
+        msg: cf + ' record par doosri tabdeeli bhi thi — un fields par SERVER value rakhi gayi (baqi aap ki)', sticky: true,
+        action: { label: 'Theek hai', onClick: () => { } } });
       /* v2.30.0 (N8) — sync fail ab STICKY hai (auto-gayab nahi) + Retry action */
       if (f) UI.notify({ key: 'sync.fail', tone: 'warn', sticky: true,
         msg: n + ' sync hue, ' + f + ' fail (data mismatch)',
         action: { label: 'Dobara sync karein', onClick: () => App.flushQueue() } });
-      else if (n) UI.toast(n + ' queued kaam sync ho gaye ✅', 'ok');
+      else if (n && !cf) UI.toast(n + ' queued kaam sync ho gaye ✅', 'ok');
       return n;
     } catch (e) {
       App.state.queue = queue.concat(App.state.queue); Store.set('queue', App.state.queue);
       App.state.syncFailed = queue.length;
+      API._failStreak = (API._failStreak || 0) + 1; API._lastFailAt = Date.now();  /* N9.1 backoff */
       return 0;
     } finally {
       API._syncBusy = false;
@@ -906,6 +918,15 @@ const API = {
       if (String((App.state.settings || {})['sync.autoFlush']) === 'false') return;
       if (!(App.state.queue || []).length || !navigator.onLine) return;
       if (API.pending > 0 || API._syncBusy) return;
+      /* v2.30.2 (N9.1) — retry BACKOFF: fail ka streak jitna bara, utni der ruk kar
+         dobara (sync.backoffBase s → 60, 120, 240 … max 600). Server par bojh kam,
+         user ka data salamat (queue waisi hi). Kamyab sync par streak reset. */
+      const streak = API._failStreak || 0;
+      if (streak) {
+        const baseS = Math.max(15, Number((App.state.settings || {})['sync.backoffBase']) || 60);
+        const delayMs = Math.min(baseS * Math.pow(2, streak - 1), 600) * 1000;
+        if (Date.now() - (API._lastFailAt || 0) < delayMs) return;
+      }
       API.flushQueue();
     } catch (e) { }
   },

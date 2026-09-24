@@ -185,11 +185,54 @@ function buildSections(fields) {
     if (ch.title) box.appendChild(UI2.section(ch.title, null, ch.tone,
       { urSec: (ch.fields[0] && ch.fields[0].sec && ch.fields[0].sec.urSec) || '' }));
     box.appendChild(form.el);
+    /* v2.30.2 (T7.4) — DATE/TIME LIVE PREVIEW (W4.T3 ka aakhri tukka):
+       preview ISI shared DT.format se guzarta hai (cfgOv override) — Settings
+       aur app dono ek hi formatting system par. Save ki zaroorat nahi — form
+       ki mojooda values se foran update hota hai. */
+    if (ch.fields.some(x => x.key === 'dt.format') && window.DT) {
+      const pv = h('div', { class: 'ui2-block', style: { padding: '10px 12px', border: '1.5px dashed var(--line)', borderRadius: '10px', margin: '4px 0 12px', fontSize: 'var(--fs-sm)' } },
+        h('div', { style: { fontWeight: '700', marginBottom: '6px' } }, '👁 Zinda preview ', h('span', { style: { fontWeight: '400', color: 'var(--muted)' } }, '(poori app aise hi dikhaye gi — save ki zaroorat nahi)')));
+      const row = (lab, mode) => h('div', { style: { display: 'flex', gap: '8px', padding: '2px 0' } },
+        h('span', { style: { color: 'var(--muted)', minWidth: '86px' } }, lab),
+        h('b', { 'data-dtpv': mode, style: { fontVariantNumeric: 'tabular-nums' } }, '—'));
+      const rDate = row('Tareekh', 'date'), rDT = row('Date+time', 'datetime'), rSt = row('Stamp', 'stamp');
+      pv.appendChild(rDate); pv.appendChild(rDT); pv.appendChild(rSt);
+      const paint = () => {
+        try {
+          const fv = form.values();
+          const ov = {
+            format: fv['dt.format'] || 'datetime',
+            dateStyle: fv['dt.dateStyle'] || 'DD MMM YYYY',
+            hour12: !!fv['dt.hour12'],
+            seconds: !!fv['dt.seconds'],
+            showTime: fv['dt.showTime'] === undefined ? true : !!fv['dt.showTime']
+          };
+          const now = new Date().toISOString();
+          (pv.querySelectorAll('[data-dtpv]') || []).forEach(el => {
+            el.textContent = DT.format(now, el.getAttribute('data-dtpv'), ov) || '—';
+          });
+        } catch (eP) { }
+      };
+      paint();
+      form.el.addEventListener('change', paint, true);
+      box.appendChild(pv);
+    }
     return { box: box, form: form };
   });
 
   const el = h('div', { class: 'cfg-secs' });
   parts.forEach(pn => el.appendChild(pn.box));
+  /* v2.30.2 (T7.4) — CROSS-FORM showWhen: sections alag UI2.form banate hain;
+     provider (form A) badle to doosre form (B) ke hidden fields bhi sync hon. */
+  {
+    const syncs = parts.map(pn => pn.form && pn.form.syncShowWhen).filter(f => typeof f === 'function');
+    if (syncs.length > 1) {
+      /* merged values: har form ka showWhen POORE sub-tab ki values dekh sakta hai */
+      const merged = () => { const m = {}; parts.forEach(pn => { try { Object.assign(m, pn.form.values()); } catch (e) { } }); return m; };
+      parts.forEach(pn => { try { pn.form.depsRoot = merged; } catch (e) { } });
+      el.addEventListener('change', () => { syncs.forEach(fn => { try { fn(); } catch (e) { } }); }, true);
+    }
+  }
   /* v2.30.0 (N1/N2) — ASLI ROOT CAUSE:
      Pehle ye wrapper sirf {el, values} return karta tha. Us par `changed` na
      hone ki wajah se sub-tab ka Save POORE sub-tab ki values bhej deta tha —

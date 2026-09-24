@@ -334,7 +334,8 @@
             if(po){
               // warn if any cart item not in PO
               var extra = S.cart.filter(function(l){ return !(po.items||[]).some(function(it){return it.itemId===l.itemId;}); });
-              if(extra.length && !confirm(extra.length+' item(s) PO mein nahi — phir bhi GRN karein?')) return;
+              /* v2.30.3 (W9) — native confirm ki jagah shared PWA.confirm (danger) */
+              if(extra.length && !(await PWA.confirm(extra.length+' item(s) PO mein nahi — phir bhi GRN karein?', { danger: true }))) return;
             }
           }
           try {
@@ -508,7 +509,7 @@
     head.appendChild(PWA.el('div',{style:'display:flex;gap:8px;margin-top:8px'},[
       PWA.el('button',{class:'btn sm ghost', onclick:function(){ S.sheetId=''; sel.value=''; clearLocalCounts(S.sheetId); redraw(); }}, 'Change sheet'),
       PWA.el('button',{class:'btn sm', onclick:function(){ loadSheet(S.sheetId, function(){ redraw(); }); PWA.toast('Refreshed','ok'); }}, '↻ Refresh'),
-      PWA.el('button',{class:'btn sm ghost', onclick:function(){ if(confirm('Local counted values clear karein? (server values rahenge)')){ clearLocalCounts(S.sheetId); loadSheet(S.sheetId, function(){ redraw(); }); } }}, 'Clear local')
+      PWA.el('button',{class:'btn sm ghost', onclick:function(){ PWA.confirm('Local counted values clear karein? (server values rahenge)').then(function(ok){ if(ok){ clearLocalCounts(S.sheetId); loadSheet(S.sheetId, function(){ redraw(); }); } }); }}, 'Clear local')
     ]));
     body.appendChild(head);
 

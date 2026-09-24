@@ -1,0 +1,30 @@
+area                      icon   status
+Business Profile          🏪     ✔ SVG: shop  [Config.gs]
+Point of Sale             🧾     ✔ SVG: receipt  [Config.gs]
+Mobile apps (PWA)         📱     ✔ SVG: phone  [Config.gs]
+Inventory & Warehouse     📦     ✔ SVG: box  [Config.gs]
+Trade & Accounts          🤝     ✔ SVG: users  [Config.gs]
+Modules & Navigation      🧩     ✔ SVG: puzzle  [Config.gs]
+Automation & AI           🤖     ✔ SVG: bot  [Config.gs]
+Security & Sessions       🔐     ✔ SVG: lock  [Config.gs]
+Backend & Integrations    🔗     ✔ SVG: wrench  [Config.gs]
+Custom fields             sliders✔ SVG: sliders  [App_Config.html]
+Menu builder              files  ✔ SVG: files  [App_Config.html]
+Print templates           printer✔ SVG: printer  [App_Config.html]
+Lists & catalogs          clipboard✔ SVG: clipboard  [App_Config.html]
+Data & tools              toolbox✔ SVG: toolbox  [App_Config.html]
+WhatsApp & SMS            chat   ✔ SVG: chat  [Config.gs]
+Price list import         fileText✔ SVG: fileText  [Config.gs]
+Firebase migration        flame  ✔ SVG: flame  [Config.gs]
+Export & share            share  ✔ SVG: share  [Config.gs]
+AI assistant              sparkles✔ SVG: sparkles  [Config.gs]
+Alerts & notifications    bell   ✔ SVG: bell  [Config.gs]
+Purchase reorder rules    refresh✔ SVG: refresh  [Config.gs]
+Scheduled jobs (triggers) alarmClock✔ SVG: alarmClock  [Config.gs]
+Document numbering        hash   ✔ SVG: hash  [Config.gs]
+
+RUNTIME:  Config.defs() → frontend  ✔ 9 groups, koi key drop nahi
+
+DUPLICATE keys: ✔ koi nahi (har line par ek hi icon:)
+
+SUMMARY: 23/23 SVG mapped · gaps: 0 · shared-icon areas: koi nahi · duplicate icon: keys: 0

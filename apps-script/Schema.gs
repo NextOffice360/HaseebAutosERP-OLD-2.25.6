@@ -288,6 +288,8 @@ var DEFAULT_SETTINGS = {
   'dt.seconds': 'false',
   'dt.showTime': 'true',
   'dt.showRecords': 'true',
+  /* v2.30.3 (W9.T2) — Madad modal ke app-guides links ka base link (khali = repo docs/) */
+  'help.docsUrl': '',
   currencySymbol: 'Rs',
   taxRate: '0',
   taxLabel: 'GST',

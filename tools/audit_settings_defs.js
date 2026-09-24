@@ -96,6 +96,31 @@ const dupSubs = Object.keys(subSeen).filter(k => subSeen[k] > 1);
 ok('⑤ koi sub-tab do baar define nahi hua',
   dupSubs.length === 0, dupSubs.length ? dupSubs.join(', ') : subs + ' sub-tabs yakht');
 
+/* ⑥ v2.30.2 (T7.4) — declarative showWhen JSON-safe passthrough
+   (backend defs → frontend UI2.form object-form; function serialize nahi hota) */
+const allF = [];
+defs.forEach(g => (g.sub || []).forEach(t => (t.fields || []).forEach(f => allF.push(f))));
+const swOf = k => { const f = allF.filter(x => x.key === k)[0] || {}; return f.showWhen || null; };
+const swOk = (k, expKey, expEq) => {
+  const sw = swOf(k);
+  return !!sw && sw.key === expKey && String(sw.eq) === String(expEq);
+};
+ok('⑥ aiOpenaiPrefixes.showWhen = {aiProvider eq OPENAI} (JSON-safe object)',
+  swOk('aiOpenaiPrefixes', 'aiProvider', 'OPENAI'), JSON.stringify(swOf('aiOpenaiPrefixes')));
+ok('⑥b integration strict/requireToken/apiKey showWhen = {integration.enabled eq true}',
+  swOk('integration.strictOrigin', 'integration.enabled', true)
+  && swOk('integration.requireToken', 'integration.enabled', true)
+  && swOk('integration.apiKey', 'integration.enabled', true));
+
+/* ⑦ v2.30.2 (T7.4) — datetime section (W4): sab dt.* fields + live-preview hooks */
+const dtKeys = ['dt.format', 'dt.dateStyle', 'dt.hour12', 'dt.seconds', 'dt.showTime', 'dt.showRecords'];
+const dtMissing = dtKeys.filter(k => !allF.some(f => f.key === k));
+ok('⑦ datetime settings fields (dt.*) poore', dtMissing.length === 0,
+  dtMissing.length ? 'missing: ' + dtMissing.join(', ') : dtKeys.length + '/' + dtKeys.length);
+const appCfg = require('fs').readFileSync(path.join(__dirname, '..', 'apps-script', 'App_Config.html'), 'utf8');
+ok('⑦b localization live-preview shared DT.format se (cfgOv override + data-dtpv)',
+  appCfg.includes("data-dtpv") && appCfg.includes('DT.format(now'), 'App_Config.html');
+
 console.log('\n══════════════════════════════════════════════════════════════════');
 console.log(`  SETTINGS SCHEMA   PASS: ${pass}   FAIL: ${fail}`);
 if (fail) problems.forEach(x => console.log('   ✖ ' + x));

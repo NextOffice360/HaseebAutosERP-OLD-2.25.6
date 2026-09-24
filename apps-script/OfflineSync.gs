@@ -46,6 +46,62 @@ var OfflineSync = {
    * p = { queue: [ { clientId, action, payload, createdAt } ] }
    * Har entry ko real API route par chalaya jata hai (permissions lagoo rehti hain).
    */
+  /* ---------------- v2.30.2 (N9.1) — SERVER-SIDE CONFLICT RESOLUTION ----------------
+     Offline edit jab replay hota hai aur server par wahi record is doran badal chuka:
+       · payload.__base (form ka asli-loaded record) mojood → PER-FIELD 3-way merge:
+           server == base            → client ki value (server ne chheda hi nahi)
+           incoming == server        → skip (pehle se wahi)
+           teeno alag                → CONFLICT → SERVER value qayam + report + audit
+         (client ki doosri fields phir bhi lagti hain — poora kaam zaya nahi hota)
+       · __base nahi → partial-update rule (sirf bheji keys) phir bhi safe; sirf
+         STALE flag lagta hai (server newer than edit) taake UI bata sake.            */
+  _mergeable: { 'items.save': ['item', 'Items'], 'customers.save': ['customer', 'Customers'], 'suppliers.save': ['supplier', 'Suppliers'] },
+  _mergeUpdate: function (action, payload, entry, out, s) {
+    var m = OfflineSync._mergeable[action];
+    if (!m) return payload;
+    var rec = payload[m[0]];
+    if (!rec || !rec.id) return payload;
+    var row = DB.byId(m[1], rec.id) || {};
+    var base = (payload.__base && typeof payload.__base === 'object') ? payload.__base : null;
+    var conflicts = [];
+    if (base) {
+      Object.keys(rec).forEach(function (k) {
+        if (k === 'id' || k.indexOf('__') === 0) return;
+        var sv = (row[k] === undefined || row[k] === null) ? '' : String(row[k]);
+        var bv = (base[k] === undefined || base[k] === null) ? '' : String(base[k]);
+        var iv = (rec[k] === undefined || rec[k] === null) ? '' : String(rec[k]);
+        if (sv === bv) return;                    /* server untouched → client value qayam */
+        if (iv === sv) { delete rec[k]; return; } /* pehle se wahi — kuch nahi karna */
+        conflicts.push(k); delete rec[k];         /* CONFLICT → server wins */
+      });
+    } else if (entry.createdAt) {
+      /* server ne is record ko offline-edit ke BAAD chhua? (updatedAt wale sheets
+         direct, warna AuditLog ka aakhri UPDATE ts — har DB.update audit karta hai) */
+      var touched = String(row.updatedAt || '');
+      if (!touched) touched = OfflineSync._lastServerTouch(m[1], rec.id, s);
+      if (touched && touched > String(entry.createdAt)) out.stale = true;
+    }
+    payload[m[0]] = rec;
+    if (conflicts.length) {
+      out.conflict = { id: rec.id, fields: conflicts };
+      try { Audit.log('SYNC_CONFLICT', m[1], rec.id, null,
+        { fields: conflicts.join(','), clientId: entry.clientId || '' }, s); } catch (eA) { }
+    }
+    return payload;
+  },
+
+  _lastServerTouch: function (store, id, s) {
+    try {
+      var best = '';
+      DB.all('AuditLog').forEach(function (r) {
+        if (r.action !== 'UPDATE' || r.entity !== store || String(r.entityId) !== String(id)) return;
+        var ts = U.str(r.ts);
+        if (ts > best) best = ts;
+      });
+      return best;
+    } catch (eL) { return ''; }
+  },
+
   process: function (p, s) {
     var queue = p.queue || [];
     var results = [];
@@ -67,6 +123,11 @@ var OfflineSync = {
           var route = ROUTES[entry.action];
           if (!route) throw new Error('Unknown action ' + entry.action);
           var payload = entry.payload || {};
+          /* N9.1 — mergeable update par per-field conflict resolution (pehle merge, phir apply) */
+          var mOut = {};
+          payload = OfflineSync._mergeUpdate(entry.action, payload, entry, mOut, s);
+          if (mOut.stale) out.stale = true;
+          if (mOut.conflict) out.conflict = mOut.conflict;
           payload.token = p.token;
           payload.__session = s;
           payload.offlineId = entry.clientId;

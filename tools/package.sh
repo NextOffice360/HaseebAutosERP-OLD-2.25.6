@@ -16,6 +16,7 @@ python3 tools/build_pdf.py 2>/dev/null || echo "  (PDF guide skip: pip install w
 rm -f "$OUT"
 zip -qr "$OUT" \
   apps-script \
+  docs \
   demo \
   dist-static \
   static-config.json \
@@ -40,4 +41,5 @@ echo "   • release/FIRST-SETUP-GUIDE.html — PEHLE ye padhein (kaun si file, 
 echo "   • tools/ - build, tests, audit (tabs/align), CSV product importer"
 echo "   • release/STATIC-HOSTING-GUIDE.html — static prod deploy guide"
 echo "   • release/product-import-report.html - kya import hua, kya faisla baqi hai"
-echo "   • clearly separated: demo (preview) vs dist-static (prod) vs config (static-config.json + Settings) vs docs (release/)"
+echo "   • docs/ — beginner documentation set (T8): overview, setup, config, environment, permissions, testing, deploy, troubleshooting, rollback, official-links (no secrets)"
+echo "   • clearly separated: demo (preview) vs dist-static (prod) vs config (static-config.json + Settings) vs docs (docs/ + release/)"

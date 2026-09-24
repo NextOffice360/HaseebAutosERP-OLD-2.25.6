@@ -74,6 +74,10 @@ if [ "$FAST" = "1" ]; then
   skip "15. offline sync (idempotent replay, partial fail, chip, auto-flush)" "--fast"
   skip "16. data-aware UI (depOn, invalid-child clear, showWhen, validate)" "--fast"
   skip "17. math/logic audit (exact totals, costing, returns net, FE-BE parity)" "--fast"
+  skip "18. E2E critical journey (fresh DB to close shop, POS, points, udhaar, reports, sync, DOM)" "--fast"
+  skip "19. shared form validation (UI2.validate: highlight+focus+aria, 6 forms)" "--fast"
+  skip "20. settings consume shared (showWhen deps + DT live preview)" "--fast"
+  skip "21. shared table states (load: skeleton+error+Retry, onLoad, reload)" "--fast"
 else
   export LD_LIBRARY_PATH="${LD_LIBRARY_PATH:-/home/user/.chrome-libs/usr/lib/x86_64-linux-gnu}"
   # blank-page error/empty states, shop banner, SHOP_CLOSED gate, setup wizard
@@ -103,6 +107,16 @@ else
   step "16. data-aware UI (depOn, invalid-child clear, showWhen, validate)" node tools/test_data_aware.js
   # N11 — math/logic: authoritative-source exact math + regression (returns/discount/tax/costing/parity)
   step "17. math/logic audit (exact totals, costing, returns net, FE-BE parity)" node tools/test_math_logic.js
+  # N12 — final E2E: fresh DB → open shop → sale/points/udhaar → reports → close → offline sync → DOM journey
+  step "18. E2E critical journey (fresh DB to close shop, POS, points, udhaar, reports, sync, DOM)" node tools/test_e2e_critical.js
+  # T7.3 — shared form validation: ek engine, highlight + focus + aria, msgs barqarar
+  step "19. shared form validation (UI2.validate: highlight+focus+aria, 6 forms)" node tools/test_forms_shared.js
+  # T7.4 — settings shared systems: declarative showWhen + datetime live preview (DT.format)
+  step "20. settings consume shared (showWhen deps + DT live preview)" node tools/test_settings_shared.js
+  # T7.2/W9 — shared table states: skeleton (delayed), error+Retry, onLoad, reload
+  step "21. shared table states (load: skeleton+error+Retry, onLoad, reload)" node tools/test_table_states.js
+  # W9 — Madad/help links + shared PWA.confirm + tooltip sweep
+  step "22. W9 help links + confirm sweep + tooltips (UI2.help, PWA.confirm)" node tools/test_w9_help.js
 fi
 
 echo

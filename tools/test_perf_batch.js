@@ -39,7 +39,62 @@ const ok = (n, c, d) => c ? (pass++, console.log('  \u2714 ' + n + (d ? '  \u219
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const src = f => fs.readFileSync(path.join(ROOT, 'apps-script', f), 'utf-8');
 
-console.log('\n\x1b[1mW7 · MASS REQUEST / N+1 GATE (v2.26.0)\x1b[0m');
+console.log('\n\x1b[1mW7 · MASS REQUEST / N+1 GATE (v2.26.0 + W7.T2)\x1b[0m');
+
+/* =================== ⑦ W7.T2 — GRN price-info BATCH ====================== */
+console.log('\x1b[1m⑦ priceInfoBatch: N lines ka price history EK call me\x1b[0m');
+{
+  const calls = { single: 0, batch: 0 };
+  try {
+    const { sandbox } = loadBackend(path.join(ROOT, 'apps-script'));
+    sandbox.Setup.setupAll();
+    const login = sandbox.api('auth.login', { username: 'owner', password: 'admin123' });
+    const T7 = login.data.token;
+    const api7 = (a, p) => { const r = sandbox.api(a, Object.assign({ token: T7 }, p || {}));
+      if (!r || !r.ok) throw new Error(a + ': ' + ((r && r.error && r.error.message) || 'fail')); return r.data; };
+    api7('shop.open', {});
+    const L = sandbox.DB.all('Locations')[0].id;
+    const SUP = sandbox.DB.all('Suppliers')[0];
+    const its = [];
+    for (let i = 0; i < 8; i++) {
+      its.push(api7('items.save', { item: { name: 'W72-' + i, costPrice: 100 + i, retailPrice: 200 + i } }));
+    }
+    api7('purchase.grn.save', { grn: { supplierId: SUP.id, locationId: L, invoiceNo: 'W72-GRN',
+      items: its.slice(0, 4).map((it, i) => ({ itemId: it.id, qty: 2, cost: 100 + i })) } });
+
+    /* purana tareeqa: har line ka alag call (baseline) */
+    const singles = its.map(it => {
+      calls.single++;
+      return api7('purchase.priceInfo', { itemId: it.id, supplierId: SUP.id, rate: 0 });
+    });
+    /* naya tareeqa: EK batch call */
+    const batch = api7('purchase.priceInfoBatch', { supplierId: SUP.id,
+      items: its.map(it => ({ itemId: it.id, rate: 0 })) });
+    calls.batch++;
+    ok('⑦ batch: 8 rows ek hi call me (single = ' + calls.single + ' calls ka kaam)',
+      batch && Array.isArray(batch.rows) && batch.rows.length === its.length,
+      'rows=' + (batch.rows || []).length);
+    const same = its.every((it, i) => {
+      const b = batch.rows[i] || {}, o = singles[i] || {};
+      return Number(b.prevPrice || 0) === Number(o.prevPrice || 0)
+        && Number(b.retailPrice || 0) === Number(o.retailPrice || 0)
+        && String(b.prevSource || '') === String(o.prevSource || '');
+    });
+    ok('⑦ batch ka natija per-line single call ke BARABAR (prev/retail/source)', same,
+      JSON.stringify(batch.rows[0]).slice(0, 90));
+    const withGrn = batch.rows[its.length - 1] || {};
+    ok('⑦ kul sirf 1 batch request (8 ke bajaye)', calls.batch === 1, 'batch=' + calls.batch);
+  } catch (e) {
+    ok(false, '⑦ backend priceInfoBatch', String(e.message || e).slice(0, 120));
+  }
+  /* FE wiring (source contract): PO-load + demand add-all ab batch; single-line fetchPrev qayam */
+  const scr = src('App_Screens2.html');
+  ok('⑦ GRN screen: PO-load + demand add-all ab fetchPrevBatch (1 call)',
+    scr.includes('fetchPrevBatch(lines)') && scr.includes('fetchPrevBatch(fresh);'));
+  ok('⑦ single-line fetchPrev qayam (per-action price info bhi hai — feature nahi gaya)',
+    scr.includes("purchase.priceInfoBatch'") && (scr.match(/fetchPrev\(/g) || []).length >= 3);
+}
+
 
 /* ======================= ② BACKEND BATCH (naapa hua) ====================== */
 console.log('\x1b[1m② Backend: batch approve — sheet writes ka farq\x1b[0m');

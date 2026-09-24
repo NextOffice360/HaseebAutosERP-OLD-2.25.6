@@ -1,0 +1,20 @@
+
+[1mSAVE ALL (app-wide) — rendered DOM[0m
+  ✔ ① load par Save all button mojood hai lekin chhupa hua
+  ✔ ② switch badalte hi header Save all ZAHIR hua
+  ✔ ②b count badge dikh raha hai (kitni tabdeeliyan)
+  ✔ ③ header Save all ne ASLI backend mein save kiya
+  ✔ ③b save ke baad dirty clear + button dobara chhupa
+  ✔ ④ value wapas palat kar save hui (test idempotent)
+  ✔ ⑤a do sub-tabs mein edits possible (dirty count 2)
+  ✔ ⑤b DONO sub-tabs (stash samet) ek hi Save all se save hue
+  ✔ ⑥ fail hone par dirty BAQI + button ZAHIR (kuch zaya nahi hua)
+  ✔ ⑥b Retry action nazar aa raha hai
+  ✔ ⑦ dobara save karne par sab theek ho gaya (dirty 0)
+  ✔ ⑧ read-only page par Save all nazar nahi aata (jhoota UI nahi)
+  ✔ ⑨ unsaved changes par navigation warning aayi
+  ✔ ⑨b Cancel karne par wahi page raha
+  ✔ ⑩ duplicate submit blocked (3 click = 1 request)
+  ✔ ⑪ zero page errors
+
+[1mSUMMARY:[0m 16 pass · 0 fail · [32mGREEN[0m

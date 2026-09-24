@@ -76,7 +76,10 @@
       </div>
       <nav class="sb-nav" id="sbNav"></nav>
       <div class="sb-foot">
-        <button class="sb-user" id="sbUser" type="button">
+        <!-- v2.30.3 (W9.T2) — in-app Madad/Help: guides + official doc links -->
+        <button class="sb-help" id="sbHelp" type="button"
+                aria-label="Madad / Help — guides aur official docs" title="Madad / Help — guides & docs">❓<span class="sb-txt">Madad</span></button>
+        <button class="sb-user" id="sbUser" type="button" title="Account / user">
           <span class="avatar" id="sbAvatar">U</span>
           <span class="sb-user-meta">
             <strong id="sbUserName">User</strong>
@@ -89,7 +92,7 @@
     <!-- main -->
     <div class="main">
       <header class="topbar">
-        <button class="icon-btn sb-toggle" id="sbToggle" type="button" aria-label="Menu">☰</button>
+        <button class="icon-btn sb-toggle" id="sbToggle" type="button" aria-label="Menu" title="Menu (sidebar)">☰</button>
         <!-- v2.6 QA — desktop ke liye collapse toggle (sidebar hamesha nazar rahe) -->
         <button class="icon-btn sb-rail" id="sbRail" type="button"
                 aria-label="Sidebar collapse / expand" title="Sidebar collapse / expand (Ctrl+B)">⇤</button>

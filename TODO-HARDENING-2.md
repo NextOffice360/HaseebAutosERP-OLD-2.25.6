@@ -242,8 +242,16 @@ Settings mein Notifications controls + sab action sites ki adoption **baqi hai**
       autoFlush OFF/ON, 0 errors). **Wired as step 15.**
 - [x] Regression: release_flow 62/0 · release_ui 29/0 · saveall_pages 16/0 · notifications 11/0 ·
       busy_coverage 17/0 · modals_close 91/0 · pos_multi 23/0 · pwa_overlays 124/0 · --fast GREEN.
-- [ ] Baqi (N9.1, chhota): server-side conflict resolution (ab last-write; per-field merge N11 ke baad)
-      + retry backoff (ab 60s fixed — backoff settings).
+- [x] **N9.1 ✅ DONE (2026-09-24, v2.30.2):** server-side conflict resolution + retry backoff:
+      `OfflineSync._mergeUpdate` — `__base` (form ka asli-loaded record) ke sath **PER-FIELD 3-way merge**
+      (server==base → client value; incoming==server → skip; teeno alag → CONFLICT → server wins +
+      `results[].conflict` + `SYNC_CONFLICT` audit); bina `__base` → **stale flag** (server aakhri touch
+      AuditLog se > entry.createdAt) — blind last-write khatam. Stamps: items form (App_Screens legacy +
+      App_Masters UI2), customer/supplier form (App_Masters). **Backoff:** `sync.backoffBase` setting (def 60s)
+      → fail streak par 60→120→240…max 600s; kamyab par reset; flushQueue conflict toast (key `sync.conflict`).
+      Gate `test_offline_sync.js` **17/0** (⑫ a–f naye). Regression: data_aware 9/0 · saveall_pages 16/0 ·
+      partial_save 48/0 · supplier_autofill 19/0 · modals_close GREEN · e2e_critical 22/0 · math_logic 21/0 ·
+      notifications 11/0.
 
 ### N10 — Data-aware / dependency-aware UI  ✅ DONE (2026-09-24 — neeche detail; AI provider conditional UI N7 mein ho chuka)
 
@@ -342,13 +350,22 @@ Settings mein Notifications controls + sab action sites ki adoption **baqi hai**
       release_ui 29/0 · inventory_all 40/0 · saveall_pages 16/0 · supplier_autofill 19/0 · save_all 24/0 · partial_save 48/0 ·
       data_aware 9/0 · math_logic 21/0 · validate_release `--fast` GREEN.
 
-### N12 — Final regression audit  🔴 (aap ke message ka exact checklist)
-- [ ] Fresh setup → seed → setup wizard → login → user/shop → open shop → customer → products → items → inventory →
-      POS → customer points → sale → payment → reports → close shop → settings → Save → Save All → notifications →
-      offline/online sync → retry/error handling → demo visibility → **build → ZIP**.
-- [ ] Poora end-to-end: fresh setup → seed → wizard → login → user/shop → open shop → customer → products → items →
-      inventory → POS → points → sale → payment → reports → close shop → settings → Save → Save All → notifications →
-      offline/online sync → retry/error → demo visibility → build → ZIP. Bilkul aakhir mein.
+### N12 — Final regression audit  ✅ DONE (aap ke message ka exact checklist)
+- [x] **FIX #5 — overpaid tender double-count** (`Sales.gs` + gate se pakra gaya): 1300 cash × 1296 ka bill → receipt
+      tendered 1300 par post hota tha → customer ledger −4 (jhoota advance) + drawer expected +4 (change wapas ja chuki).
+      Ab receipt sirf **APPLIED** amount par (multi-tender sequential remaining pool); applied=0 (poora-discount bill par
+      token tender) → receipt/redeem skip, sale phir bhi complete; LOYALTY redeem points bhi applied hisab se pro-rate.
+      N11 gate ne ye regression PAKRA (21/0 → guard ke baad wapas GREEN) — mask nahi kiya.
+- [x] Gate `tools/test_e2e_critical.js` **22/0 GREEN** = validate_release **step 18** (`--fast` skips) — ek TASALSUL
+      journey: ①fresh setup+seed ②login/session shape ③open shop (opening cash) ④customer ⑤items+GRN (stock+avg) ⑥POS
+      sale exact totals + points EARN + applied-receipt ⑦points REDEEM (no double receipt) ⑧udhaar PARTIAL (ledger
+      debit=total) + payment → balance 0 ⑨dashboard/sales/day-report ⑩close shop (variance 0) + band dukan par sale
+      block ⑪settings persist ⑫offline sync (apply → replay DUPLICATE → fail structured) | DOM: ⑬dashboard KPIs ⑭9
+      critical screens render ⑮POS cart total + Save All → backend ⑯zero page errors.
+- [x] Regression ALL GREEN: release_flow 62/0 · points_flow 40/0 · pay_ledger 48/0 · pos_multi 23/0 · partial_save 48/0 ·
+      saveall_pages 16/0 · save_all 24/0 · supplier_autofill 19/0 · modals_close 91/0 · data_aware 9/0 · release_ui 29/0 ·
+      inventory_all 40/0 · offline_sync 11/0 · math_logic 21/0 · e2e_critical 22/0 · validate_release `--fast` GREEN.
+- [x] Build/ZIP ka aakhri qadam T10 release me (version bump ke sath) — packaging `tools/package.sh` + full validate.
 
 ---
 

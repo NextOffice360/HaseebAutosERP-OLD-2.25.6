@@ -189,6 +189,15 @@
   .toast.ok{background:var(--ok);color:#04120a}
   .toast.err{background:var(--err);color:#fff}
   .toast.warn{background:var(--warn);color:#1a1206}
+  /* v2.30.3 (W9) — shared confirm overlay */
+  .pwa-cf{position:fixed;inset:0;z-index:90;background:rgba(0,0,0,.45);display:flex;
+    align-items:center;justify-content:center;padding:16px}
+  .pwa-cf-box{background:var(--card,#fff);color:var(--ink,#111);border-radius:14px;
+    padding:16px;max-width:420px;width:100%;box-shadow:0 12px 40px rgba(0,0,0,.4)}
+  .pwa-cf-msg{font-size:14.5px;font-weight:600;line-height:1.45;margin-bottom:14px;white-space:pre-wrap}
+  .pwa-cf-row{display:flex;gap:8px;justify-content:flex-end}
+  .pwa-cf-row .btn{min-height:44px;min-width:64px}
+
   .hidden{display:none !important}
   .right{text-align:right}
   .muted{color:var(--muted)}
@@ -644,6 +653,33 @@ var PWA = (function () {
     clearTimeout(toastT); toastT = setTimeout(function () { t.className = 'toast ' + (kind || ''); }, 2600);
   }
   function haptic(ok){ try{ if(navigator.vibrate) navigator.vibrate(ok?10:[20,20,20]); }catch(e){} }
+
+  /* v2.30.3 (W9) — SHARED confirm dialog: native confirm() ki jagah (sandboxed
+     WebView me native dialog block/chup ho sakta hai). Non-blocking overlay —
+     promise deta hai; opts.danger par red button. Esc/backdrop = cancel. */
+  function confirm(msg, opts) {
+    opts = opts || {};
+    return new Promise(function (res) {
+      var ok = el('button', { class: 'btn sm ' + (opts.danger ? 'danger' : 'primary'), text: opts.okText || 'OK' });
+      var no = el('button', { class: 'btn sm ghost', text: opts.noText || 'Cancel' });
+      var box = el('div', { class: 'pwa-cf', role: 'alertdialog', 'aria-modal': 'true', 'aria-label': 'Confirm' }, [
+        el('div', { class: 'pwa-cf-box' }, [
+          el('div', { class: 'pwa-cf-msg', text: String(msg || '') }),
+          el('div', { class: 'pwa-cf-row' }, [no, ok])
+        ])
+      ]);
+      function done(v) { try { box.remove(); } catch (e) { } document.removeEventListener('keydown', onKey, true); res(v); }
+      function onKey(e) { if (e.key === 'Escape') { e.stopPropagation(); done(false); } }
+      ok.onclick = function () { done(true); };
+      no.onclick = function () { done(false); };
+      box.addEventListener('click', function (e) { if (e.target === box) done(false); });
+      document.body.appendChild(box);
+      document.addEventListener('keydown', onKey, true);
+      try { ok.focus(); } catch (e) { }
+      try { if (navigator.vibrate) navigator.vibrate(10); } catch (e) { }
+    });
+  }
+
 
   /* ------------------------------ storage -------------------------------- */
   function get(k, d) {
@@ -1627,7 +1663,7 @@ var PWA = (function () {
 
   return {
     can: can, field: field, applyFields: applyFields,
-    boot: boot, call: call, api: call, toast: toast, el: el, $: $, money: money, haptic:haptic,
+    boot: boot, call: call, api: call, toast: toast, el: el, $: $, money: money, haptic:haptic, confirm: confirm,
     run: run, runStats: runStats, get _features() { return _features; },
     fail: fail, errBox: errBox, errKind: errKind, errText: errText, errStats: errStats,
     layerVisible: layerVisible, layerReport: layerReport, sweepStale: sweepStale,
