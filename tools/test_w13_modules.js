@@ -166,6 +166,51 @@ const src = f => fs.readFileSync(path.join(ROOT, 'apps-script', f), 'utf-8');
       !pcs.err && Number(pcs.q) === 12 && Number(pcs.c) === 250 && /3,000/.test(pcs.amt), JSON.stringify(pcs));
 
     ok('\u2468 Zero page errors', errs.length === 0, errs.length ? errs[0] : 'clean');
+
+    /* ---------------- PART3: T13.2 \u2014 B\u00a711 supplier price signals ---------------- */
+    console.log('\n  \x1b[1mPART 3 \u2014 T13.2 B\u00a711 price signals (real GRN data)\x1b[0m');
+    const mas = src('App_Masters.html');
+    ok('\u2469 Source: supplierPriceSignals route + Price signals tab (sirf SUPPLIER par)',
+      /supplierPriceSignals: function \(p, s\) \{/.test(src('Purchase.gs'))
+      && /'purchase\.supplierPriceSignals'/.test(src('Code.gs'))
+      && mas.includes("id: 'prices'") && mas.includes("...(type === 'SUPPLIER' ? [{"),
+      'Purchase.gs + Code.gs + App_Masters');
+
+    /* in-browser: 2 GRN seed (100 \u2192 120 = +20%) \u2192 route truth + tab DOM */
+    const sig = await (async () => {
+      return page.evaluate(async () => {
+        await App.go('parties', { tab: 'suppliers' }); await new Promise(r => setTimeout(r, 1500));
+        const sup = await API.call('suppliers.save', { supplier: { name: 'Gate Signals Supplier', phone: '0300-111222' } });
+        const it = await API.call('items.save', { item: { name: 'Gate Signal Item', code: 'GSI-001', costPrice: 100, retailPrice: 150, unit: 'PCS' } });
+        await API.call('purchase.grn.save', { grn: { supplierId: sup.id, locationId: App.state.locationId, items: [{ itemId: it.id, code: it.code, name: it.name, qty: 10, cost: 100 }] } });
+        await API.call('purchase.grn.save', { grn: { supplierId: sup.id, locationId: App.state.locationId, items: [{ itemId: it.id, code: it.code, name: it.name, qty: 10, cost: 120 }] } });
+        const res = await API.call('purchase.supplierPriceSignals', { supplierId: sup.id });
+        /* Suppliers tab par jao (list pehle CUSTOMER tab par hoti hai) */
+        const tabBtn = Array.from(document.querySelectorAll('#view button')).find(x => (x.textContent || '').trim() === 'Suppliers');
+        if (tabBtn) tabBtn.click();
+        await App.refresh(); await new Promise(r => setTimeout(r, 1800));
+        const supRow = Array.from(document.querySelectorAll('tr')).find(tr => /Gate Signals Supplier/.test(tr.textContent || ''));
+        if (!supRow) return { err: 'supplier row nahi mili', route: res };
+        supRow.click(); await new Promise(r => setTimeout(r, 1200));
+        const tab = Array.from(document.querySelectorAll('button, [role="tab"]')).find(b => /Price signals/i.test(b.textContent || ''));
+        if (!tab) return { err: 'Price signals tab nahi mila', route: res };
+        tab.click(); await new Promise(r => setTimeout(r, 1400));
+        const bodyTxt = (document.querySelector('.offcanvas, [class*="drawer"], body') || {}).innerText || '';
+        return {
+          route: res, tabFound: true,
+          hasRow: /GSI-001/.test(bodyTxt), hasUp: /\+20%/.test(bodyTxt) || /\u25b2/.test(bodyTxt)
+        };
+      });
+    })();
+    ok('\u2469a Route truth: 100\u2192120 GRN par signal (up +20%, prev 100 / last 120)',
+      sig && sig.route && sig.route.rows && sig.route.rows.length === 1
+      && sig.route.rows[0].direction === 'up' && sig.route.rows[0].changePct === 20
+      && sig.route.rows[0].prevRate === 100 && sig.route.rows[0].lastRate === 120,
+      sig && sig.route && sig.route.rows && sig.route.rows[0] ? JSON.stringify(sig.route.rows[0]) : JSON.stringify(sig).slice(0, 90));
+    ok('\u2469b Rendered DOM: Price signals tab me item + rates + up-badge', sig && !sig.err && sig.hasRow && sig.hasUp,
+      sig && (sig.err || 'row+badge OK'));
+
+    ok('\u2469c Zero page errors (PART3 ke baad bhi)', errs.length === 0, errs.length ? errs[0] : 'clean');
   } catch (e) {
     ok('PART2 browser flow', false, String(e && e.message).slice(0, 110));
   } finally { await browser.close(); }

@@ -518,6 +518,55 @@ var Purchase = {
   },
 
   /** Supplier statement — ledger with running balance (reports ke liye) */
+  /* v2.30.4 (W13/T13.2 · B§11) — supplier ke PRICE SIGNALS (real GRN data only):
+     har item ki aakhri 2 GRN rates (is supplier ki) — change % + direction.
+     "Mock" nahi: GRN/GRNItems sheets se hi nikalta hai, jaise GRN line
+     prevPrice strip (SUPPLIER prevSource). Sab se baray variation pehle. */
+  supplierPriceSignals: function (p, s) {
+    Auth.require(s, 'suppliers.view');
+    var id = (p || {}).supplierId;
+    if (!id) throw new Error('Supplier chahiye');
+    var items = {};
+    DB.all('Items').forEach(function (i) { items[i.id] = i; });
+    /* supplier ki GRN lines (posted only, purani → nayi) */
+    var grnOk = {};
+    DB.all('GRN').forEach(function (g) {
+      if (g.supplierId === id && U.str(g.status) !== 'VOID') grnOk[g.id] = g;
+    });
+    var per = {};   /* itemId → [{rate, date, grnNo}] */
+    DB.all('GRNItems').forEach(function (r) {
+      var g = grnOk[r.grnId];
+      if (!g) return;
+      var rate = U.num(r.cost, 0);
+      if (rate <= 0) return;
+      (per[r.itemId] = per[r.itemId] || []).push({
+        rate: rate, date: g.date || '', grnNo: g.grnNo || ''
+      });
+    });
+    var rows = [];
+    Object.keys(per).forEach(function (itemId) {
+      var arr = per[itemId];
+      arr.sort(function (a, b) { return String(a.date).localeCompare(String(b.date)); });
+      if (arr.length < 2) return;                     /* signal ke liye 2 rates chahiye */
+      var last = arr[arr.length - 1], prev = arr[arr.length - 2];
+      if (U.num(last.rate) === U.num(prev.rate)) return;  /* flat = signal nahi */
+      var chg = U.round(U.num(last.rate) - U.num(prev.rate), 2);
+      var pct = prev.rate ? U.round((chg / U.num(prev.rate)) * 100, 1) : 0;
+      var it = items[itemId] || {};
+      rows.push({
+        itemId: itemId, code: it.code || '', name: it.name || itemId,
+        lastRate: U.num(last.rate), lastDate: last.date, lastGrnNo: last.grnNo,
+        prevRate: U.num(prev.rate), prevDate: prev.date, prevGrnNo: prev.grnNo,
+        change: chg, changePct: pct,
+        direction: chg > 0 ? 'up' : 'down'
+      });
+    });
+    rows.sort(function (a, b) {
+      return Math.abs(b.changePct) - Math.abs(a.changePct) || String(a.name).localeCompare(String(b.name));
+    });
+    return { rows: rows.slice(0, 20), total: rows.length, asOf: U.iso() };
+  },
+
   supplierStatement: function (p, s) {
     Auth.require(s, 'suppliers.view');
     var id = (p || {}).supplierId;

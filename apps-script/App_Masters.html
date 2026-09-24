@@ -834,6 +834,41 @@ function partyDetail(type, p) {
               }));
           }},
           { id: 'custom', label: 'Extra fields', icon: '🧩', render: c => renderCustom(c, p, type) },
+          /* v2.30.4 (W13/T13.2 · B§11) — supplier PRICE SIGNALS (real GRN rates only) */
+          ...(type === 'SUPPLIER' ? [{
+            id: 'prices', label: 'Price signals', icon: '📈', render: c => {
+              const host = h('div');
+              c.appendChild(h('div', { class: 'ui2-block', style: { padding: '10px 12px', marginBottom: '10px' } },
+                h('b', { style: { fontSize: '12.5px' } }, '📈 Rate variation — is supplier ki pichhli GRN rates (asli data)'),
+                h('div', { class: 'muted', style: { fontSize: '10.8px', marginTop: '3px' } },
+                  'Item ki aakhri 2 GRN rates ka muqabla · sab se zyada farq pehle')));
+              c.appendChild(host);
+              API.call('purchase.supplierPriceSignals', { supplierId: p.id }, { offlineFallback: () => ({ rows: [] }) })
+                .then(res => {
+                  host.innerHTML = '';
+                  const rows = (res && res.rows) || [];
+                  if (!rows.length) {
+                    host.appendChild(h('div', { class: 'empty' },
+                      'Koi rate-farq nahi mila — (2 GRN rates wale items hi signal dete hain)'));
+                    return;
+                  }
+                  host.appendChild(UI2.table({
+                    screen: 'supprices_' + p.id, rows: rows, height: '44vh', exportName: 'price-signals',
+                    columns: [
+                      { key: 'code', label: 'Code' },
+                      { key: 'name', label: 'Item' },
+                      { key: 'prevRate', label: 'Pichhli rate', num: true, render: r => fmt.money(r.prevRate) },
+                      { key: 'lastRate', label: 'Aakhri rate', num: true, render: r => fmt.money(r.lastRate) },
+                      { key: 'changePct', label: 'Farq', render: r => h('span', { class: 'badge ' + (r.direction === 'up' ? 'err' : 'ok') },
+                        (r.direction === 'up' ? '▲ +' : '▼ ') + r.changePct + '%') },
+                      { key: 'prevDate', label: 'Pehle', render: r => fmt.date(r.prevDate) },
+                      { key: 'lastDate', label: 'Aakhri', render: r => fmt.date(r.lastDate) }
+                    ]
+                  }));
+                })
+                .catch(e => { host.innerHTML = ''; host.appendChild(h('div', { class: 'empty' }, '⚠ ' + (e.message || 'load nahi hua'))); });
+            }
+          }] : []),
           { id: 'actions', label: 'Actions', icon: '⚡', render: c => {
             c.appendChild(h('div', { class: 'f-grid' },
               type === 'CUSTOMER'

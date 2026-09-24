@@ -713,7 +713,8 @@ const LAST_JOB_RUN = {};
 
 const PORDERS = [];
 /* v2.24.2 — purchase returns (real backend Purchase.gs ke route naam se) */
-const PRETURNS = [
+const _GRN_LINES = {};   /* v2.30.4 (W13/T13.2) — demo GRN lines (price signals) */
+  const PRETURNS = [
   { id: 'PRT1', returnNo: 'PRET-SDQ-01001', date: new Date(Date.now() - 9 * 864e5).toISOString().slice(0, 10),
     grnId: 'GRN1', supplierId: SUPPLIERS[0].id, locationId: 'LOC-SDQ', total: 4200,
     reason: 'Damaged in transit', status: 'POSTED' }
@@ -1599,7 +1600,44 @@ window.MockAPI = {
     /* v2.9.1 §11 — doosre supplier ki GRN taake demo mein muqabla nazar aaye */
     { id: 'GRN2', grnNo: 'GRN-SDQ-01002', date: new Date(Date.now() - 18 * 864e5).toISOString().slice(0, 10), poId: '', supplierId: SUPPLIERS[1].id, locationId: 'LOC-SDQ', invoiceNo: 'INV-9912', invoiceDate: '', subtotal: 27000, tax: 0, freight: 0, total: 27000, status: 'POSTED', notes: '' }
   ],
-  'purchase.grn.save': p => Object.assign({ id: 'GRN' + Date.now(), status: 'POSTED' }, p.grn || p),
+  /* v2.30.4 (W13/T13.2) — GRN lines demo-store: supplier price signals isi se
+     nikalte hain (session ke GRNs, asli gs logic ka mirror) */
+  'purchase.grn.save': p => {
+    const g = Object.assign({ id: 'GRN' + Date.now(), status: 'POSTED' }, p.grn || p);
+    const sid = g.supplierId || '';
+    if (sid && Array.isArray(g.items)) {
+      (_GRN_LINES[sid] = _GRN_LINES[sid] || []).push(...g.items.map(it => ({
+        itemId: it.itemId || '', code: it.code || '', name: it.name || '',
+        rate: Number(it.cost) || 0, date: (g.date || '').slice(0, 10)
+      })));
+    }
+    return g;
+  },
+  'purchase.supplierPriceSignals': p => {
+    const arr = _GRN_LINES[p.supplierId] || [];
+    const per = {};
+    arr.forEach(l => {
+      if (l.rate <= 0) return;
+      (per[l.itemId] = per[l.itemId] || []).push(l);
+    });
+    const rows = [];
+    Object.keys(per).forEach(itemId => {
+      const list = per[itemId].slice().sort((a, b) => String(a.date).localeCompare(String(b.date)));
+      if (list.length < 2) return;
+      const last = list[list.length - 1], prev = list[list.length - 2];
+      if (last.rate === prev.rate) return;
+      const change = Math.round((last.rate - prev.rate) * 100) / 100;
+      rows.push({
+        itemId, code: last.code, name: last.name,
+        lastRate: last.rate, lastDate: last.date,
+        prevRate: prev.rate, prevDate: prev.date,
+        change, changePct: prev.rate ? Math.round((change / prev.rate) * 1000) / 10 : 0,
+        direction: change > 0 ? 'up' : 'down'
+      });
+    });
+    rows.sort((a, b) => Math.abs(b.changePct) - Math.abs(a.changePct));
+    return { rows: rows.slice(0, 20), total: rows.length, asOf: new Date().toISOString() };
+  },
   'purchase.returns.list': () => PRETURNS,
   'purchase.return.save': p => p.record || p,
   /* v2.24.2 — Purchase ▸ Returns screen ab inhi naam se call karti hai (jaise
@@ -1653,7 +1691,13 @@ window.MockAPI = {
     let rows = SUPPLIERS.filter(s => !p.q || norm(s.name + s.phone).includes(norm(p.q)));
     return { rows, total: rows.length };
   },
-  'suppliers.save': p => Object.assign({ id: 'SUP' + Date.now() }, p.supplier || p),
+  /* v2.30.4 — demo store: save par list mein bhi aa jaye (pehle sirf echo tha) */
+  'suppliers.save': p => {
+    const rec = Object.assign({ id: 'SUP' + Date.now() }, p.supplier || p);
+    const i = (SUPPLIERS || []).findIndex(x => x.id === rec.id);
+    if (i > -1) SUPPLIERS[i] = Object.assign(SUPPLIERS[i], rec); else SUPPLIERS.push(rec);
+    return rec;
+  },
   'suppliers.ledger': p => MockAPI['customers.ledger'](p),
 
 

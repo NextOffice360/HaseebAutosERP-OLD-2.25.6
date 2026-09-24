@@ -434,6 +434,7 @@ var ROUTES = {
   'purchase.po.get': function (p, s) { return Purchase.getPO(p.id || p.poId || p.grnId, s); },
   'purchase.grn.get': function (p, s) { return Purchase.getGRN(p.id || p.poId || p.grnId, s); },
   'purchase.supplierStatement': function (p, s) { return Purchase.supplierStatement(p, s); },
+  'purchase.supplierPriceSignals': function (p, s) { return Purchase.supplierPriceSignals(p, s); },
   'purchase.po.list': function (p, s) { return Purchase.listPO(p, s); },
   'purchase.po.save': function (p, s) { return Purchase.savePO(p.po || p, s); },
   'purchase.po.approve': function (p, s) { return Purchase.approvePO(p.id, s); },
