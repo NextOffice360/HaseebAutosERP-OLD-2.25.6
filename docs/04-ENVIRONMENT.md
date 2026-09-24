@@ -17,7 +17,7 @@ clasp open                        # editor
 | Variable | Kab | Kahan |
 |----------|-----|-------|
 | `GITHUB_TOKEN` | push ke waqt | sirf command env: `GITHUB_TOKEN=<APNI-PAT-YAHAN> bash tools/git_push.sh` — script file me NAHI likhti |
-| `LD_LIBRARY_PATH` | test gates (puppeteer) | `export LD_LIBRARY_PATH=/home/user/.chrome-libs/usr/lib/x86_64-linux-gnu` |
+| `LD_LIBRARY_PATH` | test gates (puppeteer) | `export LD_LIBRARY_PATH=/home/user/.cache/chrome-libs/usr/lib/x86_64-linux-gnu` |
 | `API_URL` | static build | ya `static-config.json` me `apiUrl` |
 
 ## Static hosting / PWA

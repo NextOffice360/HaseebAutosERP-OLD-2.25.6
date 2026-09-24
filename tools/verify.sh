@@ -90,7 +90,7 @@ FAST_GATES=(check schema logic e2e routes route-audit settings-defs backend-perf
 #   ROOT KE BAGAIR CHROME: sandbox mein apt-get lock denied hota hai (uid 1000).
 #   Is liye .deb files download kar ke `dpkg -x` se SIRF EXTRACT karte hain
 #   (install nahi) aur LD_LIBRARY_PATH se Chrome ko wahan dekhate hain.
-#   Ek dafa hota hai; phir cache ( /home/user/.chrome-libs, ~14MB ) reuse hota hai.
+#   Ek dafa hota hai; phir cache ( /home/user/.cache/chrome-libs, ~14MB ) reuse hota hai.
 if [ -d node_modules/puppeteer ]; then
   # NOTE: $HOME har environment mein set nahi hota (cron / background runner) —
   # is liye fallback zaroori hai, warna chrome libs nahi miltin aur layout

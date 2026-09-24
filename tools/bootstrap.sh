@@ -8,7 +8,7 @@
 # Platform ka niyam: workspace ki FILES save hoti hain, magar ye cheezein
 # save NAHI hoti (har naye session mein gayab): node_modules, .cache, .npm,
 # chalte hue servers/processes, /tmp, environment variables (LD_LIBRARY_PATH),
-# aur Chromium ki system libraries (/home/user/.chrome-libs).
+# aur Chromium ki system libraries (/home/user/.cache/chrome-libs).
 # Yahi "data loss / reset" dikhta hai. Is script se SAB wapas aa jata hai —
 # project ka asli data (apps-script, tools, demo, release, docs, specs) kabhi
 # nahi jata, wo workspace snapshot mein mojood hota hai.
@@ -18,7 +18,7 @@ cd "$(dirname "$0")/.."
 ROOT="$(pwd)"
 CHECK=0
 [ "${1:-}" = "--check" ] && CHECK=1
-CHROME_LIB="/home/user/.chrome-libs/usr/lib/x86_64-linux-gnu"
+CHROME_LIB="/home/user/.cache/chrome-libs/usr/lib/x86_64-linux-gnu"
 
 say() { printf '%s\n' "$*"; }
 hdr() { say ""; say "── $* ──────────────────────────────────────────────"; }

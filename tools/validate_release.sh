@@ -79,7 +79,7 @@ if [ "$FAST" = "1" ]; then
   skip "20. settings consume shared (showWhen deps + DT live preview)" "--fast"
   skip "21. shared table states (load: skeleton+error+Retry, onLoad, reload)" "--fast"
 else
-  export LD_LIBRARY_PATH="${LD_LIBRARY_PATH:-/home/user/.chrome-libs/usr/lib/x86_64-linux-gnu}"
+  export LD_LIBRARY_PATH="${LD_LIBRARY_PATH:-/home/user/.cache/chrome-libs/usr/lib/x86_64-linux-gnu}"
   # blank-page error/empty states, shop banner, SHOP_CLOSED gate, setup wizard
   step "3. UI states + shop banner + wizard (rendered DOM)" node tools/test_release_ui.js
   step "4. busy/duplicate-submit coverage (rendered DOM)" node tools/test_busy_coverage.js

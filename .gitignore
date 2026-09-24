@@ -27,3 +27,10 @@ desktop.ini
 # ---- scratch (verification logs rehte hain, magar probes/junk nahi) ----
 tmp/probe_*.js
 tmp/dbg*.js
+
+# v2.30.4 — future ZIPs git me track na hon (.git 54MB history se bara hai);
+# zip workspace tree me banti hai (snapshot me ek dafa), history recoverable.
+# NOTE: ab zip tracked NAHI → tree se delete kiya to git se recover NAHI hoga.
+# release/archive/ ki "≥3 releases mehfooz" rule ab tree par lagti hai.
+release/*.zip
+release/archive/*.zip

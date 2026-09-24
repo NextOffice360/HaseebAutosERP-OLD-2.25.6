@@ -87,9 +87,9 @@ karta hai ke kaunsi file kahan hai. Sirf status chahiye: `bash tools/bootstrap.s
 | **Project files** (`apps-script/`, `tools/`, `demo/`, `dist-static/`, `release/`, `specs/`, docs) | ✅ **rehti hain** (workspace snapshot) | — |
 | **Aap ke uploads** (`/home/user/uploads/`) | ✅ rehte hain | — |
 | `node_modules/` (jsdom, puppeteer…) | ❌ gayab | `bash tools/bootstrap.sh` (ya `npm install --no-audit --no-fund`) |
-| `/home/user/.chrome-libs` (Chromium system libs) | ❌ gayab | `python3 tools/fix_chrome_libs.py` (bootstrap khud karta hai) |
+| `/home/user/.cache/chrome-libs` (Chromium system libs) | ❌ gayab | `python3 tools/fix_chrome_libs.py` (bootstrap khud karta hai) |
 | Chalte hue processes (demo server, verify) | ❌ band | bootstrap server shuru karta hai |
-| `LD_LIBRARY_PATH` environment variable | ❌ khatam | har browser-gate se pehle: `export LD_LIBRARY_PATH=/home/user/.chrome-libs/usr/lib/x86_64-linux-gnu` |
+| `LD_LIBRARY_PATH` environment variable | ❌ khatam | har browser-gate se pehle: `export LD_LIBRARY_PATH=/home/user/.cache/chrome-libs/usr/lib/x86_64-linux-gnu` |
 | `tmp/` logs (verification logs) | ✅ rehte hain | — |
 | Release zips (`release/`, `release/archive/`) | ✅ rehte hain | — |
 

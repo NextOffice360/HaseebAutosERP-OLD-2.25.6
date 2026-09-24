@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-fix_chrome_libs.py — ${CHROME_LIBS:-/home/user/.chrome-libs} ke andar missing
+fix_chrome_libs.py — ${CHROME_LIBS:-/home/user/.cache/chrome-libs} ke andar missing
 SONAME symlinks dobara banao.
 
 ----------------------------------------------------------------------------
@@ -26,7 +26,7 @@ import pathlib
 import re
 import sys
 
-LIBS = pathlib.Path(os.environ.get("CHROME_LIBS", "/home/user/.chrome-libs"))
+LIBS = pathlib.Path(os.environ.get("CHROME_LIBS", "/home/user/.cache/chrome-libs"))
 DIR = LIBS / "usr" / "lib" / "x86_64-linux-gnu"
 PAT = re.compile(r"^(?P<base>lib[^/]+?)\.so(?:\.(?P<ver>[0-9][0-9.]*))?$")
 

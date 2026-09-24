@@ -48,7 +48,7 @@ for d in haseeb-autos/release haseeb-autos/release/archive haseeb-autos/demo has
 done
 
 hdr "Reset par gayab hone wali cheezein (ye 'data loss' nahi — ye platform ka niyam hai)"
-for d in haseeb-autos/node_modules .chrome-libs .cache .npm; do
+for d in haseeb-autos/node_modules .cache/chrome-libs .cache .npm; do
   if [ -e "$WS/$d" ]; then printf "  ✔ %-22s mojood (%s MB)\n" "$d" "$(size_mb "$WS/$d")"
   else printf "  ✖ %-22s GAYAB — 'bash tools/bootstrap.sh' se wapas aata hai\n" "$d"; fi
 done

@@ -10,7 +10,7 @@ Ye sirf "page khulta hai" nahi dekhta — **backend exact-math** (paisa ke sawal
 bash tools/validate_release.sh --fast
 
 # poora (release ke waqt — ek foreground call):
-export LD_LIBRARY_PATH=/home/user/.chrome-libs/usr/lib/x86_64-linux-gnu
+export LD_LIBRARY_PATH=/home/user/.cache/chrome-libs/usr/lib/x86_64-linux-gnu
 bash tools/validate_release.sh
 ```
 

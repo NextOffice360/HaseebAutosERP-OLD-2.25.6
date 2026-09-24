@@ -22,7 +22,7 @@ import pathlib
 import urllib.request
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-LIBS = pathlib.Path(os.environ.get("CHROME_LIBS", "/home/user/.chrome-libs"))
+LIBS = pathlib.Path(os.environ.get("CHROME_LIBS", "/home/user/.cache/chrome-libs"))
 SUITE = os.environ.get("DEB_SUITE", "trixie")
 CHROME = pathlib.Path(os.environ.get(
     "CHROME_BIN", "/home/user/.cache/puppeteer/chrome/linux-148.0.7778.97/chrome-linux64/chrome"))
