@@ -2495,7 +2495,37 @@ window.MockAPI = {
     customers: CUSTOMERS.map(c => ({ id: c.id, code: c.code, name: c.name, phone: c.phone, typeId: c.customerTypeId, bal: c.balance })),
     settings: SETTINGS, locations: LOCATIONS, locationId: 'LOC-SDQ', ts: new Date().toISOString(), itemCount: ITEMS.length
   }),
-  'offline.sync': () => ({ received: 0, succeeded: 0, failed: 0, results: [] }),
+  /* v2.30.0 (N9) — asli offline sync mirror (OfflineSync.gs jaisa): har entry
+     asli MockAPI route par chalti hai, OfflineQueue ledger generic dedupe karta
+     hai (DONE clientId dobara NAHI chalta) — demo bhi production jaisa hi. */
+  'offline.sync': p => {
+    const queue = p.queue || [];
+    if (!window.__OFF_LEDGER) window.__OFF_LEDGER = [];
+    const results = queue.map(entry => {
+      const out = { clientId: entry.clientId, ok: true };
+      if (window.__OFF_LEDGER.some(r => String(r.clientId) === String(entry.clientId) && r.status === 'DONE')) {
+        out.duplicate = true; return out;
+      }
+      try {
+        const fn = MockAPI[entry.action];
+        if (!fn) throw new Error('Unknown action ' + entry.action);
+        const payload = Object.assign({}, entry.payload || {}, { offlineId: entry.clientId, source: 'OFFLINE' });
+        out.data = fn(payload);
+        window.__OFF_LEDGER.push({ id: 'OFF' + Math.random().toString(36).slice(2, 8),
+          clientId: entry.clientId, action: entry.action, status: 'DONE',
+          receivedAt: entry.createdAt || new Date().toISOString(), processedAt: new Date().toISOString() });
+      } catch (e) {
+        out.ok = false; out.error = String(e.message || e);
+        window.__OFF_LEDGER.push({ id: 'OFF' + Math.random().toString(36).slice(2, 8),
+          clientId: entry.clientId, action: entry.action, status: 'FAILED', error: out.error,
+          receivedAt: entry.createdAt || new Date().toISOString(), processedAt: new Date().toISOString() });
+      }
+      return out;
+    });
+    return { received: queue.length,
+      succeeded: results.filter(r => r.ok).length,
+      failed: results.filter(r => !r.ok).length, results };
+  },
 
   'utils.stats': () => ({ Items: ITEMS.length, Sales: SALES.length, SaleItems: SALES.length * 2, Customers: CUSTOMERS.length,
     Suppliers: SUPPLIERS.length, Stock: ITEMS.length * 3, StockMoves: 400, GRN: 12, PurchaseOrders: 8, Payments: 320, AuditLog: 1500 }),

@@ -653,6 +653,9 @@ var CONFIG_DEFS = [
           hint: 'External frontends is key ko header/payload mein bhejenge. Server-side hashed, frontend par •••• dikhega. Khali = no extra key (auth token hi kafi).' , sec: { title: '② External access', tone: 'warn' }}
       ]},
       { id: 'offline', label: 'Offline & self-hosted', icon: 'archive', fields: [
+        /* v2.30.0 (N9) — background auto sync ka control (status chip header mein) */
+        { key: 'sync.autoFlush', label: 'Background auto sync (har 1 min)', type: 'switch', def: true,
+          hint: 'Queue mein pending kaam ho to app khud 1 min baad sync karti hai (online hone par)' },
         { key: 'integration.offlineEnabled', label: 'Enable offline queue (self-hosted / offline PC)', type: 'switch', def: true,
           hint: 'Net na ho to bills phone/PC par queue honge, net aate hi sync — local/offline use ke liye' , sec: { title: '③ Offline & local PC', tone: 'info' }},
         { key: 'pwa.offlineEnabled', label: 'PWA offline cache (duplicate control)', type: 'switch', def: true,

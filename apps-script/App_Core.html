@@ -831,21 +831,43 @@ const API = {
 
   /* --------------------------- offline queue --------------------------- */
   enqueue(action, payload) {
+    /* v2.30.0 (N9) — queue ki had (Settings ▸ Backend ▸ pwa.offlineMaxQueue, def 200):
+       kaam KABHI zaya nahi hota — had par bhi queue hota hai, magar user ko foran
+       bata diya jata hai ke sync zaroori hai (aur online ho to abhi flush ka rasta). */
+    const maxQ = Math.max(20, Number((App.state.settings || {})['pwa.offlineMaxQueue']) || 200);
+    if (App.state.queue.length >= maxQ) {
+      UI.notify({ key: 'offline.cap', tone: 'warn', sticky: true,
+        msg: 'Offline queue bhar gayi (' + App.state.queue.length + ') — sync zaroori hai',
+        action: navigator.onLine ? { label: 'Ab sync karein', onClick: () => API.flushQueue() } : null });
+    }
     const entry = { clientId: uid('off'), action, payload, createdAt: new Date().toISOString() };
     App.state.queue.push(entry);
     Store.set('queue', App.state.queue);
     /* v2.30.0 (N8) — key di: tez-tez queue hone par bhi EK hi toast (×N) */
     UI.notify({ key: 'offline.queue', tone: 'warn', msg: 'Offline: kaam queue mein save ho gaya (' + App.state.queue.length + ')' });
+    API.updateSyncUI();
     return Promise.resolve({ queued: true, clientId: entry.clientId });
   },
 
   async flushQueue() {
     if (!App.state.queue.length || !navigator.onLine) return 0;
+    if (API._syncBusy) return 0;                       /* do flush ek sath nahi (online-event + timer) */
+    API._syncBusy = true;
     const queue = App.state.queue.slice();
     App.state.queue = []; Store.set('queue', []);
     try {
       const res = await API.call('offline.sync', { queue }, { queueable: false });
+      /* v2.30.0 (N9) — ASLI BUG: pehle partial fail par POORA queue wapas aata tha
+         (kamyab entries bhi dobara bheji jati theen — bekaar calls, aur bina
+         sale-dedupe wale actions double apply). Ab sirf NAKAAM clientIds wapas. */
+      const failedIds = {};
+      (res.results || []).forEach(r => { if (!r.ok) failedIds[r.clientId] = 1; });
+      const failedEntries = queue.filter(e => failedIds[e.clientId]);
+      App.state.queue = failedEntries.concat(App.state.queue);
+      Store.set('queue', App.state.queue);
       const n = res.succeeded || 0, f = res.failed || 0;
+      App.state.lastSync = new Date().toLocaleTimeString();
+      App.state.syncFailed = f;
       /* v2.30.0 (N8) — sync fail ab STICKY hai (auto-gayab nahi) + Retry action */
       if (f) UI.notify({ key: 'sync.fail', tone: 'warn', sticky: true,
         msg: n + ' sync hue, ' + f + ' fail (data mismatch)',
@@ -854,8 +876,42 @@ const API = {
       return n;
     } catch (e) {
       App.state.queue = queue.concat(App.state.queue); Store.set('queue', App.state.queue);
+      App.state.syncFailed = queue.length;
       return 0;
+    } finally {
+      API._syncBusy = false;
+      API.updateSyncUI();
     }
+  },
+
+  /* ================= v2.30.0 (N9) — SYNC STATUS + BACKGROUND AUTO-FLUSH ============ */
+  /** Header ka sync chip: pending count (0 par chhupa), fail par surkh pulse,
+      title mein aakhri sync. Har enqueue/flush/boot par khud update. */
+  updateSyncUI() {
+    const chip = document.getElementById('syncChip');
+    if (!chip) return;
+    const n = (App.state.queue || []).length;
+    chip.hidden = !n;
+    chip.classList.toggle('has-fail', !!App.state.syncFailed);
+    const lbl = document.getElementById('syncChipN');
+    if (lbl) lbl.textContent = String(n);
+    chip.setAttribute('aria-label', 'Offline queue: ' + n + ' pending — abhi sync karein');
+    chip.title = 'Offline queue: ' + n + ' kaam sync ka intezar' +
+      (App.state.lastSync ? ' · aakhri sync: ' + App.state.lastSync : '') +
+      (App.state.syncFailed ? ' · ' + App.state.syncFailed + ' fail' : '');
+  },
+  /** 60s background tick — Settings ▸ Backend ▸ sync.autoFlush se band ho sakta hai */
+  autoSyncTick() {
+    try {
+      if (String((App.state.settings || {})['sync.autoFlush']) === 'false') return;
+      if (!(App.state.queue || []).length || !navigator.onLine) return;
+      if (API.pending > 0 || API._syncBusy) return;
+      API.flushQueue();
+    } catch (e) { }
+  },
+  startAutoSync() {
+    if (API._autoSync) return;
+    API._autoSync = setInterval(() => API.autoSyncTick(), 60000);
   },
 
   /* --------------------------- catalog cache --------------------------- */
@@ -2312,6 +2368,11 @@ App.setBranch = function (locId, silent) {
 };
 
 window.App = App; window.UI = UI; window.API = API; window.Store = Store;
+/* v2.30.0 (N9) — offline sync ke handlers App par bhi (aasaan pukaar; asli API par) */
+App.flushQueue = () => API.flushQueue();
+App.updateSyncUI = () => API.updateSyncUI();
+App.autoSyncTick = () => API.autoSyncTick();
+App.startAutoSync = () => API.startAutoSync();
 /* v2.29.2 (W7.T1) — auto-busy: screens render hone se PEHLE handlers wrap ho jayein */
 try { UI._abWrapHandlers(); } catch (e) { }
 /* v2.25.8 — performance audit ke liye raw stats global (console se dekhein) */

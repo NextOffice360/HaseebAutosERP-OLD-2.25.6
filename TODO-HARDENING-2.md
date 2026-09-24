@@ -218,9 +218,32 @@ Settings mein Notifications controls + sab action sites ki adoption **baqi hai**
       release_ui 29/0 · modals_close 91/0 · pwa_overlays 124/0 · points_flow 40/0 · pos_multi 23/0 ·
       busy_coverage 13/0 · icons 23/23 · validate_release --fast GREEN.
 
-### N9 — Background sync / offline  🔴
-- [ ] Online/offline detect, queue, auto-sync on reconnect, backoff retry, duplicate-guard, conflict handling,
-      sync status visibility; background kaam lightweight. Settings: enable, interval, retry limit, queue limit.
+### N9 — Background sync / offline  ✅ DONE (2026-09-24)
+- [x] **Detect/queue/reconnect (pehle se thay)** — online/offline events, localStorage queue
+      (`ha_queue`), boot flush + `online` par flush. N9 ne 3 ASLI bugs band kiye:
+- [x] **① Replay double-apply (backend):** dedupe sirf SALE ke paas tha (`offlineId` notes mein) —
+      config.save jaise generic actions ka replay double apply ho sakta tha. Ab `OfflineSync.process`
+      mein **generic idempotency ledger** (`OfflineQueue` sheet): DONE clientId dobara NAHI chalta
+      (duplicate flag); FAILED rows bhi ledger mein (audit).
+- [x] **② sales.create route metadata drop:** route `p.sale` unwrap karta tha → `offlineId`/`source`
+      Sales.create tak pohanchti hi nahi theen (sale-level dedupe dead tha). Ab passthrough.
+- [x] **③ Partial-fail par poora queue wapas:** flush mein kamyab entries bhi dobara bheji jati theen.
+      Ab **sirf NAKAAM clientIds** requeue; concurrent flush guard (`_syncBusy`); `syncFailed`/`lastSync` state.
+- [x] **④ Offline reload dobara login maangta tha:** init `token && navigator.onLine` — offline par
+      login screen. Ab **offline resume**: token + cached bootstrap + stored session → app khuli rehti hai.
+- [x] **Sync status visibility:** header mein **sync chip** (⇅ + pending count; 0 par chhupa; fail par
+      surkh pulse; title mein aakhri sync) — click = abhi sync. Queue had (`pwa.offlineMaxQueue`) par
+      sticky warn (kaam phir bhi queue hota hai — zaya nahi).
+- [x] **Background auto-sync:** 60s tick (lightweight: pending + online + idle shartein) —
+      **Settings ▸ Backend & Integrations ▸ `sync.autoFlush`** (def ON) se band.
+- [x] **Gate `tools/test_offline_sync.js` — 11 PASS / 0 FAIL** (backend: sale replay dedupe, generic
+      replay-safe, unknown→FAILED ledger, mixed queue + sirf-fail retry · DOM: offline write→chip,
+      fail→queue salamat, offline reload→qayam + offline resume, online flush→backend value,
+      autoFlush OFF/ON, 0 errors). **Wired as step 15.**
+- [x] Regression: release_flow 62/0 · release_ui 29/0 · saveall_pages 16/0 · notifications 11/0 ·
+      busy_coverage 17/0 · modals_close 91/0 · pos_multi 23/0 · pwa_overlays 124/0 · --fast GREEN.
+- [ ] Baqi (N9.1, chhota): server-side conflict resolution (ab last-write; per-field merge N11 ke baad)
+      + retry backoff (ab 60s fixed — backoff settings).
 
 ### N10 — Data-aware / dependency-aware UI  🟠
 - [ ] Forms/tables/dropdowns asli data se; dependent fields auto-populate (city → areas); AI provider = Gemini → sirf Gemini fields;

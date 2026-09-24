@@ -412,7 +412,15 @@ var ROUTES = {
   'stock.count': function (p, s) { return Inventory.quickCount(p, s); },
 
   /* -------------------------------- sales ------------------------------- */
-  'sales.create': function (p, s) { return Sales.create(p.sale || p, s); },
+  /* v2.30.0 (N9) — offline sync ke metadata (offlineId/source) sale ke andar bhejo:
+     route p.sale unwrap karta tha, is liye Sales.create ka OFFLINE dedupe (offlineId)
+     aur source:'OFFLINE' marking kabhi chalta hi nahi tha. Ab metadata carry hota hai. */
+  'sales.create': function (p, s) {
+    var sale = p.sale || p;
+    if (p.offlineId && !sale.offlineId) sale.offlineId = p.offlineId;
+    if (p.source && !sale.source) sale.source = p.source;
+    return Sales.create(sale, s);
+  },
   'sales.list': function (p, s) { return Sales.list(p, s); },
   'sales.get': function (p, s) { return Sales.get(p.id, s); },
   'sales.return': function (p, s) { return Sales.returnSale(p.record || p.return_ || p, s); },

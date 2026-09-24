@@ -190,6 +190,9 @@ async function startApp() {
   if (!boot.aiConfig) API.call('ai.config', {}).then(c => { App.state.aiConfig = c; }).catch(() => { });
   if (!boot.suggestions) API.call('ai.suggest', {}).then(s => { App.state.suggestions = s; }).catch(() => { });
   if ((App.state.queue || []).length) setTimeout(() => API.flushQueue(), 1500);
+  /* v2.30.0 (N9) — status chip + background auto-sync (60s, Settings se band ho sakta) */
+  App.updateSyncUI();
+  App.startAutoSync();
 
   /* v2.9 §2 — deep-link params: #/settings?tab=automation (tab persistence) */
   const raw = (location.hash || '').replace('#/', '').trim();
@@ -376,6 +379,12 @@ function wireShell() {
   if ($('#sbRail')) $('#sbRail').onclick = toggleSb;
 
   /* ---- full screen (desktop) ---- */
+  /* v2.30.0 (N9) — sync status chip: click = abhi sync (pending ho to hi nazar aata hai) */
+  const syncChip = document.getElementById('syncChip');
+  if (syncChip) syncChip.onclick = () => {
+    UI.toast('Sync chal raha hai…', 'info', 1600);
+    API.flushQueue();
+  };
   const fsBtn = $('#fsBtn');
   if (fsBtn) {
     const fsEl = () => document.documentElement;
@@ -825,6 +834,19 @@ window.addEventListener('ha:shop-closed', () => {
       return;
     } catch (e) {
       if (!/expire|session/i.test(e.message)) { /* fall through to login */ }
+    }
+  } else if (token && !navigator.onLine) {
+    /* v2.30.0 (N9) — OFFLINE RESUME: token + cached bootstrap mojood hon to
+       refresh/offline par app KHULI RAHE (pehle dobara login maang leta tha —
+       offline reliability ka asli surang). auth.me online aane par khud chal jata hai. */
+    const cached = Store.get('bootstrap', null);
+    const sess = Store.get('session', null);
+    if (cached && sess) {
+      try {
+        App.state.session = Object.assign({}, sess, { token });
+        await startApp();
+        return;
+      } catch (e) { /* fall through to login */ }
     }
   }
   $('#boot').hidden = true;

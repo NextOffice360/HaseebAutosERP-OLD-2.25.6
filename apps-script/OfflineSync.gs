@@ -51,18 +51,40 @@ var OfflineSync = {
     var results = [];
     queue.forEach(function (entry) {
       var out = { clientId: entry.clientId, ok: true };
+      /* v2.30.0 (N9) — GENERIC idempotency ledger (OfflineQueue sheet).
+         Pehle dedupe sirf SALE ke paas tha (offlineId notes mein) — config.save
+         jaise baqi actions ka replay double apply ho sakta tha. Ab har clientId
+         jo DONE ho chuka wo dobara NAHI chalta (duplicate flag ke saath). */
+      var already = false;
       try {
-        var route = ROUTES[entry.action];
-        if (!route) throw new Error('Unknown action ' + entry.action);
-        var payload = entry.payload || {};
-        payload.token = p.token;
-        payload.__session = s;
-        payload.offlineId = entry.clientId;
-        payload.source = 'OFFLINE';
-        out.data = route(payload, s);
-      } catch (e) {
-        out.ok = false; out.error = e.message;
-        Logger.log('Offline sync failed [' + entry.clientId + ']: ' + e.message);
+        var prev = DB.findOne('OfflineQueue', function (r) {
+          return U.str(r.clientId) === U.str(entry.clientId) && r.status === 'DONE';
+        });
+        if (prev) { out.duplicate = true; results.push(out); already = true; }
+      } catch (eL) { }
+      if (!already) {
+        try {
+          var route = ROUTES[entry.action];
+          if (!route) throw new Error('Unknown action ' + entry.action);
+          var payload = entry.payload || {};
+          payload.token = p.token;
+          payload.__session = s;
+          payload.offlineId = entry.clientId;
+          payload.source = 'OFFLINE';
+          out.data = route(payload, s);
+          try {
+            DB.insert('OfflineQueue', { clientId: entry.clientId, action: entry.action,
+              status: 'DONE', receivedAt: entry.createdAt || U.iso(), processedAt: U.iso() }, s);
+          } catch (eW) { }
+        } catch (e) {
+          out.ok = false; out.error = e.message;
+          try {
+            DB.insert('OfflineQueue', { clientId: entry.clientId, action: entry.action,
+              status: 'FAILED', error: String(e.message || e).slice(0, 400),
+              receivedAt: entry.createdAt || U.iso(), processedAt: U.iso() }, s);
+          } catch (eW2) { }
+          Logger.log('Offline sync failed [' + entry.clientId + ']: ' + e.message);
+        }
       }
       results.push(out);
     });

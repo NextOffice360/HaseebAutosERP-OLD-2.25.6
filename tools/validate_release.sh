@@ -71,6 +71,7 @@ if [ "$FAST" = "1" ]; then
   skip "12. app-wide SAVE ALL (header button + Retry + nav guard)" "--fast"
   skip "13. AI naming honesty (Local Data Assistant, capability card, no Mock)" "--fast"
   skip "14. notification service (dedupe, sticky+Retry, progress, settings)" "--fast"
+  skip "15. offline sync (idempotent replay, partial fail, chip, auto-flush)" "--fast"
 else
   export LD_LIBRARY_PATH="${LD_LIBRARY_PATH:-/home/user/.chrome-libs/usr/lib/x86_64-linux-gnu}"
   # blank-page error/empty states, shop banner, SHOP_CLOSED gate, setup wizard
@@ -94,6 +95,8 @@ else
   step "13. AI naming honesty (Local Data Assistant, capability card, no Mock)" node tools/test_ai_naming.js
   # N8 — notification service: dedupe/sticky/retry/progress/settings (rendered DOM)
   step "14. notification service (dedupe, sticky+Retry, progress, settings)" node tools/test_notifications.js
+  # N9 — offline/background sync: idempotency ledger, partial-fail requeue, chip, auto-flush
+  step "15. offline sync (idempotent replay, partial fail, chip, auto-flush)" node tools/test_offline_sync.js
 fi
 
 echo
