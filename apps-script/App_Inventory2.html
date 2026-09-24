@@ -349,7 +349,13 @@ function transferForm() {
   const f = UI2.form({ values: { fromLocationId: App.state.locationId },
     fields: [
       { key: 'fromLocationId', label: 'From branch', type: 'select', options: App.state.locations.map(l => ({ value: l.id, label: l.name })) },
-      { key: 'toLocationId', label: 'To branch', type: 'select', options: App.state.locations.map(l => ({ value: l.id, label: l.name })) },
+      /* v2.30.0 (N10) — DATA-AWARE: To branch mein From wali branch aati hi nahi;
+         From badalne par To ke options dobar bante hain (ghalat wali clear + toast). */
+      { key: 'toLocationId', label: 'To branch', type: 'select',
+        options: App.state.locations.filter(l => l.id !== (App.state.locationId || '')).map(l => ({ value: l.id, label: l.name })),
+        depOn: { parent: 'fromLocationId',
+          options: pv => App.state.locations.filter(l => l.id !== pv).map(l => ({ value: l.id, label: l.name })),
+          invalidMsg: 'From / To branch alag honi chahiye — To dobara chunein' } },
       { key: 'notes', label: 'Notes', full: true }
     ] });
   UI2.offcanvas({
@@ -357,6 +363,10 @@ function transferForm() {
     body: h('div', null, f.el, h('div', { class: 'f-col' }, h('label', null, 'Items'), picker), listEl),
     footer: h('div', null, h('button', { class: 'btn', onclick: async () => {
       const v = f.values();
+      /* v2.30.0 (N10) — validate-before-save: STRUCTURAL errors pehle (branches),
+         phir content (items). Backend ka rule UI par bhi. */
+      if (!v.fromLocationId || !v.toLocationId) return UI.toast('From aur To branch dono chunein', 'warn');
+      if (String(v.fromLocationId) === String(v.toLocationId)) return UI.toast('Source aur destination alag honi chahiye', 'warn');
       if (!items.length) return UI.toast('Items add karein', 'warn');
       try { await API.call('stock.transfer.save', { transfer: Object.assign(v, { items }) });
         UI.toast('Transfer created ✅', 'ok');

@@ -245,9 +245,7 @@ Settings mein Notifications controls + sab action sites ki adoption **baqi hai**
 - [ ] Baqi (N9.1, chhota): server-side conflict resolution (ab last-write; per-field merge N11 ke baad)
       + retry backoff (ab 60s fixed — backoff settings).
 
-### N10 — Data-aware / dependency-aware UI  🟠
-- [ ] Forms/tables/dropdowns asli data se; dependent fields auto-populate (city → areas); AI provider = Gemini → sirf Gemini fields;
-      WhatsApp off → uske options chhup jaayein; parent badle to invalid child value clear + validate before save.
+### N10 — Data-aware / dependency-aware UI  ✅ DONE (2026-09-24 — neeche detail; AI provider conditional UI N7 mein ho chuka)
 
 
 ### N10 — Data-aware UI  🔵 (Inventory hissa DONE · GRN/supplier agla)
@@ -271,7 +269,21 @@ Settings mein Notifications controls + sab action sites ki adoption **baqi hai**
       **Gate `tools/test_supplier_autofill.js` 19 PASS / 0 FAIL** (3 backend + 16 rendered DOM: GRN + PO parity,
       stale-info check, backend-truth match, legacy dirty tracking).
 - [x] **Inventory** (upar) · **GRN supplier** (upar) — dono gate ke sath VERIFIED.
-- [ ] Baqi dependent dropdowns/fields ka full data-aware pass (selection → fetch → populate → validate → persist).
+- [x] **APP-WIDE data-aware engine (2026-09-24)** — `UI2.form` par shared do mechanisms:
+      **① `f.depOn = {parent, options(parentVal, vals), invalidMsg}`** — parent badalne par child ke
+      options ASLI data se dobar banti hain; invalid child value CLEAR + toast (+ "— chunein —"
+      placeholder); TEXT field ho to datalist suggestions (free typing QAYAM); initial render par
+      koi value zaya nahi (purani value "(mojooda)" ban kar bachi).
+      **② `f.showWhen = (vals)=>bool`** — field sirf tab jab shart sahi (har change par dobara talli).
+- [x] **Adoption (3 sites):** Transfer (To-branch options mein From NAHI; From badle to To dobar;
+      invalid To clear + toast; send par from≠to validate — structural errors pehle) · Account form
+      (bank fields sirf BANK type / isBank ON par — chhupte hain, HOTE hain) · Item form (subCategory
+      suggestions = selected category ki child categories; naya naam likhna barqarar).
+- [x] **Gate `tools/test_data_aware.js` — 9 PASS / 0 FAIL** (backend: transfer rule + child-category
+      persist · DOM: to-options exclude from, invalid clear + toast, validate-before-save (API call
+      nahi jata), bank showWhen 3-halat, subCategory datalist + free-typing, 0 errors). **Step 16 wired.**
+- [x] Regression: release_flow 62/0 · release_ui 29/0 · saveall_pages 16/0 · partial_save 48/0 ·
+      save_all 24/0 · supplier_autofill 19/0 · modals_close 91/0 · --fast GREEN.
 
 ### N1/N2 extension — Save/Save All app-wide deep audit  🟠
 - [x] **Legacy `UI.form` par dirty tracking + onChange hook (2026-09-24)** — `changed()/dirtyKeys()/isDirty()/clearDirty()`,

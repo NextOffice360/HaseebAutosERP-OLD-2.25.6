@@ -1686,6 +1686,94 @@ UI2.form = function (cfg) {
   host.addEventListener('input', markFromEvent, true);
   host.addEventListener('change', markFromEvent, true);
 
+  /* ==========================================================================
+     v2.30.0 (N10) — DATA-AWARE FIELDS (shared engine, har UI2.form par)
+     --------------------------------------------------------------------------
+     · f.depOn = { parent:'category', options:(parentVal, vals)=>[…], invalidMsg }
+       Parent badalne par child ke options ASLI data se dobar banti hain.
+       Purani child value nayi options mein na ho → CLEAR (invalid child zinda
+       nahi rehta) + invalidMsg toast. Text field ho to datalist suggestions
+       banti hain — free typing QAYAM (koi feature nahi jata).
+       INITIAL render par koi value clear NAHI hoti — purani/legacy value
+       '(mojooda)' option ban kar bachi rehti hai (data zaya nahi).
+     · f.showWhen = (vals)=>bool — field sirf tab jab shart sahi (bank fields
+       sirf BANK account par). Har change par dobara talli — irrelevant fields
+       chhupe (par hote hain: koi feature hataana nahi).
+     ========================================================================== */
+  const n10Fields = [];
+  { /* groups + cfg.fields EK hi objects deta hain — dedupe zaroori (warna depSync
+       do dafa chalta aur clear ke baad placeholder ur jata) */
+    const seen = new Set();
+    const push = f => { if (f && f.key && !seen.has(f)) { seen.add(f); n10Fields.push(f); } };
+    (groups || []).forEach(g => (g.fields || []).forEach(push));
+    (cfg.fields || []).forEach(push);
+  }
+  const colOf = el => el ? (el.__col || (el.closest ? el.closest('.f-col') : null)) : null;
+  function depOptionsFor(f) {
+    try { return f.depOn.options(vals()[f.depOn.parent], vals()) || []; }
+    catch (e) { return []; }
+  }
+  function depSync(parentKey, initial) {
+    n10Fields.forEach(f => {
+      if (!f.depOn || f.depOn.parent !== parentKey) return;
+      const el = refs[f.key];
+      if (!el) return;
+      const opts = depOptionsFor(f);
+      if (el.tagName === 'SELECT') {
+        const cur = el.value;
+        const has = opts.some(o => String(typeof o === 'object' ? o.value : o) === String(cur));
+        el.innerHTML = '';
+        opts.forEach(o => {
+          const v2 = typeof o === 'object' ? o.value : o, l2 = typeof o === 'object' ? o.label : o;
+          el.appendChild(h('option', { value: v2, selected: String(cur) === String(v2) }, l2));
+        });
+        if (!has && String(cur) !== '') {
+          if (initial) {
+            /* initial: purani value ZAYA nahi — (mojooda) option ban kar bachi */
+            el.appendChild(h('option', { value: cur, selected: true }, cur + '  (mojooda)'));
+          } else {
+            /* clear: khaali placeholder pehle (browser pehle option par jump
+               nahi karega — chup-chap galat value chunwana nahi) */
+            el.insertBefore(h('option', { value: '' }, '— chunein —'), el.firstChild);
+            el.value = '';
+            try { markDirty(f.key); } catch (eD) { }
+            if (f.depOn.invalidMsg) UI.toast(f.depOn.invalidMsg, 'warn', 3200);
+          }
+        }
+      } else {
+        /* TEXT → datalist (suggestions data-aware; free text qayam) */
+        try {
+          let dl = el.__haDl;
+          if (!dl) {
+            dl = h('datalist', { id: 'dl_f_' + f.key });
+            el.setAttribute('list', dl.id);
+            if (el.parentNode) el.parentNode.appendChild(dl);
+            el.__haDl = dl;
+          }
+          dl.innerHTML = '';
+          opts.forEach(o => dl.appendChild(h('option', { value: typeof o === 'object' ? o.value : o })));
+        } catch (e2) { }
+      }
+    });
+  }
+  function showSync() {
+    const v = vals();
+    n10Fields.forEach(f => {
+      if (typeof f.showWhen !== 'function') return;
+      const col = colOf(refs[f.key]);
+      if (col) col.style.display = f.showWhen(v) ? '' : 'none';
+    });
+  }
+  /* initial: showWhen talli + dep TEXT datalists banao (SELECT clear nahi hota) */
+  try { showSync(); } catch (eS) { }
+  const n10Parents = {};
+  n10Fields.forEach(f => { if (f.depOn) { n10Parents[f.depOn.parent] = 1; try { depSync(f.depOn.parent, true); } catch (eD2) { } } });
+  host.addEventListener('change', ev => {
+    const k = keyOf(ev.target);
+    try { showSync(); } catch (eS2) { }
+    if (k && n10Parents[k]) { try { depSync(k, false); } catch (eD3) { } }
+  }, true);
+
   apiRef = {
     el: host,
     values: vals,

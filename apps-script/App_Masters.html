@@ -497,7 +497,16 @@ function itemForm(item, after) {
         { key: 'barcode', label: 'Barcode' },
         { key: 'lineItem', label: 'Line item', type: 'select', options: Array.from(new Set((App.state.categories || []).filter(c => !c.parentId).map(c => c.name))).sort() },
         { key: 'category', label: 'Category', type: 'select', options: (App.state.categories || []).map(c => c.name) },
-        { key: 'subCategory', label: 'Sub category' },
+        /* v2.30.0 (N10) — DATA-AWARE: subCategory ki suggestions selected category ki
+           CHILD categories se aati hain (Categories sheet). Free typing QAYAM —
+           naya naam likha ja sakta hai (purana behaviour barqarar). */
+        { key: 'subCategory', label: 'Sub category',
+          depOn: { parent: 'category',
+            options: cat => {
+              const cats = App.state.categories || [];
+              const p = cats.filter(c => c.name === cat)[0];
+              return p ? cats.filter(c => c.parentId === p.id).map(c => c.name) : [];
+            } } },
         { key: 'brand', label: 'Brand' },
         { key: 'origin', label: 'Made in (origin)' },
         { key: 'partType', label: 'Part type', type: 'select', options: ['', 'CAR_CARE', 'LIGHTING', 'BRAKES', 'ENGINE', 'FILTER', 'OIL', 'BATTERY', 'TYRE', 'DECOR', 'ELECTRICAL', 'BODY', 'OTHER'] },

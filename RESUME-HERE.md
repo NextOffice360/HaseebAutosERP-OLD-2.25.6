@@ -20,7 +20,10 @@ rejection → UI.fail+Retry; permanent-disable audit sab safe; gate `test_busy_c
 **N9 ✅ (offline sync: generic idempotency ledger OfflineQueue sheet; sales.create metadata passthrough;
 partial-fail par sirf nakaam requeue; offline reload resume — login nahi maangta; header sync chip;
 60s auto-flush + `sync.autoFlush` setting; gate `test_offline_sync.js` **11/0**, wired step 15)**
-Agla: **app-wide data-aware baqi** (dependent dropdowns → fetch → populate → validate → persist) → app-wide data-aware baqi → N11 (math audit) → N12 (final E2E) → T8 docs/ZIP → T10 release.
+**N10 ✅ APP-WIDE (data-aware engine `UI2.form`: depOn dependent options + invalid-child clear +
+showWhen; adopt: Transfer to-branch, Account bank fields, Item subCategory; gate `test_data_aware.js`
+**9/0**, wired step 16)**
+Agla: **N11** (full math/logic audit — authoritative source + regression tests) → app-wide data-aware baqi → N11 (math audit) → N12 (final E2E) → T8 docs/ZIP → T10 release.
 **PUSH HO CHUKA (2026-09-24):** GitHub `NextOffice360/HaseebAutosERP-OLD-2.25.6` (public) — remote `main` =
 **3b7b40e** (v2.30.0 commit c07e4fc + git_push.sh stale-info fix 3b7b40e) · 424 files · poora project.
 **Agla kaam:** **N3/N8** (action loading/retry + notification service) → N9 (offline sync) → app-wide data-aware baqi → N11 → N12 → T8 docs/ZIP → T10 release → W7.T2 → T7.3/T7.4 → W9/W13 → W10 → W11/W12

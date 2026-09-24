@@ -658,8 +658,12 @@ function accountForm(acc, onDone) {
       { key: 'openingBalance', label: 'Opening balance', type: 'number' },
       { key: 'isCash', label: 'Cash account', type: 'switch' },
       { key: 'isBank', label: 'Bank account', type: 'switch' },
-      { key: 'bankName', label: 'Bank name' },
-      { key: 'accountNo', label: 'Account / IBAN no.' },
+      /* v2.30.0 (N10) — DATA-AWARE: bank fields sirf tab (BANK type ya isBank ON);
+         fields chhupte hain, HOTE hain — koi feature nahi jata. */
+      { key: 'bankName', label: 'Bank name',
+        showWhen: v => v.isBank === true || v.isBank === 'true' || v.type === 'BANK' },
+      { key: 'accountNo', label: 'Account / IBAN no.',
+        showWhen: v => v.isBank === true || v.isBank === 'true' || v.type === 'BANK' },
       { key: 'notes', label: 'Notes', full: true }
     ]
   });

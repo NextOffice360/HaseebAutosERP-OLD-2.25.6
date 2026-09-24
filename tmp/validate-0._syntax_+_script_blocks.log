@@ -54,5 +54,5 @@
   ✔ 30 partials — koi CSS/JS block ke bahar nahi
 
 == Test harness: login-race lint ==
-  checked 101 tools   (RULE 1 hits: 2, RULE 2 hits: 0)
+  checked 102 tools   (RULE 1 hits: 2, RULE 2 hits: 0)
   ✔ koi login-race pattern nahi (sab shared harness par)
