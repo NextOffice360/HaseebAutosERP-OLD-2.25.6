@@ -176,7 +176,7 @@ audit: `parties.balance` / `parties.customerHistory` PWA ki **3 screens (POS/Fie
 | **W8 naming/architecture audit** | pending | A§14 |
 | **W11 beginner docs pack** | pending | A§3 — per integration: setup → rollback |
 | **W12 deploy/config/rollback + secret scan** | pending | A§15, B§16 |
-| **W13 module wave (B§5–13)** | **T13.1 conversion units ✔ (v2.30.4)** · baqi slices todo (T13.2 quick-view/histories …) | invoice/credit logic ✔ audit (pehle se) · dashboards rename ✔ (pehle se) · quick view · multi-select polish · price-variation · reorder-real-data |
+| **W13 module wave (B§5–13)** | **MUKAMMAL (v2.30.4)** — T13.1 conversion ✔ · T13.2 price signals ✔ · T13.3/4/5 verify-complete + pinned (gate 20/0) | audit-first: 2 asli fixes, baqi pehle se complete + gates |
 | W4 datetime | pending | — |
 | W5 visibility + backend | pending | — |
 | W6 sidebar rail/off-canvas | **T6.1 ✔ T6.2 ✔ T6.3 ✔ T6.4 ✔** | gate `sidebar-states` **52/0 (37s)**
@@ -486,6 +486,22 @@ SONAME links gayab (`libatk-1.0.so.0`) aur har browser gate "Failed to launch th
       Demo mock: GRN-lines store + signals mirror + suppliers.save ab list me store karta hai.
       **Gate:** test_w13_modules **14/0** (route truth 100→120=+20% up + DOM tab badge).
       Regression: supplier_autofill 19/0 · test_logic 816/0 · modals_close 91/0.
+- [x] **T13.3 B§6 quick view — VERIFY-COMPLETE + PINNED** ✔ (v2.30.4) — POS2 me pehle se
+      (v2.9 §6): pc-qv badge → quickViewItem modal (live detail + Cart action) · image
+      click → UI.zoomImage lightbox · pc-fav star (right-click toggle) · code ke baad
+      brand · sub-category · category line. Gate PART4 (source + rendered DOM: tile badges,
+      modal img+Cart) = test_w13_modules **20/0**.
+- [x] **T13.4 B§9 auto reorder + AI monitoring — VERIFY-COMPLETE + PINNED** ✔ (v2.30.4) —
+      engine REAL sheets se (Sales/SaleItems/Stock/GRN/PO; velocity/cover/lead/safety math)
+      — backend math **test_logic me pehle se gated** (velocity/target/onHand/qty/value/PO
+      DRAFT). AI signals card live counts (OUT_OF_STOCK/CRITICAL/velocity) + Ask AI → ai.chat.
+      Gate PART5 (source + DOM: card + table + no error) = test_w13_modules **20/0**.
+- [x] **T13.5 B§7/B§10/B§12 — VERIFY-COMPLETE (mojood gates)** ✔ (2026-09-25 audit) —
+      B§7: itemPicker full-list multi-select + qty + outside-click close (pos_multi
+      **23/0**) · B§10: AI_ProviderHub dynamic model discovery (listModels→rankModels),
+      key save/test/status/presets (ai_naming **23/0** + settings gates) · B§12: salesman
+      Ledger/History (ISSUE/RETURN/SALE timeline + Wasooli payments + collect) + PWA Udhaar
+      wasooli (App_Salesman + Pwa_Salesman). Koi naya code nahi — jhoota dobara kaam nahi.
 
 - [x] **T7.5 (W9) Help links + confirm sweep + tooltips** ✔ (v2.30.3) —
       **① PWA.confirm (shared):** Pwa_Shell me non-blocking promise dialog (`role=alertdialog`,
