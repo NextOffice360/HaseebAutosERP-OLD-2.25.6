@@ -388,6 +388,47 @@ var PWA = (function () {
   var toastT;
 
   /* ==========================================================================
+     PWA.fmtDT (v2.30.5 · W4.T4) — PWA pages App_Core include nahi karte, is liye
+     yahan chhota deterministic formatter: DEFAULT policy (DD MMM YYYY, HH:MM
+     24h, seconds off) — desktop DT.format jaisa hi. Agar main app ki dt
+     settings localStorage (ha_state/ha_settings) mein milen to wahi policy
+     (tz/hour12/dateStyle) apply hoti hai — warna default. Device-locale ke
+     toLocaleString() ka ghayab-intizaam khatam: ab har device ek jaisa dikhe.
+     Carry-over: PWA settings-sync UI (jab ho to yehi helper apne aap utha lega).
+     ========================================================================== */
+  var _DT_MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  function _dtCfgLS() {
+    var keys = ['ha_state', 'ha_settings'];
+    for (var i = 0; i < keys.length; i++) {
+      try {
+        var g = JSON.parse(localStorage.getItem(keys[i]) || '{}');
+        var dt = (g && (g.dt || (g.settings && g.settings.dt))) || null;
+        if (dt) return dt;
+      } catch (e) { }
+    }
+    return null;
+  }
+  PWA.fmtDT = function (v, mode) {
+    var d = (v instanceof Date) ? v : new Date(v || Date.now());
+    if (isNaN(d)) return String(v || '');
+    var c = _dtCfgLS() || {};
+    var p2 = function (n) { return (n < 10 ? '0' : '') + n; };
+    var datePart;
+    var ds = c.dateStyle || 'DD MMM YYYY';
+    if (ds === 'YYYY-MM-DD') datePart = d.getFullYear() + '-' + p2(d.getMonth() + 1) + '-' + p2(d.getDate());
+    else if (ds === 'DD/MM/YYYY') datePart = p2(d.getDate()) + '/' + p2(d.getMonth() + 1) + '/' + d.getFullYear();
+    else datePart = p2(d.getDate()) + ' ' + _DT_MON[d.getMonth()] + ' ' + d.getFullYear();
+    mode = mode || 'datetime';
+    if (mode === 'date') return datePart;
+    var h = d.getHours(), ap = '';
+    if (c.hour12 === true) { ap = h < 12 ? ' am' : ' pm'; h = h % 12; if (!h) h = 12; }
+    var sec = c.seconds === true ? ':' + p2(d.getSeconds()) : '';
+    var timePart = (c.hour12 === true ? h : p2(h)) + ':' + p2(d.getMinutes()) + sec + ap;
+    return datePart + ', ' + timePart;
+  };
+
+
+  /* ==========================================================================
      PWA.run — action-level busy (v2.25.9 · W2.T2, PWA bundle)
      --------------------------------------------------------------------------
      PWA apps (POS/Warehouse/Field/Salesman) App_Core include NAHI karte, is liye

@@ -750,7 +750,7 @@ function renderActivity(c) {
     threadList = h('div');
     ST.threads.forEach(th => threadList.appendChild(h('div', { class: 'list-item' },
       h('div', { class: 'li-main' }, h('b', null, th.title || 'Chat'),
-        h('span', null, String(th.updatedAt || '').slice(0, 16).replace('T', ' '))))));
+        h('span', null, fmt.dt(th.updatedAt) || String(th.updatedAt || ''))))));
   }
   const actBtns = h('div', { style: { display: 'flex', gap: '8px', marginTop: '10px', flexWrap: 'wrap' } });
   actBtns.appendChild(h('button', { class: 'btn sm sec', onclick: async () => {

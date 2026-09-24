@@ -491,7 +491,7 @@
     var sh = sheetData.sheet, lines = sheetData.lines||[], prog = sheetData.progress||{total:lines.length, counted:0, pending:lines.length, pct:0, varianceValue:0};
     var head = PWA.el('div',{class:'card'});
     head.appendChild(PWA.el('h3',{text:'Sheet '+ (sh.sheetNo||S.sheetId) + ' — '+ (sh.scope||'')}));
-    head.appendChild(PWA.el('div',{class:'muted', style:'font-size:11px'}, 'Location: '+(sh.locationId||'')+' · Warehouse: '+(sh.warehouseId||'—')+' · Date: '+String(sh.date||'').slice(0,10)));
+    head.appendChild(PWA.el('div',{class:'muted', style:'font-size:11px'}, 'Location: '+(sh.locationId||'')+' · Warehouse: '+(sh.warehouseId||'—')+' · Date: '+PWA.fmtDT(sh.date, 'date')));
     var bar = PWA.el('div',{class:'progress-bar'}); bar.appendChild(PWA.el('div',{class:'progress-fill', style:'width:'+(prog.pct||0)+'%;'}));
     head.appendChild(bar);
     head.appendChild(PWA.el('div',{style:'display:flex;gap:6px;flex-wrap:wrap;font-size:11px'},[

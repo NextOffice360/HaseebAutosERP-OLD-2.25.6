@@ -39,15 +39,45 @@ out.backend = { files: gs.length, isoCalls, rawToIso: toIsoCalls, tzRefs, dateOn
 /* ---------- 2 ▸ frontend formatting sites ---------- */
 const html = fs.readdirSync(path.join(ROOT, 'apps-script')).filter(f => f.endsWith('.html'));
 let fmtDateCalls = 0, getHours = 0, toLocale = 0, manualSlice = 0, perFile = [];
+/* v2.30.5 (W4.T4) — GATE detection: sirf DATE-sites count ho, number-formatting nahi.
+   dateLocale   : toLocaleString/Date/Time jis line par dateStyle/timeStyle ho, YA
+                  'en-US' + fraction-digits opts NA ho (wo number/money formatting hai)
+   stampDisplay : .slice(0,16).replace('T',…) — hand-rolled datetime display
+   adhocDate    : String(<expr>).slice(0,10) DISPLAY concat (type:'date' input values
+                  aur payload lines exempt — wo functional ISO hain)
+   getHours     : App_Core (DT engine internals) exempt */
+let dateLocale = 0, stampDisplay = 0, adhocDate = 0; const siteRefs = [];
 html.forEach(f => {
   const src = S('apps-script/' + f);
+  const lines = src.split('\n');
   const a = (src.match(/fmt\.date\(/g) || []).length;
   const b = (src.match(/getHours\(\)|getMinutes\(\)/g) || []).length;
   const c = (src.match(/toLocaleString\(|toLocaleDateString\(|toLocaleTimeString\(/g) || []).length;
   const d = (src.match(/\.slice\(0,\s*1[06]\)/g) || []).length;      // YYYY-MM-DD slice patterns
   fmtDateCalls += a; getHours += b; toLocale += c; manualSlice += d;
+  lines.forEach((ln, i) => {
+    const tr = ln.trim();
+    if (tr.startsWith('*') || tr.startsWith('/*') || tr.startsWith('//')) return;  /* comments nahi */
+    if (f === 'App_Core.html' && /String\([^)]*\)\.slice\(0,\s*10\)/.test(ln)) return; /* engine ka fallback khud fmt hai */
+    const isNumFmt = /toLocaleString\(\s*'en-US'/.test(ln);   /* is app mein number/money hamesha en-US */
+    const hasDateWord = /dateStyle|timeStyle|toLocaleDateString|toLocaleTimeString|new Date|\.date\b|\bAt\b|lastSync/.test(ln);
+    const isDateLocale = /toLocaleString\(|toLocaleDateString\(|toLocaleTimeString\(/.test(ln) && !isNumFmt && hasDateWord
+      && !/typeof DT !== 'undefined' \? DT\.format/.test(ln);   /* fallback-ke-sath guard jaiz */
+    if (isDateLocale) { dateLocale++; siteRefs.push(f + ':' + (i + 1) + ' dateLocale'); }
+    if (/\.slice\(0,\s*16\)\.replace\(\s*["']T["']/.test(ln)) { stampDisplay++; siteRefs.push(f + ':' + (i + 1) + ' stampDisplay'); }
+    const idSlice = /String\(([^)]*)\)\.slice\(0,\s*10\)/.test(ln) && /entityId|\.id\b|[a-zA-Z]Id\b/.test(ln);
+    if (/String\([^)]*\)\.slice\(0,\s*10\)/.test(ln) && !idSlice && !/type:\s*['"]date['"]/.test(ln) && !/toISOString\(\)\.slice/.test(ln)) { adhocDate++; siteRefs.push(f + ':' + (i + 1) + ' adhocDate'); }
+  });
   if (a + b + c + d >= 4) perFile.push({ file: f, fmtDate: a, getHours: b, locale: c, slice: d });
 });
+const gate = {
+  dateLocale: { count: dateLocale, target: 0 },
+  stampDisplay: { count: stampDisplay, target: 0 },
+  adhocDate: { count: adhocDate, target: 0 },
+  getHoursExempt: 'App_Core (DT engine fallback)',
+  sites: siteRefs
+};
+out.gate = gate;
 out.frontend = { files: html.length, fmtDateCalls, getHours, toLocale, manualSlice, busiest: perFile.sort((x, y) => (y.fmtDate + y.getHours + y.locale + y.slice) - (x.fmtDate + x.getHours + x.locale + x.slice)).slice(0, 8) };
 
 /* ---------- 3 ▸ settings: kitni cheezein configurable hain ---------- */

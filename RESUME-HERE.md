@@ -81,10 +81,9 @@ App_/Pwa_ split) + `docs/ARCHITECTURE.md` (conventions + data flow). Saare waves
 (tbl.reload() rowActions me, Clear filters emptyAction). **Sabak:** UI2.table wrap
 return karta hai — append lazmi (DOM-probe debugging se pakra). Chrome-libs restore:
 fetch_chrome_libs ke atspi/avahi gaps manually .deb se bhare (libnspr/nss/atk/atspi/
-avahi/cairo/pango). Quota: 41.3MB effective (stale display ignore). **W4 datetime (T4.1/T4.2/T4.3 ✔ v2.30.5):** engine + settings + stamps gate
-16/0 GREEN (tools/test_timestamps.js naya). Quota sach: 42.0MB effective —
-display 118.9MB STALE (excluded dirs ginta hai); aur koi safe deletion nahi
-(3-zip rule). **Bacha W4: T4.4 app-wide apply (52 residual sites) → W5 Vis
-engine (T5.1/T5.2).** App_Screens2 L538/1028/1418/1438 leftovers OBSOLETE —
-wo sites ab shared forms/modals hain; Demand/Reorder/Salesman skeleton sites
-card/board hain (tr=0) — koi aur load: adoption nahi bachi.
+avahi/cairo/pango). Quota: 41.3MB effective (stale display ignore). **W4 COMPLETE (v2.30.5):** T4.1/T4.2/T4.3 ticks + T4.4 app-wide apply —
+audit ab gate (0/0/0); 10 display sites convert; PWA.fmtDT helper (settings-sync
+carry-over open). Regression: datetime 44/0 · timestamps 16/0 · pos_multi 23/0 ·
+pwa_shared 16/0 · table_states 11/0 · e2e 22/0 · modals 91/0. Quota sach
+43.4MB effective — display STALE; koi safe deletion nahi (3-zip rule).
+**Agla: W5 Vis engine (T5.1 `Vis.can()/apply()` + T5.2 sensitive registry).**

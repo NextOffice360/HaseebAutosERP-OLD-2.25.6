@@ -7911,7 +7911,7 @@ const API = {
       App.state.queue = failedEntries.concat(App.state.queue);
       Store.set('queue', App.state.queue);
       const n = res.succeeded || 0, f = res.failed || 0;
-      App.state.lastSync = new Date().toLocaleTimeString();
+      App.state.lastSync = DT.format(new Date(), 'time');
       App.state.syncFailed = f;
       /* v2.30.2 (N9.1) — backoff streak: fail par barhta hai, kamyab par reset */
       if (f) { API._failStreak = (API._failStreak || 0) + 1; API._lastFailAt = Date.now(); }
@@ -15185,7 +15185,7 @@ function renderActivity(c) {
     threadList = h('div');
     ST.threads.forEach(th => threadList.appendChild(h('div', { class: 'list-item' },
       h('div', { class: 'li-main' }, h('b', null, th.title || 'Chat'),
-        h('span', null, String(th.updatedAt || '').slice(0, 16).replace('T', ' '))))));
+        h('span', null, fmt.dt(th.updatedAt) || String(th.updatedAt || ''))))));
   }
   const actBtns = h('div', { style: { display: 'flex', gap: '8px', marginTop: '10px', flexWrap: 'wrap' } });
   actBtns.appendChild(h('button', { class: 'btn sm sec', onclick: async () => {
@@ -19646,7 +19646,7 @@ function poForm(po, preset) {
     const chg = r2(cur - prev);
     const pct = prev ? r2((chg / prev) * 100) : 0;
     strip.append(
-      h('span', null, 'Previous: ' + fmt.money(prev) + (l.prevDate ? ' (' + String(l.prevDate).slice(0, 10) + ')' : '')),
+      h('span', null, 'Previous: ' + fmt.money(prev) + (l.prevDate ? ' (' + fmt.date(l.prevDate) + ')' : '')),
       h('span', null, 'Current: ' + fmt.money(cur)),
       h('span', { class: 'pl-chg ' + (chg > 0 ? 'up' : chg < 0 ? 'down' : 'flat') },
         'Change: ' + (chg > 0 ? '+' : '') + fmt.money(chg) + ' (' + (pct > 0 ? '+' : '') + pct.toFixed(2) + '%)'));
@@ -20113,7 +20113,7 @@ function grnForm(po) {
     const chg = r2(cur - prev);
     const pct = prev ? r2((chg / prev) * 100) : 0;
     strip.append(
-      h('span', null, 'Previous: ' + fmt.money(prev) + (l.prevDate ? ' (' + String(l.prevDate).slice(0, 10) + ')' : '')),
+      h('span', null, 'Previous: ' + fmt.money(prev) + (l.prevDate ? ' (' + fmt.date(l.prevDate) + ')' : '')),
       h('span', null, 'Current: ' + fmt.money(cur)),
       h('span', { class: 'pl-chg ' + (chg > 0 ? 'up' : chg < 0 ? 'down' : 'flat') },
         'Change: ' + (chg > 0 ? '+' : '') + fmt.money(chg) + ' (' + (pct > 0 ? '+' : '') + pct.toFixed(2) + '%)'));
@@ -21798,7 +21798,7 @@ function renderQuickView(body, i, d) {
 
 App.registerScreen('pos', {
   title: 'Point of Sale', icon: '🧾', perm: 'pos.access',
-  subtitle: () => App.state.branchName + ' · ' + new Date().toLocaleString('en-PK', { dateStyle: 'medium', timeStyle: 'short' }),
+  subtitle: () => App.state.branchName + ' · ' + (typeof DT !== 'undefined' ? DT.format(new Date(), 'datetime') : new Date().toLocaleString('en-PK', { dateStyle: 'medium', timeStyle: 'short' })),
   actions() {
     const a = [];
     a.push({ label: 'Help (?)', icon: '⌨', onClick: showShortcutsHelp });
@@ -23103,7 +23103,7 @@ function showInvoiceConfirmation(sale) {
     h('div', { style: { textAlign:'center' } },
       h('div', { style: { fontSize: '28px' } }, '✅'),
       h('div', { style: { fontSize: '16px', fontWeight: '800' } }, 'Sale complete — ' + invNo),
-      h('div', { style: { fontSize: '12px', color: 'var(--muted)' } }, cust + ' · ' + new Date().toLocaleString('en-PK'))
+      h('div', { style: { fontSize: '12px', color: 'var(--muted)' } }, cust + ' · ' + (typeof DT !== 'undefined' ? DT.format(new Date(), 'datetime') : new Date().toLocaleString('en-PK')))
     ),
     receiptPreviewHost,
     h('div', { style: { display:'flex',gap:'6px',flexWrap:'wrap',fontSize:'11px' } },
@@ -29604,7 +29604,7 @@ function renderPOSuggest(c) {
             try {
               const items = chosen.map(x => ({ itemId: x.itemId, code: x.itemCode, name: x.itemName, qty: x.totalQty, rate: x.costPrice || 0 }));
               const demandIds = chosen.flatMap(x => x.demandIds || []);
-              const po = await API.call('purchase.po.save', { po: { supplierId: supSel.value, locationId: App.state.locationId, date: new Date().toISOString().slice(0,10), items, demandIds, notes: 'From customer demands ' + new Date().toLocaleDateString() } });
+              const po = await API.call('purchase.po.save', { po: { supplierId: supSel.value, locationId: App.state.locationId, date: new Date().toISOString().slice(0,10), items, demandIds, notes: 'From customer demands ' + fmt.date(new Date()) } });
               UI.toast('PO ' + (po.poNo||po.id) + ' created ✅', 'ok');
               c(); App.go('purchase', { open: po.id });
             } catch (e) { UI.toast(e.message, 'err'); }

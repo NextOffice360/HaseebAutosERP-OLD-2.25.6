@@ -725,7 +725,7 @@ function renderPOSuggest(c) {
             try {
               const items = chosen.map(x => ({ itemId: x.itemId, code: x.itemCode, name: x.itemName, qty: x.totalQty, rate: x.costPrice || 0 }));
               const demandIds = chosen.flatMap(x => x.demandIds || []);
-              const po = await API.call('purchase.po.save', { po: { supplierId: supSel.value, locationId: App.state.locationId, date: new Date().toISOString().slice(0,10), items, demandIds, notes: 'From customer demands ' + new Date().toLocaleDateString() } });
+              const po = await API.call('purchase.po.save', { po: { supplierId: supSel.value, locationId: App.state.locationId, date: new Date().toISOString().slice(0,10), items, demandIds, notes: 'From customer demands ' + fmt.date(new Date()) } });
               UI.toast('PO ' + (po.poNo||po.id) + ' created ✅', 'ok');
               c(); App.go('purchase', { open: po.id });
             } catch (e) { UI.toast(e.message, 'err'); }

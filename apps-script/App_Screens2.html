@@ -688,7 +688,7 @@ function poForm(po, preset) {
     const chg = r2(cur - prev);
     const pct = prev ? r2((chg / prev) * 100) : 0;
     strip.append(
-      h('span', null, 'Previous: ' + fmt.money(prev) + (l.prevDate ? ' (' + String(l.prevDate).slice(0, 10) + ')' : '')),
+      h('span', null, 'Previous: ' + fmt.money(prev) + (l.prevDate ? ' (' + fmt.date(l.prevDate) + ')' : '')),
       h('span', null, 'Current: ' + fmt.money(cur)),
       h('span', { class: 'pl-chg ' + (chg > 0 ? 'up' : chg < 0 ? 'down' : 'flat') },
         'Change: ' + (chg > 0 ? '+' : '') + fmt.money(chg) + ' (' + (pct > 0 ? '+' : '') + pct.toFixed(2) + '%)'));
@@ -1155,7 +1155,7 @@ function grnForm(po) {
     const chg = r2(cur - prev);
     const pct = prev ? r2((chg / prev) * 100) : 0;
     strip.append(
-      h('span', null, 'Previous: ' + fmt.money(prev) + (l.prevDate ? ' (' + String(l.prevDate).slice(0, 10) + ')' : '')),
+      h('span', null, 'Previous: ' + fmt.money(prev) + (l.prevDate ? ' (' + fmt.date(l.prevDate) + ')' : '')),
       h('span', null, 'Current: ' + fmt.money(cur)),
       h('span', { class: 'pl-chg ' + (chg > 0 ? 'up' : chg < 0 ? 'down' : 'flat') },
         'Change: ' + (chg > 0 ? '+' : '') + fmt.money(chg) + ' (' + (pct > 0 ? '+' : '') + pct.toFixed(2) + '%)'));

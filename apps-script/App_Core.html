@@ -869,7 +869,7 @@ const API = {
       App.state.queue = failedEntries.concat(App.state.queue);
       Store.set('queue', App.state.queue);
       const n = res.succeeded || 0, f = res.failed || 0;
-      App.state.lastSync = new Date().toLocaleTimeString();
+      App.state.lastSync = DT.format(new Date(), 'time');
       App.state.syncFailed = f;
       /* v2.30.2 (N9.1) — backoff streak: fail par barhta hai, kamyab par reset */
       if (f) { API._failStreak = (API._failStreak || 0) + 1; API._lastFailAt = Date.now(); }

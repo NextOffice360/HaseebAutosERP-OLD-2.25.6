@@ -701,7 +701,7 @@
         '</div>'+
         '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;font-size:12px;margin-bottom:10px">'+
           '<div><span style="color:#64748b">Invoice</span><br><b>'+esc(s.invoiceNo)+'</b></div>'+
-          '<div style="text-align:right"><span style="color:#64748b">Date</span><br><b>'+esc(String(s.date||'').slice(0,16).replace("T"," "))+'</b></div>'+
+          '<div style="text-align:right"><span style="color:#64748b">Date</span><br><b>'+esc(PWA.fmtDT(s.date))+'</b></div>'+
           '<div><span style="color:#64748b">Customer</span><br><b>'+esc(s.customerName||'Walk-in')+'</b>'+(s.customerPhone?' <small style="color:#64748b">'+esc(s.customerPhone)+'</small>':'')+'</div>'+
           '<div style="text-align:right"><span style="color:#64748b">Salesman</span><br><b>'+esc(s.salesman||'-')+'</b></div>'+
         '</div>'+
@@ -1259,7 +1259,7 @@
         S.held.splice(idx,1); saveHeld(); render('sell'); PWA.toast('Resumed '+h.id,'ok');
       }},[
         PWA.el('div',{class:'ico', text:'⏸'}),
-        PWA.el('div',{class:'tx'},[PWA.el('b',{text:(h.customerName||'Walk-in')+' · '+PWA.money(h.total)}), PWA.el('small',{text:h.id+' · '+new Date(h.at).toLocaleString()+' · '+(h.items||[]).length+' items'})]),
+        PWA.el('div',{class:'tx'},[PWA.el('b',{text:(h.customerName||'Walk-in')+' · '+PWA.money(h.total)}), PWA.el('small',{text:h.id+' · '+PWA.fmtDT(h.at)+' · '+(h.items||[]).length+' items'})]),
         PWA.el('span',{class:'badge', text: (h.items||[]).length+' items'})
       ]));
       card.appendChild(PWA.el('div',{style:'display:flex;gap:8px;margin-top:8px'},[

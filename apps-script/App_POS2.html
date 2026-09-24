@@ -409,7 +409,7 @@ function renderQuickView(body, i, d) {
 
 App.registerScreen('pos', {
   title: 'Point of Sale', icon: '🧾', perm: 'pos.access',
-  subtitle: () => App.state.branchName + ' · ' + new Date().toLocaleString('en-PK', { dateStyle: 'medium', timeStyle: 'short' }),
+  subtitle: () => App.state.branchName + ' · ' + (typeof DT !== 'undefined' ? DT.format(new Date(), 'datetime') : new Date().toLocaleString('en-PK', { dateStyle: 'medium', timeStyle: 'short' })),
   actions() {
     const a = [];
     a.push({ label: 'Help (?)', icon: '⌨', onClick: showShortcutsHelp });
@@ -1714,7 +1714,7 @@ function showInvoiceConfirmation(sale) {
     h('div', { style: { textAlign:'center' } },
       h('div', { style: { fontSize: '28px' } }, '✅'),
       h('div', { style: { fontSize: '16px', fontWeight: '800' } }, 'Sale complete — ' + invNo),
-      h('div', { style: { fontSize: '12px', color: 'var(--muted)' } }, cust + ' · ' + new Date().toLocaleString('en-PK'))
+      h('div', { style: { fontSize: '12px', color: 'var(--muted)' } }, cust + ' · ' + (typeof DT !== 'undefined' ? DT.format(new Date(), 'datetime') : new Date().toLocaleString('en-PK')))
     ),
     receiptPreviewHost,
     h('div', { style: { display:'flex',gap:'6px',flexWrap:'wrap',fontSize:'11px' } },
