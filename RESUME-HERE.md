@@ -81,7 +81,13 @@ App_/Pwa_ split) + `docs/ARCHITECTURE.md` (conventions + data flow). Saare waves
 (tbl.reload() rowActions me, Clear filters emptyAction). **Sabak:** UI2.table wrap
 return karta hai — append lazmi (DOM-probe debugging se pakra). Chrome-libs restore:
 fetch_chrome_libs ke atspi/avahi gaps manually .deb se bhare (libnspr/nss/atk/atspi/
-avahi/cairo/pango). Quota: 41.3MB effective (stale display ignore). **W5 COMPLETE (v2.30.5):** T5.1–T5.5 ✔ — asli system `Fields.gs` (v2.28/2.29
+avahi/cairo/pango). Quota: 41.3MB effective (stale display ignore). **QUOTA PROTOCOL (2026-09-25, over-budget hua tha):** counter ab node_modules +
+npm-cache BHI ginta hai (131.3MB hua tha, 53 files drop). Is liye: (1) bootstrap
+ab npm cache /tmp par karta hai (.npm kabhi workspace me nahi banta); (2) ROUND
+KE AKHIR me jab test runs mukammal hon to `rm -rf node_modules` karke turn
+khatam karo — agle round ka bootstrap 17s me wapis bana deta hai. Sach ke liye
+hamesha python-walk (node_modules/.cache/.npm counting ke sath).
+**W5 COMPLETE (v2.30.5):** T5.1–T5.5 ✔ — asli system `Fields.gs` (v2.28/2.29
 se shipped, TODO stale tha). Aaj: demo-mock parity (ROLE_PERMS field.* keys +
 fields.matrix mirror) + Users & Security me "Field visibility" live-matrix tab +
 gate F assertions → test_field_visibility **58/0 GREEN**. Audit tool me stale

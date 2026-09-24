@@ -66,7 +66,8 @@ if [ $CHECK -eq 1 ]; then
 else
   if [ $NEED_NPM -eq 1 ]; then
     say "  ▶ npm install (pehli baar 1–3 min lagta hai)…"
-    npm install --no-audit --no-fund >/tmp/npm-install.log 2>&1 \
+    # quota: npm cache /tmp par (workspace me .npm na bane) — v2.30.5
+    npm install --no-audit --no-fund --cache /tmp/npm-cache >/tmp/npm-install.log 2>&1 \
       && say "  ✔ install ho gaya ($(ls node_modules | wc -l) packages)" \
       || { say "  ✖ npm install fail — dekhein /tmp/npm-install.log"; exit 1; }
   else
