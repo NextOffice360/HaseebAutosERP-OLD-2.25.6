@@ -313,10 +313,34 @@ Settings mein Notifications controls + sab action sites ki adoption **baqi hai**
 - [ ] PWA-first responsive (desktop/tablet/mobile), bina zaroorat horizontal scroll na ho.
 - [ ] Har change ke baad regression: feature removal ya disable hona nahi chahiye.
 
-### N11 — Full math/logic audit  🔴
-- [ ] Subtotal/discount/tax/total, payments/change, balances, loyalty points, stock qty/movements, purchase/sales/returns,
-      profit/margin, pricing, numbering, dates, permissions, shop/user, reports, sync state, FE↔BE mapping — sab par
-      authoritative source ek; mismatch fix + regression test.
+### N11 — Full math/logic audit  ✅ DONE
+- [x] Recon (authoritative-source per area, read-only): Sales line calc (lineDisc + discountPct, per-line limit, `pos.discount`
+      bypass, minPrice effUnit guard), header discount (amount/pct/coupon, subtotal cap), bill maxDiscountPct, tax engine
+      (taxInclusive/exclusive, proportional header-disc allocation, residue last line, `payload.tax` override), total↔lineSum
+      drift guard 0.02, paid/due/change, credit-sale + credit-limit (error me poora hisab), status PAID/PARTIAL/DUE, ledger
+      full-invoice debit (closing=due), LOYALTY payment → redeem (double receipt nahi), Inventory.post AVG (in: weighted,
+      out: oldAvg), Payments.create (fee/fed/net, postOnClear→PENDING), Loyalty earn/redeem, sessionSummary
+      expected=opening+netCash, DB.nextNumber per entity|location, purchase GRN costing + price freeze, purchase return
+      (stock −qty at line cost, supplier ledger debit), Inventory.valuation = Σ qty×avgCost, Parties.summary directions
+      (customer debit−credit / supplier credit−debit) — sab theek, koi mask nahi.
+- [x] **FIX #1 — returns profit overstatement** (`Reports.gs`): dashboard `monthProfit` + `reports.profit` cogs/gross returns
+      ignore karte the → profit overstated. Naya `Reports._returnsImpact(p,s)` (revenue reversal = orig net unit rev capped
+      at return lineTotal; cost reversal = orig cost×qty jab restock) → dashboard `profit -= impact`, profit report
+      `cogs += cost; gross -= impact`.
+- [x] **FIX #2 — return over-refund** (`Sales.gs` + `App_Screens.html`): `returnSale` refund = qty×price (gross) tha →
+      discounted bill par zyada wapas. Ab refund base = **net unit revenue** (orig lineBase/qty; explicit price override
+      qayam); UI return form net prefill + sirf discount ho to "· net" hint.
+- [x] **FIX #3 — negative due on overpay** (`Sales.gs`): overpay par `due = total − paid` −ve ho jata tha (change cash
+      wapas ja chuka tha) → `due = max(0, …)`.
+- [x] **FIX #4 — partial-return commission** (`Payments.gs`): `reverseForReturn` poore sale ki commission REVERSED kar
+      deta tha → ab proportional (returned line net share, cumulative across multiple returns, sirf PENDING; PAID untouched).
+- [x] Gate `tools/test_math_logic.js` **21/0 GREEN** = validate_release **step 17** (`--fast` skips): backend exact-math
+      ①–⑩ (proportional disc + mixed tax + change/due, taxInclusive 145.30, clamp, credit limit, loyalty round-trip,
+      AVG costing 150.00, return/stock/refund, net refund 400, profit==raw-tables recompute, numbering series, expectedCash)
+      + commission proportional ⑫ + FE↔BE parity ⑪ (POS cart DOM == backend total) + zero page errors.
+- [x] Regression all GREEN: release_flow 62/0 · points_flow 40/0 · pay_ledger 48/0 · pos_multi 23/0 · modals_close 91/0 ·
+      release_ui 29/0 · inventory_all 40/0 · saveall_pages 16/0 · supplier_autofill 19/0 · save_all 24/0 · partial_save 48/0 ·
+      data_aware 9/0 · math_logic 21/0 · validate_release `--fast` GREEN.
 
 ### N12 — Final regression audit  🔴 (aap ke message ka exact checklist)
 - [ ] Fresh setup → seed → setup wizard → login → user/shop → open shop → customer → products → items → inventory →

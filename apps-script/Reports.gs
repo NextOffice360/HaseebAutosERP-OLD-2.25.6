@@ -29,6 +29,58 @@ var Reports = {
     return items.filter(function (i) { return id ? i.saleId === id : true; });
   },
 
+  /* ==========================================================================
+     v2.30.0 (N11) — RETURNS KA PROFIT IMPACT (ek authoritative source)
+     --------------------------------------------------------------------------
+     Asli masla: profit reports sirf SaleItems parhte the — SALE RETURN ke baad
+     profit BARRA chal jata tha (wapsi aayi revenue/cost net nahi hote the).
+     Har return line ka asar:
+       revenue reversal = original line ka NET unit revenue (lineBase/qty —
+                          bill-discount share ke baad; na mile to return price)
+       cost reversal    = original issue cost × qty (sirf restock par; restock
+                          = false ho to maal zaya — poora revenue reversal)
+     impact = revenue − cost (itna profit KAM karna hai).
+     ========================================================================== */
+  _returnsImpact: function (p, s) {
+    p = p || {};
+    var locId = p.locationId;
+    var rets = DB.all('SaleReturns').filter(function (r) {
+      if (locId && r.locationId !== locId) return false;
+      var d = U.parseDate(r.date);
+      if (p.from && !(d >= U.parseDate(p.from))) return false;
+      if (p.to && !(d < U.parseDate(p.to))) return false;
+      return true;
+    });
+    if (!rets.length) return { revenue: 0, cost: 0, impact: 0 };
+    var retById = {}; rets.forEach(function (r) { retById[r.id] = r; });
+    var origBySale = {};
+    DB.all('SaleItems').forEach(function (i) { (origBySale[i.saleId] = origBySale[i.saleId] || []).push(i); });
+    var revenue = 0, cost = 0;
+    DB.all('SaleReturnItems').forEach(function (i) {
+      var ret = retById[i.returnId];
+      if (!ret) return;
+      var orig = (origBySale[ret.saleId] || []).filter(function (o) { return o.itemId === i.itemId; })[0];
+      var qty = U.num(i.qty);
+      var netUnit = (orig && U.num(orig.qty))
+        ? (U.num(orig.lineBase) || (U.num(orig.price) * U.num(orig.qty) - U.num(orig.discount))) / U.num(orig.qty)
+        : U.num(i.price);
+      var rev = U.round(Math.min(U.round(netUnit * qty, 2), U.num(i.lineTotal, U.round(netUnit * qty, 2))), 2);
+      revenue = U.round(revenue + rev, 2);
+      if (U.str(i.restock) !== 'false') {
+        var costUnit = U.num(orig ? orig.cost : 0);
+        if (!costUnit) {
+          var stockRow = DB.all('Stock').filter(function (r2) {
+            return r2.itemId === i.itemId && r2.locationId === (ret.locationId || locId);
+          })[0] || {};
+          var it = DB.byId('Items', i.itemId) || {};
+          costUnit = U.num(stockRow.avgCost, U.num(it.costPrice));
+        }
+        cost = U.round(cost + U.round(costUnit * qty, 2), 2);
+      }
+    });
+    return { revenue: revenue, cost: cost, impact: U.round(revenue - cost, 2) };
+  },
+
   /* =============================== DASHBOARD =============================== */
   dashboard: function (p, s) {
     p = p || {};
@@ -60,6 +112,9 @@ var Reports = {
       if (!saleIds[i.saleId]) return;
       profit += (U.num(i.price) - U.num(i.cost)) * U.num(i.qty) - U.num(i.discount);
     });
+    /* v2.30.0 (N11) — returns ka asar net (pehle return ke baad profit BARRA dikhta tha) */
+    var monthRets = Reports._returnsImpact({ locationId: locId, from: U.dateOnly(month), to: U.dateOnly(tomorrow) }, s);
+    profit -= monthRets.impact;
 
     // trend (last 14 days)
     var trend = [];
@@ -144,6 +199,10 @@ var Reports = {
       cogs += U.num(i.cost) * U.num(i.qty);
       gross += (U.num(i.price) * U.num(i.qty)) - U.num(i.discount) - (U.num(i.cost) * U.num(i.qty));
     });
+    /* v2.30.0 (N11) — returns ka asar net (revenue/cogs dono period ke returns se) */
+    var retsImp = Reports._returnsImpact({ locationId: p.locationId, from: (p.from || ''), to: (p.to || '') }, s);
+    cogs = U.round(cogs + retsImp.cost, 2);
+    gross = U.round(gross - retsImp.impact, 2);
     var out = rows.map(function (r) {
       return Sales._brief(r);
     });

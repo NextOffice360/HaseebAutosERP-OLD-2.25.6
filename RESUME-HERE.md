@@ -23,7 +23,14 @@ partial-fail par sirf nakaam requeue; offline reload resume — login nahi maang
 **N10 ✅ APP-WIDE (data-aware engine `UI2.form`: depOn dependent options + invalid-child clear +
 showWhen; adopt: Transfer to-branch, Account bank fields, Item subCategory; gate `test_data_aware.js`
 **9/0**, wired step 16)**
-Agla: **N11** (full math/logic audit — authoritative source + regression tests) → app-wide data-aware baqi → N11 (math audit) → N12 (final E2E) → T8 docs/ZIP → T10 release.
+**N11 ✅ MATH/LOGIC AUDIT (4 shared fixes + gate `test_math_logic.js` **21/0**, wired step 17):
+①returns-profit overstatement (Reports._returnsImpact → dashboard+profit net) ②return over-refund
+(Sales.returnSale + UI return form = NET unit revenue, override qayam) ③overpay par due −ve (clamp 0)
+④partial-return commission poora reverse (proportional, cumulative, sirf PENDING). Recon baqi sab
+areas verified-correct (tax engine, AVG costing, loyalty, numbering, valuation, party balances,
+GRN/purchase-return costing, day report). Regression: 12 gates ALL GREEN.**
+Agla: **N12** (final E2E critical flows — fresh setup → … → build/ZIP) → N9.1 leftovers (server-side
+conflict merge + retry backoff) → T8 docs/ZIP → T10 release v2.30.x.
 **PUSH HO CHUKA (2026-09-24):** GitHub `NextOffice360/HaseebAutosERP-OLD-2.25.6` (public) — remote `main` =
 **3b7b40e** (v2.30.0 commit c07e4fc + git_push.sh stale-info fix 3b7b40e) · 424 files · poora project.
 **Agla kaam:** **N3/N8** (action loading/retry + notification service) → N9 (offline sync) → app-wide data-aware baqi → N11 → N12 → T8 docs/ZIP → T10 release → W7.T2 → T7.3/T7.4 → W9/W13 → W10 → W11/W12

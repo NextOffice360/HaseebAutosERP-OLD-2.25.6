@@ -569,8 +569,41 @@ var Commissions = {
   },
 
   reverseForReturn: function (ret, s) {
-    DB.all('Commissions').filter(function (c) { return c.saleId === ret.saleId; })
-      .forEach(function (c) { DB.update('Commissions', c.id, { status: 'REVERSED' }, s); });
+    /*
+     * v2.30.1 (N11) — partial return par poore sale ki commission REVERSE nahi
+     * hoti (pehle puri commission REVERSED ho jati thi → salesman ka haq zaya).
+     * Sirf returned hissa proportionally kam hota hai (line net ke hisab se);
+     * poori qty wapas → share 1 → wahi purana REVERSED. Sirf PENDING kam hoti
+     * hai — PAID commission ko chupaana double-count hai.
+     */
+    DB.all('Commissions').filter(function (c) {
+      return c.saleId === ret.saleId && U.str(c.status) === 'PENDING';
+    }).forEach(function (c) {
+      /* is item ke POORE returns (pehle wale + ye wala) — warna do alag
+         returns par har baar bacha hua hisab hi kata jata */
+      var priorNet = 0, thisNet = 0;
+      DB.all('SaleReturnItems').forEach(function (ri) {
+        var r = DB.byId('SaleReturns', ri.returnId);
+        if (!r || r.saleId !== ret.saleId || ri.itemId !== c.itemId) return;
+        if (ri.returnId === ret.id) thisNet += U.num(ri.lineTotal);
+        else priorNet += U.num(ri.lineTotal);
+      });
+      if (thisNet <= 0) return; /* is item ka return nahi — commission qayam */
+      var saleLine = DB.all('SaleItems').filter(function (r) {
+        return r.saleId === ret.saleId && r.itemId === c.itemId;
+      })[0];
+      var lineNet = saleLine
+        ? U.num(saleLine.price) * U.num(saleLine.qty) - U.num(saleLine.discount)
+        : U.num(c.saleAmount);
+      var baseNet = Math.max(0, lineNet - priorNet);
+      var share = baseNet > 0 ? Math.min(1, thisNet / baseNet) : 1;
+      var remain = U.round(U.num(c.amount) * (1 - share), 2);
+      if (remain <= 0.009) {
+        DB.update('Commissions', c.id, { status: 'REVERSED' }, s);
+      } else {
+        DB.update('Commissions', c.id, { amount: remain, saleAmount: U.round(U.num(c.saleAmount) * (1 - share), 2) }, s);
+      }
+    });
   },
 
   summary: function (p, s) {

@@ -73,6 +73,7 @@ if [ "$FAST" = "1" ]; then
   skip "14. notification service (dedupe, sticky+Retry, progress, settings)" "--fast"
   skip "15. offline sync (idempotent replay, partial fail, chip, auto-flush)" "--fast"
   skip "16. data-aware UI (depOn, invalid-child clear, showWhen, validate)" "--fast"
+  skip "17. math/logic audit (exact totals, costing, returns net, FE-BE parity)" "--fast"
 else
   export LD_LIBRARY_PATH="${LD_LIBRARY_PATH:-/home/user/.chrome-libs/usr/lib/x86_64-linux-gnu}"
   # blank-page error/empty states, shop banner, SHOP_CLOSED gate, setup wizard
@@ -100,6 +101,8 @@ else
   step "15. offline sync (idempotent replay, partial fail, chip, auto-flush)" node tools/test_offline_sync.js
   # N10 — data-aware UI: dependent options, invalid-child clear, showWhen, validate-before-save
   step "16. data-aware UI (depOn, invalid-child clear, showWhen, validate)" node tools/test_data_aware.js
+  # N11 — math/logic: authoritative-source exact math + regression (returns/discount/tax/costing/parity)
+  step "17. math/logic audit (exact totals, costing, returns net, FE-BE parity)" node tools/test_math_logic.js
 fi
 
 echo

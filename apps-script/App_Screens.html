@@ -358,7 +358,13 @@ App.registerScreen('sales', {
     }
 
     function returnForm(sale) {
-      const lines = sale.items.map(i => ({ ...i, retQty: 0 }));
+      /* v2.30.1 (N11) — refund base net unit rev (discount ka hissa wapas nahi);
+         row par sirf tab "net" dikhta hai jab discount ho. Price field editable
+         nahi thi pehle bhi — backend explicit price override support karta hai. */
+      const lines = sale.items.map(i => {
+        const netU = Number(i.qty) ? (Number(i.price) * Number(i.qty) - Number(i.discount || 0)) / Number(i.qty) : Number(i.price);
+        return { ...i, netUnit: Math.round(netU * 100) / 100, retQty: 0 };
+      });
       const body = h('div');
       function render() {
         body.innerHTML = '';
@@ -366,7 +372,7 @@ App.registerScreen('sales', {
           const q = h('input', { type: 'number', min: '0', max: l.qty, value: l.retQty, 'aria-label': 'Return qty', title: 'Return qty', style: { width: '70px', textAlign: 'right' } });
           q.onchange = () => { l.retQty = Math.min(l.qty, Math.max(0, Number(q.value))); q.value = l.retQty; };
           const rowEl = h('div', { class: 'list-item' },
-            h('div', { class: 'li-main' }, h('b', null, l.name), h('span', null, 'Sold ' + l.qty + ' @ ' + fmt.money(l.price))), q);
+            h('div', { class: 'li-main' }, h('b', null, l.name), h('span', null, 'Sold ' + l.qty + ' @ ' + fmt.money(l.price) + (l.discount ? ' · net ' + fmt.money(l.netUnit) : ''))), q);
           rowEl.dataset.code = String(l.code || l.itemId || '');
           body.appendChild(rowEl);
         });
@@ -395,7 +401,7 @@ App.registerScreen('sales', {
         title: '↩ Return — ' + sale.invoiceNo,
         body: h('div', null, scan.el, body, method, reason),
         actions: [{ label: 'Process return', cls: 'danger', onClick: async (c) => {
-          const items = lines.filter(l => l.retQty > 0).map(l => ({ itemId: l.itemId, qty: l.retQty, price: l.price, code: l.code, name: l.name }));
+          const items = lines.filter(l => l.retQty > 0).map(l => ({ itemId: l.itemId, qty: l.retQty, price: l.netUnit, code: l.code, name: l.name }));
           if (!items.length) return UI.toast('Qty daalein', 'warn');
           try {
             await API.call('sales.return', { return_: { saleId: sale.id, items, refundMethod: method.value, reason: reason.value, restock: true } });

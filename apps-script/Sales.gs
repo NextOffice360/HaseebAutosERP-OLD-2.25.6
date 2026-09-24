@@ -228,7 +228,10 @@ var Sales = {
     // ---- payments ----
     var payments = payload.payments || [];
     var paid = U.round(U.sum(payments, 'amount'), 2);
-    var due = U.round(total - paid, 2);
+    /* v2.30.1 (N11) — overpay par change CASH wapas jata hai, to due kabhi
+       negative nahi ho sakta (pehle −4 jaisa advance banta tha, jabke paisa
+       wapas ho chuka tha). due sirf 0 ya + ho. */
+    var due = Math.max(0, U.round(total - paid, 2));
     var change = U.round(paid - total, 2);
     if (change < 0) change = 0;
 
@@ -466,7 +469,26 @@ var Sales = {
     if (!items.length) throw new Error('Return items select karein.');
 
     var limit = U.num(s.saleReturnLimit, 0);
-    var retTotal = U.round(U.sum(items, function (i) { return U.num(i.qty) * U.num(i.price); }), 2);
+    /*
+     * v2.30.1 (N11) — refund base = jo customer ne ASAL mein diya (net unit
+     * revenue), gross unit price nahi. Pehle qty×price liya tha → line/bill
+     * discount wali invoice par zyada refund ho jata tha. Explicit price
+     * (API/manual adjust) ab bhi qayam; price na ho to net default.
+     */
+    var eff = items.map(function (line) {
+      var origLine = DB.all('SaleItems').filter(function (r) {
+        return r.saleId === sale.id && r.itemId === line.itemId;
+      })[0];
+      var netUnit = (origLine && U.num(origLine.qty))
+        ? U.round(U.num(origLine.price) - U.num(origLine.discount) / U.num(origLine.qty), 2)
+        : U.num(line.price);
+      return {
+        line: line, origLine: origLine || null,
+        qty: U.num(line.qty),
+        price: (line.price === undefined || line.price === '') ? netUnit : U.num(line.price)
+      };
+    });
+    var retTotal = U.round(U.sum(eff, function (e) { return e.qty * e.price; }), 2);
     if (limit && retTotal > limit && !Auth.can(s, '*')) {
       throw new Error('Return limit ' + limit + ' se zyada nahi ho sakti.');
     }
@@ -479,12 +501,13 @@ var Sales = {
       refundMethod: payload.refundMethod || 'CASH', createdBy: s.userId, createdAt: U.iso()
     }, s);
 
-    items.forEach(function (line) {
-      var qty = U.num(line.qty);
-      var price = U.num(line.price);
+    eff.forEach(function (e) {
+      var line = e.line, qty = e.qty, price = e.price;
+      var origLine = e.origLine;
+      var retLine = U.round(qty * price, 2);
       DB.insert('SaleReturnItems', { id: U.uid('SRI'), returnId: ret.id, itemId: line.itemId,
         code: line.code || '', name: line.name || '', qty: qty, price: price,
-        lineTotal: U.round(qty * price, 2), restock: payload.restock === false ? 'false' : 'true' });
+        lineTotal: retLine, restock: payload.restock === false ? 'false' : 'true' });
       if (payload.restock !== false) {
         var it = DB.byId('Items', line.itemId) || {};
         /*
@@ -492,9 +515,6 @@ var Sales = {
          * (original issue cost), warna average cost distort ho jati hai.
          * Fallback: current avg cost → item master ka last purchase price nahi.
          */
-        var origLine = DB.all('SaleItems').filter(function (r) {
-          return r.saleId === sale.id && r.itemId === line.itemId;
-        })[0];
         var stockRow = DB.all('Stock').filter(function (r) {
           return r.itemId === line.itemId && r.locationId === locId;
         })[0] || {};
