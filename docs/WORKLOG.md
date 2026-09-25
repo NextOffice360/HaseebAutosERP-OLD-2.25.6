@@ -136,3 +136,22 @@ integration + regression + UI/UX-check + error-handling + security-check pass ho
 **Evidence:** tmp/dh10 (hub 16/0), designer 10/0, i18n floor 3/0 — sab upar logs.
 
 **Round-9 correction (2026-09-25):** commit 8f23d5a ke waqt R9-3/R9-4 (QR HA:INV emitter + legacy resolve) aur mock def-map apply NAHI the — /tmp/r9_patch.txt pending tha; worklog ne over-claim kiya. Ab apply + Print.gs-exact defs (logo/businessUr/ntn/customerPhone/salesman bhi def:false) + rebuild ho chuka. Verify round-1 se 3 RED: doc-designer (mock def-map missing — ab root-fixed), pay-ledger (gate regex frozen Roman — lang-agnostic), modals-close (solo 91/0 — flake). Sab solo GREEN: designer 10/0, pay-ledger 48/0, resolver 13/0, hub 16/0, batch 22/0, registry 10/0, qr-payloads rc=0.
+
+## Round-10 — EN-purity slice-2 + QR label emitter (2026-09-25) — SHIPPED v2.30.8
+
+**Batch (36 todos):** slice-1 roman-fallback correction · Screens2/POS2 full EN-purity · QR A2 · gates.
+- [x] T1 slice-1 galti ki correction: 34 T.t fallbacks roman → EN (App_Lang convention: fallback=english)
+- [x] T2 mock dict Cyrillic-е (pos.pointsTooMany roman) → ASCII
+- [x] T3–T22 Screens2: 59 literals → T.t (PO/GRN/PR forms, cash close, reports, dashboards, perms, branches) — keys sc2.* (~59 naye dict rows)
+- [x] T23–T34 POS2: 47 literals → T.t (shop-gate, bulk, cart, held, loyalty, ledger, shortcuts) — keys pos.* (~42 naye + 3 reuse)
+- [x] T35 reuse-sites EN fallback (productNotFound/nothingSelected/nameReq ×2 each) + double-wrap collapse (6)
+- [x] T36 comment-hygiene: block-comment continuation lines par '* ' prefix (audit false-positives khatam)
+- [x] T37 floor baselines: hits 866→732, T.t 93→199, top-4 per-file (Core 80/AIConfig 50/UI2 48/Dashboards 47)
+- [x] T38 QR A2: App_Barcode invoice-label KV → `HA:INV:` (legacy labels r9 back-compat se khulte hain) — ab SAARE doc-QR emitters HA: standard
+- [x] T39 PwaHub url QR = link payload (doc-code nahi) — N/A documented
+- [x] T40–T45 6 gates lang-agnostic: release_ui (Koi item nahi), shop_setup_flow ×2, smoke ×4 (receivables/payables/party KPIs), forms_shared, punchlist source-pattern, perf-batch (save-fail), grn-drawer ×2
+- [x] T46 verify r1 → 3 RED (punch/perf-batch/grn-drawer) → root-fixed → solo GREEN
+- [x] T47 full verify 70/70 GREEN (tmp/validate-v2.30.8.log) → package v2.30.8.zip → push ce2184a
+- Natija: Screens2 POS2 = 0/1 hits (sirf 1 domain-term 'udhaar'); EN mode ab production-safe (fallback=EN)
+
+**Remnants (r11+):** EN-purity slice-3 (App_Core 80 — zyada tar regex/error-matchers, App_AIConfig 50, App_UI2 48, App_Dashboards 47, App_Config 44, Pwa_Shell 42, Pwa_Warehouse 40, App_Accounting 39) · Phase-C Context_Aware UX items · audit_qr_payloads ko resolve-check gate banana.
