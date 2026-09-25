@@ -129,7 +129,7 @@ const ok = (n, c, d) => c ? (pass++, console.log('  ✔ ' + n + (d ? '  → ' + 
     await new Promise(r => setTimeout(r, 600));
     return (window.__toasts || []).join(' | ');
   });
-  ok('validation — customer + product ke bagair save block', /Customer select|Product name/i.test(val), val);
+  ok('validation — customer + product ke bagair save block', /customer|product name/i.test(val), val); /* lang-agnostic (D7: EN fallback) */
 
   /* 6) customer pick (search + intelligence) */
   const cust = await page.evaluate(async () => {

@@ -79,6 +79,9 @@ ok('salesman.issue chala', !!(issue && issue.id), JSON.stringify(issue).slice(0,
 { const r = handled('salesman.issue.get', { id: issue.id });
   ok('salesman.issue.get purana issue deta hai', r.ok, r.msg); }
 
+/* v2.30.6 — demo v2.30.5 se CLOSED boot karta hai: sale se pehle session khulo (recipe) */
+call('cash.session.open', { locationId: LOC, openingCash: 500 });
+
 /* BUG #2 yahan tha: sale ke liye salespersonId chahiye */
 const smSale = call('sales.create', {
   sale: {

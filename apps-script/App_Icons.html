@@ -72,6 +72,7 @@
     globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.5 2.5 3.8 5.6 3.8 9S14.5 18.5 12 21c-2.5-2.5-3.8-5.6-3.8-9S9.5 5.5 12 3Z"/>',
     /* Offline — cloud par slash */
     cloudOff: '<path d="M17.5 19H7a4 4 0 0 1-.4-8A5.5 5.5 0 0 1 16 8.5c.4 0 .8 0 1.2.1"/>',
+    cloud: '<path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/>',
     /* AI assistant — sparkles */
     sparkles: '<path d="M12 3l1.9 4.6L18.5 9.5l-4.6 1.9L12 16l-1.9-4.6L5.5 9.5l4.6-1.9Z"/><path d="M18 15l.9 2.1L21 18l-2.1.9L18 21l-.9-2.1L15 18l2.1-.9Z"/>',
     /* Custom fields — sliders (knobs) */
@@ -210,6 +211,8 @@
     '\u21BB': 'refresh', '\u21A9': 'undo', '\u23F1': 'clock', '\u23F8': 'pause',
     '\u2696': 'scale', '\u26A1': 'zap', '\u2139': 'info', '\u0069': 'info',
     '\u270E': 'pencil', '\u2713': 'check', '\u2715': 'ban', '\u2796': 'chart',
+    /* v2.30.6 — 3 bacha-kucha emoji bhi SVG (ui-polish sweep: ☁ 🧭 📬) */
+    '\u2601': 'cloud', '\uD83E\uDDED': 'map', '\uD83D\uDCEC': 'box', '\uD83D\uDCEB': 'box',
     /* v2.14.1 — POS multi-select toolbar (☑ = U+2611 BALLOT BOX WITH CHECK) */
     '\u2611': 'check', '\u2610': 'clipboard',
     /* v2.24.0 — keyboard glyph (POS Help / shortcuts) bhi SVG ho jaye */
@@ -374,5 +377,15 @@
     count: Object.keys(P).length,
     screens: Object.keys(BY_SCREEN).length
   };
+
+  /* v2.30.6 fix — watch() defined tha magar KABHI start nahi hota tha: is liye
+     async render hone wala DOM (UI2.table API-load waghera) par upgrade pass
+     chalta hi nahi tha aur wahan emoji reh jate the (misal: demand '📬 Arrived').
+     Ab boot par hi poori body observe — debounce 120ms, icoDone guard se sasta. */
+  /* head me load hota hai — body tab tak nahi hota; DOM-ready par observe karo */
+  try {
+    if (document.body) watch(document.body);
+    else document.addEventListener('DOMContentLoaded', function () { try { watch(document.body); } catch (e2) { } });
+  } catch (e) { }
 })();
 </script>

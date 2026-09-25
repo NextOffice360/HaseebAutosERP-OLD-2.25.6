@@ -176,6 +176,9 @@ const AUDIT = (rootSel) => {
   await page.goto('file://' + path.join(ROOT, 'demo', 'index.html'), { waitUntil: 'load' });
   await login(page);            /* poll + login (shared harness) */
   await new Promise(r => setTimeout(r, 900));
+  /* v2.30.6 — demo CLOSED boot karta hai (user-report fix): overlay steps
+     (day closing report / shop screen) ke liye session pehle kholo */
+  try { await page.evaluate(() => API.call('cash.session.open', { openingCash: 5000 }, { offlineFallback: () => null })); await new Promise(r => setTimeout(r, 700)); } catch (e) { }
   if (DARK) {
     await page.evaluate(() => document.documentElement.setAttribute('data-theme', 'dark'));
     await new Promise(r => setTimeout(r, 400));

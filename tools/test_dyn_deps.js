@@ -259,8 +259,10 @@ if (!win.CustomEvent) win.CustomEvent = win.Event;
     ok('⑦ naye provider ka model select auto-select hua (khali nahi)', !!sel2 && String(sel2.value).length > 0,
       'value=' + (sel2 && sel2.value));
 
-    /* [data-when] — provider-specific sections shared system se */
-    await cardClick('Mock');
+    /* [data-when] — provider-specific sections shared system se
+       (v2.30.6: MOCK card ka label 'Local Data Assistant' hai — 'Mock' text
+       card par nahi, is liye dono naam match karo) */
+    await cardClick('Local Data|Mock');
     const mockKeyVis = (function () {
       const key = doc.querySelector('.ai-keyrow');
       if (!key) return 'absent';

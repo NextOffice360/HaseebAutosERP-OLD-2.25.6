@@ -100,3 +100,14 @@ integration + regression + UI/UX-check + error-handling + security-check pass ho
 - Final battery: neeche (task-30) — push + tag v2.30.6 attempt.
 
 ## (agle slices yahan add honge — D26+, har entry isi format me)
+
+## Round-8b — v2.30.6 tag-verify GREEN (2026-09-25)
+
+**Task:** 21-gate verify fail list → root-cause → fix → 68/68 GREEN.
+
+**State:**
+- Asli app-bugs fix (shared roots): (1) Pwa_Shell `PWA.fmtDT` IIFE-andar `var PWA` par assignment — poora PWA shell crash (v2.30.5 se); local fn + export. (2) `fetchPrevBatch` poForm-scope me band — grnForm.loadPoIntoGrn ReferenceError; module-level `fetchPrevBatchShared(ls,cb,supplierId)`. (3) `loadShopState` pre-login protected call — session-guard. (4) salesman routes `{rows}` wrap crash (drawTours + select). (5) App_Icons: 3 missing emoji maps (+1F4EC!), `cloud` path, `watch()` ab boot par body observe (async DOM emoji). (6) Styles: `.li-main .ent-link` block + 32px tap floor (D22 geometry).
+- Gate-fitness fixes (mock/lang drift): demand T.t toast, session_guard/smoke EN fallback, dyn_deps+ai_ui 'Local Data Assistant', ui_err errText param, labels D18 QR payload, ui_polish 36px+party-grid+overflow, smoke/users 5-tab, smoke session seed + loadShopState refresh, audit_layout session seed, pay_ledger deterministic customer pick (Walk-in/Naya exclude), perf-batch tolerant source-contract.
+- Evidence: tmp/validate-v2.30.6.log — "ALL GATES GREEN ✔ (68 gate)", VERIFY_DONE rc=0.
+
+**Next:** package v2.30.6 → FTP backup → push (b6eb25e → naya HEAD).

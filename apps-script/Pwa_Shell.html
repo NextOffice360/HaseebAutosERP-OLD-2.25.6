@@ -408,7 +408,10 @@ var PWA = (function () {
     }
     return null;
   }
-  PWA.fmtDT = function (v, mode) {
+  /* v2.30.6 fix — ye assignment IIFE ke andar `var PWA` (abhi undefined) par
+     thi → poora shell block crash, PWA kabhi assign hi nahi hota tha (sab PWA
+     pages dead). Ab local function + return-object se export. */
+  function fmtDT(v, mode) {
     var d = (v instanceof Date) ? v : new Date(v || Date.now());
     if (isNaN(d)) return String(v || '');
     var c = _dtCfgLS() || {};
@@ -425,7 +428,7 @@ var PWA = (function () {
     var sec = c.seconds === true ? ':' + p2(d.getSeconds()) : '';
     var timePart = (c.hour12 === true ? h : p2(h)) + ':' + p2(d.getMinutes()) + sec + ap;
     return datePart + ', ' + timePart;
-  };
+  }
 
 
   /* ==========================================================================
@@ -1705,6 +1708,7 @@ var PWA = (function () {
   return {
     can: can, field: field, applyFields: applyFields,
     boot: boot, call: call, api: call, toast: toast, el: el, $: $, money: money, haptic:haptic, confirm: confirm,
+    fmtDT: fmtDT,
     run: run, runStats: runStats, get _features() { return _features; },
     fail: fail, errBox: errBox, errKind: errKind, errText: errText, errStats: errStats,
     layerVisible: layerVisible, layerReport: layerReport, sweepStale: sweepStale,

@@ -418,9 +418,11 @@ const OVERFLOW_PROBE = `(() => {
   ok('13-digit + QR (bug case pehle): bars merge nahi hue — 75 bars (15 chars x 5) alag alag padhe gaye',
     dec300['ean13+qr-50x30'] && dec300['ean13+qr-50x30'].runs >= 75,
     'runs=' + (dec300['ean13+qr-50x30'] ? dec300['ean13+qr-50x30'].runs : 'n/a') + ' · modW=' + geo['ean13+qr-50x30'].modWpx + 'px');
+  /* v2.30.6: D18 doc-intel QR payload ab HA:ITM:<code> format hai (App_QR emitter);
+     decode path wahi hai — expected strings naye contract par */
   ok('QR code bhi scannable: raster se decode ho kar wahi payload deta hai (offline encoder)',
-    !!(decQR['ean13+qr-50x30'] && decQR['ean13+qr-50x30'].text === 'CODE:FL00000;SKU:Z3')
-    && !!(decQR['wh+qr-70x50'] && decQR['wh+qr-70x50'].text === 'CODE:FL00000;SKU:Z6'),
+    !!(decQR['ean13+qr-50x30'] && decQR['ean13+qr-50x30'].text === 'HA:ITM:Z3')
+    && !!(decQR['wh+qr-70x50'] && decQR['wh+qr-70x50'].text === 'HA:ITM:Z6'),
     JSON.stringify({ a: decQR['ean13+qr-50x30'] && (decQR['ean13+qr-50x30'].text || decQR['ean13+qr-50x30'].err), b: decQR['wh+qr-70x50'] && (decQR['wh+qr-70x50'].text || decQR['wh+qr-70x50'].err) }));
   ok('jab bars ko poori chaurai chahiye ho: QR apni ROW mein (bars ke neeche), overlap nahi, frame ke andar',
     geo['ean13+qr-50x30'].stacked && geo['ean13+qr-50x30'].qrOk !== false && geo['ean13+qr-50x30'].outsideQR === 0

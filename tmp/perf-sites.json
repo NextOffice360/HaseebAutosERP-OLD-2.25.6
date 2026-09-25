@@ -1,0 +1,176 @@
+{
+ "fe": [],
+ "fp": [
+  {
+   "file": "App_Config.html",
+   "n": 1
+  },
+  {
+   "file": "App_Dashboards.html",
+   "n": 2
+  },
+  {
+   "file": "App_Demand.html",
+   "n": 1
+  },
+  {
+   "file": "App_Inventory2.html",
+   "n": 2
+  },
+  {
+   "file": "App_Masters.html",
+   "n": 1
+  },
+  {
+   "file": "App_POS2.html",
+   "n": 1
+  },
+  {
+   "file": "App_Screens2.html",
+   "n": 1
+  },
+  {
+   "file": "App_UI2.html",
+   "n": 1
+  },
+  {
+   "file": "App_Warehouse.html",
+   "n": 4
+  }
+ ],
+ "be": [],
+ "waits": [
+  {
+   "file": "App_Config.html",
+   "awaits": 58,
+   "pals": 2,
+   "par": 2
+  },
+  {
+   "file": "App_Screens2.html",
+   "awaits": 57,
+   "pals": 0,
+   "par": 2
+  },
+  {
+   "file": "App_Salesman.html",
+   "awaits": 34,
+   "pals": 0,
+   "par": 0
+  },
+  {
+   "file": "App_Accounting.html",
+   "awaits": 32,
+   "pals": 1,
+   "par": 1
+  },
+  {
+   "file": "App_Masters.html",
+   "awaits": 28,
+   "pals": 0,
+   "par": 0
+  },
+  {
+   "file": "App_Boot.html",
+   "awaits": 27,
+   "pals": 0,
+   "par": 0
+  },
+  {
+   "file": "App_Core.html",
+   "awaits": 27,
+   "pals": 2,
+   "par": 0
+  },
+  {
+   "file": "App_Comms.html",
+   "awaits": 21,
+   "pals": 0,
+   "par": 0
+  },
+  {
+   "file": "App_Dashboards.html",
+   "awaits": 20,
+   "pals": 5,
+   "par": 0
+  },
+  {
+   "file": "App_POS2.html",
+   "awaits": 20,
+   "pals": 0,
+   "par": 0
+  },
+  {
+   "file": "App_AIConfig.html",
+   "awaits": 17,
+   "pals": 1,
+   "par": 0
+  },
+  {
+   "file": "App_Print.html",
+   "awaits": 16,
+   "pals": 0,
+   "par": 0
+  },
+  {
+   "file": "Pwa_Shell.html",
+   "awaits": 16,
+   "pals": 0,
+   "par": 0
+  },
+  {
+   "file": "App_UI2.html",
+   "awaits": 15,
+   "pals": 0,
+   "par": 0
+  },
+  {
+   "file": "App_Inventory2.html",
+   "awaits": 14,
+   "pals": 0,
+   "par": 0
+  },
+  {
+   "file": "App_Demand.html",
+   "awaits": 13,
+   "pals": 0,
+   "par": 0
+  },
+  {
+   "file": "App_Screens.html",
+   "awaits": 13,
+   "pals": 0,
+   "par": 0
+  },
+  {
+   "file": "App_Lang.html",
+   "awaits": 12,
+   "pals": 1,
+   "par": 0
+  },
+  {
+   "file": "App_POS.html",
+   "awaits": 11,
+   "pals": 0,
+   "par": 0
+  },
+  {
+   "file": "App_Barcode.html",
+   "awaits": 8,
+   "pals": 0,
+   "par": 0
+  },
+  {
+   "file": "App_Wallet.html",
+   "awaits": 8,
+   "pals": 1,
+   "par": 0
+  },
+  {
+   "file": "Pwa_Warehouse.html",
+   "awaits": 8,
+   "pals": 0,
+   "par": 0
+  }
+ ]
+}

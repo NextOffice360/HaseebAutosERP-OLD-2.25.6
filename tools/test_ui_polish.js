@@ -62,8 +62,8 @@ if (!fs.existsSync(DEMO)) {
   const keys = Object.keys(heights).map(Number).sort((a, b) => a - b);
   console.log('     heights: ' + JSON.stringify(heights));
   /* 32=sm, 38=normal, 46=POS payment pad (jaan boojh kar bara — ungli se asan) */
-  ok('button height sirf 3 tarah ki (32 sm / 38 normal / 46 POS pad) — pehle 6 thin',
-    keys.length <= 3 && keys.every(k => [32, 38, 46].indexOf(k) >= 0),
+  ok('button height sirf 4 tarah ki (32 sm / 36 base / 38 normal / 46 POS pad) — pehle 6 thin',
+    keys.length <= 4 && keys.every(k => [32, 36, 38, 46].indexOf(k) >= 0), /* v2.30.6: 36 = base .btn min-height (touch-target qaafiyat) */
     'milay: ' + keys.join('/') + 'px');
   ok('koi button 60px se bara nahi (72px wala bug wapas nahi aaya)',
     keys.every(k => k <= 60), 'sab se bara: ' + Math.max.apply(null, keys) + 'px');
@@ -439,12 +439,15 @@ if (!fs.existsSync(DEMO)) {
       return { visible: true, multiCol: !!rows, cells: cells.length,
         sameLine: cells.length > 1 && cells.every(c =>
           Math.round(c.getBoundingClientRect().y) === Math.round(cells[0].getBoundingClientRect().y)),
+        fit: rows ? (rows.scrollWidth <= rows.clientWidth + 2) : true,
         en: cells.map(c => (c.querySelector('span') || {}).textContent || ''),
         urTooltips: cells.filter(c => /[؀-ۿ]/.test(c.getAttribute('title') || '')).length };
     });
     ok('supplier card multi-column grid mein', bal.visible && bal.multiCol && bal.cells >= 3,
       (bal.cells || 0) + ' cells');
-    ok('supplier card ki fields EK line mein (jaga bachi)', bal.sameLine === true);
+    /* v2.30.6: N10 ne card ki rows barha di (contact/address/limit live) —
+       ab multi-row grid BY DESIGN hai; sahi contract = koi horizontal overflow nahi */
+    ok('supplier card fields grid mein fit (koi overflow nahi)', bal.fit === true, 'fit=' + bal.fit);
     ok('supplier card English titles + Urdu tooltips',
       bal.en && bal.en.some(x => /^[A-Za-z]/.test(x)) && bal.urTooltips >= 3,
       (bal.en || []).slice(0, 2).join(' | '));

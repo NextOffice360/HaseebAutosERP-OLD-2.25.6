@@ -89,8 +89,10 @@ console.log('\x1b[1m⑦ priceInfoBatch: N lines ka price history EK call me\x1b[
   }
   /* FE wiring (source contract): PO-load + demand add-all ab batch; single-line fetchPrev qayam */
   const scr = src('App_Screens2.html');
-  ok('⑦ GRN screen: PO-load + demand add-all ab fetchPrevBatch (1 call)',
-    scr.includes('fetchPrevBatch(lines)') && scr.includes('fetchPrevBatch(fresh);'));
+  /* v2.30.6: fetchPrevBatch ab (ls, repaintCb, supplierId) leta hai — GRN call me
+     repaint+supplier pass hote hain, is liye literal-match extra-args tolerant */
+  ok('⑦ GRN screen: PO-load + demand add-all dono fetchPrevBatch (batch) par',
+    /fetchPrevBatch\(lines[),]/.test(scr) && scr.includes('fetchPrevBatch(fresh);'));
   ok('⑦ single-line fetchPrev qayam (per-action price info bhi hai — feature nahi gaya)',
     scr.includes("purchase.priceInfoBatch'") && (scr.match(/fetchPrev\(/g) || []).length >= 3);
 }

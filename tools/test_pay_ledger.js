@@ -152,22 +152,25 @@ async function pickFirstCustomer(page) {
   await sleep(900);
   /* prefer aisa customer jiska udhaar (balance) AUR credit limit dono ho —
      warna ledger ka "Credit limit / Available" row by-design render nahi hota */
+  /* v2.30.6 — deterministic: catalog se BEHTAREEN customer (limit+balance wala
+     pehle), phir picker me USI ke naam wala button click (Walk-in/Naya kabhi nahi) */
   return page.evaluate(() => {
     const list = (App.state.catalog.customers || []).map(c => ({
       name: String(c.name || '').trim(), bal: Number(c.balance || 0), lim: Number(c.creditLimit || 0) }));
     const m = document.querySelector('.modal-scrim .modal2');
     if (!m) return null;
-    const btns = [].slice.call(m.querySelectorAll('button')).filter(x => x.textContent.indexOf('\u{1F464}') !== -1 || /customer|walk-in|select/i.test(x.textContent || ''));
-    if (!btns.length) return null;
-    const score = b => {
-      const t = (b.textContent || '').trim();
-      const c = list.filter(x => t.indexOf(x.name) > -1)[0];
-      return c ? (c.lim > 0 ? 2 : 0) + (c.bal > 0 ? 1 : 0) : 0;
-    };
-    const best = btns.slice().sort((a, b2) => score(b2) - score(a))[0] || btns[0];
-    const t = (best.textContent || '').trim();
-    best.click();
-    return t;
+    const btns = [].slice.call(m.querySelectorAll('button'));
+    const scored = [];
+    list.forEach(c => {
+      if (!c.name) return;
+      const b = btns.filter(x => (x.textContent || '').indexOf(c.name) > -1)[0];
+      if (b) scored.push({ b: b, t: (b.textContent || '').trim(), sc: (c.lim > 0 ? 2 : 0) + (c.bal > 0 ? 1 : 0) });
+    });
+    scored.sort((a, b2) => b2.sc - a.sc);
+    const pick = scored[0];
+    if (!pick) return null;
+    pick.b.click();
+    return pick.t;
   });
 }
 
@@ -188,6 +191,11 @@ async function pickFirstCustomer(page) {
     }
     await page.waitForFunction(() => window.App && App.state && App.state.session, { timeout: 20000 });
     await sleep(1200);
+    /* v2.30.6 — demo v2.30.5 se CLOSED boot karta hai (user-report fix): gate khud
+       shop session khole ga (standing recipe), warna shop-blocker pay modal ko
+       replace kar deta hai */
+    await page.evaluate(() => API.call('cash.session.open', { openingCash: 5000 }, { offlineFallback: () => null }).catch(() => null));
+    await sleep(700);
     await page.evaluate(() => {
       window.__toasts = [];
       const t = UI.toast;

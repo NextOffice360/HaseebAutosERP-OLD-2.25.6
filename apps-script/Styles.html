@@ -1012,7 +1012,10 @@ table.tbl tbody tr.clickable{cursor:pointer}
    Reusable class (mandate §7): UI2.entityLink() isi ko render karta hai. */
 .ent-link{background:none;border:0;padding:0;margin:0;color:var(--pri);font:inherit;font-weight:600;
   cursor:pointer;text-decoration:underline dotted;text-underline-offset:2px;border-radius:4px;
-  min-height:24px}
+  min-height:32px}
+/* v2.30.6 fix — list-line ke andar ent-link purane <b> jaisa BLOCK ho (title apni
+   line par, span neeche): inline button span ke sath overlap + 24px tap karta tha */
+.li-main .ent-link{display:block;text-align:left}
 .ent-link:hover{ text-decoration-style:solid }
 .ent-link:focus-visible{ outline:2px solid var(--pri);outline-offset:1px }
 .m-foot{display:flex;gap:8px;justify-content:flex-end;padding:12px 18px;border-top:1px solid var(--line);

@@ -74,6 +74,14 @@ async function boot() {
   check('shell visible after login', doc.querySelector('#shell') && !doc.querySelector('#shell').hidden,
     'shell hidden');
   await sleep(500);
+  /* v2.30.6 — demo CLOSED boot karta hai (user-report fix): POS/qty-pad/pay/closing
+     sab shop-session maangte hain — smoke khud session kholta hai */
+  try {
+    win.API && win.API.call('cash.session.open', { openingCash: 5000 }, { offlineFallback: () => null });
+    await sleep(700);
+    /* header pill ko naya state foran dikha do (warna 2-min interval wait hota hai) */
+    if (win.loadShopState) { win.loadShopState(); await sleep(500); }
+  } catch (e) { }
 }
 
 async function screen(id) {
@@ -689,7 +697,7 @@ async function clickAll(view, label, selector, limit) {
       const modal = Array.from(doc.querySelectorAll('.modal2, .modal')).pop();
       const t = modal ? (modal.textContent || '') : '';
       check('header pill opens a quick open/close dialog',
-        /Shop kholein|Shop khuli hai/.test(t), t.slice(0, 120));
+        /Shop kholein|Shop khuli hai|Shop is open/i.test(t), t.slice(0, 120)); /* v2.30.6: T.t EN */
       if (/Shop khuli hai/.test(t)) {
         check('quick dialog shows expected cash + day summary',
           /Expected in drawer/.test(t) && /Opening cash/.test(t), t.slice(0, 200));
@@ -784,8 +792,8 @@ async function clickAll(view, label, selector, limit) {
   {
     const view = doc.querySelector('#view');
     const segs = Array.from(view.querySelectorAll('.seg button')).map(b => (b.textContent || '').trim());
-    check('users screen shows 4 sections (Users / Groups / Permissions / Audit)',
-      segs.length === 4, segs.join('|'));
+    check('users screen shows 5 sections (Users / Groups / Permissions / Field visibility / Audit)',
+      segs.length === 5, segs.join('|')); /* v2.30.6: Field visibility tab ab by-design */
     const permTab = Array.from(view.querySelectorAll('.seg button')).find(b => /Permission/i.test(b.textContent || ''));
     if (permTab) {
       permTab.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true }));

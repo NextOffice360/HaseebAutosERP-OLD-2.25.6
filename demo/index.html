@@ -1060,7 +1060,10 @@ table.tbl tbody tr.clickable{cursor:pointer}
    Reusable class (mandate §7): UI2.entityLink() isi ko render karta hai. */
 .ent-link{background:none;border:0;padding:0;margin:0;color:var(--pri);font:inherit;font-weight:600;
   cursor:pointer;text-decoration:underline dotted;text-underline-offset:2px;border-radius:4px;
-  min-height:24px}
+  min-height:32px}
+/* v2.30.6 fix — list-line ke andar ent-link purane <b> jaisa BLOCK ho (title apni
+   line par, span neeche): inline button span ke sath overlap + 24px tap karta tha */
+.li-main .ent-link{display:block;text-align:left}
 .ent-link:hover{ text-decoration-style:solid }
 .ent-link:focus-visible{ outline:2px solid var(--pri);outline-offset:1px }
 .m-foot{display:flex;gap:8px;justify-content:flex-end;padding:12px 18px;border-top:1px solid var(--line);
@@ -7014,6 +7017,7 @@ window.MockAPI = {
     globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.5 2.5 3.8 5.6 3.8 9S14.5 18.5 12 21c-2.5-2.5-3.8-5.6-3.8-9S9.5 5.5 12 3Z"/>',
     /* Offline — cloud par slash */
     cloudOff: '<path d="M17.5 19H7a4 4 0 0 1-.4-8A5.5 5.5 0 0 1 16 8.5c.4 0 .8 0 1.2.1"/>',
+    cloud: '<path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/>',
     /* AI assistant — sparkles */
     sparkles: '<path d="M12 3l1.9 4.6L18.5 9.5l-4.6 1.9L12 16l-1.9-4.6L5.5 9.5l4.6-1.9Z"/><path d="M18 15l.9 2.1L21 18l-2.1.9L18 21l-.9-2.1L15 18l2.1-.9Z"/>',
     /* Custom fields — sliders (knobs) */
@@ -7152,6 +7156,8 @@ window.MockAPI = {
     '\u21BB': 'refresh', '\u21A9': 'undo', '\u23F1': 'clock', '\u23F8': 'pause',
     '\u2696': 'scale', '\u26A1': 'zap', '\u2139': 'info', '\u0069': 'info',
     '\u270E': 'pencil', '\u2713': 'check', '\u2715': 'ban', '\u2796': 'chart',
+    /* v2.30.6 — 3 bacha-kucha emoji bhi SVG (ui-polish sweep: ☁ 🧭 📬) */
+    '\u2601': 'cloud', '\uD83E\uDDED': 'map', '\uD83D\uDCEC': 'box', '\uD83D\uDCEB': 'box',
     /* v2.14.1 — POS multi-select toolbar (☑ = U+2611 BALLOT BOX WITH CHECK) */
     '\u2611': 'check', '\u2610': 'clipboard',
     /* v2.24.0 — keyboard glyph (POS Help / shortcuts) bhi SVG ho jaye */
@@ -7316,6 +7322,16 @@ window.MockAPI = {
     count: Object.keys(P).length,
     screens: Object.keys(BY_SCREEN).length
   };
+
+  /* v2.30.6 fix — watch() defined tha magar KABHI start nahi hota tha: is liye
+     async render hone wala DOM (UI2.table API-load waghera) par upgrade pass
+     chalta hi nahi tha aur wahan emoji reh jate the (misal: demand '📬 Arrived').
+     Ab boot par hi poori body observe — debounce 120ms, icoDone guard se sasta. */
+  /* head me load hota hai — body tab tak nahi hota; DOM-ready par observe karo */
+  try {
+    if (document.body) watch(document.body);
+    else document.addEventListener('DOMContentLoaded', function () { try { watch(document.body); } catch (e2) { } });
+  } catch (e) { }
 })();
 </script>
 
@@ -20357,6 +20373,31 @@ function supplierBalanceCard() {
   return el;
 }
 
+/* v2.30.6 fix (W7.T2 regression) — shared prev-price batch fetch, module-level.
+   repaintCb har form apna pass karta hai (poForm: strip repaint; grnForm: render). */
+async function fetchPrevBatchShared(ls, repaintCb, supplierId) {
+  const list = (ls || []).filter(l => l && l.itemId);
+  if (!list.length) return;
+  try {
+    const r = await API.call('purchase.priceInfoBatch', {
+      supplierId: supplierId || '',
+      items: list.map(l => ({ itemId: l.itemId, rate: Number(l.rate !== undefined ? l.rate : l.cost) || 0 }))
+    }, { offlineFallback: () => null });
+    if (!r || !r.rows) return;
+    r.rows.forEach(row => {
+      const l = list.find(x => String(x.itemId) === String(row.itemId));
+      if (!l || row.error) return;
+      l.prevPrice = Number(row.prevPrice || 0);
+      l.prevDate = row.prevDate || ''; l.prevSource = row.prevSource || ''; l.prevGrnNo = row.prevGrnNo || '';
+      l.retailPrice = Number(row.retailPrice || l.retailPrice || 0);
+      l.wholesalePrice = Number(row.wholesalePrice || l.wholesalePrice || 0);
+      if (repaintCb) try { repaintCb(l); } catch (e2) { }
+    });
+  } catch (e) { /* offline/parse — lines bina prev-price rehti hain (feature intact) */ }
+}
+window.fetchPrevBatch = fetchPrevBatchShared;
+const fetchPrevBatch = fetchPrevBatchShared;   /* grnForm.loadPoIntoGrn ka direct call isi se */
+
 function poForm(po, preset) {
   const items = po ? [] : [];
   /* supplier ka pichhla baqaya form ke upar nazar aaye */
@@ -20496,27 +20537,10 @@ function poForm(po, preset) {
   }
   /* v2.30.2 (W7.T2) — N lines ka price-history EK call me (pehle har line ka
      alag round-trip = waterfall). Single-line add wala fetchPrev qayam hai. */
-  async function fetchPrevBatch(ls) {
-    const list = (ls || []).filter(l => l && l.itemId);
-    if (!list.length) return;
-    try {
-      const sup = (f && f.values ? (f.values().supplierId || '') : '');
-      const r = await API.call('purchase.priceInfoBatch', {
-        supplierId: sup,
-        items: list.map(l => ({ itemId: l.itemId, rate: Number(l.rate !== undefined ? l.rate : l.cost) || 0 }))
-      }, { offlineFallback: () => null });
-      if (!r || !r.rows) return;
-      r.rows.forEach(row => {
-        const l = list.find(x => String(x.itemId) === String(row.itemId));
-        if (!l || row.error) return;
-        l.prevPrice = Number(row.prevPrice || 0);
-        l.prevDate = row.prevDate || ''; l.prevSource = row.prevSource || ''; l.prevGrnNo = row.prevGrnNo || '';
-        l.retailPrice = Number(row.retailPrice || l.retailPrice || 0);
-        l.wholesalePrice = Number(row.wholesalePrice || l.wholesalePrice || 0);
-        repaint(l);
-      });
-    } catch (e) { /* offline/parse — lines bina prev-price rehti hain (feature intact) */ }
-  }
+  /* v2.30.6 fix — fetchPrevBatch ab MODULE-level hai (pehle poForm scope me
+     band thi; grnForm.loadPoIntoGrn ka call ReferenceError deta tha aur PO se
+     GRN load poora ruk jata tha). repaint ab caller inject karta hai. */
+  const fetchPrevBatch = (ls, repaintFn) => window.fetchPrevBatch(ls, repaintFn || repaint, (f && f.values ? (f.values().supplierId || '') : ''));
 
   /** Strip dobara banayein — poora list re-render nahi (taake input focus na toote).
    * v2.9 — guard: async fetchPrev modal close/re-render ke baad bhi aa sakta
@@ -20839,7 +20863,7 @@ function grnForm(po) {
     if (d.supplierId) fTop.set('supplierId', d.supplierId);
     if (d.locationId) fTop.set('locationId', d.locationId);
     supBal.refresh(d.supplierId);
-    fetchPrevBatch(lines);
+    fetchPrevBatch(lines, repaint, (fTop && fTop.values ? (fTop.values().supplierId || '') : ''));   /* v2.30.6 scope-fix */
     poBannerPaint(); render();
     if (!lines.length) UI.toast('Is PO ki saari lines receive ho chuki hain', 'warn');
     else UI.toast(fresh.length + ' pending lines load ho gayin', 'ok');
@@ -31540,6 +31564,7 @@ App.registerScreen('salesman',{
     async function loadRoutesForSelect(sel){
       sel.innerHTML=''; sel.appendChild(h('option',{value:''},'— No tour/route —'));
       var routes=await smCall('salesman.routes',{locationId: loc(), activeOnly:true}, []);
+      routes=(routes&&routes.rows)||routes||[];   /* v2.30.6: {rows:[...]} wrap bhi */
       (routes||[]).forEach(function(r){ sel.appendChild(h('option',{value:r.id}, r.name+' · '+r.salesman)); });
       return routes;
     }
@@ -31921,6 +31946,7 @@ App.registerScreen('salesman',{
     async function drawTours(){
       host.innerHTML=''; host.appendChild(UI.skeleton(3));
       var routes=await smCall('salesman.routes',{locationId:loc(), activeOnly:false}, []);
+      routes=(routes&&routes.rows)||routes||[];   /* v2.30.6: {rows:[...]} wrap bhi */
       var custRes=await smCall('customers.list',{limit:800}, {rows:[]});
       var allCust=(custRes&&custRes.rows)||custRes||[];
       host.innerHTML='';
@@ -33301,6 +33327,8 @@ function wireShell() {
   }
   async function loadShopState() {
     const btn = $('#btnShop'); if (!btn) return;
+    /* v2.30.6 (auth-startup fix) — login se pehle koi protected call nahi */
+    if (!App.state.session) return;
     const txt = $('#shopStateTxt');
     const priv = App.can('pos.cash.manage');
     btn.hidden = !priv;   /* v2.30.5 — session sab ke liye parhe (POS gate isi se) */
@@ -33586,7 +33614,7 @@ const ShopUI = {
         ' · customers ' + ((status.seeded || {}).customers || 0) + ' · settings ' + ((status.seeded || {}).settings || 0)));
 
     const m = UI2.modal({
-      title: '🧭 Setup Wizard — pehla din', size: 'lg', sticky: true, body,
+      title: 'Setup Wizard — pehla din', size: 'lg', sticky: true, body,
       actions: [
         { label: '↩ Discard changes', cls: 'ghost', onClick: c => c() },
         { label: '⏭ Skip (abhi nahi)', cls: 'ghost', onClick: async c => {

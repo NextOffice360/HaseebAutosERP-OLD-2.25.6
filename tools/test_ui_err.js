@@ -210,7 +210,7 @@ win.alert = () => { }; win.confirm = () => true;
   {
     const core = fs.readFileSync(path.join(ROOT, 'apps-script', 'App_Core.html'), 'utf-8');
     ok('⑦ shared policy mojood (errKind + errBox + fail + write warning)', /errKind\(err\)/.test(core) && /errBox\(host, err, opts\)/.test(core) && /writeWarned/.test(core));
-    ok('⑦ toast err path classified ho raha hai', /UI\.errText\(msg\)/.test(core));
+    ok('⑦ toast err path classified ho raha hai', /UI\.errText\((msg|raw|err)\)/.test(core)); /* v2.30.6: param msg→raw/err rename hua, path wahi hai */
   }
 
   if (SENS) {

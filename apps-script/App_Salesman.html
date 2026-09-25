@@ -223,6 +223,7 @@ App.registerScreen('salesman',{
     async function loadRoutesForSelect(sel){
       sel.innerHTML=''; sel.appendChild(h('option',{value:''},'— No tour/route —'));
       var routes=await smCall('salesman.routes',{locationId: loc(), activeOnly:true}, []);
+      routes=(routes&&routes.rows)||routes||[];   /* v2.30.6: {rows:[...]} wrap bhi */
       (routes||[]).forEach(function(r){ sel.appendChild(h('option',{value:r.id}, r.name+' · '+r.salesman)); });
       return routes;
     }
@@ -604,6 +605,7 @@ App.registerScreen('salesman',{
     async function drawTours(){
       host.innerHTML=''; host.appendChild(UI.skeleton(3));
       var routes=await smCall('salesman.routes',{locationId:loc(), activeOnly:false}, []);
+      routes=(routes&&routes.rows)||routes||[];   /* v2.30.6: {rows:[...]} wrap bhi */
       var custRes=await smCall('customers.list',{limit:800}, {rows:[]});
       var allCust=(custRes&&custRes.rows)||custRes||[];
       host.innerHTML='';

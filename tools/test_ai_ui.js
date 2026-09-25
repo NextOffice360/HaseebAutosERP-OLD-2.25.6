@@ -104,7 +104,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   ok('status strip chips render', prov.statusStrip);
 
   /* Mock select → key field hidden */
-  await page.evaluate(() => { [...document.querySelectorAll('.ai-provc')].find(c => /Mock/.test(c.textContent)).click(); });
+  await page.evaluate(() => { const c = [...document.querySelectorAll('.ai-provc')].find(c => /Mock|Local Data/i.test(c.textContent)); c && c.click(); }); /* v2.30.6: MOCK card ka label 'Local Data Assistant' */
   await wait(700);
   const mockState = await page.evaluate(() => ({
     keyField: !!document.querySelector('.ai-keyrow'),
@@ -271,7 +271,8 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   });
   ok('OpenAI card → Responses/CHAT modes usi ka select', oaModes === 'AUTO,RESPONSES,CHAT', oaModes);
   const mockMode = await page.evaluate(async () => {
-    const card = [...document.querySelectorAll('.ai-provc')].find(b => /Mock/.test(b.textContent));
+    const card = [...document.querySelectorAll('.ai-provc')].find(b => /Mock|Local Data/i.test(b.textContent));
+    if (!card) throw new Error('MOCK card nahi mila'); /* v2.30.6: label 'Local Data Assistant' */
     card.click();
     await new Promise(r => setTimeout(r, 500));
     return { sel: !!document.querySelector('select[aria-label="API mode"]'),

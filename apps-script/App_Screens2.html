@@ -507,6 +507,31 @@ function supplierBalanceCard() {
   return el;
 }
 
+/* v2.30.6 fix (W7.T2 regression) — shared prev-price batch fetch, module-level.
+   repaintCb har form apna pass karta hai (poForm: strip repaint; grnForm: render). */
+async function fetchPrevBatchShared(ls, repaintCb, supplierId) {
+  const list = (ls || []).filter(l => l && l.itemId);
+  if (!list.length) return;
+  try {
+    const r = await API.call('purchase.priceInfoBatch', {
+      supplierId: supplierId || '',
+      items: list.map(l => ({ itemId: l.itemId, rate: Number(l.rate !== undefined ? l.rate : l.cost) || 0 }))
+    }, { offlineFallback: () => null });
+    if (!r || !r.rows) return;
+    r.rows.forEach(row => {
+      const l = list.find(x => String(x.itemId) === String(row.itemId));
+      if (!l || row.error) return;
+      l.prevPrice = Number(row.prevPrice || 0);
+      l.prevDate = row.prevDate || ''; l.prevSource = row.prevSource || ''; l.prevGrnNo = row.prevGrnNo || '';
+      l.retailPrice = Number(row.retailPrice || l.retailPrice || 0);
+      l.wholesalePrice = Number(row.wholesalePrice || l.wholesalePrice || 0);
+      if (repaintCb) try { repaintCb(l); } catch (e2) { }
+    });
+  } catch (e) { /* offline/parse — lines bina prev-price rehti hain (feature intact) */ }
+}
+window.fetchPrevBatch = fetchPrevBatchShared;
+const fetchPrevBatch = fetchPrevBatchShared;   /* grnForm.loadPoIntoGrn ka direct call isi se */
+
 function poForm(po, preset) {
   const items = po ? [] : [];
   /* supplier ka pichhla baqaya form ke upar nazar aaye */
@@ -646,27 +671,10 @@ function poForm(po, preset) {
   }
   /* v2.30.2 (W7.T2) — N lines ka price-history EK call me (pehle har line ka
      alag round-trip = waterfall). Single-line add wala fetchPrev qayam hai. */
-  async function fetchPrevBatch(ls) {
-    const list = (ls || []).filter(l => l && l.itemId);
-    if (!list.length) return;
-    try {
-      const sup = (f && f.values ? (f.values().supplierId || '') : '');
-      const r = await API.call('purchase.priceInfoBatch', {
-        supplierId: sup,
-        items: list.map(l => ({ itemId: l.itemId, rate: Number(l.rate !== undefined ? l.rate : l.cost) || 0 }))
-      }, { offlineFallback: () => null });
-      if (!r || !r.rows) return;
-      r.rows.forEach(row => {
-        const l = list.find(x => String(x.itemId) === String(row.itemId));
-        if (!l || row.error) return;
-        l.prevPrice = Number(row.prevPrice || 0);
-        l.prevDate = row.prevDate || ''; l.prevSource = row.prevSource || ''; l.prevGrnNo = row.prevGrnNo || '';
-        l.retailPrice = Number(row.retailPrice || l.retailPrice || 0);
-        l.wholesalePrice = Number(row.wholesalePrice || l.wholesalePrice || 0);
-        repaint(l);
-      });
-    } catch (e) { /* offline/parse — lines bina prev-price rehti hain (feature intact) */ }
-  }
+  /* v2.30.6 fix — fetchPrevBatch ab MODULE-level hai (pehle poForm scope me
+     band thi; grnForm.loadPoIntoGrn ka call ReferenceError deta tha aur PO se
+     GRN load poora ruk jata tha). repaint ab caller inject karta hai. */
+  const fetchPrevBatch = (ls, repaintFn) => window.fetchPrevBatch(ls, repaintFn || repaint, (f && f.values ? (f.values().supplierId || '') : ''));
 
   /** Strip dobara banayein — poora list re-render nahi (taake input focus na toote).
    * v2.9 — guard: async fetchPrev modal close/re-render ke baad bhi aa sakta
@@ -989,7 +997,7 @@ function grnForm(po) {
     if (d.supplierId) fTop.set('supplierId', d.supplierId);
     if (d.locationId) fTop.set('locationId', d.locationId);
     supBal.refresh(d.supplierId);
-    fetchPrevBatch(lines);
+    fetchPrevBatch(lines, repaint, (fTop && fTop.values ? (fTop.values().supplierId || '') : ''));   /* v2.30.6 scope-fix */
     poBannerPaint(); render();
     if (!lines.length) UI.toast('Is PO ki saari lines receive ho chuki hain', 'warn');
     else UI.toast(fresh.length + ' pending lines load ho gayin', 'ok');

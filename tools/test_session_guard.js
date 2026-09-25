@@ -100,7 +100,7 @@ if (!fs.existsSync(DEMO)) {
     const m = Array.from(document.querySelectorAll('.modal-scrim, .modal2, .modal')).pop();
     return m ? (m.textContent || '') : '';
   });
-  ok('shop quick-dialog null session par bhi khula', /Shop khuli hai/.test(shop), shop.slice(0, 70));
+  ok('shop quick-dialog null session par bhi khula', /Shop khuli hai|Shop is open/i.test(shop), shop.slice(0, 70)); /* v2.30.6: T.t EN fallback bhi */
   ok('shop dialog summary rows render hui', /Expected in drawer/.test(shop) && /Opening cash/.test(shop));
   ok('shop dialog mein undefined leak nahi', !/undefined/.test(shop));
   ok('shop dialog se page-error nahi aaya', errs.length === beforeErrs, errs.slice(beforeErrs).join(' | '));

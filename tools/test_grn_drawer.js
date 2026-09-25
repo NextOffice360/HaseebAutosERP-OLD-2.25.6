@@ -43,6 +43,11 @@ const ok = (n, c, d) => c ? (pass++, console.log('  ✔ ' + n + (d ? '  → ' + 
     window.__toasts = [];
     const t = UI.toast;
     UI.toast = function (m, k) { window.__toasts.push(String(m)); return t.apply(this, arguments); };
+    /* v2.30.6 — UI2.validate seedha UI.notify service par jata hai (UI.toast wrapper bypass) */
+    if (UI.notify && UI.notify !== t) {
+      const n = UI.notify.bind(UI);
+      UI.notify = function (o) { try { if (o && o.msg) window.__toasts.push(String(o.msg)); } catch (e) { } return n.apply(null, arguments); };
+    }
   });
   /* v2.25.0 — UI2.confirm AB asli promise deta hai (pehle modal object deta tha,
      is liye `await UI2.confirm(...)` wale guards kabhi block hi nahi karte thay).
