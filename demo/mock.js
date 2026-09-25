@@ -1679,8 +1679,15 @@ window.MockAPI = {
     if (p.onlyDue) rows = rows.filter(c => c.balance > 0);
     return { rows: rows.map(c => Object.assign({}, c, { balance: c.balance })), total: rows.length };
   },
-  'customers.save': p => Object.assign({ id: 'CUS' + Date.now(),
-    createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }, p.customer || p),
+  'customers.save': p => {
+    /* v2.30.5 fix (sweep ne pakra) — record list me bhi jata tha nahi (sirf return) */
+    const rec = Object.assign({ id: 'CUS' + Date.now(),
+      createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }, p.customer || p);
+    const ci = CUSTOMERS.findIndex(x => x.id === rec.id);
+    if (ci > -1) Object.assign(CUSTOMERS[ci], rec, { updatedAt: new Date().toISOString() });
+    else CUSTOMERS.push(rec);
+    return rec;
+  },
   'customers.ledger': p => {
     const c = CUSTOMERS.find(x => x.id === p.id) || CUSTOMERS[0];
     let bal = Number(c.openingBalance || 0);

@@ -4869,8 +4869,15 @@ window.MockAPI = {
     if (p.onlyDue) rows = rows.filter(c => c.balance > 0);
     return { rows: rows.map(c => Object.assign({}, c, { balance: c.balance })), total: rows.length };
   },
-  'customers.save': p => Object.assign({ id: 'CUS' + Date.now(),
-    createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }, p.customer || p),
+  'customers.save': p => {
+    /* v2.30.5 fix (sweep ne pakra) — record list me bhi jata tha nahi (sirf return) */
+    const rec = Object.assign({ id: 'CUS' + Date.now(),
+      createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }, p.customer || p);
+    const ci = CUSTOMERS.findIndex(x => x.id === rec.id);
+    if (ci > -1) Object.assign(CUSTOMERS[ci], rec, { updatedAt: new Date().toISOString() });
+    else CUSTOMERS.push(rec);
+    return rec;
+  },
   'customers.ledger': p => {
     const c = CUSTOMERS.find(x => x.id === p.id) || CUSTOMERS[0];
     let bal = Number(c.openingBalance || 0);
@@ -7072,7 +7079,36 @@ window.MockAPI = {
 const Store = {
   get(k, d) { try { const v = localStorage.getItem('ha_' + k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
   set(k, v) { try { localStorage.setItem('ha_' + k, JSON.stringify(v)); } catch (e) { } },
-  del(k) { try { localStorage.removeItem('ha_' + k); } catch (e) { } }
+  del(k) { try { localStorage.removeItem('ha_' + k); } catch (e) { } },
+  /* ==========================================================================
+     W9.T3.5 (v2.30.5) — pub/sub: data-change reactivity ka shared engine.
+     Store.sub(topic, fn) → unsubscribe fn wapas; Store.emit(topic, payload)
+     → sab listeners (ek ka fail baqi ko nahi roki). Pehla consumer:
+     API.call har write ke baad Store.emit('data') → live UI2.table khud
+     reload (UI2.table me wiring). Aage sections/KPIs bhi isi par.
+     ========================================================================== */
+  _subs: {},
+  sub(topic, fn) {
+    try {
+      Store._subs[topic] = Store._subs[topic] || [];
+      Store._subs[topic].push(fn);
+      return () => Store.unsub(topic, fn);
+    } catch (e) { return () => { }; }
+  },
+  unsub(topic, fn) {
+    try {
+      const a = Store._subs[topic] || [];
+      const i = a.indexOf(fn);
+      if (i > -1) a.splice(i, 1);
+    } catch (e) { }
+  },
+  emit(topic, payload) {
+    try {
+      (Store._subs[topic] || []).slice().forEach(fn => {
+        try { fn(payload); } catch (e) { }
+      });
+    } catch (e) { }
+  }
 };
 
 /* ========================== BACKEND & INTEGRATIONS (v2.24) ==========================
@@ -7696,7 +7732,11 @@ const API = {
         try {
           const r = await API._call(action, payload, opts);
           if (ttl > 0) API._cache[ck] = { at: Date.now(), ttl: ttl, data: r };
-          if (isWrite) API.cacheClear();          /* likhai ke baad har read taaza */
+          if (isWrite) {
+            API.cacheClear();          /* likhai ke baad har read taaza */
+            /* W9.T3.5 — mutation par app-wide 'data' event (live tables reload) */
+            try { Store.emit('data', { action: action }); } catch (eEmit) { }
+          }
           return r;
         } catch (e) {
           lastErr = e;
@@ -17173,6 +17213,17 @@ UI2.table = function (cfg) {
   }
   wrap.reload = reload;
   wrap._ui2 = wrap;   /* v2.30.4 - host.querySelector('.st2')._ui2 se wrap milta hai */
+  /* W9.T3.5 (v2.30.5) — LIVE tables: koi bhi mutation (API.call write → Store
+     'data' event) par debounced (400ms) reload — bina navigation/manual refresh.
+     Detached DOM (band screen ka table) skip; `live: false` se opt-out. */
+  if (cfg.load && cfg.live !== false && typeof Store !== 'undefined' && Store.sub) {
+    let liveT = null;
+    Store.sub('data', () => {
+      if (!wrap.isConnected) return;
+      clearTimeout(liveT);
+      liveT = setTimeout(() => { if (wrap.isConnected && !loading) reload(); }, 400);
+    });
+  }
   if (cfg.load) setTimeout(reload, 0);
   paint();
   return wrap;

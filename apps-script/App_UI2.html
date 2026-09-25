@@ -1239,6 +1239,17 @@ UI2.table = function (cfg) {
   }
   wrap.reload = reload;
   wrap._ui2 = wrap;   /* v2.30.4 - host.querySelector('.st2')._ui2 se wrap milta hai */
+  /* W9.T3.5 (v2.30.5) — LIVE tables: koi bhi mutation (API.call write → Store
+     'data' event) par debounced (400ms) reload — bina navigation/manual refresh.
+     Detached DOM (band screen ka table) skip; `live: false` se opt-out. */
+  if (cfg.load && cfg.live !== false && typeof Store !== 'undefined' && Store.sub) {
+    let liveT = null;
+    Store.sub('data', () => {
+      if (!wrap.isConnected) return;
+      clearTimeout(liveT);
+      liveT = setTimeout(() => { if (wrap.isConnected && !loading) reload(); }, 400);
+    });
+  }
   if (cfg.load) setTimeout(reload, 0);
   paint();
   return wrap;

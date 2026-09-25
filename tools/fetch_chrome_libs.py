@@ -122,7 +122,17 @@ def missing_sonames():
     return names
 
 
+SONAME_FALLBACK = {
+    # live search kabhi-kabhi miss karta hai — ye 3 pehle manual hue the
+    "libatspi.so.0": "libatspi2.0-0t64",
+    "libavahi-common.so.3": "libavahi-common3",
+    "libavahi-client.so.3": "libavahi-client3",
+}
+
+
 def package_for_soname(soname):
+    if soname in SONAME_FALLBACK:
+        return SONAME_FALLBACK[soname]
     """Debian contents search → kaunsa package ye file deta hai"""
     try:
         html = get("https://packages.debian.org/search?searchon=contents&keywords=%s"
@@ -150,7 +160,10 @@ def main():
     STARTER = ["libnspr4", "libnss3", "libatk1.0-0t64", "libatk-bridge2.0-0t64",
                "libcups2t64", "libdrm2", "libxkbcommon0", "libxcomposite1",
                "libxdamage1", "libxfixes3", "libxrandr2", "libgbm1",
-               "libpango-1.0-0", "libcairo2", "libasound2t64"]
+               "libpango-1.0-0", "libcairo2", "libasound2t64",
+               # v2.30.5: pehle MANUAL top-up karna parta tha — ab default
+               # (sandbox reset ke baad bhi yehi script akele kaafi hai)
+               "libatspi2.0-0t64", "libavahi-common3", "libavahi-client3"]
     print("\n[1] starter packages download + extract")
     for p in STARTER:
         print(f"    • {p}", end=" ", flush=True)

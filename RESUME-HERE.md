@@ -81,7 +81,15 @@ App_/Pwa_ split) + `docs/ARCHITECTURE.md` (conventions + data flow). Saare waves
 (tbl.reload() rowActions me, Clear filters emptyAction). **Sabak:** UI2.table wrap
 return karta hai — append lazmi (DOM-probe debugging se pakra). Chrome-libs restore:
 fetch_chrome_libs ke atspi/avahi gaps manually .deb se bhare (libnspr/nss/atk/atspi/
-avahi/cairo/pango). Quota: 41.3MB effective (stale display ignore). **W2.T4 progress ✔ (v2.30.5):** UI.progress + UI.progress.run (chunked-yield);
+avahi/cairo/pango). Quota: 41.3MB effective (stale display ignore). **W9.T3.5 data-reactivity ✔ (v2.30.5):** Store.sub/emit engine + API.call
+write-emit + UI2.table live auto-reload (debounce, live:false opt-out); mock
+customers.save persist bug fix. Gate sweep 13/0. fetch_chrome_libs.py ab
+khud-kaafi (atspi/avahi static map — reset par ek-command env recovery).
+**Agla: T3.1 UI.bindDeps (90-min slice) ya W1.T1 API call-site audit.**
+Live GAS deploy + hardware drills user ke sath pending. v2.30.6 tag ka
+faisla: W2 (T2.3+T2.4) + T3.5 ab ship-level — agle round start par tag +
+full-verify (env -u HOME, ek call).
+**W2.T4 progress ✔ (v2.30.5):** UI.progress + UI.progress.run (chunked-yield);
 labels dono copies wired (App_Core + App_Barcode — duplicate labelsHtml ka
 dhyan rakhna!). Gates: progress 20/0 · labels_live 30/0 · baqi sab GREEN.
 **Agla: W9.T3.5 data-reactivity sweep (Store.sub) — phir T3.1 UI.bindDeps.
