@@ -81,7 +81,15 @@ App_/Pwa_ split) + `docs/ARCHITECTURE.md` (conventions + data flow). Saare waves
 (tbl.reload() rowActions me, Clear filters emptyAction). **Sabak:** UI2.table wrap
 return karta hai — append lazmi (DOM-probe debugging se pakra). Chrome-libs restore:
 fetch_chrome_libs ke atspi/avahi gaps manually .deb se bhare (libnspr/nss/atk/atspi/
-avahi/cairo/pango). Quota: 41.3MB effective (stale display ignore). **TOGGLES/SETTINGS persist fix (v2.30.5 +1):** user ka "toggles not saving"
+avahi/cairo/pango). Quota: 41.3MB effective (stale display ignore). **ENTERPRISE UI/UX MANDATE (2026-09-25) — P0 round done:** attachment
+`Context_Aware_ERP_UI_UX_Workflow_Architecture.md` parh kar
+docs/UI-UX-ENHANCEMENT-PLAN.md banai (P0–P4 slices; spec ke saare 51 sections
+ka distill). P0: audit_save_persistence.js (72 sites/81 routes) → 16 CONFIG
+gaps → config-snapshot layer (ha_mock_cfg, write-wrap, window-expose sabak)
+→ GAP 0; salesman.routes mock CRUD added; gate shop_setup_flow 26/0 (K naya).
+**Agli rounds: P1 typography (Styles tokens audit), P2 modal wide-arch,
+P3 responsive sweep, P4 context-aware pilot (Demand module — spec §8–14).**
+**TOGGLES/SETTINGS persist fix (v2.30.5 +1):** user ka "toggles not saving"
 ka asli sabab — mock config.save / system.settings.save SETTINGS me assign
 karte the magar PERSIST nahi (reload par sab defaults). Ab dono
 mockPersistSettings() karte hain (ha_mock_set_ov overlay) — UI-flow probe:

@@ -1,0 +1,522 @@
+{
+  "generatedAt": "2026-09-25T01:41:28.159Z",
+  "uiSites": 72,
+  "toggles": [
+    {
+      "file": "App_AIConfig.html",
+      "switch": 0,
+      "ui2toggle": 3,
+      "checkbox": 0
+    },
+    {
+      "file": "App_Accounting.html",
+      "switch": 2,
+      "ui2toggle": 0,
+      "checkbox": 0
+    },
+    {
+      "file": "App_Comms.html",
+      "switch": 0,
+      "ui2toggle": 0,
+      "checkbox": 2
+    },
+    {
+      "file": "App_Config.html",
+      "switch": 9,
+      "ui2toggle": 1,
+      "checkbox": 0
+    },
+    {
+      "file": "App_Core.html",
+      "switch": 0,
+      "ui2toggle": 1,
+      "checkbox": 0
+    },
+    {
+      "file": "App_Demand.html",
+      "switch": 3,
+      "ui2toggle": 0,
+      "checkbox": 1
+    },
+    {
+      "file": "App_Inventory2.html",
+      "switch": 2,
+      "ui2toggle": 0,
+      "checkbox": 1
+    },
+    {
+      "file": "App_Lang.html",
+      "switch": 0,
+      "ui2toggle": 1,
+      "checkbox": 0
+    },
+    {
+      "file": "App_Masters.html",
+      "switch": 2,
+      "ui2toggle": 0,
+      "checkbox": 0
+    },
+    {
+      "file": "App_POS2.html",
+      "switch": 0,
+      "ui2toggle": 0,
+      "checkbox": 3
+    },
+    {
+      "file": "App_Print.html",
+      "switch": 0,
+      "ui2toggle": 2,
+      "checkbox": 0
+    },
+    {
+      "file": "App_Salesman.html",
+      "switch": 0,
+      "ui2toggle": 0,
+      "checkbox": 2
+    },
+    {
+      "file": "App_Screens2.html",
+      "switch": 3,
+      "ui2toggle": 2,
+      "checkbox": 0
+    },
+    {
+      "file": "App_UI2.html",
+      "switch": 0,
+      "ui2toggle": 0,
+      "checkbox": 6
+    },
+    {
+      "file": "App_Warehouse.html",
+      "switch": 2,
+      "ui2toggle": 1,
+      "checkbox": 0
+    },
+    {
+      "file": "Pwa_Shell.html",
+      "switch": 0,
+      "ui2toggle": 0,
+      "checkbox": 1
+    }
+  ],
+  "routesTotal": 259,
+  "writeRoutes": [
+    {
+      "route": "accounts.save",
+      "cls": "TXN-SESSION-OK",
+      "persisted": false
+    },
+    {
+      "route": "ai.agentConfig.save",
+      "cls": "TXN-SESSION-OK",
+      "persisted": false
+    },
+    {
+      "route": "ai.routing.save",
+      "cls": "TXN-SESSION-OK",
+      "persisted": false
+    },
+    {
+      "route": "bank.recon.import",
+      "cls": "TXN-SESSION-OK",
+      "persisted": false
+    },
+    {
+      "route": "cash.session.close",
+      "cls": "TXN-SESSION-OK",
+      "persisted": false
+    },
+    {
+      "route": "cash.session.open",
+      "cls": "TXN-SESSION-OK",
+      "persisted": false
+    },
+    {
+      "route": "config.fields.remove",
+      "cls": "CONFIG-PERSIST-OK",
+      "persisted": false
+    },
+    {
+      "route": "config.fields.save",
+      "cls": "CONFIG-PERSIST-OK",
+      "persisted": false
+    },
+    {
+      "route": "config.list.remove",
+      "cls": "CONFIG-PERSIST-OK",
+      "persisted": false
+    },
+    {
+      "route": "config.list.save",
+      "cls": "CONFIG-PERSIST-OK",
+      "persisted": false
+    },
+    {
+      "route": "config.menu.remove",
+      "cls": "CONFIG-PERSIST-OK",
+      "persisted": false
+    },
+    {
+      "route": "config.menu.reset",
+      "cls": "CONFIG-PERSIST-OK",
+      "persisted": false
+    },
+    {
+      "route": "config.menu.save",
+      "cls": "CONFIG-PERSIST-OK",
+      "persisted": false
+    },
+    {
+      "route": "config.resetGroup",
+      "cls": "CONFIG-PERSIST-OK",
+      "persisted": false
+    },
+    {
+      "route": "config.save",
+      "cls": "CONFIG-PERSIST-OK",
+      "persisted": true
+    },
+    {
+      "route": "config.templates.remove",
+      "cls": "CONFIG-PERSIST-OK",
+      "persisted": false
+    },
+    {
+      "route": "config.templates.save",
+      "cls": "CONFIG-PERSIST-OK",
+      "persisted": false
+    },
+    {
+      "route": "config.views.remove",
+      "cls": "CONFIG-PERSIST-OK",
+      "persisted": false
+    },
+    {
+      "route": "config.views.save",
+      "cls": "CONFIG-PERSIST-OK",
+      "persisted": false
+    },
+    {
+      "route": "customers.save",
+      "cls": "TXN-SESSION-OK",
+      "persisted": false
+    },
+    {
+      "route": "demand.create",
+      "cls": "TXN-SESSION-OK",
+      "persisted": false
+    },
+    {
+      "route": "demand.update",
+      "cls": "TXN-SESSION-OK",
+      "persisted": false
+    },
+    {
+      "route": "expenses.approve",
+      "cls": "TXN-SESSION-OK",
+      "persisted": false
+    },
+    {
+      "route": "expenses.approveBatch",
+      "cls": "TXN-SESSION-OK",
+      "persisted": false
+    },
+    {
+      "route": "expenses.create",
+      "cls": "TXN-SESSION-OK",
+      "persisted": false
+    },
+    {
+      "route": "items.bulkSave",
+      "cls": "TXN-SESSION-OK",
+      "persisted": false
+    },
+    {
+      "route": "items.delete",
+      "cls": "TXN-SESSION-OK",
+      "persisted": false
+    },
+    {
+      "route": "items.prices.save",
+      "cls": "TXN-SESSION-OK",
+      "persisted": false
+    },
+    {
+      "route": "items.save",
+      "cls": "TXN-SESSION-OK",
+      "persisted": false
+    },
+    {
+      "route": "journal.post",
+      "cls": "TXN-SESSION-OK",
+      "persisted": false
+    },
+    {
+      "route": "journal.void",
+      "cls": "TXN-SESSION-OK",
+      "persisted": false
+    },
+    {
+      "route": "lang.prefs.save",
+      "cls": "CONFIG-PERSIST-OK",
+      "persisted": false
+    },
+    {
+      "route": "lang.reset",
+      "cls": "CONFIG-PERSIST-OK",
+      "persisted": false
+    },
+    {
+      "route": "lang.save",
+      "cls": "CONFIG-PERSIST-OK",
+      "persisted": false
+    },
+    {
+      "route": "migration.sync",
+      "cls": "TXN-SESSION-OK",
+      "persisted": false
+    },
+    {
+      "route": "offline.sync",
+      "cls": "TXN-SESSION-OK",
+      "persisted": false
+    },
+    {
+      "route": "orders.convert",
+      "cls": "TXN-SESSION-OK",
+      "persisted": false
+    },
+    {
+      "route": "orders.save",
+      "cls": "TXN-SESSION-OK",
+      "persisted": false
+    },
+    {
+      "route": "pay.compute",
+      "cls": "TXN-SESSION-OK",
+      "persisted": false
+    },
+    {
+      "route": "pay.fields",
+      "cls": "NO-MOCK-HANDLER",
+      "persisted": false
+    },
+    {
+      "route": "pay.methods.enabled",
+      "cls": "TXN-SESSION-OK",
+      "persisted": false
+    },
+    {
+      "route": "pay.reconcile",
+      "cls": "TXN-SESSION-OK",
+      "persisted": false
+    },
+    {
+      "route": "pay.validate",
+      "cls": "NO-MOCK-HANDLER",
+      "persisted": false
+    },
+    {
+      "route": "payments.create",
+      "cls": "TXN-SESSION-OK",
+      "persisted": false
+    },
+    {
+      "route": "payments.list",
+      "cls": "TXN-SESSION-OK",
+      "persisted": false
+    },
+    {
+      "route": "priceimport.apply",
+      "cls": "TXN-SESSION-OK",
+      "persisted": false
+    },
+    {
+      "route": "priceimport.gmail",
+      "cls": "TXN-SESSION-OK",
+      "persisted": false
+    },
+    {
+      "route": "priceimport.history",
+      "cls": "TXN-SESSION-OK",
+      "persisted": false
+    },
+    {
+      "route": "priceimport.preview",
+      "cls": "TXN-SESSION-OK",
+      "persisted": false
+    },
+    {
+      "route": "priceimport.sample",
+      "cls": "TXN-SESSION-OK",
+      "persisted": false
+    },
+    {
+      "route": "purchase.grn.save",
+      "cls": "TXN-SESSION-OK",
+      "persisted": false
+    },
+    {
+      "route": "purchase.listReturns",
+      "cls": "TXN-SESSION-OK",
+      "persisted": false
+    },
+    {
+      "route": "purchase.po.approve",
+      "cls": "TXN-SESSION-OK",
+      "persisted": false
+    },
+    {
+      "route": "purchase.po.save",
+      "cls": "TXN-SESSION-OK",
+      "persisted": false
+    },
+    {
+      "route": "purchase.saveReturn",
+      "cls": "TXN-SESSION-OK",
+      "persisted": false
+    },
+    {
+      "route": "reorder.createPOs",
+      "cls": "TXN-SESSION-OK",
+      "persisted": false
+    },
+    {
+      "route": "reports.payables",
+      "cls": "TXN-SESSION-OK",
+      "persisted": false
+    },
+    {
+      "route": "sales.create",
+      "cls": "TXN-SESSION-OK",
+      "persisted": false
+    },
+    {
+      "route": "sales.hold",
+      "cls": "TXN-SESSION-OK",
+      "persisted": false
+    },
+    {
+      "route": "sales.return",
+      "cls": "TXN-SESSION-OK",
+      "persisted": false
+    },
+    {
+      "route": "sales.void",
+      "cls": "TXN-SESSION-OK",
+      "persisted": false
+    },
+    {
+      "route": "salesman.return",
+      "cls": "TXN-SESSION-OK",
+      "persisted": false
+    },
+    {
+      "route": "salesman.route.delete",
+      "cls": "TXN-SESSION-OK",
+      "persisted": false
+    },
+    {
+      "route": "salesman.route.save",
+      "cls": "TXN-SESSION-OK",
+      "persisted": false
+    },
+    {
+      "route": "shop.open",
+      "cls": "TXN-SESSION-OK",
+      "persisted": false
+    },
+    {
+      "route": "stock.adjust.post",
+      "cls": "TXN-SESSION-OK",
+      "persisted": false
+    },
+    {
+      "route": "stock.adjust.save",
+      "cls": "TXN-SESSION-OK",
+      "persisted": false
+    },
+    {
+      "route": "stock.transfer.receive",
+      "cls": "TXN-SESSION-OK",
+      "persisted": false
+    },
+    {
+      "route": "stock.transfer.save",
+      "cls": "TXN-SESSION-OK",
+      "persisted": false
+    },
+    {
+      "route": "suppliers.save",
+      "cls": "TXN-SESSION-OK",
+      "persisted": false
+    },
+    {
+      "route": "system.triggers.remove",
+      "cls": "TXN-SESSION-OK",
+      "persisted": false
+    },
+    {
+      "route": "system.wizardAdminPassword",
+      "cls": "CONFIG-PERSIST-OK",
+      "persisted": false
+    },
+    {
+      "route": "system.wizardSave",
+      "cls": "CONFIG-PERSIST-OK",
+      "persisted": true
+    },
+    {
+      "route": "users.create",
+      "cls": "TXN-SESSION-OK",
+      "persisted": false
+    },
+    {
+      "route": "users.groups.save",
+      "cls": "TXN-SESSION-OK",
+      "persisted": false
+    },
+    {
+      "route": "users.perms.save",
+      "cls": "TXN-SESSION-OK",
+      "persisted": false
+    },
+    {
+      "route": "users.update",
+      "cls": "TXN-SESSION-OK",
+      "persisted": false
+    },
+    {
+      "route": "utils.reindex",
+      "cls": "TXN-SESSION-OK",
+      "persisted": false
+    },
+    {
+      "route": "warehouse.bin.save",
+      "cls": "TXN-SESSION-OK",
+      "persisted": false
+    },
+    {
+      "route": "warehouse.count.create",
+      "cls": "TXN-SESSION-OK",
+      "persisted": false
+    },
+    {
+      "route": "warehouse.count.post",
+      "cls": "TXN-SESSION-OK",
+      "persisted": false
+    }
+  ],
+  "gaps": [
+    {
+      "route": "pay.fields",
+      "cls": "NO-MOCK-HANDLER",
+      "persisted": false
+    },
+    {
+      "route": "pay.validate",
+      "cls": "NO-MOCK-HANDLER",
+      "persisted": false
+    }
+  ]
+}

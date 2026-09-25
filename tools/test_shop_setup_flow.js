@@ -245,6 +245,25 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   });
   ok('toggles/settings reload ke baad bhi save (mock persist)', String(j.cash) === '777', JSON.stringify(j));
 
+  /* \u2500\u2500 K: CONFIG-snapshot reload-proof (fields/menu/templates/lists/translations) \u2500\u2500 */
+  section('K \u25b8 Config snapshot \u2014 custom-field save \u2192 RELOAD \u2192 qayam');
+  await page.evaluate(async () => {
+    await API.call('config.fields.save', { field: { key: 'gateField', label: 'Gate Field', entity: 'items', type: 'text', active: 'true' } });
+    await API.call('config.menu.save', { item: { label: 'Gate Item', route: 'dashboards', active: 'true' } });
+  });
+  await sleep(500);
+  await page.reload({ waitUntil: 'networkidle2' });
+  await sleep(1500);
+  const k = await page.evaluate(async () => {
+    const f = await API.call('config.fields.list', {}, { offlineFallback: () => ({ fields: [] }) });
+    const m = await API.call('config.menu', {}, { offlineFallback: () => [] });
+    const fl = (f.fields || f.rows || f || []);
+    const mi = (Array.isArray(m) ? m : (m.items || m.rows || []));
+    return { fieldOk: JSON.stringify(fl).indexOf('gateField') > -1, menuOk: JSON.stringify(mi).indexOf('Gate Item') > -1 };
+  });
+  ok('custom-field RELOAD ke baad bhi mojood', k.fieldOk, JSON.stringify(k));
+  ok('menu item RELOAD ke baad bhi mojood', k.menuOk);
+
   section('Z \u25b8 page health');
   ok('zero page errors', errs.length === 0, errs[0] || '');
 

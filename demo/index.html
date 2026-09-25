@@ -3993,6 +3993,39 @@ const TRANSLATIONS = {
   'msg.saved': { en: 'Saved', roman: 'Save ho gaya', ur: 'محفوظ ہو گیا', scope: 'UI' },
   'msg.noData': { en: 'No data found', roman: 'Koi data nahi mila', ur: 'کوئی ڈیٹا نہیں ملا', scope: 'UI' }
 };
+
+/* ============================================================================
+   v2.30.5 (user mandate #1, P0) — CONFIG SNAPSHOT: settings + saari config
+   collections (fields/menu/templates/lists/translations/prefs) localStorage
+   me — Reload/navigation/re-open par bhi toggles aur saves qayam (pehle sirf
+   session me the → "revert to OFF"). Transactional data (orders/sales/items)
+   jaan-boojh kar session-scope hai — asli persistence GAS/Sheet par.
+   ========================================================================== */
+const MOCK_CFG_KEY = 'ha_mock_cfg';
+function mockPersistConfig() {
+  mockPersistSettings();
+  try {
+    localStorage.setItem(MOCK_CFG_KEY, JSON.stringify({
+      categories: CATEGORIES, brands: BRANDS, units: UNITS, taxes: TAXES,
+      warehouses: WAREHOUSES, fields: CUSTOM_FIELDS, templates: TEMPLATES,
+      menu: MENU_CONFIG, translations: TRANSLATIONS,
+      prefs: (typeof SESSION !== 'undefined' && SESSION && SESSION.prefs) || {}
+    }));
+  } catch (e) { }
+}
+(function mockRestoreConfig() {
+  try {
+    const d = JSON.parse(localStorage.getItem(MOCK_CFG_KEY) || 'null');
+    if (!d) return;
+    const ra = (t, src) => { if (Array.isArray(src)) { t.length = 0; src.forEach(x => t.push(x)); } };
+    ra(CATEGORIES, d.categories); ra(BRANDS, d.brands); ra(UNITS, d.units);
+    ra(TAXES, d.taxes); ra(WAREHOUSES, d.warehouses); ra(CUSTOM_FIELDS, d.fields);
+    ra(TEMPLATES, d.templates); ra(MENU_CONFIG, d.menu);
+    if (d.translations) Object.keys(d.translations).forEach(k => { TRANSLATIONS[k] = d.translations[k]; });
+    if (typeof SESSION !== 'undefined' && SESSION && d.prefs) SESSION.prefs = Object.assign({}, d.prefs);
+  } catch (e) { }
+})();
+try { window.mockPersistConfig = mockPersistConfig; } catch (e) { }
 pushNotif('LOW_STOCK', 'Low stock alert', 'Kuch items reorder level par hain', 'WARN');
 pushNotif('RECEIVABLE', 'Udhaar baqaya', 'Customers se recovery pending hai', 'INFO');
 
@@ -6721,6 +6754,50 @@ window.MockAPI = {
     return { items: rows.map(r => ({ id: r.id, demandNo: r.demandNo, itemId: r.itemId, itemName: r.itemName,
       code: r.itemCode, qty: r.qty, status: r.status, arrived: r.status === 'ARRIVED' || r.status === 'NOTIFIED' })) };
   };
+})();
+
+
+/* ============================================================================
+   v2.30.5 (mandate #1) — CONFIG-class write handlers auto-persist: koi bhi
+   config./system.wizard/system.settings.save/lang.* route likhe to poori
+   config-snapshot mehfooz (aane wale handlers bhi mehfooz rahenge).
+   ========================================================================== */
+/* v2.30.5 (mandate #1) — salesman route CRUD (pehle mock handlers hi nahi the —
+   route modal save par 'Koi backend connected nahi hai' aata tha) */
+(function () {
+  const M = window.MockAPI || (window.MockAPI = {});
+  const SM_ROUTES = [];
+  M['salesman.routes'] = function () { return { rows: SM_ROUTES.slice() }; };
+  M['salesman.route.save'] = function (p) {
+    const r = (p && p.route) || p || {};
+    if (!r.name) throw new Error('Route name zaroori hai.');
+    if (!r.id) { r.id = 'SMR' + (SM_ROUTES.length + 1); SM_ROUTES.push(r); }
+    else { const i = SM_ROUTES.findIndex(x => x.id === r.id); if (i > -1) SM_ROUTES[i] = Object.assign(SM_ROUTES[i], r); else SM_ROUTES.push(r); }
+    return r;
+  };
+  M['salesman.route.delete'] = function (p) {
+    const i = SM_ROUTES.findIndex(x => x.id === (p && p.id));
+    if (i > -1) SM_ROUTES.splice(i, 1);
+    return { removed: 1 };
+  };
+})();
+
+(function mockCfgWriteWrap() {
+  const RE = /^(config\.|system\.wizard|system\.settings\.save|lang\.)/;
+  Object.keys(window.MockAPI).forEach(function (k) {
+    if (!RE.test(k) || typeof window.MockAPI[k] !== 'function' || window.MockAPI[k].__cfgp) return;
+    const orig = window.MockAPI[k];
+    const w = function (p) {
+      const r = orig.apply(this, arguments);
+      try {
+        if (typeof mockPersistConfig === 'function') mockPersistConfig();
+        else if (typeof window.mockPersistConfig === 'function') window.mockPersistConfig();
+      } catch (e) { try { window.__cfgErr = 'WRAP: ' + e.message; } catch (e2) { } }
+      return r;
+    };
+    w.__cfgp = true;
+    window.MockAPI[k] = w;
+  });
 })();
 
 </script>

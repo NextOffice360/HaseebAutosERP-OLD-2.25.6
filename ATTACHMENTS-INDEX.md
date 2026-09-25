@@ -71,3 +71,9 @@ Files: `/home/user/uploads/` (60 files, ~1.9 MB). Neeche: kaun si file kis kaam 
 | `image-4.png` | Reference screenshot (UI) | Screenshot compare ke liye |
 | `list.pdf` | Requirement/spec PDF (large) | Jab isi doc ka reference chahiye |
 | `product list2.csv` | Product data sample (CSV import) | Product import/loader kaam se pehle |
+
+## UI/UX architecture specs (mandate docs)
+
+| File | Kya hai | Kab parhein |
+|---|---|---|
+| `Context_Aware_ERP_UI_UX_Workflow_Architecture.md` | **MASTER UI/UX SPEC** (1585 lines, 51 sections): context-aware/entity-centric/workflow-driven architecture — contextual actions, state-aware controls, master-detail, drill-down, deep linking, related-entity nav, progressive disclosure, design system, interaction rules, acceptance criteria; Customer Demand = reference module | HAR UI/UX enhancement todo se pehle (user mandate 2026-09-25) — distilled slices: `docs/UI-UX-ENHANCEMENT-PLAN.md` |
