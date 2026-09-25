@@ -133,6 +133,8 @@ if [ -d node_modules/puppeteer ]; then
   GATES+=("doc-designer:node tools/test_doc_designer.js")
   # v2.30.6 (round-9) — EN-purity regression floor (D7 batches ka band)
   GATES+=("i18n-floor:node tools/test_i18n_floor.js")
+  # v2.30.9 (r11) — QR payload gate: har emitter resolvable HA: (documented exceptions ke sath)
+  GATES+=("qr-payloads:node tools/audit_qr_payloads.js")
   # v2.25.0 (req 3) — Customer Demands: list/detail/form logic + duplicate guard + F9
   GATES+=("demands:node tools/test_demand.js")
   # v2.25.0 (req 4) — Salesman Stock: health KPIs, filter, scan, Stock Issue (F9)

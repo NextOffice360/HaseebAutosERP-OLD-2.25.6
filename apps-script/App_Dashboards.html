@@ -1,12 +1,12 @@
 <script>
 /* ==========================================================================
-   HASEEB AUTOS — CHARTS + AI DASHBOARDS
-   Pure-SVG chart engine (no CDN — offline PWA safe): donut, bars, area,
-   sparkline, progress, gauge, funnel, heat map — sab interactive (click,
-   hover tooltip, drill-down).
-   Screens: dashboard (main) · insights (customers / receivables / payables /
-   P&L / inventory) · shop (day open & close with cash count).
-   ========================================================================== */
+   * HASEEB AUTOS — CHARTS + AI DASHBOARDS
+   * Pure-SVG chart engine (no CDN — offline PWA safe): donut, bars, area,
+   * sparkline, progress, gauge, funnel, heat map — sab interactive (click,
+   * hover tooltip, drill-down).
+   * Screens: dashboard (main) · insights (customers / receivables / payables /
+   * P&L / inventory) · shop (day open & close with cash count).
+   * ========================================================================== */
 (function () {
 'use strict';
 
@@ -220,9 +220,9 @@ const Chart = {
 };
 
 /* v2.2: App_Charts.html ka professional engine (line / gauge / progress / kpiRing /
-   grouped / donut / bars) local Chart object me bhi merge kar dein — taake is file
-   ke andar ke call sites bhi pro version hi use karein (window.Chart ka getter
-   pehle se merged object deta hai). */
+   * grouped / donut / bars) local Chart object me bhi merge kar dein — taake is file
+   * ke andar ke call sites bhi pro version hi use karein (window.Chart ka getter
+   * pehle se merged object deta hai). */
 try {
   if (window.Chart && typeof window.Chart.line === 'function' && window.Chart.line !== Chart.line) {
     Object.assign(Chart, window.Chart);
@@ -298,7 +298,7 @@ App.registerScreen('dashboard', {
         UI.kpi('📈', 'Mahana sale', fmt.moneyCompact(k.monthSales), '30 din', 'info'),
         /* v2.28.0 (W5) — profit KPI sirf margin family wale ko (backend bhi strip karta hai) */
         App.field('margin') ? UI.kpi('🏆', 'Munafa (30d)', fmt.moneyCompact(k.monthProfit), 'Gross profit', 'ok') : null,
-        UI.kpi('📒', 'Udhaar (receivable)', fmt.moneyCompact(k.receivables), (k.pendingDue ? 'Due ' + fmt.moneyCompact(k.pendingDue) : 'Sab clear'), 'warn'),
+        UI.kpi('📒', T.t('dash.receivableKpi','Credit (receivable)'), fmt.moneyCompact(k.receivables), (k.pendingDue ? 'Due ' + fmt.moneyCompact(k.pendingDue) : 'Sab clear'), 'warn'),
         UI.kpi('🏬', 'Stock value', fmt.moneyCompact(k.inventoryValue), 'Retail ' + fmt.moneyCompact(k.inventoryRetail), ''),
         UI.kpi('⚠', 'Low stock', fmt.num(k.lowStockCount), 'Items', k.lowStockCount > 0 ? 'err' : 'ok'),
         UI.kpi('🧾', 'Avg bill', fmt.moneyCompact(k.avgTicket), 'Ticket size', ''),
@@ -379,7 +379,7 @@ App.registerScreen('dashboard', {
         catRows.length
           ? Chart.donut(catRows.map(r => ({ label: r.category || 'Other', value: r.revenue || r.total || 0 })),
             { size: 168, centerLabel: 'Revenue' })
-          : h('div', { class: 'tbl-empty' }, 'Is range me koi sale nahi')));
+          : h('div', { class: 'tbl-empty' }, T.t('dash.noSalesRange','No sales in this range'))));
 
       const lowCard = h('div', { class: 'card' }, h('div', { class: 'card-head' },
         h('h4', null, '⚠ Low stock'),
@@ -408,7 +408,7 @@ App.registerScreen('dashboard', {
       App.fieldFilter([
         { pct: margin, label: 'Gross margin', sub: fmt.money(profit), value: margin.toFixed(1) + '%', family: 'margin' },
         { pct: stockHealth, label: 'Stock health', sub: lowN + ' low items', value: stockHealth.toFixed(0) + '%' },
-        { pct: recovery, label: 'Udhaar recovery', sub: fmt.money(recvPaid) + ' / ' + fmt.money(recvTotal), value: recovery.toFixed(0) + '%' },
+        { pct: recovery, label: T.t('dash.recovery','Credit recovery'), sub: fmt.money(recvPaid) + ' / ' + fmt.money(recvTotal), value: recovery.toFixed(0) + '%' },
         target ? { pct: targetPct, label: 'Month target', sub: fmt.money(sold) + ' / ' + fmt.money(target), value: targetPct.toFixed(0) + '%' }
                : { pct: 100, label: 'Aaj ki sale', sub: (k.todayTxns || 0) + ' bills', value: fmt.money(k.todaySales) }
       ]).forEach(g => ringRow.appendChild(h('div', { class: 'card' },
@@ -424,12 +424,12 @@ App.registerScreen('dashboard', {
           pmRows.length
             ? Chart.donut(pmRows.map(r => ({ label: r.label || r.method, value: Number(r.gross) })),
               { size: 168, thickness: 22, centerLabel: 'Received' })
-            : Chart.empty('Is range me koi payment nahi'))));
+            : Chart.empty(T.t('dash.noPaymentsRange','No payments in this range')))));
 
       const recvRows = ((recv && recv.rows) || []).slice(0, 6);
       const recvMax = Math.max.apply(null, recvRows.map(x => Number(x.balance !== undefined ? x.balance : x.due) || 0).concat([1]));
       row3.appendChild(h('div', { class: 'card' },
-        h('div', { class: 'card-head' }, h('h4', null, '📒 Udhaar (receivables)'),
+        h('div', { class: 'card-head' }, h('h4', null, T.t('dash.receivablesCard','📒 Credit (receivables)')),
           h('button', { class: 'btn sm sec', onclick: () => App.go('parties', { tab: 'customers' }) }, 'Sab')),
         h('div', { class: 'card-body' },
           recvRows.length
@@ -437,7 +437,7 @@ App.registerScreen('dashboard', {
                 label: r.customerName || r.name || 'Customer',
                 value: Number(r.balance !== undefined ? r.balance : r.due) || 0,
                 max: recvMax, display: fmt.money(r.balance !== undefined ? r.balance : r.due) })), {})
-            : Chart.empty('Koi udhaar nahi 🎉'))));
+            : Chart.empty(T.t('dash.noUdhaar','No credit outstanding 🎉')))));
 
       const rTotals = (recon && recon.totals) || {};
       row3.appendChild(h('div', { class: 'card' },
@@ -458,7 +458,7 @@ App.registerScreen('dashboard', {
           h('div', { class: 'chips' },
             h('button', { class: 'chip2', onclick: () => App.go('pos') }, '🧾 New sale'),
             h('button', { class: 'chip2', onclick: () => App.go('items') }, '📦 Add item'),
-            h('button', { class: 'chip2', onclick: () => App.go('parties', { tab: 'customers' }) }, '💰 Receive udhaar'),
+            h('button', { class: 'chip2', onclick: () => App.go('parties', { tab: 'customers' }) }, T.t('dash.receiveUdhaar','💰 Receive credit')),
             h('button', { class: 'chip2', onclick: () => App.go('shop') }, '🏪 Shop close'),
             h('button', { class: 'chip2', onclick: () => App.go('purchase', { reorder: true }) }, '🚚 Reorder stock'),
             h('button', { class: 'chip2', onclick: () => App.go('insights', { tab: 'pnl' }) }, '🏆 P&L'),
@@ -493,13 +493,13 @@ function aiInsights(k, d, notif) {
       { label: 'Reorder', onClick: () => App.go('purchase', { reorder: true }) });
 
   if ((k.receivables || 0) > 0)
-    add('📒', fmt.money(k.receivables) + ' udhaar baqaya',
-      'Customers se recovery ka plan banaayein; purani invoices pehle follow up karein.', 'warn',
+    add('📒', fmt.money(k.receivables) + T.t('dash.udhaarOutstanding',' credit outstanding'),
+      T.t('dash.recoveryHint','Plan recoveries with customers; follow up on older invoices first.'), 'warn',
       { label: 'Receivables', onClick: () => App.go('insights', { tab: 'receivables' }) });
 
   if ((k.payables || 0) > 0)
     add('🏭', fmt.money(k.payables) + ' suppliers ko dena hai',
-      'Payment terms ke mutabiq clearing se relationship aur discount terms behtar hoti hain.', '',
+      T.t('dash.termsHint','Paying on terms improves relationships and discount terms.'), '',
       { label: 'Payables', onClick: () => App.go('insights', { tab: 'payables' }) });
 
   const trend = d.trend || [];
@@ -521,7 +521,7 @@ function aiInsights(k, d, notif) {
   }
   if ((notif.unread || 0) > 0)
     add('🔔', notif.unread + ' alerts hain',
-      'Low stock, expiry aur udhaar ki alerts abhi check karein.', 'warn',
+      T.t('dash.alertsHint','Check low-stock, expiry and credit alerts now.'), 'warn',
       { label: 'Dekhein', onClick: () => { try { openNotifPanel(); } catch (e) { } } });
 
   // live AI suggestions (server side) if available
@@ -577,19 +577,19 @@ function renderCustomersDash(c) {
     const top = withBal.slice().sort((a, b) => (b.balance ?? b.bal ?? 0) - (a.balance ?? a.bal ?? 0)).slice(0, 8);
     host.appendChild(UI2.kpiGrid([
       { icon: '👥', label: 'Customers', value: rows.length, cls: 'info' },
-      { icon: '📒', label: 'Udhaar customers', value: withBal.length, cls: 'warn' },
-      { icon: '💰', label: 'Total udhaar', value: fmt.money(totalBal), cls: 'err' },
+      { icon: '📒', label: T.t('dash.udhaarCustomers','Credit customers'), value: withBal.length, cls: 'warn' },
+      { icon: '💰', label: T.t('dash.totalUdhaar','Total credit'), value: fmt.money(totalBal), cls: 'err' },
       { icon: '🎁', label: 'Loyalty points', value: fmt.num(rows.reduce((a, r) => a + Number(r.points || 0), 0)) }
     ]));
-    host.appendChild(UI2.section('Sabse zyada udhaar'));
+    host.appendChild(UI2.section(T.t('dash.maxUdhaar','Highest credit')));
     host.appendChild(h('div', { class: 'grid g2-1' },
       h('div', { class: 'card' }, h('div', { class: 'card-body' },
         top.length ? Chart.bars(top.map(r => ({ label: r.name, value: r.balance ?? r.bal ?? 0 })),
           { horizontal: true, onClick: r => App.go('parties', { tab: 'customers', open: r.id }) })
-          : h('div', { class: 'tbl-empty' }, 'Koi udhaar nahi 🎉'))),
+          : h('div', { class: 'tbl-empty' }, T.t('dash.noUdhaar','No credit outstanding 🎉')))),
       h('div', { class: 'card' }, h('div', { class: 'card-body' },
         Chart.donut([
-          { label: 'With udhaar', value: withBal.length, color: '#be123c' },
+          { label: T.t('dash.withUdhaar','With credit'), value: withBal.length, color: '#be123c' },
           { label: 'Clear', value: Math.max(0, rows.length - withBal.length), color: '#0f7a3f' }
         ], { size: 160, centerLabel: 'Customers' })))));
 
@@ -636,11 +636,11 @@ function renderReceivablesDash(c) {
       });
       host.innerHTML = '';
       host.appendChild(UI2.kpiGrid([
-        { icon: '📅', label: 'Pichhla udhaar (prev)', value: fmt.money(res.prevTotal || 0), cls: 'info' },
-        { icon: '➕', label: 'Naya udhaar', value: fmt.money(res.newTotal || 0), cls: 'warn' },
+        { icon: '📅', label: T.t('dash.prevUdhaarPrev','Previous credit (prev)'), value: fmt.money(res.prevTotal || 0), cls: 'info' },
+        { icon: '➕', label: T.t('dash.newUdhaar','New credit'), value: fmt.money(res.newTotal || 0), cls: 'warn' },
         { icon: '📒', label: 'Total receivable (closing)', value: fmt.money(res.total || 0), cls: 'err' },
         { icon: '👥', label: 'Customers', value: rows.length },
-        { icon: '✅', label: 'Wasooli', value: fmt.money(res.settledTotal || 0), cls: 'ok' },
+        { icon: '✅', label: T.t('dash.collections','Collections'), value: fmt.money(res.settledTotal || 0), cls: 'ok' },
         { icon: '⚠', label: '90+ din', value: fmt.money(buckets[3].value), cls: 'err' }
       ], 3));
       host.appendChild(h('div', { class: 'grid g2-1' },
@@ -648,7 +648,7 @@ function renderReceivablesDash(c) {
           h('div', { class: 'card-body' }, Chart.bars(buckets.map(b => ({ label: b.label, value: b.value, color: b.color })), { height: 200 }))),
         h('div', { class: 'card' }, h('div', { class: 'card-head' }, h('h4', null, 'Split')),
           h('div', { class: 'card-body' }, Chart.donut(buckets, { size: 170, centerLabel: 'Receivable' })))));
-      host.appendChild(UI2.section('Customer-wise udhaar'));
+      host.appendChild(UI2.section(T.t('dash.customerUdhaar','Customer-wise credit')));
       host.appendChild(UI2.table({
         screen: 'dash_recv', rows: rows, height: '44vh', exportName: 'receivables',
         columns: [
@@ -656,7 +656,7 @@ function renderReceivablesDash(c) {
           { key: 'phone', label: 'Phone', render: r => fmt.phone(r.phone) },
           { key: 'prevBalance', label: 'Prev', num: true, render: r => h('span', { class: 'muted' }, fmt.money(r.prevBalance)) },
           { key: 'newAmount', label: 'Naya', num: true, render: r => fmt.money(r.newAmount) },
-          { key: 'settled', label: 'Wasooli', num: true, render: r => fmt.money(r.settled) },
+          { key: 'settled', label: T.t('dash.collections','Collections'), num: true, render: r => fmt.money(r.settled) },
           { key: 'balance', label: 'Closing', num: true, render: r => h('b', { style: { color: 'var(--err)' } }, fmt.money(r.balance)) }
         ],
         rowActions: r => [{ icon: '💰', label: 'Receive', onClick: () => App.go('parties', { tab: 'customers', open: r.id }) }],
@@ -671,7 +671,7 @@ function renderPayablesDash(c) {
   API.call('reports.payables', {}, { offlineFallback: () => ({ rows: [], total: 0 }) }).then(res => {
     const rows = res.rows || [];
     host.appendChild(UI2.kpiGrid([
-      { icon: '📅', label: 'Pichhla baqaya (prev)', value: fmt.money(res.prevTotal || 0), cls: 'info' },
+      { icon: '📅', label: T.t('dash.prevBalPrev','Previous balance (prev)'), value: fmt.money(res.prevTotal || 0), cls: 'info' },
       { icon: '➕', label: 'Naya purchase', value: fmt.money(res.newTotal || 0), cls: 'warn' },
       { icon: '🏭', label: 'Total payable (closing)', value: fmt.money(res.total || 0), cls: 'err' },
       { icon: '✅', label: 'Payment', value: fmt.money(res.settledTotal || 0), cls: 'ok' },
@@ -684,7 +684,7 @@ function renderPayablesDash(c) {
       columns: [
         { key: 'code', label: 'Code' }, { key: 'name', label: 'Supplier' },
         { key: 'phone', label: 'Phone', render: r => fmt.phone(r.phone) },
-        { key: 'prevBalance', label: 'Pichhla baqaya', num: true, render: r => h('span', { class: 'muted' }, fmt.money(r.prevBalance)) },
+        { key: 'prevBalance', label: T.t('dash.prevBal','Previous balance'), num: true, render: r => h('span', { class: 'muted' }, fmt.money(r.prevBalance)) },
         { key: 'newAmount', label: 'Purchase', num: true, render: r => fmt.money(r.newAmount) },
         { key: 'settled', label: 'Paid', num: true, render: r => fmt.money(r.settled) },
         { key: 'balance', label: 'Dena hai (closing)', num: true, render: r => h('b', { style: { color: 'var(--err)' } }, fmt.money(r.balance)) }
@@ -731,7 +731,7 @@ function renderPnlDash(c) {
           (cat.rows || []).length
             ? Chart.donut((cat.rows || []).slice(0, 7).map(r => ({ label: r.category || 'Other', value: r.profit || r.revenue || 0 })),
               { size: 180, centerLabel: 'Profit' })
-            : h('div', { class: 'tbl-empty' }, 'Data nahi')))));
+            : h('div', { class: 'tbl-empty' }, T.t('dash.noData','No data'))))));
 
     host.appendChild(UI2.section('Item-wise profitability'));
     host.appendChild(UI2.table({
@@ -832,7 +832,7 @@ App.registerScreen('shop', {
     renderShopScreen(host);
     const wizHost = h('div'); body.appendChild(wizHost);   /* screen-root: renderShopScreen host ko replace na kare */
     /* v2.30.5 (user-report) — wizard dobara chalana: app configured ho to wizard/
-       banner khud chhupte hai; yahan se owner dobara chala sakta hai (reset+open). */
+       * banner khud chhupte hai; yahan se owner dobara chala sakta hai (reset+open). */
     if (App.can('settings.manage')) {
       const wc = h('div', { class: 'card', style: { marginTop: '10px' } },
         h('div', { class: 'card-body tight' },
@@ -840,8 +840,8 @@ App.registerScreen('shop', {
             'Application pehle se configured ho to Setup Wizard aur banner khud chhup jate hai · العیون متعین ہونے پر ویزرڈ چھپ جاتا ہے'),
           h('button', { class: 'btn sm', onclick: async () => {
             try { await API.call('system.wizardSave', { reset: true }); } catch (e) { }
-            try { ShopUI.wizard(ShopUI.wizardStatus || {}); } catch (e) { UI.toast(e.message || 'Wizard nahi khula', 'err'); }
-          } }, '🧭 Setup wizard dobara chalayen · دوبارہ سیٹ اپ')));
+            try { ShopUI.wizard(ShopUI.wizardStatus || {}); } catch (e) { UI.toast(e.message || T.t('dash.wizardFail','Wizard did not open'), 'err'); }
+          } }, T.t('dash.wizardRerun','🧭 Run setup wizard again'))));
       wizHost.appendChild(wc);
     }
   }
@@ -866,10 +866,10 @@ async function renderShopScreen(host) {
 }
 
 /* ==========================================================================
-   v2.6 §7 — AUTO DAY REPORTS: history + reprint / PDF / CSV / share
-   Shop khulte ya band hote hi report khud ban jati hai; yahan se baad mein
-   kabhi bhi print, PDF, Excel ya WhatsApp share kiya ja sakta hai.
-   ========================================================================== */
+   * v2.6 §7 — AUTO DAY REPORTS: history + reprint / PDF / CSV / share
+   * Shop khulte ya band hote hi report khud ban jati hai; yahan se baad mein
+   * kabhi bhi print, PDF, Excel ya WhatsApp share kiya ja sakta hai.
+   * ========================================================================== */
 function shopDayReportCard() {
   const card = h('div', { class: 'card' });
   const bodyEl = h('div', { class: 'card-body tight' });
@@ -884,7 +884,7 @@ function shopDayReportCard() {
             await API.call('dayreport.generate', { kind: 'CLOSE' });
             UI.toast(T.t('dash.reportDone','Report generated ✅'), 'ok');
             shopDayReportRefresh(bodyEl);
-          } catch (e) { UI.toast(e.message || 'Report nahi ban saki', 'err'); }
+          } catch (e) { UI.toast(e.message || T.t('dash.reportFail','Could not create report'), 'err'); }
         }
       }, '➕ Abhi banaen'),
       h('button', { class: 'btn sm sec', title: 'Refresh', onclick: () => shopDayReportRefresh(bodyEl) }, '↻'))));
@@ -902,14 +902,14 @@ async function shopDayReportRefresh(bodyEl) {
     rows = await API.call('dayreport.list', { limit: 30 }, { offlineFallback: () => [] }) || [];
   } catch (e) {
     bodyEl.innerHTML = '';
-    bodyEl.appendChild(Shared.stateCard({ kind: 'error', error: e, title: 'Reports load nahi ho sakeen',
+    bodyEl.appendChild(Shared.stateCard({ kind: 'error', error: e, title: T.t('dash.reportsFail','Reports could not load'),
       retry: () => shopDayReportRefresh(bodyEl) }));
     return;
   }
   bodyEl.innerHTML = '';
   if (!rows.length) {
     bodyEl.appendChild(h('div', { class: 'tbl-empty' },
-      'Abhi koi auto report nahi — shop open/close karte hi yahan aa jayegi'));
+      T.t('dash.noAutoReport','No auto report yet — it appears here after shop open/close')));
     return;
   }
   rows.forEach(r => {
@@ -942,7 +942,7 @@ async function shopDayReportRefresh(bodyEl) {
             try {
               const d = await API.call('dayreport.csv', { id: r.id });
               downloadCsv(d.csv, d.filename);
-            } catch (e) { UI.toast(e.message || 'CSV nahi bana', 'err'); }
+            } catch (e) { UI.toast(e.message || T.t('dash.csvFail','Could not create CSV'), 'err'); }
           }
         }, '⬇'),
         h('button', {
@@ -957,7 +957,7 @@ async function shopDayReportRefresh(bodyEl) {
                 '\nVariance: ' + fmt.money(Number(r.variance || 0));
               if (typeof Share !== 'undefined' && Share.text) Share.text(txt, r.reportNo || 'Day report');
               else UI.toast(T.t('dash.shareNA','Share unavailable'), 'warn');
-            } catch (e) { UI.toast(e.message || 'Share nahi ho saka', 'err'); }
+            } catch (e) { UI.toast(e.message || T.t('dash.shareFail','Could not share'), 'err'); }
           }
         }, '📤'))));
   });
@@ -994,7 +994,7 @@ function shopClosedCard(onDone) {
     h('div', { class: 'shop-badge big' }, '🏪'),
     h('div', { class: 'shop-hero-txt' },
       h('h3', null, 'Shop band hai'),
-      h('p', null, 'Din shuru karte waqt drawer ki opening cash (float) darj karein. Day-end par expected vs counted ka farq khud nikal aayega.'))));
+      h('p', null, T.t('dash.openingFloatHint','Enter drawer opening cash (float) at day start. Expected vs counted variance is computed at day-end.')))));
 
   const f = UI2.form({
     values: { openingCash: 0, notes: '' },
@@ -1072,7 +1072,7 @@ function shopOpenCard(ses, onDone) {
               { key: 'amount', label: 'Amount', num: true, render: r => fmt.money(r.amount) }
             ]
           })
-        : h('div', { class: 'empty' }, 'Abhi koi payment nahi'))));
+        : h('div', { class: 'empty' }, T.t('dash.noPaymentsYet','No payments yet')))));
 
   grid.appendChild(h('div', { class: 'card' },
     h('div', { class: 'card-head' }, h('h4', null, '💸 Cash in / out log'),
@@ -1091,7 +1091,7 @@ function shopOpenCard(ses, onDone) {
               { key: 'reason', label: 'Reason' }
             ]
           })
-        : h('div', { class: 'empty' }, 'Koi cash movement nahi'))));
+        : h('div', { class: 'empty' }, T.t('dash.noCashMoves','No cash movements')))));
 
   wrap.appendChild(grid);
 
@@ -1106,7 +1106,7 @@ function shopOpenCard(ses, onDone) {
           { k: 'Bills', v: fmt.num(sl.count || 0) },
           { k: 'Gross sales', v: fmt.money(sl.gross || 0) },
           { k: 'Returns', v: fmt.money(sl.returns || 0) },
-          { k: 'Udhaar (credit given)', v: fmt.money(sl.udhaar || 0) },
+          { k: T.t('dash.creditGiven','Credit (given)'), v: fmt.money(sl.udhaar || 0) },
           { k: 'Card / wallet received', v: fmt.money(t.card || 0) },
           { k: 'Cash expenses', v: fmt.money(t.expenses || 0) },
           { k: 'Expected cash in drawer', v: fmt.money(ses.expectedCash || 0) }
@@ -1137,7 +1137,7 @@ function cashMoveModal(type, ses, onDone) {
     actions: [{
       label: isOut ? 'Cash out' : 'Cash in', cls: isOut ? 'danger' : 'ok', onClick: async c => {
         const v = f.values();
-        if (!(Number(v.amount) > 0)) return UI.toast('Amount darj karein', 'err');
+        if (!(Number(v.amount) > 0)) return UI.toast(T.t('dash.enterAmount','Enter the amount'), 'err');
         try {
           await API.call('cash.move', {
             type, amount: Number(v.amount), reason: v.reason,
@@ -1204,7 +1204,7 @@ function closeShopModal(ses, onDone) {
     actions: [{
       label: '🔒 Close & post difference', cls: 'ok', onClick: async c => {
         const { total, diff } = calc();
-        if (!(await UI2.confirm('Shop close karein? Counted ' + fmt.money(total) +
+        if (!(await UI2.confirm(T.t('dash.shopCloseConfirm','Close the shop? Counted ') + fmt.money(total) +
           ' · difference ' + fmt.money(diff)))) return;
         try {
           await API.call('cash.session.close', {
@@ -1236,7 +1236,7 @@ function dayReportHtml(r) {
   const t = r.totals || {};
   const dur = r.durationMins >= 60 ? Math.floor(r.durationMins / 60) + 'h ' + (r.durationMins % 60) + 'm' : (r.durationMins || 0) + 'm';
   const rows = (arr, cell) => (arr || []).length
-    ? arr.map(cell).join('') : '<tr><td colspan="6" class="c muted">Koi entry nahi</td></tr>';
+    ? arr.map(cell).join('') : '<tr><td colspan="6" class="c muted">' + T.t('dash.noEntriesHtml','No entries') + '</td></tr>';
 
   const methods = rows(r.methods, x => '<tr><td>' + esc(x.method) + '</td><td class="c">' + n(x.count) +
     '</td><td class="r">' + m(x.amount) + '</td></tr>');
@@ -1319,8 +1319,8 @@ function dayReportHtml(r) {
     (r.notes ? '<div class="dr-notes"><b>Notes</b><div>' + esc(r.notes) + '</div></div>' : '') +
 
     /* ─── v2.6 QA — "report main QR aur Barcode bhi hoona chahiye jis say
-       tracking aur searching main asani ho". Scan karte hi session mil jaye.
-       Dono OFFLINE engines hain (App_QR.html / App_Barcode.html) — koi CDN nahi. */
+       * tracking aur searching main asani ho". Scan karte hi session mil jaye.
+       * Dono OFFLINE engines hain (App_QR.html / App_Barcode.html) — koi CDN nahi. */
     dayReportCodes(r) +
     '<footer class="dr-foot">' +
       '<div class="sig"><div class="sigline"></div><div>Cashier signature</div></div>' +
@@ -1386,11 +1386,11 @@ table.dr-t .c{text-align:center}table.dr-t .r{text-align:right;font-variant-nume
 
 
 /* ----------------------------------------------------------------------------
-   Report QR + Barcode (v2.6 QA)
-   Barcode = session no (seedha type kar ke bhi dhoondh sakte hain)
-   QR      = JSON {doc, session, date, loc} — scan karte hi record khul jaye
-   Settings se band kiya ja sakta hai (reportShowCodes, default on).
-   -------------------------------------------------------------------------- */
+   * Report QR + Barcode (v2.6 QA)
+   * Barcode = session no (seedha type kar ke bhi dhoondh sakte hain)
+   * QR      = JSON {doc, session, date, loc} — scan karte hi record khul jaye
+   * Settings se band kiya ja sakta hai (reportShowCodes, default on).
+   * -------------------------------------------------------------------------- */
 function dayReportCodes(r) {
   try {
     const st = App.state.settings || {};
@@ -1425,7 +1425,7 @@ async function dayReportActions(r, afterClose) {
 
   const openPrint = () => {
     const w = window.open('', '_blank', 'width=900,height=1000');
-    if (!w) { UI.toast('Popup blocked — browser se allow karein', 'warn'); return; }
+    if (!w) { UI.toast(T.t('dash.popupBlocked','Popup blocked — allow it in the browser'), 'warn'); return; }
     w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>' +
       esc((r.sessionNo || 'day') + ' closing report') + '</title><style>' + DAY_REPORT_CSS + '</style></head><body>' +
       html + '</body></html>');
@@ -1459,9 +1459,9 @@ async function dayReportActions(r, afterClose) {
       (r.closingCash === null || r.closingCash === undefined ? '—' : fmt.money(r.closingCash)) +
       ' · Variance: ' + (r.variance === null ? '—' : fmt.money(r.variance)) +
       (url ? '\n\nPDF: ' + url : '');
-    const num = await UI2.prompt ? UI2.prompt({ label: 'WhatsApp number (923001234567)', title: 'Report bhejein' }) : null;
+    const num = await UI2.prompt ? UI2.prompt({ label: 'WhatsApp number (923001234567)', title: T.t('dash.sendReport','Send report') }) : null;
     const to = String((num && (num.value || num)) || '').replace(/\D/g, '');
-    if (!to) return UI.toast('Number nahi mila', 'warn');
+    if (!to) return UI.toast(T.t('dash.noNumber','Number not found'), 'warn');
     window.open('https://wa.me/' + to + '?text=' + encodeURIComponent(msg), '_blank');
   };
 
@@ -1492,7 +1492,7 @@ async function dayReportActions(r, afterClose) {
     const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' });
     const a = h('a', { href: URL.createObjectURL(blob), download: (r.sessionNo || 'day-report') + '-closing.csv' });
     document.body.appendChild(a); a.click(); a.remove();
-    UI.toast('CSV download ho gayi', 'ok');
+    UI.toast(T.t('dash.csvDone','CSV downloaded'), 'ok');
   };
 
   return { openPrint, makePdf, shareWhatsApp, downloadCsv, html };
@@ -1503,7 +1503,7 @@ async function dayReportModal(sessionId) {
   let r = null;
   try { r = await API.call('shop.dayReport', { sessionId: sessionId || '' }, { offlineFallback: () => null }); }
   catch (e) { UI.toast(e.message, 'err'); return; }
-  if (!r) { UI.toast('Report load nahi hua', 'err'); return; }
+  if (!r) { UI.toast(T.t('dash.reportLoadFail','Report failed to load'), 'err'); return; }
   const acts = await dayReportActions(r);
   const body = h('div', { class: 'print-preview', style: { maxHeight: '62vh' } },
     h('div', { class: 'pp-paper', style: { transform: 'scale(.62)' } }, rawHtmlModule(acts.html)));
@@ -1520,15 +1520,15 @@ async function dayReportModal(sessionId) {
     ]
   });
   /* v2.6 §7 point 4 — "automatically trigger printing where the device
-     configuration supports it". Settings-driven (dayReportAutoPrint, default on).
-     Modal pehle khul jata hai (user dekh sake), phir print window aati hai —
-     is liye dono: foran nateeja BHI nazar aaye aur print BHI ho jaye. */
+     * configuration supports it". Settings-driven (dayReportAutoPrint, default on).
+     * Modal pehle khul jata hai (user dekh sake), phir print window aati hai —
+     * is liye dono: foran nateeja BHI nazar aaye aur print BHI ho jaye. */
   try {
     const st = App.state.settings || {};
     const mode = window.SERVE_MODE || 'apps-script';
     /* Demo / preview mein khud-ba-khud print window kholna be-maani hai
-       (aur jsdom jese test harness mein window.open() hi nahi hota).
-       Asli app (Apps Script ya static host) mein hi auto-print chalayein. */
+       * (aur jsdom jese test harness mein window.open() hi nahi hota).
+       * Asli app (Apps Script ya static host) mein hi auto-print chalayein. */
     const canAutoPrint = mode !== 'demo' && typeof window.open === 'function';
     if (canAutoPrint && String(st.dayReportAutoPrint) !== 'false' && typeof acts.openPrint === 'function') {
       setTimeout(() => { try { acts.openPrint(); } catch (e) { /* printer na ho to khamosh */ } }, 600);
@@ -1557,7 +1557,7 @@ function shopHistoryCard(rows) {
           { icon: '📄', label: 'Closing report', onClick: () => dayReportModal(r.id) }
         ],
         onRow: r => dayReportModal(r.id)
-      }) : h('div', { class: 'empty' }, 'Koi purani session nahi')));
+      }) : h('div', { class: 'empty' }, T.t('dash.noPrevSessions','No previous sessions'))));
 }
 
 
@@ -1566,8 +1566,8 @@ function rawHtmlModule(str) { const d = h('div'); d.innerHTML = str; return d; }
 try { window.Chart = Object.assign({}, Chart, window.Chart || {}); } catch (e) { window.Chart = Chart; }
 window.Dash = Dash;
 /* v2.6 QA — testability: ye functions IIFE ke andar hain, is liye QA harness
-   (tools/_probe / future tests) unhein call nahi kar sakte. Is codebase ka
-   apna pattern (window.UI2 = UI2) follow kar ke expose karte hain. */
+   * (tools/_probe / future tests) unhein call nahi kar sakte. Is codebase ka
+   * apna pattern (window.UI2 = UI2) follow kar ke expose karte hain. */
 window.HA_DayReport = {
   historyCard: function () { return shopDayReportCard(); },
   html: function (r) { return dayReportHtml(r); },

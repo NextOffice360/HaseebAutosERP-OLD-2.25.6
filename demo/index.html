@@ -4143,6 +4143,154 @@ Object.assign(TRANSLATIONS, {
   'sc2.defaultsRestored': { key: 'sc2.defaultsRestored', en: 'Defaults restored (save to keep)', roman: 'Defaults restore ho gaye (save karein)', ur: 'ڈیفالٹس بحال ہو گئے (محفوظ کریں)' },
   'sc2.noChanges': { key: 'sc2.noChanges', en: 'No changes', roman: 'Koi tabdeeli nahi', ur: 'کوئی تبدیلی نہیں' },
   'sc2.pendingLoaded': { key: 'sc2.pendingLoaded', en: ' pending lines loaded', roman: ' pending lines load ho gayin', ur: ' زیرِ التوا لائنیں لوڈ ہو گئیں' },
+  'cfg.repairNote': { key: 'cfg.repairNote', en: 'These columns are written by code but missing in the sheet — data may drop silently. Repair never deletes data; it only adds columns.', roman: 'Ye columns code likhta hai par sheet mein nahi — data silently drop ho sakta hai. Repair se data delete nahi hota, sirf columns judte hain.', ur: 'یہ کالم کوڈ لکھتا ہے مگر شیٹ میں نہیں — ڈیٹا خاموشی سے گر سکتا ہے۔ ریپئر سے ڈیٹا ڈیلیٹ نہیں ہوتا، صرف کالم جڑتے ہیں۔' },
+  'cfg.idempotentNote': { key: 'cfg.idempotentNote', en: 'This is idempotent — re-running creates no duplicates and deletes no rows.', roman: 'Yeh idempotent hai — dobara chalane se duplicate nahi banta, koi row delete nahi hoti.', ur: 'یہ idempotent ہے — دوبارہ چلانے سے ڈپلیکیٹ نہیں بنتا، کوئی قطار ڈیلیٹ نہیں ہوتی۔' },
+  'cfg.freeModeHint': { key: 'cfg.freeModeHint', en: 'Free mode (LINK): no API key — WhatsApp opens via a wa.me link. ', roman: 'Free mode (LINK): koi API key nahi — wa.me link se WhatsApp khul jata hai. ', ur: 'فری موڈ (LINK): کوئی API key نہیں — wa.me لنک سے واٹس ایپ کھلتا ہے۔ ' },
+  'cfg.installJobsHint': { key: 'cfg.installJobsHint', en: 'Tap “Install jobs” — then allow Google authorization.', roman: '“Install jobs” dabayein — phir Google authorization allow karein.', ur: '“Install jobs” دبائیں — پھر گوگل اجازت دیں۔' },
+  'cfg.pasteHint': { key: 'cfg.pasteHint', en: 'Items, customers or suppliers — paste from Sheet/Excel.', roman: 'Items, customers ya suppliers — Sheet/Excel se paste karein.', ur: 'آئٹمز، کسٹمرز یا سپلائرز — شیٹ/ایکسل سے پیسٹ کریں۔' },
+  'cfg.menuRestore': { key: 'cfg.menuRestore', en: 'Restore the default menu? The custom menu will be deleted.', roman: 'Default menu restore karein? Custom menu delete ho jayega.', ur: 'ڈیفالٹ مینو بحال کریں؟ کسٹم مینو ڈیلیٹ ہو جائے گا۔' },
+  'cfg.livePreviewHint': { key: 'cfg.livePreviewHint', en: '(the whole app will look like this — no save needed)', roman: '(poori app aise hi dikhaye gi — save ki zaroorat nahi)', ur: '(پوری ایپ ایسے ہی دکھے گی — محفوظ کرنے کی ضرورت نہیں)' },
+  'cfg.schemaFail': { key: 'cfg.schemaFail', en: 'Schema failed to load — check the backend deploy', roman: 'Schema load nahi hua — backend deploy check karein', ur: 'اسکیما لوڈ نہیں ہوئی — بیک اینڈ ڈیپلائے چیک کریں' },
+  'cfg.noUnsaved': { key: 'cfg.noUnsaved', en: 'No unsaved changes — everything is saved', roman: 'Koi unsaved tabdeeli nahi — sab mehfooz hai', ur: 'کوئی غیر محفوظ تبدیلی نہیں — سب محفوظ ہے' },
+  'cfg.noTemplates': { key: 'cfg.noTemplates', en: 'No templates — create one with the button above', roman: 'Koi template nahi — upar button se banayein', ur: 'کوئی ٹیمپلیٹ نہیں — اوپر کے بٹن سے بنائیں' },
+  'cfg.noChanges': { key: 'cfg.noChanges', en: 'No changes — everything is already saved', roman: 'Koi tabdeeli nahi — sab pehle se save hai', ur: 'کوئی تبدیلی نہیں — سب پہلے سے محفوظ ہے' },
+  'cfg.stockUntouched': { key: 'cfg.stockUntouched', en: 'Existing item stock is not touched', roman: 'Maujuda items ka stock chera nahi jata', ur: 'موجودہ آئٹمز کا اسٹاک نہیں چھیڑا جاتا' },
+  'cfg.restoreDefaults': { key: 'cfg.restoreDefaults', en: 'Restore defaults for this tab?', roman: 'Is tab ke defaults restore karein?', ur: 'اس ٹیب کے ڈیفالٹس بحال کریں؟' },
+  'cfg.screenReq': { key: 'cfg.screenReq', en: 'Screen id and label are required', roman: 'Screen id aur label zaroori hain', ur: 'اسکرین آئی ڈی اور لیبل ضروری ہیں' },
+  'cfg.pasteJson': { key: 'cfg.pasteJson', en: 'Paste config JSON here', roman: 'Yahan config JSON paste karein', ur: 'یہاں کنفیگ JSON پیسٹ کریں' },
+  'cfg.noWriteTail': { key: 'cfg.noWriteTail', en: ' update (no writes)', roman: ' update (koi write nahi hua)', ur: ' اپ ڈیٹ (کوئی رائٹ نہیں ہوا)' },
+  'cfg.noImports': { key: 'cfg.noImports', en: 'No imports yet', roman: 'Abhi koi import nahi hua', ur: 'ابھی کوئی امپورٹ نہیں ہوا' },
+  'cfg.noJobs': { key: 'cfg.noJobs', en: 'No jobs installed', roman: 'Koi job install nahi hai', ur: 'کوئی جاب انسٹال نہیں' },
+  'cfg.savedCount': { key: 'cfg.savedCount', en: ' setting(s) saved ✅', roman: ' setting save ho gayi ✅', ur: ' سیٹنگ محفوظ ہو گئی ✅' },
+  'cfg.templateDeleteConfirm': { key: 'cfg.templateDeleteConfirm', en: 'Delete this template?', roman: 'Template delete karein?', ur: 'ٹیمپلیٹ ڈیلیٹ کریں؟' },
+  'cfg.templateDeleted': { key: 'cfg.templateDeleted', en: 'Template deleted', roman: 'Template delete ho gaya', ur: 'ٹیمپلیٹ ڈیلیٹ ہو گیا' },
+  'cfg.logoDone': { key: 'cfg.logoDone', en: 'Logo uploaded ✅', roman: 'Logo upload ho gaya ✅', ur: 'لوگو اپ لوڈ ہو گیا ✅' },
+  'cfg.retryTail': { key: 'cfg.retryTail', en: ', please try again', roman: 'dobara koshish karein', ur: 'دوبارہ کوشش کریں' },
+  'cfg.noPoints': { key: 'cfg.noPoints', en: 'No points earned', roman: 'Koi points nahi mile', ur: 'کوئی پوائنٹس نہیں ملے' },
+  'cfg.planCopied': { key: 'cfg.planCopied', en: 'Plan copied', roman: 'Plan copy ho gaya', ur: 'پلان کاپی ہو گیا' },
+  'cfg.labelReq': { key: 'cfg.labelReq', en: 'Label is required', roman: 'Label zaroori hai', ur: 'لیبل ضروری ہے' },
+  'cfg.jsonBad': { key: 'cfg.jsonBad', en: 'Invalid JSON: ', roman: 'JSON ghalat hai: ', ur: 'جے سون غلط ہے: ' },
+  'cfg.nameReq': { key: 'cfg.nameReq', en: 'Name is required', roman: 'Name zaroori hai', ur: 'نام ضروری ہے' },
+  'cfg.repaired': { key: 'cfg.repaired', en: 'Repaired: ', roman: 'Repair ho gaya: ', ur: 'ریپئر ہو گیا: ' },
+  'cfg.noLogo': { key: 'cfg.noLogo', en: '🖼 No logo', roman: '🖼 Koi logo nahi', ur: '🖼 کوئی لوگو نہیں' },
+  'cfg.saveFail': { key: 'cfg.saveFail', en: 'Could not save: ', roman: 'Save nahi hua: ', ur: 'محفوظ نہیں ہوا: ' },
+  'cfg.jsonBadShort': { key: 'cfg.jsonBadShort', en: 'Invalid JSON', roman: 'JSON ghalat hai', ur: 'جے سون غلط ہے' },
+  'cfg.saveFailShort': { key: 'cfg.saveFailShort', en: 'Could not save', roman: 'Save nahi hua', ur: 'محفوظ نہیں ہوا' },
+  'cfg.priceDiffTail': { key: 'cfg.priceDiffTail', en: ' price difference', roman: ' price farq', ur: ' قیمت فرق' },
+  'cfg.rateDiff': { key: 'cfg.rateDiff', en: 'Rate difference: ', roman: 'Rate farq: ', ur: 'ریٹ فرق: ' },
+  'dash.openingFloatHint': { key: 'dash.openingFloatHint', en: 'Enter drawer opening cash (float) at day start. Expected vs counted variance is computed at day-end.', roman: 'Din shuru karte waqt drawer ki opening cash (float) darj karein. Day-end par expected vs counted ka farq khud nikal aayega.', ur: 'دن شروع کرتے وقت دراز کی اوپننگ کیش (فلوٹ) درج کریں۔ دن کے اختتام پر متوقع بمقابلہ گنی گئی کا فرق خود نکل آئے گا۔' },
+  'dash.termsHint': { key: 'dash.termsHint', en: 'Paying on terms improves relationships and discount terms.', roman: 'Payment terms ke mutabiq clearing se relationship aur discount terms behtar hoti hain.', ur: 'ادائیگی شرائط کے مطابق ہو تو تعلقات اور ڈسکاؤنٹ شرائط بہتر ہوتے ہیں۔' },
+  'dash.recoveryHint': { key: 'dash.recoveryHint', en: 'Plan recoveries with customers; follow up on older invoices first.', roman: 'Customers se recovery ka plan banaayein; purani invoices pehle follow up karein.', ur: 'کسٹمرز کے ساتھ وصولی کا منصوبہ بنائیں؛ پرانی انوائسز کا پیچھا پہلے کریں۔' },
+  'dash.noAutoReport': { key: 'dash.noAutoReport', en: 'No auto report yet — it appears here after shop open/close', roman: 'Abhi koi auto report nahi — shop open/close karte hi yahan aa jayegi', ur: 'ابھی کوئی آٹو رپورٹ نہیں — دکان کھولنے/بند کرتے ہی یہاں آ جائے گی' },
+  'dash.alertsHint': { key: 'dash.alertsHint', en: 'Check low-stock, expiry and credit alerts now.', roman: 'Low stock, expiry aur udhaar ki alerts abhi check karein.', ur: 'کم اسٹاک، ایکسپائری اور ادھار کے الرٹس ابھی چیک کریں۔' },
+  'dash.wizardRerun': { key: 'dash.wizardRerun', en: '🧭 Run setup wizard again', roman: '🧭 Setup wizard dobara chalayen · دوبارہ سیٹ اپ', ur: '🧭 سیٹ اپ وزرڈ دوبارہ چلائیں' },
+  'dash.popupBlocked': { key: 'dash.popupBlocked', en: 'Popup blocked — allow it in the browser', roman: 'Popup blocked — browser se allow karein', ur: 'پاپ اپ بلاک — براؤزر میں اجازت دیں' },
+  'dash.noPaymentsRange': { key: 'dash.noPaymentsRange', en: 'No payments in this range', roman: 'Is range me koi payment nahi', ur: 'اس رینج میں کوئی ادائیگی نہیں' },
+  'dash.reportsFail': { key: 'dash.reportsFail', en: 'Reports could not load', roman: 'Reports load nahi ho sakeen', ur: 'رپورٹس لوڈ نہیں ہو سکیں' },
+  'dash.shopCloseConfirm': { key: 'dash.shopCloseConfirm', en: 'Close the shop? Counted ', roman: 'Shop close karein? Counted ', ur: 'دکان بند کریں؟ گنی گئی ' },
+  'dash.noSalesRange': { key: 'dash.noSalesRange', en: 'No sales in this range', roman: 'Is range me koi sale nahi', ur: 'اس رینج میں کوئی سیل نہیں' },
+  'dash.noPrevSessions': { key: 'dash.noPrevSessions', en: 'No previous sessions', roman: 'Koi purani session nahi', ur: 'کوئی پچھلا سیشن نہیں' },
+  'dash.receivablesCard': { key: 'dash.receivablesCard', en: '📒 Credit (receivables)', roman: '📒 Udhaar (receivables)', ur: '📒 وصولی (ادھار)' },
+  'dash.noCashMoves': { key: 'dash.noCashMoves', en: 'No cash movements', roman: 'Koi cash movement nahi', ur: 'کوئی کیش موومنٹ نہیں' },
+  'dash.prevUdhaarPrev': { key: 'dash.prevUdhaarPrev', en: 'Previous credit (prev)', roman: 'Pichhla udhaar (prev)', ur: 'پچھلا ادھار (سابقہ)' },
+  'dash.prevBalPrev': { key: 'dash.prevBalPrev', en: 'Previous balance (prev)', roman: 'Pichhla baqaya (prev)', ur: 'پچھلا بقایا (سابقہ)' },
+  'dash.noPaymentsYet': { key: 'dash.noPaymentsYet', en: 'No payments yet', roman: 'Abhi koi payment nahi', ur: 'ابھی کوئی ادائیگی نہیں' },
+  'dash.creditGiven': { key: 'dash.creditGiven', en: 'Credit (given)', roman: 'Udhaar (credit given)', ur: 'ادھار (دیا گیا)' },
+  'dash.customerUdhaar': { key: 'dash.customerUdhaar', en: 'Customer-wise credit', roman: 'Customer-wise udhaar', ur: 'کسٹمر کے حساب ادھار' },
+  'dash.reportFail': { key: 'dash.reportFail', en: 'Could not create report', roman: 'Report nahi ban saki', ur: 'رپورٹ نہیں بن سکی' },
+  'dash.csvDone': { key: 'dash.csvDone', en: 'CSV downloaded', roman: 'CSV download ho gayi', ur: 'سی ایس وی ڈاؤن لوڈ ہو گئی' },
+  'dash.reportLoadFail': { key: 'dash.reportLoadFail', en: 'Report failed to load', roman: 'Report load nahi hua', ur: 'رپورٹ لوڈ نہیں ہوا' },
+  'dash.receivableKpi': { key: 'dash.receivableKpi', en: 'Credit (receivable)', roman: 'Udhaar (receivable)', ur: 'وصول کے لیے ادھار' },
+  'dash.maxUdhaar': { key: 'dash.maxUdhaar', en: 'Highest credit', roman: 'Sabse zyada udhaar', ur: 'سب سے زیادہ ادھار' },
+  'dash.shareFail': { key: 'dash.shareFail', en: 'Could not share', roman: 'Share nahi ho saka', ur: 'شیئر نہیں ہو سکا' },
+  'dash.enterAmount': { key: 'dash.enterAmount', en: 'Enter the amount', roman: 'Amount darj karein', ur: 'رقم درج کریں' },
+  'dash.noUdhaar': { key: 'dash.noUdhaar', en: 'No credit outstanding 🎉', roman: 'Koi udhaar nahi 🎉', ur: 'کوئی ادھار باقی نہیں 🎉' },
+  'dash.wizardFail': { key: 'dash.wizardFail', en: 'Wizard did not open', roman: 'Wizard nahi khula', ur: 'وزرڈ کھلا نہیں' },
+  'dash.receiveUdhaar': { key: 'dash.receiveUdhaar', en: '💰 Receive credit', roman: '💰 Receive udhaar', ur: '💰 ادھار وصول کریں' },
+  'dash.udhaarCustomers': { key: 'dash.udhaarCustomers', en: 'Credit customers', roman: 'Udhaar customers', ur: 'ادھار کسٹمرز' },
+  'dash.noNumber': { key: 'dash.noNumber', en: 'Number not found', roman: 'Number nahi mila', ur: 'نمبر نہیں ملا' },
+  'dash.recovery': { key: 'dash.recovery', en: 'Credit recovery', roman: 'Udhaar recovery', ur: 'ادھار وصولی' },
+  'dash.udhaarOutstanding': { key: 'dash.udhaarOutstanding', en: ' credit outstanding', roman: ' udhaar baqaya', ur: ' ادھار باقی' },
+  'dash.prevBal': { key: 'dash.prevBal', en: 'Previous balance', roman: 'Pichhla baqaya', ur: 'پچھلا بقایا' },
+  'dash.sendReport': { key: 'dash.sendReport', en: 'Send report', roman: 'Report bhejein', ur: 'رپورٹ بھیجیں' },
+  'dash.csvFail': { key: 'dash.csvFail', en: 'Could not create CSV', roman: 'CSV nahi bana', ur: 'سی ایس وی نہیں بنا' },
+  'dash.totalUdhaar': { key: 'dash.totalUdhaar', en: 'Total credit', roman: 'Total udhaar', ur: 'کل ادھار' },
+  'dash.withUdhaar': { key: 'dash.withUdhaar', en: 'With credit', roman: 'With udhaar', ur: 'ادھار پر' },
+  'dash.newUdhaar': { key: 'dash.newUdhaar', en: 'New credit', roman: 'Naya udhaar', ur: 'نیا ادھار' },
+  'dash.noData': { key: 'dash.noData', en: 'No data', roman: 'Data nahi', ur: 'کوئی ڈیٹا نہیں' },
+  'dash.collections': { key: 'dash.collections', en: 'Collections', roman: 'Wasooli', ur: 'وصولی' },
+  'cfg.repairNote': { key: 'cfg.repairNote', en: 'These columns are written by code but missing in the sheet — data may drop silently. Repair never deletes data; it only adds columns.', roman: 'Ye columns code likhta hai par sheet mein nahi — data silently drop ho sakta hai. Repair se data delete nahi hota, sirf columns judte hain.', ur: 'یہ کالم کوڈ لکھتا ہے مگر شیٹ میں نہیں — ڈیٹا خاموشی سے گر سکتا ہے۔ ریپئر سے ڈیٹا ڈیلیٹ نہیں ہوتا، صرف کالم جڑتے ہیں۔' },
+  'cfg.idempotentNote': { key: 'cfg.idempotentNote', en: 'This is idempotent — re-running creates no duplicates and deletes no rows.', roman: 'Yeh idempotent hai — dobara chalane se duplicate nahi banta, koi row delete nahi hoti.', ur: 'یہ idempotent ہے — دوبارہ چلانے سے ڈپلیکیٹ نہیں بنتا، کوئی قطار ڈیلیٹ نہیں ہوتی۔' },
+  'cfg.freeModeHint': { key: 'cfg.freeModeHint', en: 'Free mode (LINK): no API key — WhatsApp opens via a wa.me link. ', roman: 'Free mode (LINK): koi API key nahi — wa.me link se WhatsApp khul jata hai. ', ur: 'فری موڈ (LINK): کوئی API key نہیں — wa.me لنک سے واٹس ایپ کھلتا ہے۔ ' },
+  'cfg.installJobsHint': { key: 'cfg.installJobsHint', en: 'Tap “Install jobs” — then allow Google authorization.', roman: '“Install jobs” dabayein — phir Google authorization allow karein.', ur: '“Install jobs” دبائیں — پھر گوگل اجازت دیں۔' },
+  'cfg.pasteHint': { key: 'cfg.pasteHint', en: 'Items, customers or suppliers — paste from Sheet/Excel.', roman: 'Items, customers ya suppliers — Sheet/Excel se paste karein.', ur: 'آئٹمز، کسٹمرز یا سپلائرز — شیٹ/ایکسل سے پیسٹ کریں۔' },
+  'cfg.menuRestore': { key: 'cfg.menuRestore', en: 'Restore the default menu? The custom menu will be deleted.', roman: 'Default menu restore karein? Custom menu delete ho jayega.', ur: 'ڈیفالٹ مینو بحال کریں؟ کسٹم مینو ڈیلیٹ ہو جائے گا۔' },
+  'cfg.livePreviewHint': { key: 'cfg.livePreviewHint', en: '(the whole app will look like this — no save needed)', roman: '(poori app aise hi dikhaye gi — save ki zaroorat nahi)', ur: '(پوری ایپ ایسے ہی دکھے گی — محفوظ کرنے کی ضرورت نہیں)' },
+  'cfg.schemaFail': { key: 'cfg.schemaFail', en: 'Schema failed to load — check the backend deploy', roman: 'Schema load nahi hua — backend deploy check karein', ur: 'اسکیما لوڈ نہیں ہوئی — بیک اینڈ ڈیپلائے چیک کریں' },
+  'cfg.noUnsaved': { key: 'cfg.noUnsaved', en: 'No unsaved changes — everything is saved', roman: 'Koi unsaved tabdeeli nahi — sab mehfooz hai', ur: 'کوئی غیر محفوظ تبدیلی نہیں — سب محفوظ ہے' },
+  'cfg.noTemplates': { key: 'cfg.noTemplates', en: 'No templates — create one with the button above', roman: 'Koi template nahi — upar button se banayein', ur: 'کوئی ٹیمپلیٹ نہیں — اوپر کے بٹن سے بنائیں' },
+  'cfg.noChanges': { key: 'cfg.noChanges', en: 'No changes — everything is already saved', roman: 'Koi tabdeeli nahi — sab pehle se save hai', ur: 'کوئی تبدیلی نہیں — سب پہلے سے محفوظ ہے' },
+  'cfg.stockUntouched': { key: 'cfg.stockUntouched', en: 'Existing item stock is not touched', roman: 'Maujuda items ka stock chera nahi jata', ur: 'موجودہ آئٹمز کا اسٹاک نہیں چھیڑا جاتا' },
+  'cfg.restoreDefaults': { key: 'cfg.restoreDefaults', en: 'Restore defaults for this tab?', roman: 'Is tab ke defaults restore karein?', ur: 'اس ٹیب کے ڈیفالٹس بحال کریں؟' },
+  'cfg.screenReq': { key: 'cfg.screenReq', en: 'Screen id and label are required', roman: 'Screen id aur label zaroori hain', ur: 'اسکرین آئی ڈی اور لیبل ضروری ہیں' },
+  'cfg.pasteJson': { key: 'cfg.pasteJson', en: 'Paste config JSON here', roman: 'Yahan config JSON paste karein', ur: 'یہاں کنفیگ JSON پیسٹ کریں' },
+  'cfg.noWriteTail': { key: 'cfg.noWriteTail', en: ' update (no writes)', roman: ' update (koi write nahi hua)', ur: ' اپ ڈیٹ (کوئی رائٹ نہیں ہوا)' },
+  'cfg.noImports': { key: 'cfg.noImports', en: 'No imports yet', roman: 'Abhi koi import nahi hua', ur: 'ابھی کوئی امپورٹ نہیں ہوا' },
+  'cfg.noJobs': { key: 'cfg.noJobs', en: 'No jobs installed', roman: 'Koi job install nahi hai', ur: 'کوئی جاب انسٹال نہیں' },
+  'cfg.savedCount': { key: 'cfg.savedCount', en: ' setting(s) saved ✅', roman: ' setting save ho gayi ✅', ur: ' سیٹنگ محفوظ ہو گئی ✅' },
+  'cfg.templateDeleteConfirm': { key: 'cfg.templateDeleteConfirm', en: 'Delete this template?', roman: 'Template delete karein?', ur: 'ٹیمپلیٹ ڈیلیٹ کریں؟' },
+  'cfg.templateDeleted': { key: 'cfg.templateDeleted', en: 'Template deleted', roman: 'Template delete ho gaya', ur: 'ٹیمپلیٹ ڈیلیٹ ہو گیا' },
+  'cfg.logoDone': { key: 'cfg.logoDone', en: 'Logo uploaded ✅', roman: 'Logo upload ho gaya ✅', ur: 'لوگو اپ لوڈ ہو گیا ✅' },
+  'cfg.retryTail': { key: 'cfg.retryTail', en: ', please try again', roman: 'dobara koshish karein', ur: 'دوبارہ کوشش کریں' },
+  'cfg.noPoints': { key: 'cfg.noPoints', en: 'No points earned', roman: 'Koi points nahi mile', ur: 'کوئی پوائنٹس نہیں ملے' },
+  'cfg.planCopied': { key: 'cfg.planCopied', en: 'Plan copied', roman: 'Plan copy ho gaya', ur: 'پلان کاپی ہو گیا' },
+  'cfg.labelReq': { key: 'cfg.labelReq', en: 'Label is required', roman: 'Label zaroori hai', ur: 'لیبل ضروری ہے' },
+  'cfg.jsonBad': { key: 'cfg.jsonBad', en: 'Invalid JSON: ', roman: 'JSON ghalat hai: ', ur: 'جے سون غلط ہے: ' },
+  'cfg.nameReq': { key: 'cfg.nameReq', en: 'Name is required', roman: 'Name zaroori hai', ur: 'نام ضروری ہے' },
+  'cfg.noLogo': { key: 'cfg.noLogo', en: '🖼 No logo', roman: '🖼 Koi logo nahi', ur: '🖼 کوئی لوگو نہیں' },
+  'cfg.saveFail': { key: 'cfg.saveFail', en: 'Could not save: ', roman: 'Save nahi hua: ', ur: 'محفوظ نہیں ہوا: ' },
+  'cfg.jsonBadShort': { key: 'cfg.jsonBadShort', en: 'Invalid JSON', roman: 'JSON ghalat hai', ur: 'جے سون غلط ہے' },
+  'cfg.saveFailShort': { key: 'cfg.saveFailShort', en: 'Could not save', roman: 'Save nahi hua', ur: 'محفوظ نہیں ہوا' },
+  'cfg.priceDiffTail': { key: 'cfg.priceDiffTail', en: ' price difference', roman: ' price farq', ur: ' قیمت فرق' },
+  'cfg.rateDiff': { key: 'cfg.rateDiff', en: 'Rate difference: ', roman: 'Rate farq: ', ur: 'ریٹ فرق: ' },
+  'acc.ledgerHint': { key: 'acc.ledgerHint', en: 'Pick any account — its ledger (opening → entries → closing) opens in a popup.', roman: 'Koi bhi account chunein — uska ledger (opening → entries → closing) popup mein khulega.', ur: 'کوئی بھی اکاؤنٹ چنیں — اس کا لیجر (اوپننگ → انٹریز → کلوزنگ) پاپ اپ میں کھلے گا۔' },
+  'acc.vfdIntro': { key: 'acc.vfdIntro', en: 'Sales, GRNs, payments and expenses created earlier that have no voucher yet — ', roman: 'Jo sales, GRN, payments aur expenses pehle banaye gaye the aur unka voucher nahi bana, ', ur: 'وہ سیلز، جی آر این، ادائیگیاں اور اخراجات جو پہلے بنائے گئے تھے اور ان کا واؤچر نہیں بنا — ' },
+  'acc.vfdMid': { key: 'acc.vfdMid', en: 'vouchers will now be created for all of them. This is a one-time job — re-running it ', roman: 'un sab ke liye abhi vouchers ban jayenge. Ye ek baar ka kaam hai — dobara chalane par ', ur: 'ان سب کے لیے ابھی واؤچر بن جائیں گے۔ یہ ایک بار کا کام ہے — دوبارہ چلانے پر ' },
+  'acc.csvPasteHint': { key: 'acc.csvPasteHint', en: 'Paste CSV: date, reference, amount, direction (IN/OUT). Negative amount = OUT.', roman: 'CSV paste karein: date, reference, amount, direction (IN/OUT). Negative amount = OUT.', ur: 'سی ایس وی پیسٹ کریں: تاریخ، حوالہ، رقم، سمت (IN/OUT)۔ منفی رقم = OUT۔' },
+  'acc.vfdRule': { key: 'acc.vfdRule', en: 'Sale → Dr Cash/Bank + Dr Credit, Cr Sales · GRN → Dr Purchase, Cr Supplier · ', roman: 'Sale → Dr Cash/Bank + Dr Udhaar, Cr Sales · GRN → Dr Purchase, Cr Supplier · ', ur: 'سیل → ڈی کیش/بینک + ڈی ادھار، کریڈٹ سیل · جی آر این → ڈی خریداری، کریڈٹ سپلائر · ' },
+
+  'acc.noVouchersYet': { key: 'acc.noVouchersYet', en: 'No vouchers yet — start with "New voucher" above', roman: 'Abhi koi voucher nahi — upar "New voucher" se shuru karein', ur: 'ابھی کوئی واؤچر نہیں — اوپر "نیا واؤچر" سے شروع کریں' },
+  'acc.noStmtImport': { key: 'acc.noStmtImport', en: 'No statements imported — tap "Import statement"', roman: 'Koi statement import nahi hua — "Import statement" dabayein', ur: 'کوئی سٹیٹمنٹ امپورٹ نہیں ہوا — "Import statement" دبائیں' },
+  'acc.vfdEnd': { key: 'acc.vfdEnd', en: 'changes nothing (each document gets only one voucher).', roman: 'kuch nahi badlega (har document ka sirf ek voucher banta hai).', ur: 'کچھ نہیں بدلتا (ہر دستاویز کا صرف ایک واؤچر بنتا ہے)۔' },
+  'acc.noBank': { key: 'acc.noBank', en: 'No bank account — create one in Chart of accounts', roman: 'Koi bank account nahi — Chart of accounts mein banayein', ur: 'کوئی بینک اکاؤنٹ نہیں — چارٹ آف اکاؤنٹس میں بنائیں' },
+  'acc.voidConfirm': { key: 'acc.voidConfirm', en: 'Void this voucher? It will be removed from the balance.', roman: 'Ye voucher void karein? Balance se hat jayega.', ur: 'یہ واؤچر void کریں؟ بیلنس سے ہٹ جائے گا۔' },
+  'acc.vouchersFromDocs': { key: 'acc.vouchersFromDocs', en: '🧮 Create vouchers from old documents', roman: '🧮 Purane documents se vouchers banayein', ur: '🧮 پرانے دستاویزات سے واؤچر بنائیں' },
+  'acc.unbalanced': { key: 'acc.unbalanced', en: 'Debit and credit are not equal (difference ', roman: 'Debit aur credit barabar nahi (farq ', ur: 'ڈیبٹ اور کریڈٹ برابر نہیں (فرق ' },
+  'acc.noCashMoves': { key: 'acc.noCashMoves', en: 'No cash movements in this range', roman: 'Is range mein koi cash movement nahi', ur: 'اس رینج میں کوئی کیش موومنٹ نہیں' },
+  'acc.dashFail': { key: 'acc.dashFail', en: 'Accounting dashboard failed to load', roman: 'Accounting dashboard load nahi hua', ur: 'اکاؤنٹنگ ڈیش بورڈ لوڈ نہیں ہوا' },
+  'acc.noBankEntries': { key: 'acc.noBankEntries', en: 'No bank entries in this range', roman: 'Is range mein koi bank entry nahi', ur: 'اس رینج میں کوئی بینک انٹری نہیں' },
+  'acc.walletFail': { key: 'acc.walletFail', en: 'Wallet component failed to load', roman: 'Wallet component load nahi hua', ur: 'والٹ کمپوننٹ لوڈ نہیں ہوا' },
+  'acc.noVouchers': { key: 'acc.noVouchers', en: 'No vouchers in this range', roman: 'Is range mein koi voucher nahi', ur: 'اس رینج میں کوئی واؤچر نہیں' },
+  'acc.noExpenses': { key: 'acc.noExpenses', en: 'No expenses in this range', roman: 'Is range mein koi expense nahi', ur: 'اس رینج میں کوئی خرچ نہیں' },
+  'acc.noEntries': { key: 'acc.noEntries', en: 'No entries in this range', roman: 'Is range mein koi entry nahi', ur: 'اس رینج میں کوئی انٹری نہیں' },
+  'acc.tbFail': { key: 'acc.tbFail', en: 'Trial balance failed to load', roman: 'Trial balance load nahi hui', ur: 'ٹرائل بیلنس لوڈ نہیں ہوئی' },
+  'acc.bsFail': { key: 'acc.bsFail', en: 'Balance sheet failed to load', roman: 'Balance sheet load nahi hui', ur: 'بیلنس شیٹ لوڈ نہیں ہوئی' },
+  'acc.bankBookFail': { key: 'acc.bankBookFail', en: 'Bank book failed to load', roman: 'Bank book load nahi hua', ur: 'بینک بک لوڈ نہیں ہوا' },
+  'acc.cashBookFail': { key: 'acc.cashBookFail', en: 'Cash book failed to load', roman: 'Cash book load nahi hua', ur: 'کیش بک لوڈ نہیں ہوا' },
+  'acc.vouchersFail': { key: 'acc.vouchersFail', en: 'Vouchers failed to load', roman: 'Vouchers load nahi hue', ur: 'واؤچرز لوڈ نہیں ہوئے' },
+  'acc.voucherFail': { key: 'acc.voucherFail', en: 'Voucher failed to load', roman: 'Voucher load nahi hua', ur: 'واؤچر لوڈ نہیں ہوا' },
+  'acc.receivables': { key: 'acc.receivables', en: 'Receivables (credit)', roman: 'Receivables (udhaar)', ur: 'وصولی (ادھار)' },
+  'acc.ledgerFail': { key: 'acc.ledgerFail', en: 'Ledger failed to load', roman: 'Ledger load nahi hua', ur: 'لیجر لوڈ نہیں ہوا' },
+  'acc.openAttachment': { key: 'acc.openAttachment', en: '📎 Open attachment', roman: '📎 Attachment kholein', ur: '📎 اٹیچمنٹ کھولیں' },
+  'acc.noValidLines': { key: 'acc.noValidLines', en: 'No valid lines', roman: 'Koi valid line nahi', ur: 'کوئی درست لائن نہیں' },
+  'acc.enterAmount': { key: 'acc.enterAmount', en: 'Enter the amount', roman: 'Amount darj karein', ur: 'رقم درج کریں' },
+  'acc.approveAll': { key: 'acc.approveAll', en: 'Approve all', roman: 'Sab approve karein', ur: 'سب منظور کریں' },
+  'acc.plFail': { key: 'acc.plFail', en: 'P&L failed to load', roman: 'P&L load nahi hua', ur: 'پی اینڈ ایل لوڈ نہیں ہوا' },
+  'acc.nameReq': { key: 'acc.nameReq', en: 'Name is required', roman: 'Naam zaroori hai', ur: 'نام ضروری ہے' },
+  'acc.noBalances': { key: 'acc.noBalances', en: 'No balances', roman: 'Koi balance nahi', ur: 'کوئی بیلنس نہیں' },
+  'acc.addLine': { key: 'acc.addLine', en: 'Add a line', roman: 'Line add karein', ur: 'لائن شامل کریں' },
+  'acc.noEntriesShort': { key: 'acc.noEntriesShort', en: 'No entries', roman: 'Koi entry nahi', ur: 'کوئی انٹری نہیں' },
+  'acc.noData': { key: 'acc.noData', en: 'No data', roman: 'Koi data nahi', ur: 'کوئی ڈیٹا نہیں' },
   'sc2.permsSaved': { key: 'sc2.permsSaved', en: 'Permissions saved ✅', roman: 'Permissions save ho gayeen ✅', ur: 'اجازتیں محفوظ ہو گئیں ✅' },
   'sc2.usernameReq': { key: 'sc2.usernameReq', en: 'Username is required', roman: 'Username zaroori hai', ur: 'یوزر نیم ضروری ہے' },
   'pos.bulkScanDone': { key: 'pos.bulkScanDone', en: 'Bulk scan done — ', roman: 'Bulk scan khatam — ', ur: 'بلک اسکین مکمل — ' },
@@ -7080,7 +7228,7 @@ window.MockAPI = {
 
 <script>
     /* Injected by server template */
-    window.APP_BUILD   = '2.30.8-demo';
+    window.APP_BUILD   = '2.30.9-demo';
     window.SERVE_MODE  = 'demo';   // 'apps-script' | 'static'
     window.API_URL     = '';      // filled only for static hosting
   </script>
@@ -13531,13 +13679,13 @@ window.Chart2 = Engine;
 
   <script>
 /* ==========================================================================
-   HASEEB AUTOS — ACCOUNTING (v2.5)
-   Proper accounting page: Overview · Transactions · Expenses · Accounts ·
-   Banks (reconciliation) · Reports (Trial balance / P&L / Balance sheet /
-   Cash book / Bank book / Ledger)
-   — sab kuch backend Accounting.gs se aata hai, yahan koi hisaab hardcode nahi
-   — bottom scroll nahi: tables apne panel mein scroll hoti hain, entry modal/offcanvas
-   ========================================================================== */
+   * HASEEB AUTOS — ACCOUNTING (v2.5)
+   * Proper accounting page: Overview · Transactions · Expenses · Accounts ·
+   * Banks (reconciliation) · Reports (Trial balance / P&L / Balance sheet /
+   * Cash book / Bank book / Ledger)
+   * — sab kuch backend Accounting.gs se aata hai, yahan koi hisaab hardcode nahi
+   * — bottom scroll nahi: tables apne panel mein scroll hoti hain, entry modal/offcanvas
+   * ========================================================================== */
 
 App.registerScreen('accounting', {
   title: 'Accounting', icon: '📒', perm: 'reports.financial',
@@ -13569,7 +13717,7 @@ App.registerScreen('accounting', {
 /* --------------------------- Wallets (gateway) ---------------------------- */
 function accWallets(c) {
   if (typeof WalletUI === 'undefined') {
-    c.appendChild(h('div', { class: 'empty' }, 'Wallet component load nahi hua')); return;
+    c.appendChild(h('div', { class: 'empty' }, T.t('acc.walletFail','Wallet component failed to load'))); return;
   }
   c.appendChild(h('div', { class: 'muted', style: { fontSize: 'var(--fs-xs)', marginBottom: '8px' } },
     'EasyPaisa / JazzCash wallet requests — status, payer (from) aur merchant (to) numbers.'));
@@ -13604,7 +13752,7 @@ function accRangeBar(onChange) {
   return { el, values };
 }
 
-function accEmpty(msg) { return h('div', { class: 'empty' }, msg || 'Koi data nahi'); }
+function accEmpty(msg) { return h('div', { class: 'empty' }, msg || T.t('acc.noData','No data')); }
 function accLoading() { return h('div', { class: 'empty' }, 'Load ho raha hai…'); }
 function money(v) { return fmt.money(Number(v) || 0); }
 function signed(v) {
@@ -13627,13 +13775,13 @@ async function accOverview(c) {
       API.call('accounting.trialBalance', {}, { offlineFallback: () => null })
     ]);
   } catch (e) { c.innerHTML = ''; c.appendChild(accEmpty('⚠ ' + e.message)); return; }
-  if (!d) { c.innerHTML = ''; c.appendChild(accEmpty('Accounting dashboard load nahi hua')); return; }
+  if (!d) { c.innerHTML = ''; c.appendChild(accEmpty(T.t('acc.dashFail','Accounting dashboard failed to load'))); return; }
   c.innerHTML = '';
 
   c.appendChild(UI2.kpiGrid([
     { icon: '💵', label: 'Cash in hand', value: money(d.cashInHand), sub: 'Cash accounts', cls: 'ok' },
     { icon: '🏦', label: 'Bank balance', value: money(d.bankBalance), sub: 'Bank accounts', cls: 'info' },
-    { icon: '📥', label: 'Receivables (udhaar)', value: money(d.receivables), sub: 'Customers', cls: 'warn' },
+    { icon: '📥', label: T.t('acc.receivables','Receivables (credit)'), value: money(d.receivables), sub: 'Customers', cls: 'warn' },
     { icon: '📤', label: 'Payables', value: money(d.payables), sub: 'Suppliers', cls: 'err' },
     { icon: '📦', label: 'Stock value', value: money(d.stockValue), sub: 'At average cost', cls: 'brand' },
     { icon: '⚖', label: 'Net worth', value: money(d.netWorth), sub: 'Cash + bank + AR + stock − AP', cls: 'ok' },
@@ -13675,8 +13823,8 @@ async function accOverview(c) {
           { key: 'creditAccounts', label: 'Credit' },
           { key: 'totalDebit', label: 'Amount', num: true, render: r => money(r.totalDebit) }
         ], onRow: r => voucherDetail(r.id)
-      }) : accEmpty('Abhi koi voucher nahi — upar "New voucher" se shuru karein'));
-    }).catch(() => recentHost.appendChild(accEmpty('Vouchers load nahi hue')));
+      }) : accEmpty(T.t('acc.noVouchersYet','No vouchers yet — start with "New voucher" above')));
+    }).catch(() => recentHost.appendChild(accEmpty(T.t('acc.vouchersFail','Vouchers failed to load'))));
 }
 
 /* =========================== 2. TRANSACTIONS ============================== */
@@ -13719,7 +13867,7 @@ async function accDayBook(c) {
           { key: 'narration', label: 'Narration' },
           { key: 'status', label: 'Status', render: r => h('span', { class: 'badge ' + (r.status === 'VOID' ? 'err' : 'ok') }, r.status) }
         ], onRow: r => voucherDetail(r.id)
-      }) : accEmpty('Is range mein koi voucher nahi'));
+      }) : accEmpty(T.t('acc.noVouchers','No vouchers in this range')));
     } catch (e) { host.innerHTML = ''; host.appendChild(accEmpty('⚠ ' + e.message)); }
   }
   load();
@@ -13729,7 +13877,7 @@ async function voucherDetail(id) {
   let v = null;
   try { v = await API.call('journal.get', { id }, { offlineFallback: () => null }); }
   catch (e) { return UI.toast(e.message, 'err'); }
-  if (!v) return UI.toast('Voucher load nahi hua', 'warn');
+  if (!v) return UI.toast(T.t('acc.voucherFail','Voucher failed to load'), 'warn');
   const body = h('div', null,
     h('div', { class: 'po-meta' },
       h('span', null, 'Voucher: ' + v.voucherNo),
@@ -13756,7 +13904,7 @@ async function voucherDetail(id) {
     actions: [
       App.can('settings.manage') && v.status !== 'VOID'
         ? { label: 'Void', cls: 'danger', onClick: async cc => {
-            if (!(await UI2.confirm('Ye voucher void karein? Balance se hat jayega.', null, true))) return;
+            if (!(await UI2.confirm(T.t('acc.voidConfirm','Void this voucher? It will be removed from the balance.'), null, true))) return;
             try { await API.call('journal.void', { id }); UI.toast('Voided', 'ok'); cc(); App.refresh(); }
             catch (e) { UI.toast(e.message, 'err'); }
           } } : null,
@@ -13806,7 +13954,7 @@ function voucherForm(preset, onDone) {
   function paintLines() {
     addRow.innerHTML = '';
     lines.forEach(l => addRow.appendChild(newLineRow(l)));
-    if (!lines.length) addRow.appendChild(h('div', { class: 'tbl-empty' }, 'Line add karein'));
+    if (!lines.length) addRow.appendChild(h('div', { class: 'tbl-empty' }, T.t('acc.addLine','Add a line')));
     totals();
   }
   function totals() {
@@ -13847,8 +13995,8 @@ function voucherForm(preset, onDone) {
       label: 'Post voucher', cls: 'ok', onClick: async cc => {
         const { td, diff } = totals();
         if (lines.length < 2) return UI.toast('Kam az kam 2 lines chahiye', 'err');
-        if (Math.abs(diff) > 0.009) return UI.toast('Debit aur credit barabar nahi (farq ' + money(diff) + ')', 'err');
-        if (!td) return UI.toast('Amount darj karein', 'err');
+        if (Math.abs(diff) > 0.009) return UI.toast(T.t('acc.unbalanced','Debit and credit are not equal (difference ') + money(diff) + ')', 'err');
+        if (!td) return UI.toast(T.t('acc.enterAmount','Enter the amount'), 'err');
         try {
           await API.call('journal.post', {
             date: dateInp.value, type: typeSel.value, narration: narr.value,
@@ -13899,7 +14047,7 @@ async function accountLedger(accountId) {
       const led = await API.call('accounting.ledger',
         Object.assign({ accountId }, rb.values()), { offlineFallback: () => null });
       host.innerHTML = '';
-      if (!led) { host.appendChild(accEmpty('Ledger load nahi hua')); return; }
+      if (!led) { host.appendChild(accEmpty(T.t('acc.ledgerFail','Ledger failed to load'))); return; }
       host.appendChild(h('div', { class: 'party-bal' },
         h('div', { class: 'pb-row' }, h('span', null, 'Account'), h('b', null, led.account.code + ' — ' + led.account.name)),
         h('div', { class: 'pb-row' }, h('span', null, 'Opening'), h('b', null, money(led.opening))),
@@ -13917,7 +14065,7 @@ async function accountLedger(accountId) {
           { key: 'credit', label: 'Credit', num: true, render: r => r.credit ? money(r.credit) : '—' },
           { key: 'balance', label: 'Balance', num: true, render: r => signed(r.balance) }
         ], onRow: r => voucherDetail(r.journalId)
-      }) : accEmpty('Is range mein koi entry nahi'));
+      }) : accEmpty(T.t('acc.noEntries','No entries in this range')));
     } catch (e) { host.innerHTML = ''; host.appendChild(accEmpty('⚠ ' + e.message)); }
   }
   load();
@@ -13978,7 +14126,7 @@ async function accExpenses(c) {
           h('button', { class: 'btn sm ok',
             onclick: ev => UI.run(ev.currentTarget, async () => {
             /* W7 (v2.26.0) — pehle N alag calls (20 pending = ~1 minute). Ab EK batch request.
-               Purana backend ho (batch na ho) to API.parallel fallback (4 at a time). */
+               * Purana backend ho (batch na ho) to API.parallel fallback (4 at a time). */
             const ids = pending.map(e => e.id);
             let done = 0;
             try {
@@ -13990,7 +14138,7 @@ async function accExpenses(c) {
             }
             UI.toast(done + ' expenses approve ho gayeen ✅', 'ok'); load(); App.refresh();
             return done;
-          }, { busyLabel: 'Approve ho rahe hain', write: true, writeLabel: 'bulk approve' }) }, 'Sab approve karein')));
+          }, { busyLabel: 'Approve ho rahe hain', write: true, writeLabel: 'bulk approve' }) }, T.t('acc.approveAll','Approve all'))));
       }
       host.appendChild(h('div', { style: { marginTop: '10px' } }, list.length ? UI2.table({
         screen: 'acc_expenses', rows: list, height: '46vh', exportName: 'expenses',
@@ -14019,7 +14167,7 @@ async function accExpenses(c) {
           r.attachmentUrl ? { icon: '📎', label: 'Attachment', onClick: () => window.open(r.attachmentUrl, '_blank') } : null
         ].filter(Boolean),
         onRow: r => expenseDetail(r, load)
-      }) : accEmpty('Is range mein koi expense nahi')));
+      }) : accEmpty(T.t('acc.noExpenses','No expenses in this range'))));
 
       /* category breakdown — accounting heads ke sath */
       const cats = Object.keys(byCat).map(k => ({ category: k, amount: byCat[k] }))
@@ -14073,7 +14221,7 @@ async function expenseForm2(onDone) {
     actions: [{
       label: 'Save expense', cls: 'ok', onClick: async c => {
         const v = f.values();
-        if (!(Number(v.amount) > 0)) return UI.toast('Amount darj karein', 'err');
+        if (!(Number(v.amount) > 0)) return UI.toast(T.t('acc.enterAmount','Enter the amount'), 'err');
         try {
           await API.call('expenses.create', { expense: v });
           UI.toast('Expense saved ✅ (voucher auto-posted)', 'ok');
@@ -14109,7 +14257,7 @@ async function expenseDetail(e, onDone) {
       h('div', { class: 'f-col full' }, h('span', null, 'Note'), h('div', { class: 'sub' }, e.notes || '—')),
       e.attachmentUrl ? h('div', { class: 'f-col full' },
         h('span', null, 'Attachment'),
-        h('a', { class: 'btn sm sec', href: e.attachmentUrl, target: '_blank', rel: 'noopener' }, '📎 Attachment kholein')) : '')
+        h('a', { class: 'btn sm sec', href: e.attachmentUrl, target: '_blank', rel: 'noopener' }, T.t('acc.openAttachment','📎 Open attachment'))) : '')
     )
   });
 }
@@ -14190,7 +14338,7 @@ function accountForm(acc, onDone) {
       { key: 'isCash', label: 'Cash account', type: 'switch' },
       { key: 'isBank', label: 'Bank account', type: 'switch' },
       /* v2.30.0 (N10) — DATA-AWARE: bank fields sirf tab (BANK type ya isBank ON);
-         fields chhupte hain, HOTE hain — koi feature nahi jata. */
+         * fields chhupte hain, HOTE hain — koi feature nahi jata. */
       { key: 'bankName', label: 'Bank name',
         showWhen: v => v.isBank === true || v.isBank === 'true' || v.type === 'BANK' },
       { key: 'accountNo', label: 'Account / IBAN no.',
@@ -14203,7 +14351,7 @@ function accountForm(acc, onDone) {
     actions: [{
       label: 'Save', cls: 'ok', onClick: async c => {
         const v = f.values();
-        if (!v.name) return UI.toast('Naam zaroori hai', 'err');
+        if (!v.name) return UI.toast(T.t('acc.nameReq','Name is required'), 'err');
         try {
           await API.call('accounts.save', Object.assign({}, v, acc ? { id: acc.id } : {}));
           UI.toast('Account saved ✅', 'ok'); c(); App.refresh(); onDone && onDone();
@@ -14223,7 +14371,7 @@ async function accBanks(c) {
   catch (e) { host.appendChild(accEmpty('⚠ ' + e.message)); return; }
   const banks = accounts.filter(a => a.isBank);
   host.innerHTML = '';
-  if (!banks.length) { host.appendChild(accEmpty('Koi bank account nahi — Chart of accounts mein banayein')); return; }
+  if (!banks.length) { host.appendChild(accEmpty(T.t('acc.noBank','No bank account — create one in Chart of accounts'))); return; }
 
   host.appendChild(UI2.kpiGrid(banks.map(b => ({
     icon: '🏦', label: b.name, value: money(b.displayBalance),
@@ -14256,7 +14404,7 @@ async function bankBookTab(c, banks) {
       const b = await API.call('accounting.bankBook',
         Object.assign({ accountId: sel.value }, rb.values()), { offlineFallback: () => null });
       host.innerHTML = '';
-      if (!b) { host.appendChild(accEmpty('Bank book load nahi hua')); return; }
+      if (!b) { host.appendChild(accEmpty(T.t('acc.bankBookFail','Bank book failed to load'))); return; }
       host.appendChild(h('div', { class: 'party-bal' },
         h('div', { class: 'pb-row' }, h('span', null, 'Account'), h('b', null, b.accountName)),
         h('div', { class: 'pb-row' }, h('span', null, 'Opening'), h('b', null, money(b.opening))),
@@ -14274,7 +14422,7 @@ async function bankBookTab(c, banks) {
           { key: 'credit', label: 'Out', num: true, render: r => r.credit ? money(r.credit) : '—' },
           { key: 'balance', label: 'Balance', num: true, render: r => signed(r.balance) }
         ], onRow: r => voucherDetail(r.journalId)
-      }) : accEmpty('Is range mein koi bank entry nahi'));
+      }) : accEmpty(T.t('acc.noBankEntries','No bank entries in this range')));
     } catch (e) { host.innerHTML = ''; host.appendChild(accEmpty('⚠ ' + e.message)); }
   }
   load();
@@ -14328,7 +14476,7 @@ async function bankReconTab(c, banks) {
             API.call('bank.recon.clear', { ids: [r.id], cleared: !r.cleared }).then(() => load());
           } }, r.cleared ? 'Un-clear' : 'Clear') }
         ]
-      }) : accEmpty('Koi statement import nahi hua — "Import statement" dabayein'));
+      }) : accEmpty(T.t('acc.noStmtImport','No statements imported — tap "Import statement"')));
     } catch (e) { host.innerHTML = ''; host.appendChild(accEmpty('⚠ ' + e.message)); }
   }
   load();
@@ -14340,7 +14488,7 @@ function reconImport(bankAccountId, onDone) {
   UI2.modal({
     title: '📥 Bank statement import', size: 'md',
     body: h('div', null,
-      h('div', { class: 'hint' }, 'CSV paste karein: date, reference, amount, direction (IN/OUT). Negative amount = OUT.'),
+      h('div', { class: 'hint' }, T.t('acc.csvPasteHint','Paste CSV: date, reference, amount, direction (IN/OUT). Negative amount = OUT.')),
       ta),
     actions: [{
       label: 'Import', cls: 'ok', onClick: async c => {
@@ -14348,7 +14496,7 @@ function reconImport(bankAccountId, onDone) {
           const p = l.split(',').map(x => x.trim());
           return { date: p[0], reference: p[1] || '', amount: Number(p[2]) || 0, direction: (p[3] || '').toUpperCase() };
         }).filter(r => r.amount);
-        if (!rows.length) return UI.toast('Koi valid line nahi', 'err');
+        if (!rows.length) return UI.toast(T.t('acc.noValidLines','No valid lines'), 'err');
         try {
           const r = await API.call('bank.recon.import', { bankAccountId, rows });
           UI.toast(r.added + ' lines import hue', 'ok'); c(); onDone && onDone();
@@ -14385,7 +14533,7 @@ async function reportTB(c) {
     try {
       const tb = await API.call('accounting.trialBalance', { asOf: asOf.value }, { offlineFallback: () => null });
       host.innerHTML = '';
-      if (!tb) { host.appendChild(accEmpty('Trial balance load nahi hui')); return; }
+      if (!tb) { host.appendChild(accEmpty(T.t('acc.tbFail','Trial balance failed to load'))); return; }
       host.appendChild(h('div', { class: 'party-bal' },
         h('div', { class: 'pb-row' }, h('span', null, 'Total debits'), h('b', null, money(tb.totalDebit))),
         h('div', { class: 'pb-row' }, h('span', null, 'Total credits'), h('b', null, money(tb.totalCredit))),
@@ -14400,7 +14548,7 @@ async function reportTB(c) {
           { key: 'debit', label: 'Debit', num: true, render: r => r.debit ? money(r.debit) : '—' },
           { key: 'credit', label: 'Credit', num: true, render: r => r.credit ? money(r.credit) : '—' }
         ]
-      }) : accEmpty('Koi balance nahi'));
+      }) : accEmpty(T.t('acc.noBalances','No balances')));
     } catch (e) { host.innerHTML = ''; host.appendChild(accEmpty('⚠ ' + e.message)); }
   }
   load();
@@ -14416,7 +14564,7 @@ async function reportPL(c) {
     try {
       const pl = await API.call('accounting.profitLoss', rb.values(), { offlineFallback: () => null });
       host.innerHTML = '';
-      if (!pl) { host.appendChild(accEmpty('P&L load nahi hua')); return; }
+      if (!pl) { host.appendChild(accEmpty(T.t('acc.plFail','P&L failed to load'))); return; }
       host.appendChild(UI2.kpiGrid([
         { icon: '📈', label: 'Total income', value: money(pl.totalIncome), cls: 'ok' },
         { icon: '📦', label: 'Cost of goods', value: money(pl.cogs), cls: 'warn' },
@@ -14434,7 +14582,7 @@ async function reportPL(c) {
             { key: 'name', label: 'Head' },
             { key: 'amount', label: 'Amount', num: true, render: r => money(r.amount) }
           ]
-        }) : accEmpty('Koi entry nahi')),
+        }) : accEmpty(T.t('acc.noEntriesShort','No entries'))),
         h('div', { class: 'tot-row grand' }, h('span', null, 'Total ' + title.toLowerCase()),
           h('span', { class: cls }, money(total))));
 
@@ -14464,7 +14612,7 @@ async function reportBS(c) {
     try {
       const bs = await API.call('accounting.balanceSheet', { asOf: asOf.value }, { offlineFallback: () => null });
       host.innerHTML = '';
-      if (!bs) { host.appendChild(accEmpty('Balance sheet load nahi hui')); return; }
+      if (!bs) { host.appendChild(accEmpty(T.t('acc.bsFail','Balance sheet failed to load'))); return; }
       host.appendChild(h('div', { class: 'party-bal' },
         h('div', { class: 'pb-row' }, h('span', null, 'Total assets'), h('b', null, money(bs.totalAssets))),
         h('div', { class: 'pb-row' }, h('span', null, 'Liabilities'), h('b', null, money(bs.totalLiabilities))),
@@ -14483,7 +14631,7 @@ async function reportBS(c) {
             { key: 'name', label: 'Head' },
             { key: 'amount', label: 'Amount', num: true, render: r => signed(r.amount) }
           ]
-        }) : accEmpty('Koi entry nahi')),
+        }) : accEmpty(T.t('acc.noEntriesShort','No entries'))),
         h('div', { class: 'tot-row grand' }, h('span', null, 'Total'), h('span', null, money(total))));
 
       c.appendChild(block('Assets', bs.assets, bs.totalAssets));
@@ -14504,7 +14652,7 @@ async function reportCash(c) {
     try {
       const b = await API.call('accounting.cashBook', rb.values(), { offlineFallback: () => null });
       host.innerHTML = '';
-      if (!b) { host.appendChild(accEmpty('Cash book load nahi hua')); return; }
+      if (!b) { host.appendChild(accEmpty(T.t('acc.cashBookFail','Cash book failed to load'))); return; }
       host.appendChild(UI2.kpiGrid([
         { icon: '🔓', label: 'Opening', value: money(b.opening), cls: 'info' },
         { icon: '📥', label: 'Receipts', value: money(b.receipts), cls: 'ok' },
@@ -14522,7 +14670,7 @@ async function reportCash(c) {
           { key: 'credit', label: 'Out', num: true, render: r => r.credit ? money(r.credit) : '—' },
           { key: 'balance', label: 'Balance', num: true, render: r => signed(r.balance) }
         ], onRow: r => voucherDetail(r.journalId)
-      }) : accEmpty('Is range mein koi cash movement nahi'));
+      }) : accEmpty(T.t('acc.noCashMoves','No cash movements in this range')));
     } catch (e) { host.innerHTML = ''; host.appendChild(accEmpty('⚠ ' + e.message)); }
   }
   load();
@@ -14535,7 +14683,7 @@ async function reportLedgerPick(c) {
   c.appendChild(h('div', { class: 'card' },
     h('div', { class: 'card-body' },
       h('div', { class: 'hint', style: { marginBottom: '8px' } },
-        'Koi bhi account chunein — uska ledger (opening → entries → closing) popup mein khulega.'),
+        T.t('acc.ledgerHint','Pick any account — its ledger (opening → entries → closing) opens in a popup.')),
       UI2.table({
         screen: 'acc_ledger_pick', rows: rows || [], height: '52vh', exportName: 'accounts',
         columns: [
@@ -14551,13 +14699,13 @@ async function reportLedgerPick(c) {
 
 function backfillDialog() {
   UI2.modal({
-    title: '🧮 Purane documents se vouchers banayein', size: 'sm',
+    title: T.t('acc.vouchersFromDocs','🧮 Create vouchers from old documents'), size: 'sm',
     body: h('div', null,
       h('p', { style: { fontSize: 'var(--fs-sm)', color: 'var(--muted)' } },
-        'Jo sales, GRN, payments aur expenses pehle banaye gaye the aur unka voucher nahi bana, ' +
-        'un sab ke liye abhi vouchers ban jayenge. Ye ek baar ka kaam hai — dobara chalane par ' +
-        'kuch nahi badlega (har document ka sirf ek voucher banta hai).'),
-      h('div', { class: 'hint' }, 'Sale → Dr Cash/Bank + Dr Udhaar, Cr Sales · GRN → Dr Purchase, Cr Supplier · ' +
+        T.t('acc.vfdIntro','Sales, GRNs, payments and expenses created earlier that have no voucher yet — ') +
+        T.t('acc.vfdMid','vouchers will now be created for all of them. This is a one-time job — re-running it ') +
+        T.t('acc.vfdEnd','changes nothing (each document gets only one voucher).')),
+      h('div', { class: 'hint' }, T.t('acc.vfdRule','Sale → Dr Cash/Bank + Dr Credit, Cr Sales · GRN → Dr Purchase, Cr Supplier · ') +
         'Payment → Dr Supplier / Cr Cash · Expense → Dr Expense head, Cr Cash')),
     actions: [{
       label: 'Backfill now', cls: 'ok', onClick: async c => {
@@ -27169,7 +27317,7 @@ function moveBin(row) {
    ========================================================================== */
 async function configSaveAllNow() {
   const pack = UI2.dirtyPayload();
-  if (!pack.count) { UI.toast('Koi unsaved tabdeeli nahi — sab mehfooz hai', 'warn'); return { saved: 0 }; }
+  if (!pack.count) { UI.toast(T.t('cfg.noUnsaved','No unsaved changes — everything is saved'), 'warn'); return { saved: 0 }; }
   await API.call('config.save', { values: pack.values });
   UI2.clearAllDirty();
   UI.toast(pack.count + ' settings save ho gayin (' + pack.forms + ' section)', 'ok', 3600);
@@ -27283,7 +27431,7 @@ function businessLogoBar() {
         const r = await API.call('media.uploadLogo', { data: dataUrl, mime: 'image/jpeg' });
         App.state.settings.logoUrl = r.url;
         status.textContent = '✅ Logo lag gaya';
-        UI.toast('Logo upload ho gaya ✅', 'ok');
+        UI.toast(T.t('cfg.logoDone','Logo uploaded ✅'), 'ok');
         const img = host.querySelector('[data-logo-img]');
         if (img) img.src = r.url;
       } catch (e) {
@@ -27302,7 +27450,7 @@ function businessLogoBar() {
           ? h('img', { 'data-logo-img': '1', src: cur, alt: 'Shop logo', loading: 'lazy', decoding: 'async',
               style: { width: '76px', height: '76px', objectFit: 'contain', borderRadius: '12px',
                        border: '1px solid var(--line)', background: 'var(--panel-2)', padding: '5px' } })
-          : h('div', { class: 'empty', style: { minWidth: '76px', textAlign: 'center' } }, '🖼 Koi logo nahi'),
+          : h('div', { class: 'empty', style: { minWidth: '76px', textAlign: 'center' } }, T.t('cfg.noLogo','🖼 No logo')),
         h('div', { class: 'row', style: { gap: '8px', flexWrap: 'wrap' } },
           h('button', { class: 'btn sm sec', onclick: () => pick.click() }, '📁 File se logo'),
           h('button', { class: 'btn sm sec', onclick: () => cam.click() }, '📷 Camera se'),
@@ -27341,7 +27489,7 @@ function buildSections(fields) {
        ki mojooda values se foran update hota hai. */
     if (ch.fields.some(x => x.key === 'dt.format') && window.DT) {
       const pv = h('div', { class: 'ui2-block', style: { padding: '10px 12px', border: '1.5px dashed var(--line)', borderRadius: '10px', margin: '4px 0 12px', fontSize: 'var(--fs-sm)' } },
-        h('div', { style: { fontWeight: '700', marginBottom: '6px' } }, '👁 Zinda preview ', h('span', { style: { fontWeight: '400', color: 'var(--muted)' } }, '(poori app aise hi dikhaye gi — save ki zaroorat nahi)')));
+        h('div', { style: { fontWeight: '700', marginBottom: '6px' } }, '👁 Zinda preview ', h('span', { style: { fontWeight: '400', color: 'var(--muted)' } }, T.t('cfg.livePreviewHint','(the whole app will look like this — no save needed)'))));
       const row = (lab, mode) => h('div', { style: { display: 'flex', gap: '8px', padding: '2px 0' } },
         h('span', { style: { color: 'var(--muted)', minWidth: '86px' } }, lab),
         h('b', { 'data-dtpv': mode, style: { fontVariantNumeric: 'tabular-nums' } }, '—'));
@@ -27444,7 +27592,7 @@ function buildSections(fields) {
 /* ============================ CONFIG GROUPS ================================ */
 function renderGroup(c, groupId) {
   const g = DEFS.find(x => x.id === groupId);
-  if (!g) { c.appendChild(h('div', { class: 'empty' }, 'Schema load nahi hua — backend deploy check karein')); return; }
+  if (!g) { c.appendChild(h('div', { class: 'empty' }, T.t('cfg.schemaFail','Schema failed to load — check the backend deploy'))); return; }
   const host = h('div'); c.appendChild(host);
   if (groupId === 'backend') {
     // top diagnostics/status card for Backend & Integrations
@@ -27525,10 +27673,10 @@ function renderSub(c, groupId, sub) {
      render/stale/legacy farq ki wajah se purani settings default par reset ho jati thin. */
   const saveBtn = h('button', { class: 'btn ok', onclick: () => UI.run(saveBtn, async () => {
       const payload = f.changed ? f.changed() : f.values();
-      if (!Object.keys(payload).length) { UI.toast('Koi tabdeeli nahi — sab pehle se save hai', 'warn'); return; }
+      if (!Object.keys(payload).length) { UI.toast(T.t('cfg.noChanges','No changes — everything is already saved'), 'warn'); return; }
       try {
         await API.call('config.save', { values: payload });
-        UI.toast(Object.keys(payload).length + ' setting save ho gayi ✅', 'ok');
+        UI.toast(Object.keys(payload).length + T.t('cfg.savedCount',' setting(s) saved ✅'), 'ok');
         dirty.style.display = 'none';
         if (f.clearDirty) f.clearDirty();
         App._noDirtyGuard = true;
@@ -27537,8 +27685,8 @@ function renderSub(c, groupId, sub) {
         App._noDirtyGuard = true;
         try { App.refresh(); } finally { App._noDirtyGuard = false; }
       } catch (e) {
-        UI.toast('Save nahi hua: ' + (e.message || ''), 'err', 5000);
-        UI2.retryToast && UI2.retryToast('Save nahi hua', e.message, () => {
+        UI.toast(T.t('cfg.saveFail','Could not save: ') + (e.message || ''), 'err', 5000);
+        UI2.retryToast && UI2.retryToast(T.t('cfg.saveFailShort','Could not save'), e.message, () => {
           try { saveBtn.click(); } catch (err) { }
         });
       }
@@ -27547,7 +27695,7 @@ function renderSub(c, groupId, sub) {
   c.appendChild(wrap);
   c.appendChild(h('div', { class: 'cfg-bar' },
     saveBtn,
-    h('button', { class: 'btn sec', onclick: () => UI2.confirm('Is tab ke defaults restore karein?', async () => {
+    h('button', { class: 'btn sec', onclick: () => UI2.confirm(T.t('cfg.restoreDefaults','Restore defaults for this tab?'), async () => {
       await API.call('config.resetGroup', { group: groupId });
       await API.pullSettings(); UI.toast('Defaults restored', 'ok'); App.refresh();
     }, true) }, '↺ Reset tab'),
@@ -27590,7 +27738,7 @@ function renderSub(c, groupId, sub) {
        h('button', { class: 'btn sm sec', onclick: async () => {
          const p = await API.call('migration.plan');
          const md = window.Migration2 ? Migration2.markdown(p) : JSON.stringify(p, null, 2);
-         navigator.clipboard && navigator.clipboard.writeText(md); UI.toast('Plan copy ho gaya', 'ok');
+         navigator.clipboard && navigator.clipboard.writeText(md); UI.toast(T.t('cfg.planCopied','Plan copied'), 'ok');
        } }, '📋 Copy plan (MD)')]));
     c.appendChild(migrationStatusCard());
   }
@@ -27626,7 +27774,7 @@ function commsStatusCard() {
       h('div', { class: 'list-item' }, h('div', { class: 'li-main' }, h('b', null, 'Email'),
         h('span', null, (em.provider || 'APPS_SCRIPT') + ' · ready'))),
       h('div', { class: 'sub', style: { padding: '6px 8px', fontSize: 'var(--fs-xs)' } },
-        'Free mode (LINK): koi API key nahi — wa.me link se WhatsApp khul jata hai. ' +
+        T.t('cfg.freeModeHint','Free mode (LINK): no API key — WhatsApp opens via a wa.me link. ') +
         'Automated sending chahiye to META Cloud API ya Twilio keys daalein.'));
   })();
   return host;
@@ -27654,7 +27802,7 @@ async function priceImportHistory() {
     body: h('div', null, ...(rows.length ? rows.map(r => h('div', { class: 'list-item' },
       h('div', { class: 'li-main' }, h('b', null, r.fileName || r.supplierName || 'import'),
         h('span', null, r.updated + ' updated · ' + r.created + ' new · ' + r.skipped + ' skipped · ' + fmt.date(r.date, true)))))
-      : [h('div', { class: 'empty' }, 'Abhi koi import nahi hua')])),
+      : [h('div', { class: 'empty' }, T.t('cfg.noImports','No imports yet'))])),
     actions: [{ label: 'Close', onClick: c => c() }] });
 }
 
@@ -27672,7 +27820,7 @@ async function loyaltyTopCustomers() {
           UI.toast('Adjusted', 'ok');
         });
       } }, 'Adjust')))
-      : [h('div', { class: 'empty' }, 'Koi points nahi mile')])),
+      : [h('div', { class: 'empty' }, T.t('cfg.noPoints','No points earned'))])),
     actions: [{ label: 'Close', onClick: c => c() }] });
 }
 
@@ -27703,9 +27851,9 @@ function jobsPanel() {
           'Deploy ke baad: Apps Script editor ▸ function installTriggers ▸ Run ▶')));
     } else if (!list.length) {
       body.appendChild(h('div', { class: 'empty' }, h('span', { class: 'big' }, '⏰'),
-        h('div', null, 'Koi job install nahi hai'),
+        h('div', null, T.t('cfg.noJobs','No jobs installed')),
         h('div', { style: { fontSize: 'var(--fs-xs)', color: 'var(--muted-2)', marginTop: '6px' } },
-          '“Install jobs” dabayein — phir Google authorization allow karein.')));
+          T.t('cfg.installJobsHint','Tap “Install jobs” — then allow Google authorization.'))));
     } else {
       body.appendChild(UI2.table({
         screen: 'jobs', height: 'auto', exportName: 'scheduled-jobs',
@@ -27828,7 +27976,7 @@ function cfForm(cf, after) {
     title: cf ? '✏ Custom field' : '＋ Naya custom field', size: 'lg', body: f.el,
     actions: [{ label: 'Save', cls: 'ok', onClick: async close => {
       const v = f.values();
-      if (!v.label) return UI.toast('Label zaroori hai', 'err');
+      if (!v.label) return UI.toast(T.t('cfg.labelReq','Label is required'), 'err');
       if (!v.key) v.key = 'cf_' + slugify(v.label);
       if (cf) v.id = cf.id;
       await API.call('config.fields.save', { field: v });
@@ -27846,7 +27994,7 @@ function renderMenu(c) {
     host.innerHTML = '';
     host.appendChild(UI2.section('Sidebar menu builder', [
       h('button', { class: 'btn sm', onclick: () => menuForm(null, () => App.refresh()) }, '＋ Add item'),
-      h('button', { class: 'btn sm sec', onclick: () => UI2.confirm('Default menu restore karein? Custom menu delete ho jayega.',
+      h('button', { class: 'btn sm sec', onclick: () => UI2.confirm(T.t('cfg.menuRestore','Restore the default menu? The custom menu will be deleted.'),
         async () => { await API.call('config.menu.reset', {}); UI.toast('Menu reset', 'ok'); App.refresh(); }, true) }, '↺ Reset')
     ]));
     host.appendChild(h('p', { style: { fontSize: 'var(--fs-sm)', color: 'var(--muted)', margin: '-4px 0 10px' } },
@@ -27900,7 +28048,7 @@ function menuForm(mi, after) {
     title: mi ? '✏ Menu item' : '＋ Menu item', size: 'sm', body: f.el,
     actions: [{ label: 'Save', cls: 'ok', onClick: async close => {
       const v = f.values();
-      if (!v.id || !v.label) return UI.toast('Screen id aur label zaroori hain', 'err');
+      if (!v.id || !v.label) return UI.toast(T.t('cfg.screenReq','Screen id and label are required'), 'err');
       await API.call('config.menu.save', { item: v });
       UI.toast('Saved ✅', 'ok'); close(); after && after();
     } }]
@@ -27924,7 +28072,7 @@ function renderTemplates(c) {
       [h('button', { class: 'btn sm', onclick: () => window.Print2 && Print2.designer('RECEIPT', null, () => load(hostEl)) }, '🎨 New receipt template'),
        h('button', { class: 'btn sm sec', onclick: () => window.Print2 && Print2.designer('LABEL', null, () => load(hostEl)) }, '🏷 New label template')]));
     hostEl.appendChild(h('div', { class: 'card' }, h('div', { class: 'card-body tight' },
-      rows.length ? '' : h('div', { class: 'empty' }, 'Koi template nahi — upar button se banayein'))));
+      rows.length ? '' : h('div', { class: 'empty' }, T.t('cfg.noTemplates','No templates — create one with the button above')))));
     if (!rows.length) return;
     const body = hostEl.querySelector('.card-body');
     rows.forEach(r => {
@@ -27937,15 +28085,15 @@ function renderTemplates(c) {
         h('button', { class: 'btn sm sec', title: 'JSON dekhein', onclick: () => UI2.modal({ title: r.name || 'Template', size: 'md',
           body: h('pre', { style: { fontSize: 'var(--fs-xs)', whiteSpace: 'pre-wrap' } }, JSON.stringify(cfg, null, 2)),
           actions: [{ label: 'Close', onClick: cc => cc() }] }) }, '{ }'),
-        h('button', { class: 'btn sm danger', title: 'Delete', onclick: () => UI2.confirm('Template delete karein?', async () => {
+        h('button', { class: 'btn sm danger', title: 'Delete', onclick: () => UI2.confirm(T.t('cfg.templateDeleteConfirm','Delete this template?'), async () => {
           /* v2.7 — pehle `.catch(() => {})` error chhupa deta tha aur hamesha
              "Deleted ✅" dikhta tha, chahe delete hua ho ya na ho. Ab asli
              natija check hota hai. */
           try {
             await API.call('config.templates.remove', { id: r.id });
-            UI.toast('Template delete ho gaya', 'ok');
+            UI.toast(T.t('cfg.templateDeleted','Template deleted'), 'ok');
           } catch (err) {
-            UI.toast('Delete fail: ' + (err && err.message ? err.message : 'dobara koshish karein'), 'err');
+            UI.toast('Delete fail: ' + (err && err.message ? err.message : T.t('cfg.retryTail',', please try again')), 'err');
           }
           load(hostEl);
         }, true) }, '🗑')));
@@ -28017,7 +28165,7 @@ function tplForm(t, after) {
       h('div', { class: 'f-hint' }, 'RECEIPT: showLogo, showBarcode, footer, showQr, paperWidth. LABEL: width(mm), height(mm), showPrice, showName, showBarcode, barcodeType')),
     actions: [{ label: 'Save', cls: 'ok', onClick: async close => {
       const v = f.values();
-      try { JSON.parse(json.value); } catch (e) { return UI.toast('JSON ghalat hai: ' + e.message, 'err'); }
+      try { JSON.parse(json.value); } catch (e) { return UI.toast(T.t('cfg.jsonBad','Invalid JSON: ') + e.message, 'err'); }
       if (t) v.id = t.id;
       await API.call('config.templates.save', { template: Object.assign(v, { json: json.value }) });
       UI.toast('Saved ✅', 'ok'); close(); after && after();
@@ -28081,7 +28229,7 @@ function listForm(e, row, after) {
     title: row ? '✏ ' + (row.name || row.code) : '＋ ' + e.label, size: 'sm', body: f.el,
     actions: [{ label: 'Save', cls: 'ok', onClick: async close => {
       const v = f.values();
-      if (!v.name) return UI.toast('Name zaroori hai', 'err');
+      if (!v.name) return UI.toast(T.t('cfg.nameReq','Name is required'), 'err');
       if (row) v.id = row.id;
       await API.call('config.list.save', { entity: e.entity, record: v });
       UI.toast('Saved ✅', 'ok'); close(); after && after();
@@ -28111,11 +28259,11 @@ function renderSeed(c) {
       'Aapki apni export ("product list2.csv") — 422 products, 10 line items, 95 categories, ' +
       '74 brands, 7 suppliers. Har CSV column map hota hai: Line Item → lineItem, Made in → origin, ' +
       'Product Group / Color / Cost Type → custom fields, aur khali barcode ki jagah product code. ' +
-      'Yeh idempotent hai — dobara chalane se duplicate nahi banta, koi row delete nahi hoti.'),
+      T.t('cfg.idempotentNote','This is idempotent — re-running creates no duplicates and deletes no rows.')),
     h('div', { class: 'f-grid' },
       h('div', { class: 'f-col' }, h('label', null, 'Opening stock per branch (naye items)'),
         (function () { const i = h('input', { class: 'f-input', type: 'number', value: 20, id: 'seedStock' }); return i; })(),
-        h('div', { class: 'f-hint' }, 'Maujuda items ka stock chera nahi jata')),
+        h('div', { class: 'f-hint' }, T.t('cfg.stockUntouched','Existing item stock is not touched'))),
       h('div', { class: 'f-col' }, h('label', null, 'Action'),
         h('div', { style: { display: 'flex', gap: '8px', flexWrap: 'wrap' } },
           h('button', { class: 'btn', onclick: async () => {
@@ -28129,7 +28277,7 @@ function renderSeed(c) {
           } }, '⬇ Seed 422 products'),
           h('button', { class: 'btn sec', onclick: async () => {
             const r = await API.call('setup.seedProducts', { opts: { stock: 0, dryRun: true } });
-            UI2.modal({ title: 'Preview — ' + (r.created || 0) + ' naye / ' + (r.updated || 0) + ' update (koi write nahi hua)',
+            UI2.modal({ title: 'Preview — ' + (r.created || 0) + ' naye / ' + (r.updated || 0) + T.t('cfg.noWriteTail',' update (no writes)'),
               size: 'lg',
               body: UI2.table({ screen: 'seedpreview', rows: (r.items || []), height: '50vh', exportName: 'seed-preview',
                 columns: [
@@ -28151,12 +28299,12 @@ function renderSeed(c) {
             try {
               const r = await API.call('setup.auditProducts', {});
               UI2.modal({
-                title: 'CSV ↔ DB milan — ' + (r.missing || 0) + ' missing, ' + (r.priceDiff || 0) + ' price farq',
+                title: 'CSV ↔ DB milan — ' + (r.missing || 0) + ' missing, ' + (r.priceDiff || 0) + T.t('cfg.priceDiffTail',' price difference'),
                 size: 'md',
                 body: h('div', { style: { fontSize: 'var(--fs-sm)', lineHeight: '1.6' } },
                   h('div', null, h('b', null, 'CSV products: '), String(r.csv || 0)),
                   h('div', null, h('b', null, 'DB mein ghaayab: '), String(r.missing || 0)),
-                  h('div', null, h('b', null, 'Rate farq: '), String(r.priceDiff || 0)),
+                  h('div', null, h('b', null, T.t('cfg.rateDiff','Rate difference: ')), String(r.priceDiff || 0)),
                   (r.missingCodes || []).length ? h('div', { style: { marginTop: '8px' } },
                     h('b', null, 'Missing codes: '), (r.missingCodes || []).join(', ')) : null,
                   (r.priceSamples || []).length ? h('div', { style: { marginTop: '8px' } },
@@ -28171,7 +28319,7 @@ function renderSeed(c) {
 function renderImport(c) {
   c.appendChild(h('div', { class: 'card' }, h('div', { class: 'card-body' },
     h('h4', { style: { margin: '0 0 8px' } }, '⬆ Bulk import'),
-    h('p', { style: { fontSize: 'var(--fs-sm)', color: 'var(--muted)' } }, 'Items, customers ya suppliers — Sheet/Excel se paste karein.'),
+    h('p', { style: { fontSize: 'var(--fs-sm)', color: 'var(--muted)' } }, T.t('cfg.pasteHint','Items, customers or suppliers — paste from Sheet/Excel.')),
     h('div', { class: 'row gap-8' },
       h('button', { class: 'btn', onclick: () => App.go('items', { import: true }) }, '📦 Items'),
       h('button', { class: 'btn sec', onclick: () => App.go('parties', { tab: 'customers' }) }, '👤 Customers')))));
@@ -28204,12 +28352,12 @@ function renderBackupRestore(c) {
       } }, '⬇ Export JSON'),
       h('button', { class: 'btn sec', onclick: () => {
         const ta = h('textarea', { class: 'f-input', rows: 8, style: { fontFamily: 'monospace', fontSize: 'var(--fs-xs)' },
-          placeholder: 'Yahan config JSON paste karein' });
+          placeholder: T.t('cfg.pasteJson','Paste config JSON here') });
         UI2.modal({
           title: '⬆ Import configuration', size: 'md', body: ta,
           actions: [{ label: 'Import', cls: 'ok', onClick: async close => {
             let dump;
-            try { dump = JSON.parse(ta.value); } catch (e) { return UI.toast('JSON ghalat hai', 'err'); }
+            try { dump = JSON.parse(ta.value); } catch (e) { return UI.toast(T.t('cfg.jsonBadShort','Invalid JSON'), 'err'); }
             try {
               if (dump.settings) await API.call('config.save', { values: dump.settings });
               /* W7 (v2.26.0) — ASLI BUG + N+1: pehle `forEach(async …)` fire-and-forget tha, is liye
@@ -28264,7 +28412,7 @@ async function schemaHealthCard(c) {
       Object.keys(r.missingColumns || {}).forEach(n =>
         rows.push({ sheet: n, issue: 'columns missing', detail: (r.missingColumns[n] || []).join(', ') }));
       body.appendChild(h('div', { class: 'hint', style: { marginBottom: '8px' } },
-        'Ye columns code likhta hai par sheet mein nahi — data silently drop ho sakta hai. Repair se data delete nahi hota, sirf columns judte hain.'));
+        T.t('cfg.repairNote','These columns are written by code but missing in the sheet — data may drop silently. Repair never deletes data; it only adds columns.')));
       body.appendChild(UI2.table({
         screen: 'schema_health', rows, height: '22vh', exportName: 'schema-health',
         columns: [{ key: 'sheet', label: 'Sheet' }, { key: 'issue', label: 'Issue' }, { key: 'detail', label: 'Missing columns' }]
@@ -28274,7 +28422,7 @@ async function schemaHealthCard(c) {
       h('button', { class: 'btn' + (bad ? '' : ' sec'), onclick: async () => {
         try {
           const x = await API.call('setup.repair', {});
-          UI.toast('Repair ho gaya: ' + (x.created || 0) + ' sheets, ' + (x.columnsAdded || 0) + ' columns add hue', 'ok');
+          UI.toast(T.t('cfg.repaired','Repaired: ') + (x.created || 0) + ' sheets, ' + (x.columnsAdded || 0) + ' columns add hue', 'ok');
           paint();
         } catch (e) { UI.toast(e.message, 'err'); }
       } }, '🧰 Repair / upgrade sheets'),
@@ -28476,13 +28624,13 @@ window.__applyTheme = applyTheme;
 
   <script>
 /* ==========================================================================
-   HASEEB AUTOS — CHARTS + AI DASHBOARDS
-   Pure-SVG chart engine (no CDN — offline PWA safe): donut, bars, area,
-   sparkline, progress, gauge, funnel, heat map — sab interactive (click,
-   hover tooltip, drill-down).
-   Screens: dashboard (main) · insights (customers / receivables / payables /
-   P&L / inventory) · shop (day open & close with cash count).
-   ========================================================================== */
+   * HASEEB AUTOS — CHARTS + AI DASHBOARDS
+   * Pure-SVG chart engine (no CDN — offline PWA safe): donut, bars, area,
+   * sparkline, progress, gauge, funnel, heat map — sab interactive (click,
+   * hover tooltip, drill-down).
+   * Screens: dashboard (main) · insights (customers / receivables / payables /
+   * P&L / inventory) · shop (day open & close with cash count).
+   * ========================================================================== */
 (function () {
 'use strict';
 
@@ -28696,9 +28844,9 @@ const Chart = {
 };
 
 /* v2.2: App_Charts.html ka professional engine (line / gauge / progress / kpiRing /
-   grouped / donut / bars) local Chart object me bhi merge kar dein — taake is file
-   ke andar ke call sites bhi pro version hi use karein (window.Chart ka getter
-   pehle se merged object deta hai). */
+   * grouped / donut / bars) local Chart object me bhi merge kar dein — taake is file
+   * ke andar ke call sites bhi pro version hi use karein (window.Chart ka getter
+   * pehle se merged object deta hai). */
 try {
   if (window.Chart && typeof window.Chart.line === 'function' && window.Chart.line !== Chart.line) {
     Object.assign(Chart, window.Chart);
@@ -28774,7 +28922,7 @@ App.registerScreen('dashboard', {
         UI.kpi('📈', 'Mahana sale', fmt.moneyCompact(k.monthSales), '30 din', 'info'),
         /* v2.28.0 (W5) — profit KPI sirf margin family wale ko (backend bhi strip karta hai) */
         App.field('margin') ? UI.kpi('🏆', 'Munafa (30d)', fmt.moneyCompact(k.monthProfit), 'Gross profit', 'ok') : null,
-        UI.kpi('📒', 'Udhaar (receivable)', fmt.moneyCompact(k.receivables), (k.pendingDue ? 'Due ' + fmt.moneyCompact(k.pendingDue) : 'Sab clear'), 'warn'),
+        UI.kpi('📒', T.t('dash.receivableKpi','Credit (receivable)'), fmt.moneyCompact(k.receivables), (k.pendingDue ? 'Due ' + fmt.moneyCompact(k.pendingDue) : 'Sab clear'), 'warn'),
         UI.kpi('🏬', 'Stock value', fmt.moneyCompact(k.inventoryValue), 'Retail ' + fmt.moneyCompact(k.inventoryRetail), ''),
         UI.kpi('⚠', 'Low stock', fmt.num(k.lowStockCount), 'Items', k.lowStockCount > 0 ? 'err' : 'ok'),
         UI.kpi('🧾', 'Avg bill', fmt.moneyCompact(k.avgTicket), 'Ticket size', ''),
@@ -28855,7 +29003,7 @@ App.registerScreen('dashboard', {
         catRows.length
           ? Chart.donut(catRows.map(r => ({ label: r.category || 'Other', value: r.revenue || r.total || 0 })),
             { size: 168, centerLabel: 'Revenue' })
-          : h('div', { class: 'tbl-empty' }, 'Is range me koi sale nahi')));
+          : h('div', { class: 'tbl-empty' }, T.t('dash.noSalesRange','No sales in this range'))));
 
       const lowCard = h('div', { class: 'card' }, h('div', { class: 'card-head' },
         h('h4', null, '⚠ Low stock'),
@@ -28884,7 +29032,7 @@ App.registerScreen('dashboard', {
       App.fieldFilter([
         { pct: margin, label: 'Gross margin', sub: fmt.money(profit), value: margin.toFixed(1) + '%', family: 'margin' },
         { pct: stockHealth, label: 'Stock health', sub: lowN + ' low items', value: stockHealth.toFixed(0) + '%' },
-        { pct: recovery, label: 'Udhaar recovery', sub: fmt.money(recvPaid) + ' / ' + fmt.money(recvTotal), value: recovery.toFixed(0) + '%' },
+        { pct: recovery, label: T.t('dash.recovery','Credit recovery'), sub: fmt.money(recvPaid) + ' / ' + fmt.money(recvTotal), value: recovery.toFixed(0) + '%' },
         target ? { pct: targetPct, label: 'Month target', sub: fmt.money(sold) + ' / ' + fmt.money(target), value: targetPct.toFixed(0) + '%' }
                : { pct: 100, label: 'Aaj ki sale', sub: (k.todayTxns || 0) + ' bills', value: fmt.money(k.todaySales) }
       ]).forEach(g => ringRow.appendChild(h('div', { class: 'card' },
@@ -28900,12 +29048,12 @@ App.registerScreen('dashboard', {
           pmRows.length
             ? Chart.donut(pmRows.map(r => ({ label: r.label || r.method, value: Number(r.gross) })),
               { size: 168, thickness: 22, centerLabel: 'Received' })
-            : Chart.empty('Is range me koi payment nahi'))));
+            : Chart.empty(T.t('dash.noPaymentsRange','No payments in this range')))));
 
       const recvRows = ((recv && recv.rows) || []).slice(0, 6);
       const recvMax = Math.max.apply(null, recvRows.map(x => Number(x.balance !== undefined ? x.balance : x.due) || 0).concat([1]));
       row3.appendChild(h('div', { class: 'card' },
-        h('div', { class: 'card-head' }, h('h4', null, '📒 Udhaar (receivables)'),
+        h('div', { class: 'card-head' }, h('h4', null, T.t('dash.receivablesCard','📒 Credit (receivables)')),
           h('button', { class: 'btn sm sec', onclick: () => App.go('parties', { tab: 'customers' }) }, 'Sab')),
         h('div', { class: 'card-body' },
           recvRows.length
@@ -28913,7 +29061,7 @@ App.registerScreen('dashboard', {
                 label: r.customerName || r.name || 'Customer',
                 value: Number(r.balance !== undefined ? r.balance : r.due) || 0,
                 max: recvMax, display: fmt.money(r.balance !== undefined ? r.balance : r.due) })), {})
-            : Chart.empty('Koi udhaar nahi 🎉'))));
+            : Chart.empty(T.t('dash.noUdhaar','No credit outstanding 🎉')))));
 
       const rTotals = (recon && recon.totals) || {};
       row3.appendChild(h('div', { class: 'card' },
@@ -28934,7 +29082,7 @@ App.registerScreen('dashboard', {
           h('div', { class: 'chips' },
             h('button', { class: 'chip2', onclick: () => App.go('pos') }, '🧾 New sale'),
             h('button', { class: 'chip2', onclick: () => App.go('items') }, '📦 Add item'),
-            h('button', { class: 'chip2', onclick: () => App.go('parties', { tab: 'customers' }) }, '💰 Receive udhaar'),
+            h('button', { class: 'chip2', onclick: () => App.go('parties', { tab: 'customers' }) }, T.t('dash.receiveUdhaar','💰 Receive credit')),
             h('button', { class: 'chip2', onclick: () => App.go('shop') }, '🏪 Shop close'),
             h('button', { class: 'chip2', onclick: () => App.go('purchase', { reorder: true }) }, '🚚 Reorder stock'),
             h('button', { class: 'chip2', onclick: () => App.go('insights', { tab: 'pnl' }) }, '🏆 P&L'),
@@ -28969,13 +29117,13 @@ function aiInsights(k, d, notif) {
       { label: 'Reorder', onClick: () => App.go('purchase', { reorder: true }) });
 
   if ((k.receivables || 0) > 0)
-    add('📒', fmt.money(k.receivables) + ' udhaar baqaya',
-      'Customers se recovery ka plan banaayein; purani invoices pehle follow up karein.', 'warn',
+    add('📒', fmt.money(k.receivables) + T.t('dash.udhaarOutstanding',' credit outstanding'),
+      T.t('dash.recoveryHint','Plan recoveries with customers; follow up on older invoices first.'), 'warn',
       { label: 'Receivables', onClick: () => App.go('insights', { tab: 'receivables' }) });
 
   if ((k.payables || 0) > 0)
     add('🏭', fmt.money(k.payables) + ' suppliers ko dena hai',
-      'Payment terms ke mutabiq clearing se relationship aur discount terms behtar hoti hain.', '',
+      T.t('dash.termsHint','Paying on terms improves relationships and discount terms.'), '',
       { label: 'Payables', onClick: () => App.go('insights', { tab: 'payables' }) });
 
   const trend = d.trend || [];
@@ -28997,7 +29145,7 @@ function aiInsights(k, d, notif) {
   }
   if ((notif.unread || 0) > 0)
     add('🔔', notif.unread + ' alerts hain',
-      'Low stock, expiry aur udhaar ki alerts abhi check karein.', 'warn',
+      T.t('dash.alertsHint','Check low-stock, expiry and credit alerts now.'), 'warn',
       { label: 'Dekhein', onClick: () => { try { openNotifPanel(); } catch (e) { } } });
 
   // live AI suggestions (server side) if available
@@ -29053,19 +29201,19 @@ function renderCustomersDash(c) {
     const top = withBal.slice().sort((a, b) => (b.balance ?? b.bal ?? 0) - (a.balance ?? a.bal ?? 0)).slice(0, 8);
     host.appendChild(UI2.kpiGrid([
       { icon: '👥', label: 'Customers', value: rows.length, cls: 'info' },
-      { icon: '📒', label: 'Udhaar customers', value: withBal.length, cls: 'warn' },
-      { icon: '💰', label: 'Total udhaar', value: fmt.money(totalBal), cls: 'err' },
+      { icon: '📒', label: T.t('dash.udhaarCustomers','Credit customers'), value: withBal.length, cls: 'warn' },
+      { icon: '💰', label: T.t('dash.totalUdhaar','Total credit'), value: fmt.money(totalBal), cls: 'err' },
       { icon: '🎁', label: 'Loyalty points', value: fmt.num(rows.reduce((a, r) => a + Number(r.points || 0), 0)) }
     ]));
-    host.appendChild(UI2.section('Sabse zyada udhaar'));
+    host.appendChild(UI2.section(T.t('dash.maxUdhaar','Highest credit')));
     host.appendChild(h('div', { class: 'grid g2-1' },
       h('div', { class: 'card' }, h('div', { class: 'card-body' },
         top.length ? Chart.bars(top.map(r => ({ label: r.name, value: r.balance ?? r.bal ?? 0 })),
           { horizontal: true, onClick: r => App.go('parties', { tab: 'customers', open: r.id }) })
-          : h('div', { class: 'tbl-empty' }, 'Koi udhaar nahi 🎉'))),
+          : h('div', { class: 'tbl-empty' }, T.t('dash.noUdhaar','No credit outstanding 🎉')))),
       h('div', { class: 'card' }, h('div', { class: 'card-body' },
         Chart.donut([
-          { label: 'With udhaar', value: withBal.length, color: '#be123c' },
+          { label: T.t('dash.withUdhaar','With credit'), value: withBal.length, color: '#be123c' },
           { label: 'Clear', value: Math.max(0, rows.length - withBal.length), color: '#0f7a3f' }
         ], { size: 160, centerLabel: 'Customers' })))));
 
@@ -29112,11 +29260,11 @@ function renderReceivablesDash(c) {
       });
       host.innerHTML = '';
       host.appendChild(UI2.kpiGrid([
-        { icon: '📅', label: 'Pichhla udhaar (prev)', value: fmt.money(res.prevTotal || 0), cls: 'info' },
-        { icon: '➕', label: 'Naya udhaar', value: fmt.money(res.newTotal || 0), cls: 'warn' },
+        { icon: '📅', label: T.t('dash.prevUdhaarPrev','Previous credit (prev)'), value: fmt.money(res.prevTotal || 0), cls: 'info' },
+        { icon: '➕', label: T.t('dash.newUdhaar','New credit'), value: fmt.money(res.newTotal || 0), cls: 'warn' },
         { icon: '📒', label: 'Total receivable (closing)', value: fmt.money(res.total || 0), cls: 'err' },
         { icon: '👥', label: 'Customers', value: rows.length },
-        { icon: '✅', label: 'Wasooli', value: fmt.money(res.settledTotal || 0), cls: 'ok' },
+        { icon: '✅', label: T.t('dash.collections','Collections'), value: fmt.money(res.settledTotal || 0), cls: 'ok' },
         { icon: '⚠', label: '90+ din', value: fmt.money(buckets[3].value), cls: 'err' }
       ], 3));
       host.appendChild(h('div', { class: 'grid g2-1' },
@@ -29124,7 +29272,7 @@ function renderReceivablesDash(c) {
           h('div', { class: 'card-body' }, Chart.bars(buckets.map(b => ({ label: b.label, value: b.value, color: b.color })), { height: 200 }))),
         h('div', { class: 'card' }, h('div', { class: 'card-head' }, h('h4', null, 'Split')),
           h('div', { class: 'card-body' }, Chart.donut(buckets, { size: 170, centerLabel: 'Receivable' })))));
-      host.appendChild(UI2.section('Customer-wise udhaar'));
+      host.appendChild(UI2.section(T.t('dash.customerUdhaar','Customer-wise credit')));
       host.appendChild(UI2.table({
         screen: 'dash_recv', rows: rows, height: '44vh', exportName: 'receivables',
         columns: [
@@ -29132,7 +29280,7 @@ function renderReceivablesDash(c) {
           { key: 'phone', label: 'Phone', render: r => fmt.phone(r.phone) },
           { key: 'prevBalance', label: 'Prev', num: true, render: r => h('span', { class: 'muted' }, fmt.money(r.prevBalance)) },
           { key: 'newAmount', label: 'Naya', num: true, render: r => fmt.money(r.newAmount) },
-          { key: 'settled', label: 'Wasooli', num: true, render: r => fmt.money(r.settled) },
+          { key: 'settled', label: T.t('dash.collections','Collections'), num: true, render: r => fmt.money(r.settled) },
           { key: 'balance', label: 'Closing', num: true, render: r => h('b', { style: { color: 'var(--err)' } }, fmt.money(r.balance)) }
         ],
         rowActions: r => [{ icon: '💰', label: 'Receive', onClick: () => App.go('parties', { tab: 'customers', open: r.id }) }],
@@ -29147,7 +29295,7 @@ function renderPayablesDash(c) {
   API.call('reports.payables', {}, { offlineFallback: () => ({ rows: [], total: 0 }) }).then(res => {
     const rows = res.rows || [];
     host.appendChild(UI2.kpiGrid([
-      { icon: '📅', label: 'Pichhla baqaya (prev)', value: fmt.money(res.prevTotal || 0), cls: 'info' },
+      { icon: '📅', label: T.t('dash.prevBalPrev','Previous balance (prev)'), value: fmt.money(res.prevTotal || 0), cls: 'info' },
       { icon: '➕', label: 'Naya purchase', value: fmt.money(res.newTotal || 0), cls: 'warn' },
       { icon: '🏭', label: 'Total payable (closing)', value: fmt.money(res.total || 0), cls: 'err' },
       { icon: '✅', label: 'Payment', value: fmt.money(res.settledTotal || 0), cls: 'ok' },
@@ -29160,7 +29308,7 @@ function renderPayablesDash(c) {
       columns: [
         { key: 'code', label: 'Code' }, { key: 'name', label: 'Supplier' },
         { key: 'phone', label: 'Phone', render: r => fmt.phone(r.phone) },
-        { key: 'prevBalance', label: 'Pichhla baqaya', num: true, render: r => h('span', { class: 'muted' }, fmt.money(r.prevBalance)) },
+        { key: 'prevBalance', label: T.t('dash.prevBal','Previous balance'), num: true, render: r => h('span', { class: 'muted' }, fmt.money(r.prevBalance)) },
         { key: 'newAmount', label: 'Purchase', num: true, render: r => fmt.money(r.newAmount) },
         { key: 'settled', label: 'Paid', num: true, render: r => fmt.money(r.settled) },
         { key: 'balance', label: 'Dena hai (closing)', num: true, render: r => h('b', { style: { color: 'var(--err)' } }, fmt.money(r.balance)) }
@@ -29207,7 +29355,7 @@ function renderPnlDash(c) {
           (cat.rows || []).length
             ? Chart.donut((cat.rows || []).slice(0, 7).map(r => ({ label: r.category || 'Other', value: r.profit || r.revenue || 0 })),
               { size: 180, centerLabel: 'Profit' })
-            : h('div', { class: 'tbl-empty' }, 'Data nahi')))));
+            : h('div', { class: 'tbl-empty' }, T.t('dash.noData','No data'))))));
 
     host.appendChild(UI2.section('Item-wise profitability'));
     host.appendChild(UI2.table({
@@ -29308,7 +29456,7 @@ App.registerScreen('shop', {
     renderShopScreen(host);
     const wizHost = h('div'); body.appendChild(wizHost);   /* screen-root: renderShopScreen host ko replace na kare */
     /* v2.30.5 (user-report) — wizard dobara chalana: app configured ho to wizard/
-       banner khud chhupte hai; yahan se owner dobara chala sakta hai (reset+open). */
+       * banner khud chhupte hai; yahan se owner dobara chala sakta hai (reset+open). */
     if (App.can('settings.manage')) {
       const wc = h('div', { class: 'card', style: { marginTop: '10px' } },
         h('div', { class: 'card-body tight' },
@@ -29316,8 +29464,8 @@ App.registerScreen('shop', {
             'Application pehle se configured ho to Setup Wizard aur banner khud chhup jate hai · العیون متعین ہونے پر ویزرڈ چھپ جاتا ہے'),
           h('button', { class: 'btn sm', onclick: async () => {
             try { await API.call('system.wizardSave', { reset: true }); } catch (e) { }
-            try { ShopUI.wizard(ShopUI.wizardStatus || {}); } catch (e) { UI.toast(e.message || 'Wizard nahi khula', 'err'); }
-          } }, '🧭 Setup wizard dobara chalayen · دوبارہ سیٹ اپ')));
+            try { ShopUI.wizard(ShopUI.wizardStatus || {}); } catch (e) { UI.toast(e.message || T.t('dash.wizardFail','Wizard did not open'), 'err'); }
+          } }, T.t('dash.wizardRerun','🧭 Run setup wizard again'))));
       wizHost.appendChild(wc);
     }
   }
@@ -29342,10 +29490,10 @@ async function renderShopScreen(host) {
 }
 
 /* ==========================================================================
-   v2.6 §7 — AUTO DAY REPORTS: history + reprint / PDF / CSV / share
-   Shop khulte ya band hote hi report khud ban jati hai; yahan se baad mein
-   kabhi bhi print, PDF, Excel ya WhatsApp share kiya ja sakta hai.
-   ========================================================================== */
+   * v2.6 §7 — AUTO DAY REPORTS: history + reprint / PDF / CSV / share
+   * Shop khulte ya band hote hi report khud ban jati hai; yahan se baad mein
+   * kabhi bhi print, PDF, Excel ya WhatsApp share kiya ja sakta hai.
+   * ========================================================================== */
 function shopDayReportCard() {
   const card = h('div', { class: 'card' });
   const bodyEl = h('div', { class: 'card-body tight' });
@@ -29360,7 +29508,7 @@ function shopDayReportCard() {
             await API.call('dayreport.generate', { kind: 'CLOSE' });
             UI.toast(T.t('dash.reportDone','Report generated ✅'), 'ok');
             shopDayReportRefresh(bodyEl);
-          } catch (e) { UI.toast(e.message || 'Report nahi ban saki', 'err'); }
+          } catch (e) { UI.toast(e.message || T.t('dash.reportFail','Could not create report'), 'err'); }
         }
       }, '➕ Abhi banaen'),
       h('button', { class: 'btn sm sec', title: 'Refresh', onclick: () => shopDayReportRefresh(bodyEl) }, '↻'))));
@@ -29378,14 +29526,14 @@ async function shopDayReportRefresh(bodyEl) {
     rows = await API.call('dayreport.list', { limit: 30 }, { offlineFallback: () => [] }) || [];
   } catch (e) {
     bodyEl.innerHTML = '';
-    bodyEl.appendChild(Shared.stateCard({ kind: 'error', error: e, title: 'Reports load nahi ho sakeen',
+    bodyEl.appendChild(Shared.stateCard({ kind: 'error', error: e, title: T.t('dash.reportsFail','Reports could not load'),
       retry: () => shopDayReportRefresh(bodyEl) }));
     return;
   }
   bodyEl.innerHTML = '';
   if (!rows.length) {
     bodyEl.appendChild(h('div', { class: 'tbl-empty' },
-      'Abhi koi auto report nahi — shop open/close karte hi yahan aa jayegi'));
+      T.t('dash.noAutoReport','No auto report yet — it appears here after shop open/close')));
     return;
   }
   rows.forEach(r => {
@@ -29418,7 +29566,7 @@ async function shopDayReportRefresh(bodyEl) {
             try {
               const d = await API.call('dayreport.csv', { id: r.id });
               downloadCsv(d.csv, d.filename);
-            } catch (e) { UI.toast(e.message || 'CSV nahi bana', 'err'); }
+            } catch (e) { UI.toast(e.message || T.t('dash.csvFail','Could not create CSV'), 'err'); }
           }
         }, '⬇'),
         h('button', {
@@ -29433,7 +29581,7 @@ async function shopDayReportRefresh(bodyEl) {
                 '\nVariance: ' + fmt.money(Number(r.variance || 0));
               if (typeof Share !== 'undefined' && Share.text) Share.text(txt, r.reportNo || 'Day report');
               else UI.toast(T.t('dash.shareNA','Share unavailable'), 'warn');
-            } catch (e) { UI.toast(e.message || 'Share nahi ho saka', 'err'); }
+            } catch (e) { UI.toast(e.message || T.t('dash.shareFail','Could not share'), 'err'); }
           }
         }, '📤'))));
   });
@@ -29470,7 +29618,7 @@ function shopClosedCard(onDone) {
     h('div', { class: 'shop-badge big' }, '🏪'),
     h('div', { class: 'shop-hero-txt' },
       h('h3', null, 'Shop band hai'),
-      h('p', null, 'Din shuru karte waqt drawer ki opening cash (float) darj karein. Day-end par expected vs counted ka farq khud nikal aayega.'))));
+      h('p', null, T.t('dash.openingFloatHint','Enter drawer opening cash (float) at day start. Expected vs counted variance is computed at day-end.')))));
 
   const f = UI2.form({
     values: { openingCash: 0, notes: '' },
@@ -29548,7 +29696,7 @@ function shopOpenCard(ses, onDone) {
               { key: 'amount', label: 'Amount', num: true, render: r => fmt.money(r.amount) }
             ]
           })
-        : h('div', { class: 'empty' }, 'Abhi koi payment nahi'))));
+        : h('div', { class: 'empty' }, T.t('dash.noPaymentsYet','No payments yet')))));
 
   grid.appendChild(h('div', { class: 'card' },
     h('div', { class: 'card-head' }, h('h4', null, '💸 Cash in / out log'),
@@ -29567,7 +29715,7 @@ function shopOpenCard(ses, onDone) {
               { key: 'reason', label: 'Reason' }
             ]
           })
-        : h('div', { class: 'empty' }, 'Koi cash movement nahi'))));
+        : h('div', { class: 'empty' }, T.t('dash.noCashMoves','No cash movements')))));
 
   wrap.appendChild(grid);
 
@@ -29582,7 +29730,7 @@ function shopOpenCard(ses, onDone) {
           { k: 'Bills', v: fmt.num(sl.count || 0) },
           { k: 'Gross sales', v: fmt.money(sl.gross || 0) },
           { k: 'Returns', v: fmt.money(sl.returns || 0) },
-          { k: 'Udhaar (credit given)', v: fmt.money(sl.udhaar || 0) },
+          { k: T.t('dash.creditGiven','Credit (given)'), v: fmt.money(sl.udhaar || 0) },
           { k: 'Card / wallet received', v: fmt.money(t.card || 0) },
           { k: 'Cash expenses', v: fmt.money(t.expenses || 0) },
           { k: 'Expected cash in drawer', v: fmt.money(ses.expectedCash || 0) }
@@ -29613,7 +29761,7 @@ function cashMoveModal(type, ses, onDone) {
     actions: [{
       label: isOut ? 'Cash out' : 'Cash in', cls: isOut ? 'danger' : 'ok', onClick: async c => {
         const v = f.values();
-        if (!(Number(v.amount) > 0)) return UI.toast('Amount darj karein', 'err');
+        if (!(Number(v.amount) > 0)) return UI.toast(T.t('dash.enterAmount','Enter the amount'), 'err');
         try {
           await API.call('cash.move', {
             type, amount: Number(v.amount), reason: v.reason,
@@ -29680,7 +29828,7 @@ function closeShopModal(ses, onDone) {
     actions: [{
       label: '🔒 Close & post difference', cls: 'ok', onClick: async c => {
         const { total, diff } = calc();
-        if (!(await UI2.confirm('Shop close karein? Counted ' + fmt.money(total) +
+        if (!(await UI2.confirm(T.t('dash.shopCloseConfirm','Close the shop? Counted ') + fmt.money(total) +
           ' · difference ' + fmt.money(diff)))) return;
         try {
           await API.call('cash.session.close', {
@@ -29712,7 +29860,7 @@ function dayReportHtml(r) {
   const t = r.totals || {};
   const dur = r.durationMins >= 60 ? Math.floor(r.durationMins / 60) + 'h ' + (r.durationMins % 60) + 'm' : (r.durationMins || 0) + 'm';
   const rows = (arr, cell) => (arr || []).length
-    ? arr.map(cell).join('') : '<tr><td colspan="6" class="c muted">Koi entry nahi</td></tr>';
+    ? arr.map(cell).join('') : '<tr><td colspan="6" class="c muted">' + T.t('dash.noEntriesHtml','No entries') + '</td></tr>';
 
   const methods = rows(r.methods, x => '<tr><td>' + esc(x.method) + '</td><td class="c">' + n(x.count) +
     '</td><td class="r">' + m(x.amount) + '</td></tr>');
@@ -29795,8 +29943,8 @@ function dayReportHtml(r) {
     (r.notes ? '<div class="dr-notes"><b>Notes</b><div>' + esc(r.notes) + '</div></div>' : '') +
 
     /* ─── v2.6 QA — "report main QR aur Barcode bhi hoona chahiye jis say
-       tracking aur searching main asani ho". Scan karte hi session mil jaye.
-       Dono OFFLINE engines hain (App_QR.html / App_Barcode.html) — koi CDN nahi. */
+       * tracking aur searching main asani ho". Scan karte hi session mil jaye.
+       * Dono OFFLINE engines hain (App_QR.html / App_Barcode.html) — koi CDN nahi. */
     dayReportCodes(r) +
     '<footer class="dr-foot">' +
       '<div class="sig"><div class="sigline"></div><div>Cashier signature</div></div>' +
@@ -29862,11 +30010,11 @@ table.dr-t .c{text-align:center}table.dr-t .r{text-align:right;font-variant-nume
 
 
 /* ----------------------------------------------------------------------------
-   Report QR + Barcode (v2.6 QA)
-   Barcode = session no (seedha type kar ke bhi dhoondh sakte hain)
-   QR      = JSON {doc, session, date, loc} — scan karte hi record khul jaye
-   Settings se band kiya ja sakta hai (reportShowCodes, default on).
-   -------------------------------------------------------------------------- */
+   * Report QR + Barcode (v2.6 QA)
+   * Barcode = session no (seedha type kar ke bhi dhoondh sakte hain)
+   * QR      = JSON {doc, session, date, loc} — scan karte hi record khul jaye
+   * Settings se band kiya ja sakta hai (reportShowCodes, default on).
+   * -------------------------------------------------------------------------- */
 function dayReportCodes(r) {
   try {
     const st = App.state.settings || {};
@@ -29901,7 +30049,7 @@ async function dayReportActions(r, afterClose) {
 
   const openPrint = () => {
     const w = window.open('', '_blank', 'width=900,height=1000');
-    if (!w) { UI.toast('Popup blocked — browser se allow karein', 'warn'); return; }
+    if (!w) { UI.toast(T.t('dash.popupBlocked','Popup blocked — allow it in the browser'), 'warn'); return; }
     w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>' +
       esc((r.sessionNo || 'day') + ' closing report') + '</title><style>' + DAY_REPORT_CSS + '</style></head><body>' +
       html + '</body></html>');
@@ -29935,9 +30083,9 @@ async function dayReportActions(r, afterClose) {
       (r.closingCash === null || r.closingCash === undefined ? '—' : fmt.money(r.closingCash)) +
       ' · Variance: ' + (r.variance === null ? '—' : fmt.money(r.variance)) +
       (url ? '\n\nPDF: ' + url : '');
-    const num = await UI2.prompt ? UI2.prompt({ label: 'WhatsApp number (923001234567)', title: 'Report bhejein' }) : null;
+    const num = await UI2.prompt ? UI2.prompt({ label: 'WhatsApp number (923001234567)', title: T.t('dash.sendReport','Send report') }) : null;
     const to = String((num && (num.value || num)) || '').replace(/\D/g, '');
-    if (!to) return UI.toast('Number nahi mila', 'warn');
+    if (!to) return UI.toast(T.t('dash.noNumber','Number not found'), 'warn');
     window.open('https://wa.me/' + to + '?text=' + encodeURIComponent(msg), '_blank');
   };
 
@@ -29968,7 +30116,7 @@ async function dayReportActions(r, afterClose) {
     const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' });
     const a = h('a', { href: URL.createObjectURL(blob), download: (r.sessionNo || 'day-report') + '-closing.csv' });
     document.body.appendChild(a); a.click(); a.remove();
-    UI.toast('CSV download ho gayi', 'ok');
+    UI.toast(T.t('dash.csvDone','CSV downloaded'), 'ok');
   };
 
   return { openPrint, makePdf, shareWhatsApp, downloadCsv, html };
@@ -29979,7 +30127,7 @@ async function dayReportModal(sessionId) {
   let r = null;
   try { r = await API.call('shop.dayReport', { sessionId: sessionId || '' }, { offlineFallback: () => null }); }
   catch (e) { UI.toast(e.message, 'err'); return; }
-  if (!r) { UI.toast('Report load nahi hua', 'err'); return; }
+  if (!r) { UI.toast(T.t('dash.reportLoadFail','Report failed to load'), 'err'); return; }
   const acts = await dayReportActions(r);
   const body = h('div', { class: 'print-preview', style: { maxHeight: '62vh' } },
     h('div', { class: 'pp-paper', style: { transform: 'scale(.62)' } }, rawHtmlModule(acts.html)));
@@ -29996,15 +30144,15 @@ async function dayReportModal(sessionId) {
     ]
   });
   /* v2.6 §7 point 4 — "automatically trigger printing where the device
-     configuration supports it". Settings-driven (dayReportAutoPrint, default on).
-     Modal pehle khul jata hai (user dekh sake), phir print window aati hai —
-     is liye dono: foran nateeja BHI nazar aaye aur print BHI ho jaye. */
+     * configuration supports it". Settings-driven (dayReportAutoPrint, default on).
+     * Modal pehle khul jata hai (user dekh sake), phir print window aati hai —
+     * is liye dono: foran nateeja BHI nazar aaye aur print BHI ho jaye. */
   try {
     const st = App.state.settings || {};
     const mode = window.SERVE_MODE || 'apps-script';
     /* Demo / preview mein khud-ba-khud print window kholna be-maani hai
-       (aur jsdom jese test harness mein window.open() hi nahi hota).
-       Asli app (Apps Script ya static host) mein hi auto-print chalayein. */
+       * (aur jsdom jese test harness mein window.open() hi nahi hota).
+       * Asli app (Apps Script ya static host) mein hi auto-print chalayein. */
     const canAutoPrint = mode !== 'demo' && typeof window.open === 'function';
     if (canAutoPrint && String(st.dayReportAutoPrint) !== 'false' && typeof acts.openPrint === 'function') {
       setTimeout(() => { try { acts.openPrint(); } catch (e) { /* printer na ho to khamosh */ } }, 600);
@@ -30033,7 +30181,7 @@ function shopHistoryCard(rows) {
           { icon: '📄', label: 'Closing report', onClick: () => dayReportModal(r.id) }
         ],
         onRow: r => dayReportModal(r.id)
-      }) : h('div', { class: 'empty' }, 'Koi purani session nahi')));
+      }) : h('div', { class: 'empty' }, T.t('dash.noPrevSessions','No previous sessions'))));
 }
 
 
@@ -30042,8 +30190,8 @@ function rawHtmlModule(str) { const d = h('div'); d.innerHTML = str; return d; }
 try { window.Chart = Object.assign({}, Chart, window.Chart || {}); } catch (e) { window.Chart = Chart; }
 window.Dash = Dash;
 /* v2.6 QA — testability: ye functions IIFE ke andar hain, is liye QA harness
-   (tools/_probe / future tests) unhein call nahi kar sakte. Is codebase ka
-   apna pattern (window.UI2 = UI2) follow kar ke expose karte hain. */
+   * (tools/_probe / future tests) unhein call nahi kar sakte. Is codebase ka
+   * apna pattern (window.UI2 = UI2) follow kar ke expose karte hain. */
 window.HA_DayReport = {
   historyCard: function () { return shopDayReportCard(); },
   html: function (r) { return dayReportHtml(r); },

@@ -1,12 +1,12 @@
 <script>
 /* ==========================================================================
-   HASEEB AUTOS — ACCOUNTING (v2.5)
-   Proper accounting page: Overview · Transactions · Expenses · Accounts ·
-   Banks (reconciliation) · Reports (Trial balance / P&L / Balance sheet /
-   Cash book / Bank book / Ledger)
-   — sab kuch backend Accounting.gs se aata hai, yahan koi hisaab hardcode nahi
-   — bottom scroll nahi: tables apne panel mein scroll hoti hain, entry modal/offcanvas
-   ========================================================================== */
+   * HASEEB AUTOS — ACCOUNTING (v2.5)
+   * Proper accounting page: Overview · Transactions · Expenses · Accounts ·
+   * Banks (reconciliation) · Reports (Trial balance / P&L / Balance sheet /
+   * Cash book / Bank book / Ledger)
+   * — sab kuch backend Accounting.gs se aata hai, yahan koi hisaab hardcode nahi
+   * — bottom scroll nahi: tables apne panel mein scroll hoti hain, entry modal/offcanvas
+   * ========================================================================== */
 
 App.registerScreen('accounting', {
   title: 'Accounting', icon: '📒', perm: 'reports.financial',
@@ -38,7 +38,7 @@ App.registerScreen('accounting', {
 /* --------------------------- Wallets (gateway) ---------------------------- */
 function accWallets(c) {
   if (typeof WalletUI === 'undefined') {
-    c.appendChild(h('div', { class: 'empty' }, 'Wallet component load nahi hua')); return;
+    c.appendChild(h('div', { class: 'empty' }, T.t('acc.walletFail','Wallet component failed to load'))); return;
   }
   c.appendChild(h('div', { class: 'muted', style: { fontSize: 'var(--fs-xs)', marginBottom: '8px' } },
     'EasyPaisa / JazzCash wallet requests — status, payer (from) aur merchant (to) numbers.'));
@@ -73,7 +73,7 @@ function accRangeBar(onChange) {
   return { el, values };
 }
 
-function accEmpty(msg) { return h('div', { class: 'empty' }, msg || 'Koi data nahi'); }
+function accEmpty(msg) { return h('div', { class: 'empty' }, msg || T.t('acc.noData','No data')); }
 function accLoading() { return h('div', { class: 'empty' }, 'Load ho raha hai…'); }
 function money(v) { return fmt.money(Number(v) || 0); }
 function signed(v) {
@@ -96,13 +96,13 @@ async function accOverview(c) {
       API.call('accounting.trialBalance', {}, { offlineFallback: () => null })
     ]);
   } catch (e) { c.innerHTML = ''; c.appendChild(accEmpty('⚠ ' + e.message)); return; }
-  if (!d) { c.innerHTML = ''; c.appendChild(accEmpty('Accounting dashboard load nahi hua')); return; }
+  if (!d) { c.innerHTML = ''; c.appendChild(accEmpty(T.t('acc.dashFail','Accounting dashboard failed to load'))); return; }
   c.innerHTML = '';
 
   c.appendChild(UI2.kpiGrid([
     { icon: '💵', label: 'Cash in hand', value: money(d.cashInHand), sub: 'Cash accounts', cls: 'ok' },
     { icon: '🏦', label: 'Bank balance', value: money(d.bankBalance), sub: 'Bank accounts', cls: 'info' },
-    { icon: '📥', label: 'Receivables (udhaar)', value: money(d.receivables), sub: 'Customers', cls: 'warn' },
+    { icon: '📥', label: T.t('acc.receivables','Receivables (credit)'), value: money(d.receivables), sub: 'Customers', cls: 'warn' },
     { icon: '📤', label: 'Payables', value: money(d.payables), sub: 'Suppliers', cls: 'err' },
     { icon: '📦', label: 'Stock value', value: money(d.stockValue), sub: 'At average cost', cls: 'brand' },
     { icon: '⚖', label: 'Net worth', value: money(d.netWorth), sub: 'Cash + bank + AR + stock − AP', cls: 'ok' },
@@ -144,8 +144,8 @@ async function accOverview(c) {
           { key: 'creditAccounts', label: 'Credit' },
           { key: 'totalDebit', label: 'Amount', num: true, render: r => money(r.totalDebit) }
         ], onRow: r => voucherDetail(r.id)
-      }) : accEmpty('Abhi koi voucher nahi — upar "New voucher" se shuru karein'));
-    }).catch(() => recentHost.appendChild(accEmpty('Vouchers load nahi hue')));
+      }) : accEmpty(T.t('acc.noVouchersYet','No vouchers yet — start with "New voucher" above')));
+    }).catch(() => recentHost.appendChild(accEmpty(T.t('acc.vouchersFail','Vouchers failed to load'))));
 }
 
 /* =========================== 2. TRANSACTIONS ============================== */
@@ -188,7 +188,7 @@ async function accDayBook(c) {
           { key: 'narration', label: 'Narration' },
           { key: 'status', label: 'Status', render: r => h('span', { class: 'badge ' + (r.status === 'VOID' ? 'err' : 'ok') }, r.status) }
         ], onRow: r => voucherDetail(r.id)
-      }) : accEmpty('Is range mein koi voucher nahi'));
+      }) : accEmpty(T.t('acc.noVouchers','No vouchers in this range')));
     } catch (e) { host.innerHTML = ''; host.appendChild(accEmpty('⚠ ' + e.message)); }
   }
   load();
@@ -198,7 +198,7 @@ async function voucherDetail(id) {
   let v = null;
   try { v = await API.call('journal.get', { id }, { offlineFallback: () => null }); }
   catch (e) { return UI.toast(e.message, 'err'); }
-  if (!v) return UI.toast('Voucher load nahi hua', 'warn');
+  if (!v) return UI.toast(T.t('acc.voucherFail','Voucher failed to load'), 'warn');
   const body = h('div', null,
     h('div', { class: 'po-meta' },
       h('span', null, 'Voucher: ' + v.voucherNo),
@@ -225,7 +225,7 @@ async function voucherDetail(id) {
     actions: [
       App.can('settings.manage') && v.status !== 'VOID'
         ? { label: 'Void', cls: 'danger', onClick: async cc => {
-            if (!(await UI2.confirm('Ye voucher void karein? Balance se hat jayega.', null, true))) return;
+            if (!(await UI2.confirm(T.t('acc.voidConfirm','Void this voucher? It will be removed from the balance.'), null, true))) return;
             try { await API.call('journal.void', { id }); UI.toast('Voided', 'ok'); cc(); App.refresh(); }
             catch (e) { UI.toast(e.message, 'err'); }
           } } : null,
@@ -275,7 +275,7 @@ function voucherForm(preset, onDone) {
   function paintLines() {
     addRow.innerHTML = '';
     lines.forEach(l => addRow.appendChild(newLineRow(l)));
-    if (!lines.length) addRow.appendChild(h('div', { class: 'tbl-empty' }, 'Line add karein'));
+    if (!lines.length) addRow.appendChild(h('div', { class: 'tbl-empty' }, T.t('acc.addLine','Add a line')));
     totals();
   }
   function totals() {
@@ -316,8 +316,8 @@ function voucherForm(preset, onDone) {
       label: 'Post voucher', cls: 'ok', onClick: async cc => {
         const { td, diff } = totals();
         if (lines.length < 2) return UI.toast('Kam az kam 2 lines chahiye', 'err');
-        if (Math.abs(diff) > 0.009) return UI.toast('Debit aur credit barabar nahi (farq ' + money(diff) + ')', 'err');
-        if (!td) return UI.toast('Amount darj karein', 'err');
+        if (Math.abs(diff) > 0.009) return UI.toast(T.t('acc.unbalanced','Debit and credit are not equal (difference ') + money(diff) + ')', 'err');
+        if (!td) return UI.toast(T.t('acc.enterAmount','Enter the amount'), 'err');
         try {
           await API.call('journal.post', {
             date: dateInp.value, type: typeSel.value, narration: narr.value,
@@ -368,7 +368,7 @@ async function accountLedger(accountId) {
       const led = await API.call('accounting.ledger',
         Object.assign({ accountId }, rb.values()), { offlineFallback: () => null });
       host.innerHTML = '';
-      if (!led) { host.appendChild(accEmpty('Ledger load nahi hua')); return; }
+      if (!led) { host.appendChild(accEmpty(T.t('acc.ledgerFail','Ledger failed to load'))); return; }
       host.appendChild(h('div', { class: 'party-bal' },
         h('div', { class: 'pb-row' }, h('span', null, 'Account'), h('b', null, led.account.code + ' — ' + led.account.name)),
         h('div', { class: 'pb-row' }, h('span', null, 'Opening'), h('b', null, money(led.opening))),
@@ -386,7 +386,7 @@ async function accountLedger(accountId) {
           { key: 'credit', label: 'Credit', num: true, render: r => r.credit ? money(r.credit) : '—' },
           { key: 'balance', label: 'Balance', num: true, render: r => signed(r.balance) }
         ], onRow: r => voucherDetail(r.journalId)
-      }) : accEmpty('Is range mein koi entry nahi'));
+      }) : accEmpty(T.t('acc.noEntries','No entries in this range')));
     } catch (e) { host.innerHTML = ''; host.appendChild(accEmpty('⚠ ' + e.message)); }
   }
   load();
@@ -447,7 +447,7 @@ async function accExpenses(c) {
           h('button', { class: 'btn sm ok',
             onclick: ev => UI.run(ev.currentTarget, async () => {
             /* W7 (v2.26.0) — pehle N alag calls (20 pending = ~1 minute). Ab EK batch request.
-               Purana backend ho (batch na ho) to API.parallel fallback (4 at a time). */
+               * Purana backend ho (batch na ho) to API.parallel fallback (4 at a time). */
             const ids = pending.map(e => e.id);
             let done = 0;
             try {
@@ -459,7 +459,7 @@ async function accExpenses(c) {
             }
             UI.toast(done + ' expenses approve ho gayeen ✅', 'ok'); load(); App.refresh();
             return done;
-          }, { busyLabel: 'Approve ho rahe hain', write: true, writeLabel: 'bulk approve' }) }, 'Sab approve karein')));
+          }, { busyLabel: 'Approve ho rahe hain', write: true, writeLabel: 'bulk approve' }) }, T.t('acc.approveAll','Approve all'))));
       }
       host.appendChild(h('div', { style: { marginTop: '10px' } }, list.length ? UI2.table({
         screen: 'acc_expenses', rows: list, height: '46vh', exportName: 'expenses',
@@ -488,7 +488,7 @@ async function accExpenses(c) {
           r.attachmentUrl ? { icon: '📎', label: 'Attachment', onClick: () => window.open(r.attachmentUrl, '_blank') } : null
         ].filter(Boolean),
         onRow: r => expenseDetail(r, load)
-      }) : accEmpty('Is range mein koi expense nahi')));
+      }) : accEmpty(T.t('acc.noExpenses','No expenses in this range'))));
 
       /* category breakdown — accounting heads ke sath */
       const cats = Object.keys(byCat).map(k => ({ category: k, amount: byCat[k] }))
@@ -542,7 +542,7 @@ async function expenseForm2(onDone) {
     actions: [{
       label: 'Save expense', cls: 'ok', onClick: async c => {
         const v = f.values();
-        if (!(Number(v.amount) > 0)) return UI.toast('Amount darj karein', 'err');
+        if (!(Number(v.amount) > 0)) return UI.toast(T.t('acc.enterAmount','Enter the amount'), 'err');
         try {
           await API.call('expenses.create', { expense: v });
           UI.toast('Expense saved ✅ (voucher auto-posted)', 'ok');
@@ -578,7 +578,7 @@ async function expenseDetail(e, onDone) {
       h('div', { class: 'f-col full' }, h('span', null, 'Note'), h('div', { class: 'sub' }, e.notes || '—')),
       e.attachmentUrl ? h('div', { class: 'f-col full' },
         h('span', null, 'Attachment'),
-        h('a', { class: 'btn sm sec', href: e.attachmentUrl, target: '_blank', rel: 'noopener' }, '📎 Attachment kholein')) : '')
+        h('a', { class: 'btn sm sec', href: e.attachmentUrl, target: '_blank', rel: 'noopener' }, T.t('acc.openAttachment','📎 Open attachment'))) : '')
     )
   });
 }
@@ -659,7 +659,7 @@ function accountForm(acc, onDone) {
       { key: 'isCash', label: 'Cash account', type: 'switch' },
       { key: 'isBank', label: 'Bank account', type: 'switch' },
       /* v2.30.0 (N10) — DATA-AWARE: bank fields sirf tab (BANK type ya isBank ON);
-         fields chhupte hain, HOTE hain — koi feature nahi jata. */
+         * fields chhupte hain, HOTE hain — koi feature nahi jata. */
       { key: 'bankName', label: 'Bank name',
         showWhen: v => v.isBank === true || v.isBank === 'true' || v.type === 'BANK' },
       { key: 'accountNo', label: 'Account / IBAN no.',
@@ -672,7 +672,7 @@ function accountForm(acc, onDone) {
     actions: [{
       label: 'Save', cls: 'ok', onClick: async c => {
         const v = f.values();
-        if (!v.name) return UI.toast('Naam zaroori hai', 'err');
+        if (!v.name) return UI.toast(T.t('acc.nameReq','Name is required'), 'err');
         try {
           await API.call('accounts.save', Object.assign({}, v, acc ? { id: acc.id } : {}));
           UI.toast('Account saved ✅', 'ok'); c(); App.refresh(); onDone && onDone();
@@ -692,7 +692,7 @@ async function accBanks(c) {
   catch (e) { host.appendChild(accEmpty('⚠ ' + e.message)); return; }
   const banks = accounts.filter(a => a.isBank);
   host.innerHTML = '';
-  if (!banks.length) { host.appendChild(accEmpty('Koi bank account nahi — Chart of accounts mein banayein')); return; }
+  if (!banks.length) { host.appendChild(accEmpty(T.t('acc.noBank','No bank account — create one in Chart of accounts'))); return; }
 
   host.appendChild(UI2.kpiGrid(banks.map(b => ({
     icon: '🏦', label: b.name, value: money(b.displayBalance),
@@ -725,7 +725,7 @@ async function bankBookTab(c, banks) {
       const b = await API.call('accounting.bankBook',
         Object.assign({ accountId: sel.value }, rb.values()), { offlineFallback: () => null });
       host.innerHTML = '';
-      if (!b) { host.appendChild(accEmpty('Bank book load nahi hua')); return; }
+      if (!b) { host.appendChild(accEmpty(T.t('acc.bankBookFail','Bank book failed to load'))); return; }
       host.appendChild(h('div', { class: 'party-bal' },
         h('div', { class: 'pb-row' }, h('span', null, 'Account'), h('b', null, b.accountName)),
         h('div', { class: 'pb-row' }, h('span', null, 'Opening'), h('b', null, money(b.opening))),
@@ -743,7 +743,7 @@ async function bankBookTab(c, banks) {
           { key: 'credit', label: 'Out', num: true, render: r => r.credit ? money(r.credit) : '—' },
           { key: 'balance', label: 'Balance', num: true, render: r => signed(r.balance) }
         ], onRow: r => voucherDetail(r.journalId)
-      }) : accEmpty('Is range mein koi bank entry nahi'));
+      }) : accEmpty(T.t('acc.noBankEntries','No bank entries in this range')));
     } catch (e) { host.innerHTML = ''; host.appendChild(accEmpty('⚠ ' + e.message)); }
   }
   load();
@@ -797,7 +797,7 @@ async function bankReconTab(c, banks) {
             API.call('bank.recon.clear', { ids: [r.id], cleared: !r.cleared }).then(() => load());
           } }, r.cleared ? 'Un-clear' : 'Clear') }
         ]
-      }) : accEmpty('Koi statement import nahi hua — "Import statement" dabayein'));
+      }) : accEmpty(T.t('acc.noStmtImport','No statements imported — tap "Import statement"')));
     } catch (e) { host.innerHTML = ''; host.appendChild(accEmpty('⚠ ' + e.message)); }
   }
   load();
@@ -809,7 +809,7 @@ function reconImport(bankAccountId, onDone) {
   UI2.modal({
     title: '📥 Bank statement import', size: 'md',
     body: h('div', null,
-      h('div', { class: 'hint' }, 'CSV paste karein: date, reference, amount, direction (IN/OUT). Negative amount = OUT.'),
+      h('div', { class: 'hint' }, T.t('acc.csvPasteHint','Paste CSV: date, reference, amount, direction (IN/OUT). Negative amount = OUT.')),
       ta),
     actions: [{
       label: 'Import', cls: 'ok', onClick: async c => {
@@ -817,7 +817,7 @@ function reconImport(bankAccountId, onDone) {
           const p = l.split(',').map(x => x.trim());
           return { date: p[0], reference: p[1] || '', amount: Number(p[2]) || 0, direction: (p[3] || '').toUpperCase() };
         }).filter(r => r.amount);
-        if (!rows.length) return UI.toast('Koi valid line nahi', 'err');
+        if (!rows.length) return UI.toast(T.t('acc.noValidLines','No valid lines'), 'err');
         try {
           const r = await API.call('bank.recon.import', { bankAccountId, rows });
           UI.toast(r.added + ' lines import hue', 'ok'); c(); onDone && onDone();
@@ -854,7 +854,7 @@ async function reportTB(c) {
     try {
       const tb = await API.call('accounting.trialBalance', { asOf: asOf.value }, { offlineFallback: () => null });
       host.innerHTML = '';
-      if (!tb) { host.appendChild(accEmpty('Trial balance load nahi hui')); return; }
+      if (!tb) { host.appendChild(accEmpty(T.t('acc.tbFail','Trial balance failed to load'))); return; }
       host.appendChild(h('div', { class: 'party-bal' },
         h('div', { class: 'pb-row' }, h('span', null, 'Total debits'), h('b', null, money(tb.totalDebit))),
         h('div', { class: 'pb-row' }, h('span', null, 'Total credits'), h('b', null, money(tb.totalCredit))),
@@ -869,7 +869,7 @@ async function reportTB(c) {
           { key: 'debit', label: 'Debit', num: true, render: r => r.debit ? money(r.debit) : '—' },
           { key: 'credit', label: 'Credit', num: true, render: r => r.credit ? money(r.credit) : '—' }
         ]
-      }) : accEmpty('Koi balance nahi'));
+      }) : accEmpty(T.t('acc.noBalances','No balances')));
     } catch (e) { host.innerHTML = ''; host.appendChild(accEmpty('⚠ ' + e.message)); }
   }
   load();
@@ -885,7 +885,7 @@ async function reportPL(c) {
     try {
       const pl = await API.call('accounting.profitLoss', rb.values(), { offlineFallback: () => null });
       host.innerHTML = '';
-      if (!pl) { host.appendChild(accEmpty('P&L load nahi hua')); return; }
+      if (!pl) { host.appendChild(accEmpty(T.t('acc.plFail','P&L failed to load'))); return; }
       host.appendChild(UI2.kpiGrid([
         { icon: '📈', label: 'Total income', value: money(pl.totalIncome), cls: 'ok' },
         { icon: '📦', label: 'Cost of goods', value: money(pl.cogs), cls: 'warn' },
@@ -903,7 +903,7 @@ async function reportPL(c) {
             { key: 'name', label: 'Head' },
             { key: 'amount', label: 'Amount', num: true, render: r => money(r.amount) }
           ]
-        }) : accEmpty('Koi entry nahi')),
+        }) : accEmpty(T.t('acc.noEntriesShort','No entries'))),
         h('div', { class: 'tot-row grand' }, h('span', null, 'Total ' + title.toLowerCase()),
           h('span', { class: cls }, money(total))));
 
@@ -933,7 +933,7 @@ async function reportBS(c) {
     try {
       const bs = await API.call('accounting.balanceSheet', { asOf: asOf.value }, { offlineFallback: () => null });
       host.innerHTML = '';
-      if (!bs) { host.appendChild(accEmpty('Balance sheet load nahi hui')); return; }
+      if (!bs) { host.appendChild(accEmpty(T.t('acc.bsFail','Balance sheet failed to load'))); return; }
       host.appendChild(h('div', { class: 'party-bal' },
         h('div', { class: 'pb-row' }, h('span', null, 'Total assets'), h('b', null, money(bs.totalAssets))),
         h('div', { class: 'pb-row' }, h('span', null, 'Liabilities'), h('b', null, money(bs.totalLiabilities))),
@@ -952,7 +952,7 @@ async function reportBS(c) {
             { key: 'name', label: 'Head' },
             { key: 'amount', label: 'Amount', num: true, render: r => signed(r.amount) }
           ]
-        }) : accEmpty('Koi entry nahi')),
+        }) : accEmpty(T.t('acc.noEntriesShort','No entries'))),
         h('div', { class: 'tot-row grand' }, h('span', null, 'Total'), h('span', null, money(total))));
 
       c.appendChild(block('Assets', bs.assets, bs.totalAssets));
@@ -973,7 +973,7 @@ async function reportCash(c) {
     try {
       const b = await API.call('accounting.cashBook', rb.values(), { offlineFallback: () => null });
       host.innerHTML = '';
-      if (!b) { host.appendChild(accEmpty('Cash book load nahi hua')); return; }
+      if (!b) { host.appendChild(accEmpty(T.t('acc.cashBookFail','Cash book failed to load'))); return; }
       host.appendChild(UI2.kpiGrid([
         { icon: '🔓', label: 'Opening', value: money(b.opening), cls: 'info' },
         { icon: '📥', label: 'Receipts', value: money(b.receipts), cls: 'ok' },
@@ -991,7 +991,7 @@ async function reportCash(c) {
           { key: 'credit', label: 'Out', num: true, render: r => r.credit ? money(r.credit) : '—' },
           { key: 'balance', label: 'Balance', num: true, render: r => signed(r.balance) }
         ], onRow: r => voucherDetail(r.journalId)
-      }) : accEmpty('Is range mein koi cash movement nahi'));
+      }) : accEmpty(T.t('acc.noCashMoves','No cash movements in this range')));
     } catch (e) { host.innerHTML = ''; host.appendChild(accEmpty('⚠ ' + e.message)); }
   }
   load();
@@ -1004,7 +1004,7 @@ async function reportLedgerPick(c) {
   c.appendChild(h('div', { class: 'card' },
     h('div', { class: 'card-body' },
       h('div', { class: 'hint', style: { marginBottom: '8px' } },
-        'Koi bhi account chunein — uska ledger (opening → entries → closing) popup mein khulega.'),
+        T.t('acc.ledgerHint','Pick any account — its ledger (opening → entries → closing) opens in a popup.')),
       UI2.table({
         screen: 'acc_ledger_pick', rows: rows || [], height: '52vh', exportName: 'accounts',
         columns: [
@@ -1020,13 +1020,13 @@ async function reportLedgerPick(c) {
 
 function backfillDialog() {
   UI2.modal({
-    title: '🧮 Purane documents se vouchers banayein', size: 'sm',
+    title: T.t('acc.vouchersFromDocs','🧮 Create vouchers from old documents'), size: 'sm',
     body: h('div', null,
       h('p', { style: { fontSize: 'var(--fs-sm)', color: 'var(--muted)' } },
-        'Jo sales, GRN, payments aur expenses pehle banaye gaye the aur unka voucher nahi bana, ' +
-        'un sab ke liye abhi vouchers ban jayenge. Ye ek baar ka kaam hai — dobara chalane par ' +
-        'kuch nahi badlega (har document ka sirf ek voucher banta hai).'),
-      h('div', { class: 'hint' }, 'Sale → Dr Cash/Bank + Dr Udhaar, Cr Sales · GRN → Dr Purchase, Cr Supplier · ' +
+        T.t('acc.vfdIntro','Sales, GRNs, payments and expenses created earlier that have no voucher yet — ') +
+        T.t('acc.vfdMid','vouchers will now be created for all of them. This is a one-time job — re-running it ') +
+        T.t('acc.vfdEnd','changes nothing (each document gets only one voucher).')),
+      h('div', { class: 'hint' }, T.t('acc.vfdRule','Sale → Dr Cash/Bank + Dr Credit, Cr Sales · GRN → Dr Purchase, Cr Supplier · ') +
         'Payment → Dr Supplier / Cr Cash · Expense → Dr Expense head, Cr Cash')),
     actions: [{
       label: 'Backfill now', cls: 'ok', onClick: async c => {

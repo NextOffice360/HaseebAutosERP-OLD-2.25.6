@@ -94,4 +94,5 @@ Comms WhatsApp, App_Print designer, UI2.table). Har slice ke baad: build + gates
 - [x] **D14** designer deep-DOM gate (tools/test_doc_designer.js 10/0; verify: doc-designer) — mock schema-defs drift fix bonus
 - [x] **QR emitters**: receipt (App_Core) → HA:INV; resolver legacy INV-kv back-compat (App_QR)
 - [x] QR emitter switches: receipt (App_Core) ✓ · App_Print JSON ✓ (pehle se HA:INV) · App_Barcode ITM ✓ + A2 label KV → HA:INV (r10) — SAARE doc-QR emitters ab HA: standard; legacy payloads resolver back-compat se khulte hain. App_PwaHub url-QR = link payload (doc-code nahi) — N/A
-- [ ] audit_qr_payloads ko resolve-check gate banana (har emitter payload → resolveCode OK) — r11 candidate
+- [x] audit_qr_payloads ab GATE (v2.30.9 r11): 8 sites — 4 HA, exceptions documented (registry r.qr ×2, PwaHub link-url, DAYREP session-JSON)
+- [ ] DAYREP session-QR ko resolvable banana (resolveCode DAYREP branch ya HA:DOC register) — r12 candidate

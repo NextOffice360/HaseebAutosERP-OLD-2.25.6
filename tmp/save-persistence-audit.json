@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-09-25T01:41:28.159Z",
-  "uiSites": 72,
+  "generatedAt": "2026-09-25T11:51:23.859Z",
+  "uiSites": 74,
   "toggles": [
     {
       "file": "App_AIConfig.html",
@@ -99,7 +99,7 @@
       "checkbox": 1
     }
   ],
-  "routesTotal": 259,
+  "routesTotal": 267,
   "writeRoutes": [
     {
       "route": "accounts.save",
@@ -208,6 +208,11 @@
     },
     {
       "route": "demand.update",
+      "cls": "TXN-SESSION-OK",
+      "persisted": false
+    },
+    {
+      "route": "docs.registry.save",
       "cls": "TXN-SESSION-OK",
       "persisted": false
     },

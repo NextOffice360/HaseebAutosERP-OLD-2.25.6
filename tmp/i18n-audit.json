@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-09-25T11:37:50.678Z",
-  "totalHits": 732,
-  "totalTt": 199,
+  "generatedAt": "2026-09-25T11:54:43.822Z",
+  "totalHits": 615,
+  "totalTt": 317,
   "files": [
     {
       "file": "App_Core.html",
@@ -61,44 +61,6 @@
       ]
     },
     {
-      "file": "App_Dashboards.html",
-      "tt": 6,
-      "hits": 47,
-      "samples": [
-        {
-          "line": 301,
-          "text": "UI.kpi('📒', 'Udhaar (receivable)', fmt.moneyCompact(k.receivables), (k.pendingDue ? 'Due "
-        },
-        {
-          "line": 382,
-          "text": ": h('div', { class: 'tbl-empty' }, 'Is range me koi sale nahi')));"
-        },
-        {
-          "line": 411,
-          "text": "{ pct: recovery, label: 'Udhaar recovery', sub: fmt.money(recvPaid) + ' / ' + fmt.money(re"
-        }
-      ]
-    },
-    {
-      "file": "App_Config.html",
-      "tt": 0,
-      "hits": 44,
-      "samples": [
-        {
-          "line": 22,
-          "text": "if (!pack.count) { UI.toast('Koi unsaved tabdeeli nahi — sab mehfooz hai', 'warn'); return"
-        },
-        {
-          "line": 101,
-          "text": "Rang backend se (Config.gs group ka `tint`) — yahan koi duplicate list nahi. */"
-        },
-        {
-          "line": 114,
-          "text": "LOGO UPLOAD (v2.6 QA) — \"shop ka Logo add karnay ki bhi option nahi hay\""
-        }
-      ]
-    },
-    {
       "file": "Pwa_Shell.html",
       "tt": 0,
       "hits": 42,
@@ -133,25 +95,6 @@
         {
           "line": 110,
           "text": "else if(lst.length>1){ PWA.toast(lst.length+' matches — list se chunein','warn'); input.fo"
-        }
-      ]
-    },
-    {
-      "file": "App_Accounting.html",
-      "tt": 0,
-      "hits": 39,
-      "samples": [
-        {
-          "line": 41,
-          "text": "c.appendChild(h('div', { class: 'empty' }, 'Wallet component load nahi hua')); return;"
-        },
-        {
-          "line": 76,
-          "text": "function accEmpty(msg) { return h('div', { class: 'empty' }, msg || 'Koi data nahi'); }"
-        },
-        {
-          "line": 99,
-          "text": "if (!d) { c.innerHTML = ''; c.appendChild(accEmpty('Accounting dashboard load nahi hua'));"
         }
       ]
     },
@@ -441,6 +384,25 @@
       ]
     },
     {
+      "file": "App_Config.html",
+      "tt": 35,
+      "hits": 9,
+      "samples": [
+        {
+          "line": 101,
+          "text": "Rang backend se (Config.gs group ka `tint`) — yahan koi duplicate list nahi. */"
+        },
+        {
+          "line": 114,
+          "text": "LOGO UPLOAD (v2.6 QA) — \"shop ka Logo add karnay ki bhi option nahi hay\""
+        },
+        {
+          "line": 116,
+          "text": "Pehle sirf `logoUrl` text field tha (URL paste karna parta tha)."
+        }
+      ]
+    },
+    {
       "file": "App_Screens.html",
       "tt": 0,
       "hits": 9,
@@ -589,6 +551,25 @@
         {
           "line": 72,
           "text": "{ offlineFallback: () => ({ reply: '📴 Offline hoon — internet aane par dobara poochiye. ("
+        }
+      ]
+    },
+    {
+      "file": "App_Dashboards.html",
+      "tt": 50,
+      "hits": 4,
+      "samples": [
+        {
+          "line": 1109,
+          "text": "{ k: T.t('dash.creditGiven','Credit (given)'), v: fmt.money(sl.udhaar || 0) },"
+        },
+        {
+          "line": 1279,
+          "text": "'<div class=\"kpi\"><span>Udhaar (credit)</span><b class=\"warn\">' + m((r.sales || {}).udhaar"
+        },
+        {
+          "line": 1445,
+          "text": "UI.toast('Server PDF unavailable — print dialog se \"Save as PDF\" chunein', 'warn', 3200);"
         }
       ]
     },

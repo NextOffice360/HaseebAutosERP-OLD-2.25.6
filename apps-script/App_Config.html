@@ -19,7 +19,7 @@
    ========================================================================== */
 async function configSaveAllNow() {
   const pack = UI2.dirtyPayload();
-  if (!pack.count) { UI.toast('Koi unsaved tabdeeli nahi — sab mehfooz hai', 'warn'); return { saved: 0 }; }
+  if (!pack.count) { UI.toast(T.t('cfg.noUnsaved','No unsaved changes — everything is saved'), 'warn'); return { saved: 0 }; }
   await API.call('config.save', { values: pack.values });
   UI2.clearAllDirty();
   UI.toast(pack.count + ' settings save ho gayin (' + pack.forms + ' section)', 'ok', 3600);
@@ -133,7 +133,7 @@ function businessLogoBar() {
         const r = await API.call('media.uploadLogo', { data: dataUrl, mime: 'image/jpeg' });
         App.state.settings.logoUrl = r.url;
         status.textContent = '✅ Logo lag gaya';
-        UI.toast('Logo upload ho gaya ✅', 'ok');
+        UI.toast(T.t('cfg.logoDone','Logo uploaded ✅'), 'ok');
         const img = host.querySelector('[data-logo-img]');
         if (img) img.src = r.url;
       } catch (e) {
@@ -152,7 +152,7 @@ function businessLogoBar() {
           ? h('img', { 'data-logo-img': '1', src: cur, alt: 'Shop logo', loading: 'lazy', decoding: 'async',
               style: { width: '76px', height: '76px', objectFit: 'contain', borderRadius: '12px',
                        border: '1px solid var(--line)', background: 'var(--panel-2)', padding: '5px' } })
-          : h('div', { class: 'empty', style: { minWidth: '76px', textAlign: 'center' } }, '🖼 Koi logo nahi'),
+          : h('div', { class: 'empty', style: { minWidth: '76px', textAlign: 'center' } }, T.t('cfg.noLogo','🖼 No logo')),
         h('div', { class: 'row', style: { gap: '8px', flexWrap: 'wrap' } },
           h('button', { class: 'btn sm sec', onclick: () => pick.click() }, '📁 File se logo'),
           h('button', { class: 'btn sm sec', onclick: () => cam.click() }, '📷 Camera se'),
@@ -191,7 +191,7 @@ function buildSections(fields) {
        ki mojooda values se foran update hota hai. */
     if (ch.fields.some(x => x.key === 'dt.format') && window.DT) {
       const pv = h('div', { class: 'ui2-block', style: { padding: '10px 12px', border: '1.5px dashed var(--line)', borderRadius: '10px', margin: '4px 0 12px', fontSize: 'var(--fs-sm)' } },
-        h('div', { style: { fontWeight: '700', marginBottom: '6px' } }, '👁 Zinda preview ', h('span', { style: { fontWeight: '400', color: 'var(--muted)' } }, '(poori app aise hi dikhaye gi — save ki zaroorat nahi)')));
+        h('div', { style: { fontWeight: '700', marginBottom: '6px' } }, '👁 Zinda preview ', h('span', { style: { fontWeight: '400', color: 'var(--muted)' } }, T.t('cfg.livePreviewHint','(the whole app will look like this — no save needed)'))));
       const row = (lab, mode) => h('div', { style: { display: 'flex', gap: '8px', padding: '2px 0' } },
         h('span', { style: { color: 'var(--muted)', minWidth: '86px' } }, lab),
         h('b', { 'data-dtpv': mode, style: { fontVariantNumeric: 'tabular-nums' } }, '—'));
@@ -294,7 +294,7 @@ function buildSections(fields) {
 /* ============================ CONFIG GROUPS ================================ */
 function renderGroup(c, groupId) {
   const g = DEFS.find(x => x.id === groupId);
-  if (!g) { c.appendChild(h('div', { class: 'empty' }, 'Schema load nahi hua — backend deploy check karein')); return; }
+  if (!g) { c.appendChild(h('div', { class: 'empty' }, T.t('cfg.schemaFail','Schema failed to load — check the backend deploy'))); return; }
   const host = h('div'); c.appendChild(host);
   if (groupId === 'backend') {
     // top diagnostics/status card for Backend & Integrations
@@ -375,10 +375,10 @@ function renderSub(c, groupId, sub) {
      render/stale/legacy farq ki wajah se purani settings default par reset ho jati thin. */
   const saveBtn = h('button', { class: 'btn ok', onclick: () => UI.run(saveBtn, async () => {
       const payload = f.changed ? f.changed() : f.values();
-      if (!Object.keys(payload).length) { UI.toast('Koi tabdeeli nahi — sab pehle se save hai', 'warn'); return; }
+      if (!Object.keys(payload).length) { UI.toast(T.t('cfg.noChanges','No changes — everything is already saved'), 'warn'); return; }
       try {
         await API.call('config.save', { values: payload });
-        UI.toast(Object.keys(payload).length + ' setting save ho gayi ✅', 'ok');
+        UI.toast(Object.keys(payload).length + T.t('cfg.savedCount',' setting(s) saved ✅'), 'ok');
         dirty.style.display = 'none';
         if (f.clearDirty) f.clearDirty();
         App._noDirtyGuard = true;
@@ -387,8 +387,8 @@ function renderSub(c, groupId, sub) {
         App._noDirtyGuard = true;
         try { App.refresh(); } finally { App._noDirtyGuard = false; }
       } catch (e) {
-        UI.toast('Save nahi hua: ' + (e.message || ''), 'err', 5000);
-        UI2.retryToast && UI2.retryToast('Save nahi hua', e.message, () => {
+        UI.toast(T.t('cfg.saveFail','Could not save: ') + (e.message || ''), 'err', 5000);
+        UI2.retryToast && UI2.retryToast(T.t('cfg.saveFailShort','Could not save'), e.message, () => {
           try { saveBtn.click(); } catch (err) { }
         });
       }
@@ -397,7 +397,7 @@ function renderSub(c, groupId, sub) {
   c.appendChild(wrap);
   c.appendChild(h('div', { class: 'cfg-bar' },
     saveBtn,
-    h('button', { class: 'btn sec', onclick: () => UI2.confirm('Is tab ke defaults restore karein?', async () => {
+    h('button', { class: 'btn sec', onclick: () => UI2.confirm(T.t('cfg.restoreDefaults','Restore defaults for this tab?'), async () => {
       await API.call('config.resetGroup', { group: groupId });
       await API.pullSettings(); UI.toast('Defaults restored', 'ok'); App.refresh();
     }, true) }, '↺ Reset tab'),
@@ -440,7 +440,7 @@ function renderSub(c, groupId, sub) {
        h('button', { class: 'btn sm sec', onclick: async () => {
          const p = await API.call('migration.plan');
          const md = window.Migration2 ? Migration2.markdown(p) : JSON.stringify(p, null, 2);
-         navigator.clipboard && navigator.clipboard.writeText(md); UI.toast('Plan copy ho gaya', 'ok');
+         navigator.clipboard && navigator.clipboard.writeText(md); UI.toast(T.t('cfg.planCopied','Plan copied'), 'ok');
        } }, '📋 Copy plan (MD)')]));
     c.appendChild(migrationStatusCard());
   }
@@ -476,7 +476,7 @@ function commsStatusCard() {
       h('div', { class: 'list-item' }, h('div', { class: 'li-main' }, h('b', null, 'Email'),
         h('span', null, (em.provider || 'APPS_SCRIPT') + ' · ready'))),
       h('div', { class: 'sub', style: { padding: '6px 8px', fontSize: 'var(--fs-xs)' } },
-        'Free mode (LINK): koi API key nahi — wa.me link se WhatsApp khul jata hai. ' +
+        T.t('cfg.freeModeHint','Free mode (LINK): no API key — WhatsApp opens via a wa.me link. ') +
         'Automated sending chahiye to META Cloud API ya Twilio keys daalein.'));
   })();
   return host;
@@ -504,7 +504,7 @@ async function priceImportHistory() {
     body: h('div', null, ...(rows.length ? rows.map(r => h('div', { class: 'list-item' },
       h('div', { class: 'li-main' }, h('b', null, r.fileName || r.supplierName || 'import'),
         h('span', null, r.updated + ' updated · ' + r.created + ' new · ' + r.skipped + ' skipped · ' + fmt.date(r.date, true)))))
-      : [h('div', { class: 'empty' }, 'Abhi koi import nahi hua')])),
+      : [h('div', { class: 'empty' }, T.t('cfg.noImports','No imports yet'))])),
     actions: [{ label: 'Close', onClick: c => c() }] });
 }
 
@@ -522,7 +522,7 @@ async function loyaltyTopCustomers() {
           UI.toast('Adjusted', 'ok');
         });
       } }, 'Adjust')))
-      : [h('div', { class: 'empty' }, 'Koi points nahi mile')])),
+      : [h('div', { class: 'empty' }, T.t('cfg.noPoints','No points earned'))])),
     actions: [{ label: 'Close', onClick: c => c() }] });
 }
 
@@ -553,9 +553,9 @@ function jobsPanel() {
           'Deploy ke baad: Apps Script editor ▸ function installTriggers ▸ Run ▶')));
     } else if (!list.length) {
       body.appendChild(h('div', { class: 'empty' }, h('span', { class: 'big' }, '⏰'),
-        h('div', null, 'Koi job install nahi hai'),
+        h('div', null, T.t('cfg.noJobs','No jobs installed')),
         h('div', { style: { fontSize: 'var(--fs-xs)', color: 'var(--muted-2)', marginTop: '6px' } },
-          '“Install jobs” dabayein — phir Google authorization allow karein.')));
+          T.t('cfg.installJobsHint','Tap “Install jobs” — then allow Google authorization.'))));
     } else {
       body.appendChild(UI2.table({
         screen: 'jobs', height: 'auto', exportName: 'scheduled-jobs',
@@ -678,7 +678,7 @@ function cfForm(cf, after) {
     title: cf ? '✏ Custom field' : '＋ Naya custom field', size: 'lg', body: f.el,
     actions: [{ label: 'Save', cls: 'ok', onClick: async close => {
       const v = f.values();
-      if (!v.label) return UI.toast('Label zaroori hai', 'err');
+      if (!v.label) return UI.toast(T.t('cfg.labelReq','Label is required'), 'err');
       if (!v.key) v.key = 'cf_' + slugify(v.label);
       if (cf) v.id = cf.id;
       await API.call('config.fields.save', { field: v });
@@ -696,7 +696,7 @@ function renderMenu(c) {
     host.innerHTML = '';
     host.appendChild(UI2.section('Sidebar menu builder', [
       h('button', { class: 'btn sm', onclick: () => menuForm(null, () => App.refresh()) }, '＋ Add item'),
-      h('button', { class: 'btn sm sec', onclick: () => UI2.confirm('Default menu restore karein? Custom menu delete ho jayega.',
+      h('button', { class: 'btn sm sec', onclick: () => UI2.confirm(T.t('cfg.menuRestore','Restore the default menu? The custom menu will be deleted.'),
         async () => { await API.call('config.menu.reset', {}); UI.toast('Menu reset', 'ok'); App.refresh(); }, true) }, '↺ Reset')
     ]));
     host.appendChild(h('p', { style: { fontSize: 'var(--fs-sm)', color: 'var(--muted)', margin: '-4px 0 10px' } },
@@ -750,7 +750,7 @@ function menuForm(mi, after) {
     title: mi ? '✏ Menu item' : '＋ Menu item', size: 'sm', body: f.el,
     actions: [{ label: 'Save', cls: 'ok', onClick: async close => {
       const v = f.values();
-      if (!v.id || !v.label) return UI.toast('Screen id aur label zaroori hain', 'err');
+      if (!v.id || !v.label) return UI.toast(T.t('cfg.screenReq','Screen id and label are required'), 'err');
       await API.call('config.menu.save', { item: v });
       UI.toast('Saved ✅', 'ok'); close(); after && after();
     } }]
@@ -774,7 +774,7 @@ function renderTemplates(c) {
       [h('button', { class: 'btn sm', onclick: () => window.Print2 && Print2.designer('RECEIPT', null, () => load(hostEl)) }, '🎨 New receipt template'),
        h('button', { class: 'btn sm sec', onclick: () => window.Print2 && Print2.designer('LABEL', null, () => load(hostEl)) }, '🏷 New label template')]));
     hostEl.appendChild(h('div', { class: 'card' }, h('div', { class: 'card-body tight' },
-      rows.length ? '' : h('div', { class: 'empty' }, 'Koi template nahi — upar button se banayein'))));
+      rows.length ? '' : h('div', { class: 'empty' }, T.t('cfg.noTemplates','No templates — create one with the button above')))));
     if (!rows.length) return;
     const body = hostEl.querySelector('.card-body');
     rows.forEach(r => {
@@ -787,15 +787,15 @@ function renderTemplates(c) {
         h('button', { class: 'btn sm sec', title: 'JSON dekhein', onclick: () => UI2.modal({ title: r.name || 'Template', size: 'md',
           body: h('pre', { style: { fontSize: 'var(--fs-xs)', whiteSpace: 'pre-wrap' } }, JSON.stringify(cfg, null, 2)),
           actions: [{ label: 'Close', onClick: cc => cc() }] }) }, '{ }'),
-        h('button', { class: 'btn sm danger', title: 'Delete', onclick: () => UI2.confirm('Template delete karein?', async () => {
+        h('button', { class: 'btn sm danger', title: 'Delete', onclick: () => UI2.confirm(T.t('cfg.templateDeleteConfirm','Delete this template?'), async () => {
           /* v2.7 — pehle `.catch(() => {})` error chhupa deta tha aur hamesha
              "Deleted ✅" dikhta tha, chahe delete hua ho ya na ho. Ab asli
              natija check hota hai. */
           try {
             await API.call('config.templates.remove', { id: r.id });
-            UI.toast('Template delete ho gaya', 'ok');
+            UI.toast(T.t('cfg.templateDeleted','Template deleted'), 'ok');
           } catch (err) {
-            UI.toast('Delete fail: ' + (err && err.message ? err.message : 'dobara koshish karein'), 'err');
+            UI.toast('Delete fail: ' + (err && err.message ? err.message : T.t('cfg.retryTail',', please try again')), 'err');
           }
           load(hostEl);
         }, true) }, '🗑')));
@@ -867,7 +867,7 @@ function tplForm(t, after) {
       h('div', { class: 'f-hint' }, 'RECEIPT: showLogo, showBarcode, footer, showQr, paperWidth. LABEL: width(mm), height(mm), showPrice, showName, showBarcode, barcodeType')),
     actions: [{ label: 'Save', cls: 'ok', onClick: async close => {
       const v = f.values();
-      try { JSON.parse(json.value); } catch (e) { return UI.toast('JSON ghalat hai: ' + e.message, 'err'); }
+      try { JSON.parse(json.value); } catch (e) { return UI.toast(T.t('cfg.jsonBad','Invalid JSON: ') + e.message, 'err'); }
       if (t) v.id = t.id;
       await API.call('config.templates.save', { template: Object.assign(v, { json: json.value }) });
       UI.toast('Saved ✅', 'ok'); close(); after && after();
@@ -931,7 +931,7 @@ function listForm(e, row, after) {
     title: row ? '✏ ' + (row.name || row.code) : '＋ ' + e.label, size: 'sm', body: f.el,
     actions: [{ label: 'Save', cls: 'ok', onClick: async close => {
       const v = f.values();
-      if (!v.name) return UI.toast('Name zaroori hai', 'err');
+      if (!v.name) return UI.toast(T.t('cfg.nameReq','Name is required'), 'err');
       if (row) v.id = row.id;
       await API.call('config.list.save', { entity: e.entity, record: v });
       UI.toast('Saved ✅', 'ok'); close(); after && after();
@@ -961,11 +961,11 @@ function renderSeed(c) {
       'Aapki apni export ("product list2.csv") — 422 products, 10 line items, 95 categories, ' +
       '74 brands, 7 suppliers. Har CSV column map hota hai: Line Item → lineItem, Made in → origin, ' +
       'Product Group / Color / Cost Type → custom fields, aur khali barcode ki jagah product code. ' +
-      'Yeh idempotent hai — dobara chalane se duplicate nahi banta, koi row delete nahi hoti.'),
+      T.t('cfg.idempotentNote','This is idempotent — re-running creates no duplicates and deletes no rows.')),
     h('div', { class: 'f-grid' },
       h('div', { class: 'f-col' }, h('label', null, 'Opening stock per branch (naye items)'),
         (function () { const i = h('input', { class: 'f-input', type: 'number', value: 20, id: 'seedStock' }); return i; })(),
-        h('div', { class: 'f-hint' }, 'Maujuda items ka stock chera nahi jata')),
+        h('div', { class: 'f-hint' }, T.t('cfg.stockUntouched','Existing item stock is not touched'))),
       h('div', { class: 'f-col' }, h('label', null, 'Action'),
         h('div', { style: { display: 'flex', gap: '8px', flexWrap: 'wrap' } },
           h('button', { class: 'btn', onclick: async () => {
@@ -979,7 +979,7 @@ function renderSeed(c) {
           } }, '⬇ Seed 422 products'),
           h('button', { class: 'btn sec', onclick: async () => {
             const r = await API.call('setup.seedProducts', { opts: { stock: 0, dryRun: true } });
-            UI2.modal({ title: 'Preview — ' + (r.created || 0) + ' naye / ' + (r.updated || 0) + ' update (koi write nahi hua)',
+            UI2.modal({ title: 'Preview — ' + (r.created || 0) + ' naye / ' + (r.updated || 0) + T.t('cfg.noWriteTail',' update (no writes)'),
               size: 'lg',
               body: UI2.table({ screen: 'seedpreview', rows: (r.items || []), height: '50vh', exportName: 'seed-preview',
                 columns: [
@@ -1001,12 +1001,12 @@ function renderSeed(c) {
             try {
               const r = await API.call('setup.auditProducts', {});
               UI2.modal({
-                title: 'CSV ↔ DB milan — ' + (r.missing || 0) + ' missing, ' + (r.priceDiff || 0) + ' price farq',
+                title: 'CSV ↔ DB milan — ' + (r.missing || 0) + ' missing, ' + (r.priceDiff || 0) + T.t('cfg.priceDiffTail',' price difference'),
                 size: 'md',
                 body: h('div', { style: { fontSize: 'var(--fs-sm)', lineHeight: '1.6' } },
                   h('div', null, h('b', null, 'CSV products: '), String(r.csv || 0)),
                   h('div', null, h('b', null, 'DB mein ghaayab: '), String(r.missing || 0)),
-                  h('div', null, h('b', null, 'Rate farq: '), String(r.priceDiff || 0)),
+                  h('div', null, h('b', null, T.t('cfg.rateDiff','Rate difference: ')), String(r.priceDiff || 0)),
                   (r.missingCodes || []).length ? h('div', { style: { marginTop: '8px' } },
                     h('b', null, 'Missing codes: '), (r.missingCodes || []).join(', ')) : null,
                   (r.priceSamples || []).length ? h('div', { style: { marginTop: '8px' } },
@@ -1021,7 +1021,7 @@ function renderSeed(c) {
 function renderImport(c) {
   c.appendChild(h('div', { class: 'card' }, h('div', { class: 'card-body' },
     h('h4', { style: { margin: '0 0 8px' } }, '⬆ Bulk import'),
-    h('p', { style: { fontSize: 'var(--fs-sm)', color: 'var(--muted)' } }, 'Items, customers ya suppliers — Sheet/Excel se paste karein.'),
+    h('p', { style: { fontSize: 'var(--fs-sm)', color: 'var(--muted)' } }, T.t('cfg.pasteHint','Items, customers or suppliers — paste from Sheet/Excel.')),
     h('div', { class: 'row gap-8' },
       h('button', { class: 'btn', onclick: () => App.go('items', { import: true }) }, '📦 Items'),
       h('button', { class: 'btn sec', onclick: () => App.go('parties', { tab: 'customers' }) }, '👤 Customers')))));
@@ -1054,12 +1054,12 @@ function renderBackupRestore(c) {
       } }, '⬇ Export JSON'),
       h('button', { class: 'btn sec', onclick: () => {
         const ta = h('textarea', { class: 'f-input', rows: 8, style: { fontFamily: 'monospace', fontSize: 'var(--fs-xs)' },
-          placeholder: 'Yahan config JSON paste karein' });
+          placeholder: T.t('cfg.pasteJson','Paste config JSON here') });
         UI2.modal({
           title: '⬆ Import configuration', size: 'md', body: ta,
           actions: [{ label: 'Import', cls: 'ok', onClick: async close => {
             let dump;
-            try { dump = JSON.parse(ta.value); } catch (e) { return UI.toast('JSON ghalat hai', 'err'); }
+            try { dump = JSON.parse(ta.value); } catch (e) { return UI.toast(T.t('cfg.jsonBadShort','Invalid JSON'), 'err'); }
             try {
               if (dump.settings) await API.call('config.save', { values: dump.settings });
               /* W7 (v2.26.0) — ASLI BUG + N+1: pehle `forEach(async …)` fire-and-forget tha, is liye
@@ -1114,7 +1114,7 @@ async function schemaHealthCard(c) {
       Object.keys(r.missingColumns || {}).forEach(n =>
         rows.push({ sheet: n, issue: 'columns missing', detail: (r.missingColumns[n] || []).join(', ') }));
       body.appendChild(h('div', { class: 'hint', style: { marginBottom: '8px' } },
-        'Ye columns code likhta hai par sheet mein nahi — data silently drop ho sakta hai. Repair se data delete nahi hota, sirf columns judte hain.'));
+        T.t('cfg.repairNote','These columns are written by code but missing in the sheet — data may drop silently. Repair never deletes data; it only adds columns.')));
       body.appendChild(UI2.table({
         screen: 'schema_health', rows, height: '22vh', exportName: 'schema-health',
         columns: [{ key: 'sheet', label: 'Sheet' }, { key: 'issue', label: 'Issue' }, { key: 'detail', label: 'Missing columns' }]
@@ -1124,7 +1124,7 @@ async function schemaHealthCard(c) {
       h('button', { class: 'btn' + (bad ? '' : ' sec'), onclick: async () => {
         try {
           const x = await API.call('setup.repair', {});
-          UI.toast('Repair ho gaya: ' + (x.created || 0) + ' sheets, ' + (x.columnsAdded || 0) + ' columns add hue', 'ok');
+          UI.toast(T.t('cfg.repaired','Repaired: ') + (x.created || 0) + ' sheets, ' + (x.columnsAdded || 0) + ' columns add hue', 'ok');
           paint();
         } catch (e) { UI.toast(e.message, 'err'); }
       } }, '🧰 Repair / upgrade sheets'),

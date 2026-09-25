@@ -285,7 +285,7 @@ win.alert = () => { }; win.confirm = () => true;
     if (tabs.length) { tabs[0].click(); await sleep(600); }
 
     const bulk = Array.from(doc.querySelectorAll('button'))
-      .find(b => /Sab approve karein/i.test(b.textContent || ''));
+      .find(b => /Sab approve karein|Approve all/i.test(b.textContent || '')); /* v2.30.9: T.t */
     ok('③ "Sab approve karein" button render hua (' + pendingBefore + ' pending)', !!bulk && pendingBefore >= 2);
 
     if (bulk) {
