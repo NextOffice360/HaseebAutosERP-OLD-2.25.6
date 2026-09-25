@@ -108,14 +108,14 @@ if [ $CHECK -eq 0 ]; then
   python3 tools/build_demo.py >/dev/null 2>&1 && python3 tools/build_pwa_demo.py >/dev/null 2>&1 \
     && say "  ✔ demo + PWA demos rebuild ($(du -h demo/index.html | cut -f1))" || say "  ⚠ demo build fail (apps-script syntax check karein)"
 fi
-if curl -s -o /dev/null --max-time 2 "http://127.0.0.1:8021/index.html"; then
+if [ "$(curl -s -o /dev/null -w '%{http_code}' --max-time 2 'http://127.0.0.1:8021/index.html')" = "200" ]; then
   say "  ✔ demo server 8021 chal raha hai"
 elif [ $CHECK -eq 1 ]; then
   say "  ✖ demo server band hai — bootstrap chalane par khud shuru ho jata hai"
 else
-  nohup python3 -m http.server 8021 -d demo --bind 0.0.0.0 >/tmp/demo8021.log 2>&1 &
+  nohup python3 -m http.server 8021 -d "$PWD/demo" --bind 0.0.0.0 >/tmp/demo8021.log 2>&1 &
   sleep 2
-  if curl -s -o /dev/null --max-time 2 "http://127.0.0.1:8021/index.html"; then
+  if [ "$(curl -s -o /dev/null -w '%{http_code}' --max-time 2 'http://127.0.0.1:8021/index.html')" = "200" ]; then
     say "  ✔ demo server shuru (pid $! · port 8021 · http://127.0.0.1:8021/index.html)"
   else
     say "  ✖ demo server start nahi hua — dekhein /tmp/demo8021.log"

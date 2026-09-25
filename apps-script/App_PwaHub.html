@@ -61,14 +61,14 @@ App.registerScreen('apps', {
       var can = !app.perm || App.can(app.perm);
       var card = h('div',{class:'card', style:{display:'flex',flexDirection:'column',gap:'10px',borderLeft:'4px solid '+app.colour, position:'relative', overflow:'hidden'}});
       if(app.badge){
-        card.appendChild(h('div',{style:{position:'absolute',top:'8px',right:'8px',background:app.colour,color:'#04120a',fontSize:'10px',fontWeight:'800',padding:'2px 8px',borderRadius:'999px'}}, app.badge));
+        card.appendChild(h('div',{style:{position:'absolute',top:'8px',right:'8px',background:app.colour,color:'#04120a',fontSize:'11px',fontWeight:'800',padding:'2px 8px',borderRadius:'999px'}}, app.badge));
       }
       card.appendChild(h('div',{style:{display:'flex',gap:'12px',alignItems:'center'}},
         h('div',{style:{width:'48px',height:'48px',borderRadius:'12px',background:app.colour+'18',border:'1px solid '+app.colour+'30',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'22px'}}, app.icon),
         h('div',{style:{flex:'1'}},
           h('div',{style:{fontWeight:'800',fontSize:'16px'}}, app.name),
           h('div',{style:{fontSize:'12px',color:'var(--muted)'}}, app.desc),
-          h('div',{style:{fontSize:'10px',fontWeight:'700',letterSpacing:'.4px',textTransform:'uppercase',marginTop:'4px',color: enabled? (can?'var(--ok)':'var(--warn)') : 'var(--err)'}}, enabled ? (can? '● Ready':'● No access') : '○ Disabled in Settings')
+          h('div',{style:{fontSize:'11px',fontWeight:'700',letterSpacing:'.4px',textTransform:'uppercase',marginTop:'4px',color: enabled? (can?'var(--ok)':'var(--warn)') : 'var(--err)'}}, enabled ? (can? '● Ready':'● No access') : '○ Disabled in Settings')
         )
       ));
       // actions row

@@ -89,6 +89,12 @@ gaps → config-snapshot layer (ha_mock_cfg, write-wrap, window-expose sabak)
 → GAP 0; salesman.routes mock CRUD added; gate shop_setup_flow 26/0 (K naya).
 **Agli rounds: P1 typography (Styles tokens audit), P2 modal wide-arch,
 P3 responsive sweep, P4 context-aware pilot (Demand module — spec §8–14).**
+**P1 typography (round 4, 2026-09-25):** audit tool v2.2 (floor 10.8px,
+print/SVG exemptions) → **449 ok / 48 exempt / 0 violations**; ~33 real-UI
+fixes (desktop → var(--fs-2xs), PWA shells → 11px); action-label audit bhi
+(1 hit); battery GREEN (shop 26/0, modals 91/0, e2e 22/0, pos 23/0,
+field_vis 58/0, table 11/0, datetime 44/0). Sabak: http.server -d RELATIVE
+path stale-inode 404 → bootstrap ab absolute + HTTP-200 check.
 **TOGGLES/SETTINGS persist fix (v2.30.5 +1):** user ka "toggles not saving"
 ka asli sabab — mock config.save / system.settings.save SETTINGS me assign
 karte the magar PERSIST nahi (reload par sab defaults). Ab dono

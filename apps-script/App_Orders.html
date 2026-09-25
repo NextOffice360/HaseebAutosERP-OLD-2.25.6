@@ -203,9 +203,9 @@
           host.innerHTML='';
           if(c.phone) host.appendChild(h('div',{style:'font-size:11px;color:var(--muted);margin-bottom:4px'}, '📞 '+fmt.phone(c.phone)));
           var grid=h('div',{style:'display:flex;gap:6px;flex-wrap:wrap;margin-top:6px'});
-          grid.appendChild(h('div',{style:'flex:1;min-width:80px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px;text-align:center'}, h('div',{style:'font-size:10px;color:var(--muted);font-weight:700;letter-spacing:.3px'}, 'Previous'), h('b',{style:'font-size:13px'}, fmt.money(prev)) ));
-          grid.appendChild(h('div',{style:'flex:1;min-width:80px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px;text-align:center'}, h('div',{style:'font-size:10px;color:var(--muted);font-weight:700'}, 'This order'), h('b',{style:'font-size:13px'}, fmt.money(total)) ));
-          grid.appendChild(h('div',{style:'flex:1;min-width:80px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px;text-align:center;border-color:'+(closing>0?'var(--err)':'var(--ok)')}, h('div',{style:'font-size:10px;color:var(--muted);font-weight:700'}, 'Closing'), h('b',{style:'font-size:13px;color:'+(closing>0?'var(--err)':'var(--ok)')}, fmt.money(closing)) ));
+          grid.appendChild(h('div',{style:'flex:1;min-width:80px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px;text-align:center'}, h('div',{style:'font-size:var(--fs-2xs);color:var(--muted);font-weight:700;letter-spacing:.3px'}, 'Previous'), h('b',{style:'font-size:13px'}, fmt.money(prev)) ));
+          grid.appendChild(h('div',{style:'flex:1;min-width:80px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px;text-align:center'}, h('div',{style:'font-size:var(--fs-2xs);color:var(--muted);font-weight:700'}, 'This order'), h('b',{style:'font-size:13px'}, fmt.money(total)) ));
+          grid.appendChild(h('div',{style:'flex:1;min-width:80px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px;text-align:center;border-color:'+(closing>0?'var(--err)':'var(--ok)')}, h('div',{style:'font-size:var(--fs-2xs);color:var(--muted);font-weight:700'}, 'Closing'), h('b',{style:'font-size:13px;color:'+(closing>0?'var(--err)':'var(--ok)')}, fmt.money(closing)) ));
           host.appendChild(grid);
           if(limit){ host.appendChild(h('div',{style:'margin-top:6px;padding:6px 8px;background:var(--panel);border:1px solid var(--line);border-radius:8px;display:flex;justify-content:space-between;font-size:11px'}, h('span',null,'Limit '+fmt.money(limit)), h('span',{style:'color:'+(prev>limit?'var(--err)':'var(--muted)')}, prev>limit?'OVER LIMIT':'Available '+fmt.money(Math.max(0,limit-prev)) ) )); }
           API.call('parties.customerHistory',{customerId:c.id, limit:2},{offlineFallback:function(){return null;}}).then(function(hist){
@@ -326,9 +326,9 @@
       const advanceInput = h('input', { class: 'f-input', type: 'number', value: '', placeholder: '0.00', style: { flex:'1', minWidth:'90px' }, 'aria-label': 'Advance received' });
       const dateInput = h('input', { class: 'f-input', type: 'date', 'aria-label': 'Delivery date', style:{flex:'1', minWidth:'110px'} });
       const notesInput = h('input', { class: 'f-input', type: 'text', placeholder: 'Note (optional)', 'aria-label': 'Order note', style:{flex:'1.2', minWidth:'120px'} });
-      const advanceWrap = h('div', {class:'f-col', style:'flex:1;min-width:90px'}, h('label', {style:'font-size:10px;font-weight:700;color:var(--muted);letter-spacing:.3px'}, 'Advance'), advanceInput);
-      const dateWrap = h('div', {class:'f-col', style:'flex:1;min-width:110px'}, h('label', {style:'font-size:10px;font-weight:700;color:var(--muted)'}, 'Delivery date'), dateInput);
-      const notesWrap = h('div', {class:'f-col', style:'flex:1.2;min-width:120px'}, h('label', {style:'font-size:10px;font-weight:700;color:var(--muted)'}, 'Note'), notesInput);
+      const advanceWrap = h('div', {class:'f-col', style:'flex:1;min-width:90px'}, h('label', {style:'font-size:var(--fs-2xs);font-weight:700;color:var(--muted);letter-spacing:.3px'}, 'Advance'), advanceInput);
+      const dateWrap = h('div', {class:'f-col', style:'flex:1;min-width:110px'}, h('label', {style:'font-size:var(--fs-2xs);font-weight:700;color:var(--muted)'}, 'Delivery date'), dateInput);
+      const notesWrap = h('div', {class:'f-col', style:'flex:1.2;min-width:120px'}, h('label', {style:'font-size:var(--fs-2xs);font-weight:700;color:var(--muted)'}, 'Note'), notesInput);
 
       function totalsOf() {
         let sub = 0, disc = 0;

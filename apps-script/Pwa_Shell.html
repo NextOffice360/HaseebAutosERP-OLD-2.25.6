@@ -169,7 +169,7 @@
   }
   .pwa-bar .b{flex:1;min-height:56px;display:flex;flex-direction:column;align-items:center;
     justify-content:center;gap:2px;border:0;background:transparent;color:var(--muted);
-    font-size:10px;font-weight:800;border-radius:12px;cursor:pointer;position:relative}
+    font-size:11px;font-weight:800;border-radius:12px;cursor:pointer;position:relative}
   .pwa-bar .b i{font-style:normal;font-size:20px;line-height:1}
   .pwa-bar .b.on{color:var(--accent);background:var(--card);box-shadow:var(--shadow2)}
   .pwa-bar .b .dot{position:absolute;top:6px;right:22px;width:8px;height:8px;border-radius:50%;background:var(--err);display:none}
@@ -249,9 +249,9 @@
   html[data-theme="light"] .pwa-top{ background: linear-gradient(180deg, rgba(255,255,255,.96), rgba(248,250,252,.88)); border-bottom:1px solid rgba(0,0,0,.06); box-shadow:0 4px 20px rgba(15,23,42,.08); }
   .pwa-top .ttl{ font-size:17px; letter-spacing:.3px; flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
   .pwa-top .pwa-acts, .pwa-top .net, .pwa-top .icon-btn{flex:0 0 auto}
-  @media (max-width:480px){ .pwa-top{padding:8px; gap:6px} .pwa-top .ttl{font-size:13px} .pwa-top .net{font-size:10px; padding:4px 8px} .pwa-top .icon-btn{width:32px; height:32px; font-size:13px} }
+  @media (max-width:480px){ .pwa-top{padding:8px; gap:6px} .pwa-top .ttl{font-size:13px} .pwa-top .net{font-size:11px; padding:4px 8px} .pwa-top .icon-btn{width:32px; height:32px; font-size:13px} }
   @media (max-width:360px){ .pwa-top .ttl small{display:none} .pwa-top .net{padding:4px 6px; max-width:84px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap} }
-  .pwa-top .ttl small{ background:var(--card); border:1px solid var(--line); padding:2px 7px; border-radius:999px; font-size:10px; }
+  .pwa-top .ttl small{ background:var(--card); border:1px solid var(--line); padding:2px 7px; border-radius:999px; font-size:11px; }
   .card{ border-radius:16px; box-shadow:var(--card-elev); border:1px solid var(--line); background: linear-gradient(180deg, var(--card), var(--card2)); }
   .card h3{ font-size:11px; letter-spacing:.7px; color:var(--muted); border-bottom:1px solid var(--line); padding-bottom:8px; margin-bottom:12px; }
   .kpi{ border-radius:16px; background: linear-gradient(180deg, var(--card) 0%, var(--card2) 100%); box-shadow:var(--card-elev); border:1px solid var(--line); position:relative; overflow:hidden; }
@@ -261,7 +261,7 @@
   .task .ico{ background: linear-gradient(135deg, var(--card), var(--card3)); border:1px solid var(--line); box-shadow:0 2px 8px rgba(0,0,0,.08); }
   .pwa-bar{ background:rgba(15,23,41,.92); backdrop-filter:saturate(1.4) blur(20px); border-top:1px solid rgba(255,255,255,.08); box-shadow:0 -8px 32px rgba(0,0,0,.22); padding:8px 10px calc(10px + var(--safe-b)); gap:8px; }
   html[data-theme="light"] .pwa-bar{ background:rgba(255,255,255,.92); border-top:1px solid rgba(0,0,0,.06); box-shadow:0 -8px 32px rgba(15,23,42,.12); }
-  .pwa-bar .b{ border-radius:14px; min-height:56px; font-size:10px; letter-spacing:.4px; }
+  .pwa-bar .b{ border-radius:14px; min-height:56px; font-size:11px; letter-spacing:.4px; }
   .pwa-bar .b.on{ background:var(--accent); color:var(--accent-ink); box-shadow:0 6px 18px rgba(245,158,11,.35); border:1px solid var(--accent); }
   .pwa-bar .b.on i{ filter:brightness(1.1); }
   .btn.primary{ background:var(--accent); color:var(--accent-ink); border:1px solid var(--accent); box-shadow:0 6px 18px rgba(245,158,11,.28); border-radius:14px; }
@@ -1345,7 +1345,7 @@ var PWA = (function () {
     var camBtn = el('button', { class:'btn sm', type:'button', title:'Camera scan', 'aria-label':'Camera scan' }, '📷');
     var scanRow = el('div', { style:'display:flex;gap:6px;align-items:center;padding:10px 12px;border-bottom:1px solid var(--line);background:var(--card2)' },
       [ el('span',{style:'font-size:11px;font-weight:800;white-space:nowrap'},'Scan:'), scanIn, camBtn,
-        el('span',{class:'muted',style:'font-size:10px;white-space:nowrap'},'→ add · clear · next') ]);
+        el('span',{class:'muted',style:'font-size:11px;white-space:nowrap'},'→ add · clear · next') ]);
     var sIn = el('input', { type:'search', placeholder:'🔎 Search name / code / barcode — tick to add', 'aria-label':'Search bulk items' });
     /* v2.24.0 — Esc se band + scan field auto-focus (app wale picker jaisa) */
     var searchWrap = el('div', { class:'bulk-search' }, [ sIn ]);
@@ -1432,7 +1432,7 @@ var PWA = (function () {
         var row = el('div',{style:'display:flex;align-items:center;gap:6px;padding:6px 8px;border:1px solid var(--line);border-radius:10px;background:var(--card);margin-bottom:4px'},[
           el('div',{style:'flex:1;min-width:0'},[
             el('b',{style:'font-size:12px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis'}, it.name||it.code||'Item'),
-            el('small',{class:'muted',style:'font-size:10px'}, (it.code||'')+' · stock '+(it.stock!==undefined?it.stock:'?'))
+            el('small',{class:'muted',style:'font-size:11px'}, (it.code||'')+' · stock '+(it.stock!==undefined?it.stock:'?'))
           ]),
           el('button',{class:'btn sm ghost',style:'min-width:36px;min-height:36px',type:'button',onclick:function(){ p.qty=Math.max(1,Number(p.qty||1)-1); qIn.value=String(p.qty); updateHead(); }},'−'),
           qIn,

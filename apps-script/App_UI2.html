@@ -583,7 +583,7 @@ UI2.itemPicker = function (cfg) {
       const conv = Math.max(1, Number(r.conversionFactor || 0));
       const _q = stockOf(r);
       const stockTxt = isNaN(_q) ? '' : (_q <= 0 ? 'Out of Stock' : (_q <= 5 ? 'LOW · ' + fmt.num(_q) : 'In Stock · ' + fmt.num(_q)));
-      const stockBadge = !isNaN(_q) ? h('span', { class: 'badge ' + (_q <= 0 ? 'err' : (_q <= 5 ? 'warn' : 'ok')), style: { fontSize: '10px', marginLeft: '6px' } }, stockTxt) : '';
+      const stockBadge = !isNaN(_q) ? h('span', { class: 'badge ' + (_q <= 0 ? 'err' : (_q <= 5 ? 'warn' : 'ok')), style: { fontSize: 'var(--fs-2xs)', marginLeft: '6px' } }, stockTxt) : '';
       const sub = cfg.sub ? cfg.sub(r) : [r.code, r.category,
         r.costPrice ? 'cost ' + fmt.money(r.costPrice) : '',
         stockTxt,

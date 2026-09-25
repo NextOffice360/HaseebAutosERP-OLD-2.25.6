@@ -1,0 +1,10 @@
+{
+  "generatedAt": "2026-09-25T02:09:00.935Z",
+  "hits": [
+    {
+      "file": "App_UI2.html",
+      "line": 894,
+      "text": "{ label: 'OK', cls: 'ok', onClick: c => { done((inp.value || '').trim() || null); c(); } }"
+    }
+  ]
+}

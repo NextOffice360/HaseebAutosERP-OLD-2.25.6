@@ -1218,14 +1218,14 @@ function updateCustBar() {
     // credit details row
     if (limit || avail!==null) {
       const creditRow = h('div', { class: 'cbg', style: { flex:'1 1 100%', flexDirection:'row', gap:'8px', justifyContent:'space-between', background:'var(--panel-2)', marginTop:'4px' } },
-        h('span', { class: 'lbl', style:{fontSize:'9px'} }, 'Credit limit ' + fmt.money(limit) + (avail!==null? ' · Avail '+fmt.money(avail):'')),
-        h('span', { class: 'lbl', style:{fontSize:'9px', color: status==='OVER LIMIT'? 'var(--err)': 'var(--muted)'} }, status));
+        h('span', { class: 'lbl', style:{fontSize:'var(--fs-2xs)'} }, 'Credit limit ' + fmt.money(limit) + (avail!==null? ' · Avail '+fmt.money(avail):'')),
+        h('span', { class: 'lbl', style:{fontSize:'var(--fs-2xs)', color: status==='OVER LIMIT'? 'var(--err)': 'var(--muted)'} }, status));
       b.appendChild(creditRow);
     }
     // purchase history & rating placeholder: will be filled via async history
     var histEl = document.getElementById('posCustHist');
     if(!histEl){
-      histEl = h('div', { id:'posCustHist', style:{fontSize:'10px', color:'var(--muted)', marginTop:'4px', display:'none'} });
+      histEl = h('div', { id:'posCustHist', style:{fontSize:'var(--fs-2xs)', color:'var(--muted)', marginTop:'4px', display:'none'} });
       b.appendChild(histEl);
     }
     // fetch rating & history
@@ -1266,7 +1266,7 @@ function updateLoyaltyTeaser(customerId) {
         h.innerHTML = '';
         h.append(
           h('span', null, '⭐ Loyalty: ' + fmt.num(sum.points || 0) + ' pts ≈ ' + fmt.money(sum.value || 0)),
-          (sum.usablePoints ? h('span', { class: 'badge ok', style: { fontSize: '10px' } }, 'usable ' + sum.usablePoints + ' → ' + fmt.money(sum.usableValue || 0)) : ''),
+          (sum.usablePoints ? h('span', { class: 'badge ok', style: { fontSize: 'var(--fs-2xs)' } }, 'usable ' + sum.usablePoints + ' → ' + fmt.money(sum.usableValue || 0)) : ''),
           (earn ? h('span', { style: { color: 'var(--ok)', fontWeight: '700' } }, 'this bill +' + earn) : '')
         );
       });

@@ -1230,7 +1230,7 @@ function backendDiagnosticsCard(){
         list.appendChild(h('div', { class:'list-item', style:{padding:'6px 8px', background: ch.ok ? 'var(--ok-bg, #f0fdf4)' : 'var(--err-bg, #fef2f2)', borderRadius:'8px'} },
           h('span', { style:{fontWeight:'700', color: ch.ok ? '#15803d' : '#b91c1c', minWidth:'14px'}}, ch.ok?'✓':'✗'),
           h('div', {class:'li-main'}, h('b', null, ch.name), h('span', {style:{fontSize:'var(--fs-xs)', color:'var(--muted)'}}, ch.note || '')),
-          h('span', {class:'hint', style:{fontSize:'10px'}}, (ch.ms||0)+'ms')
+          h('span', {class:'hint', style:{fontSize:'var(--fs-2xs)'}}, (ch.ms||0)+'ms')
         ));
       });
       body.appendChild(list);

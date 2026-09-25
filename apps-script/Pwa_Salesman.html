@@ -138,9 +138,9 @@
         host.innerHTML='';
         if(m.phone) host.appendChild(PWA.el('div',{'data-family':'contact', style:'font-size:11px;color:var(--muted)'}, '📞 '+m.phone));
         var grid=PWA.el('div',{style:'display:flex;gap:6px;flex-wrap:wrap;margin-top:4px'});
-        grid.appendChild(PWA.el('div',{style:'flex:1;min-width:80px;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px;text-align:center'},[PWA.el('div',{style:'font-size:10px;color:var(--muted)',text:'Previous'}), PWA.el('b',{style:'font-size:13px',text:PWA.money(prev)})]));
-        grid.appendChild(PWA.el('div',{style:'flex:1;min-width:80px;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px;text-align:center'},[PWA.el('div',{style:'font-size:10px;color:var(--muted)',text:'This bill'}), PWA.el('b',{style:'font-size:13px',text:PWA.money(total)})]));
-        grid.appendChild(PWA.el('div',{style:'flex:1;min-width:80px;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px;text-align:center;border-color:'+(closing>0?'var(--err)':'var(--ok)')},[PWA.el('div',{style:'font-size:10px;color:var(--muted)',text:'Closing'}), PWA.el('b',{style:'font-size:13px;color:'+(closing>0?'var(--err)':'var(--ok)'),text:PWA.money(closing)})]));
+        grid.appendChild(PWA.el('div',{style:'flex:1;min-width:80px;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px;text-align:center'},[PWA.el('div',{style:'font-size:11px;color:var(--muted)',text:'Previous'}), PWA.el('b',{style:'font-size:13px',text:PWA.money(prev)})]));
+        grid.appendChild(PWA.el('div',{style:'flex:1;min-width:80px;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px;text-align:center'},[PWA.el('div',{style:'font-size:11px;color:var(--muted)',text:'This bill'}), PWA.el('b',{style:'font-size:13px',text:PWA.money(total)})]));
+        grid.appendChild(PWA.el('div',{style:'flex:1;min-width:80px;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px;text-align:center;border-color:'+(closing>0?'var(--err)':'var(--ok)')},[PWA.el('div',{style:'font-size:11px;color:var(--muted)',text:'Closing'}), PWA.el('b',{style:'font-size:13px;color:'+(closing>0?'var(--err)':'var(--ok)'),text:PWA.money(closing)})]));
         host.appendChild(grid);
       };
       render(stale);

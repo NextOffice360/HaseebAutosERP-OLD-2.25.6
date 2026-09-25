@@ -24,9 +24,10 @@ regression gates har slice ke baad GREEN hona zaroori.
       screens ka pattern check)
 
 ## P1 — Enterprise UI/UX polish (spec §42 design system par implement)
-- [ ] Typography audit vs tokens (`Styles.html`): hierarchy (h1..h4/label/hint), sizes ≥10.8px floor,
+- [x] Typography audit vs tokens (`Styles.html`): hierarchy (h1..h4/label/hint), sizes ≥10.8px floor,
       weights, contrast light+dark — 'tiny bold' sites ki list + token-level fix (per-screen nahi)
 - [ ] Buttons/action hierarchy: primary/secondary/ghost consistent; destructive confirm
+      (action-label audit ban gaya: `tools/audit_action_labels.js` — sirf 1 hit, App_UI2 prompt-default 'OK' → P2)
 - [ ] Tables/cards density + spacing rhythm (spec: data-dense but clean)
 - [ ] Focus/hover/active/disabled states audit (accessibility §38)
 
@@ -60,3 +61,18 @@ regression gates har slice ke baad GREEN hona zaroori.
 - scope-sabak: build me mock core aur append-blocks ALAG scopes me hote hain —
   cross-scope helpers `window.` par expose (mockPersistConfig)
 - gates: shop_setup_flow **26/0** + 11-gate battery GREEN
+
+## P1 RESULTS (2026-09-25 round)
+- `tools/audit_typography.js` v2.2: floor 10.8px; exemptions = print/SVG/labels
+  (App_Print/App_Barcode/App_Comms files, App_Config label-preview, App_Core Print-range,
+  App_Dashboards day-report sheet) → final **449 ok / 48 exempt / 0 violations**
+- ~33 real-UI fixes: desktop → `var(--fs-2xs)` (Styles 6, App_POS2 4, App_Config 1,
+  App_Orders 6, App_UI2 1, App_PwaHub 2); standalone PWA shells (no Styles tokens) →
+  `11px` literal (Pwa_POS 7, Pwa_Shell 6, Pwa_Field 3, Pwa_Salesman 3)
+- `tools/audit_action_labels.js`: ambiguous-labels audit → sirf 1 hit (App_UI2 prompt
+  'OK' default) — verb-label polish P2 me
+- regression battery on rebuilt demo: shop_setup_flow **26/0** · table_states **11/0** ·
+  modals_close **91/0** · e2e_critical **22/0** · pos_multi **23/0** · field_visibility
+  **58/0** · datetime **44/0** — SAB GREEN
+- env-sabak: http.server `-d demo` RELATIVE path stale-inode 404 deta hai jab sandbox
+  dir restore ho — absolute path ya server restart zaroori (bootstrap patch baqi)

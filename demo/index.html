@@ -961,7 +961,7 @@ table.tbl tbody tr.clickable{cursor:pointer}
 @media (max-width:560px){
   .topbar{padding:0 8px; gap:6px; height:54px}
   .branch-pick{flex:0 1 100px}
-  .branch-select{max-width:100px; font-size:10.5px}
+  .branch-select{max-width:100px; font-size:var(--fs-2xs)}
   .global-search{flex:1 1 0; min-width:40px}
   .global-search input::placeholder{font-size:11px}
   .top-actions .icon-btn{width:34px; height:34px; font-size:15px}
@@ -1533,7 +1533,7 @@ table.tbl2 .num{text-align:right;font-variant-numeric:tabular-nums}
 
 /* ================== POS payment extras (v2.2/2.3) ======================= */
 .pay-extra{display:flex;gap:6px;flex-wrap:wrap;margin:2px 0 6px}
-.pay-fee{font-size:9px;color:var(--muted-2);margin:0 0 4px;line-height:1.3}
+.pay-fee{font-size:var(--fs-2xs);color:var(--muted-2);margin:0 0 4px;line-height:1.3}
 .loy-row{margin-top:8px}
 .loy-box{background:var(--panel-2);border:1px solid var(--line);border-radius:10px;padding:8px 10px}
 .loy-head{font-weight:800;font-size:12px;margin-bottom:4px;line-height:1.2}
@@ -1541,7 +1541,7 @@ table.tbl2 .num{text-align:right;font-variant-numeric:tabular-nums}
 .loy-line.sub{color:var(--muted-2);font-size:10.8px}
 .loy-actions{display:flex;gap:6px;align-items:center;margin-top:6px;flex-wrap:wrap}
 .loy-actions .f-input{padding:7px 8px;font-size:12px;min-height:32px}
-.loy-teaser{font-size:10.5px;color:var(--muted);background:var(--panel-2);border:1px dashed var(--line);border-radius:8px;padding:5px 8px;margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.loy-teaser{font-size:var(--fs-2xs);color:var(--muted);background:var(--panel-2);border:1px dashed var(--line);border-radius:8px;padding:5px 8px;margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
 
 /* ===================== PROFESSIONAL CHARTS (v2.2) ========================= */
 .chart-wrap{width:100%;position:relative}
@@ -1827,7 +1827,7 @@ table.tbl2 .num{text-align:right;font-variant-numeric:tabular-nums}
 
 .cust-bal-grid{display:flex;gap:6px;flex-wrap:wrap;align-items:stretch;margin-top:4px}
 .cust-bal-grid .cbg{flex:1 1 68px;min-width:68px;display:flex;flex-direction:column;gap:1px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:5px 7px}
-.cust-bal-grid .cbg .lbl{font-size:8.5px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;color:var(--muted-2);white-space:nowrap}
+.cust-bal-grid .cbg .lbl{font-size:var(--fs-2xs);font-weight:800;letter-spacing:.4px;text-transform:uppercase;color:var(--muted-2);white-space:nowrap}
 .cust-bal-grid .cbg .val{font-size:11px;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap;line-height:1.2}
 .cust-bal-grid .cbg.prev .val{color:var(--muted)}
 .cust-bal-grid .cbg.bill .val{color:var(--brand-text)}
@@ -1861,8 +1861,8 @@ table.tbl2 .num{text-align:right;font-variant-numeric:tabular-nums}
 .pay-field{display:flex;flex-direction:column;gap:2px;flex:1 1 132px;min-width:128px}
 .pay-field.compact{flex:0 0 148px;min-width:120px;max-width:160px}
 .pay-field.compact .f-input{width:148px;max-width:160px}
-.pf-lab{font-size:9.5px;color:var(--muted);font-weight:700;letter-spacing:.3px;text-transform:uppercase;line-height:1.2}
-.pf-err{font-size:9px;color:var(--err);line-height:1.2}
+.pf-lab{font-size:var(--fs-2xs);color:var(--muted);font-weight:700;letter-spacing:.3px;text-transform:uppercase;line-height:1.2}
+.pf-err{font-size:var(--fs-2xs);color:var(--err);line-height:1.2}
 .pay-field .f-input{padding:7px 9px;font-size:12.2px;border-radius:9px}
 .pay-field .f-input.err{border-color:var(--err);background:rgba(239,68,68,.05)}
 .pay-extra{display:grid;grid-template-columns:repeat(auto-fit,minmax(132px,1fr));gap:6px;margin:2px 0 6px}
@@ -16681,7 +16681,7 @@ UI2.itemPicker = function (cfg) {
       const conv = Math.max(1, Number(r.conversionFactor || 0));
       const _q = stockOf(r);
       const stockTxt = isNaN(_q) ? '' : (_q <= 0 ? 'Out of Stock' : (_q <= 5 ? 'LOW · ' + fmt.num(_q) : 'In Stock · ' + fmt.num(_q)));
-      const stockBadge = !isNaN(_q) ? h('span', { class: 'badge ' + (_q <= 0 ? 'err' : (_q <= 5 ? 'warn' : 'ok')), style: { fontSize: '10px', marginLeft: '6px' } }, stockTxt) : '';
+      const stockBadge = !isNaN(_q) ? h('span', { class: 'badge ' + (_q <= 0 ? 'err' : (_q <= 5 ? 'warn' : 'ok')), style: { fontSize: 'var(--fs-2xs)', marginLeft: '6px' } }, stockTxt) : '';
       const sub = cfg.sub ? cfg.sub(r) : [r.code, r.category,
         r.costPrice ? 'cost ' + fmt.money(r.costPrice) : '',
         stockTxt,
@@ -22919,14 +22919,14 @@ function updateCustBar() {
     // credit details row
     if (limit || avail!==null) {
       const creditRow = h('div', { class: 'cbg', style: { flex:'1 1 100%', flexDirection:'row', gap:'8px', justifyContent:'space-between', background:'var(--panel-2)', marginTop:'4px' } },
-        h('span', { class: 'lbl', style:{fontSize:'9px'} }, 'Credit limit ' + fmt.money(limit) + (avail!==null? ' · Avail '+fmt.money(avail):'')),
-        h('span', { class: 'lbl', style:{fontSize:'9px', color: status==='OVER LIMIT'? 'var(--err)': 'var(--muted)'} }, status));
+        h('span', { class: 'lbl', style:{fontSize:'var(--fs-2xs)'} }, 'Credit limit ' + fmt.money(limit) + (avail!==null? ' · Avail '+fmt.money(avail):'')),
+        h('span', { class: 'lbl', style:{fontSize:'var(--fs-2xs)', color: status==='OVER LIMIT'? 'var(--err)': 'var(--muted)'} }, status));
       b.appendChild(creditRow);
     }
     // purchase history & rating placeholder: will be filled via async history
     var histEl = document.getElementById('posCustHist');
     if(!histEl){
-      histEl = h('div', { id:'posCustHist', style:{fontSize:'10px', color:'var(--muted)', marginTop:'4px', display:'none'} });
+      histEl = h('div', { id:'posCustHist', style:{fontSize:'var(--fs-2xs)', color:'var(--muted)', marginTop:'4px', display:'none'} });
       b.appendChild(histEl);
     }
     // fetch rating & history
@@ -22967,7 +22967,7 @@ function updateLoyaltyTeaser(customerId) {
         h.innerHTML = '';
         h.append(
           h('span', null, '⭐ Loyalty: ' + fmt.num(sum.points || 0) + ' pts ≈ ' + fmt.money(sum.value || 0)),
-          (sum.usablePoints ? h('span', { class: 'badge ok', style: { fontSize: '10px' } }, 'usable ' + sum.usablePoints + ' → ' + fmt.money(sum.usableValue || 0)) : ''),
+          (sum.usablePoints ? h('span', { class: 'badge ok', style: { fontSize: 'var(--fs-2xs)' } }, 'usable ' + sum.usablePoints + ' → ' + fmt.money(sum.usableValue || 0)) : ''),
           (earn ? h('span', { style: { color: 'var(--ok)', fontWeight: '700' } }, 'this bill +' + earn) : '')
         );
       });
@@ -24085,9 +24085,9 @@ window.POS2 = { S, addToCart, pay, clearCart, pickCustomer, togglePicker, bulkFl
           host.innerHTML='';
           if(c.phone) host.appendChild(h('div',{style:'font-size:11px;color:var(--muted);margin-bottom:4px'}, '📞 '+fmt.phone(c.phone)));
           var grid=h('div',{style:'display:flex;gap:6px;flex-wrap:wrap;margin-top:6px'});
-          grid.appendChild(h('div',{style:'flex:1;min-width:80px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px;text-align:center'}, h('div',{style:'font-size:10px;color:var(--muted);font-weight:700;letter-spacing:.3px'}, 'Previous'), h('b',{style:'font-size:13px'}, fmt.money(prev)) ));
-          grid.appendChild(h('div',{style:'flex:1;min-width:80px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px;text-align:center'}, h('div',{style:'font-size:10px;color:var(--muted);font-weight:700'}, 'This order'), h('b',{style:'font-size:13px'}, fmt.money(total)) ));
-          grid.appendChild(h('div',{style:'flex:1;min-width:80px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px;text-align:center;border-color:'+(closing>0?'var(--err)':'var(--ok)')}, h('div',{style:'font-size:10px;color:var(--muted);font-weight:700'}, 'Closing'), h('b',{style:'font-size:13px;color:'+(closing>0?'var(--err)':'var(--ok)')}, fmt.money(closing)) ));
+          grid.appendChild(h('div',{style:'flex:1;min-width:80px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px;text-align:center'}, h('div',{style:'font-size:var(--fs-2xs);color:var(--muted);font-weight:700;letter-spacing:.3px'}, 'Previous'), h('b',{style:'font-size:13px'}, fmt.money(prev)) ));
+          grid.appendChild(h('div',{style:'flex:1;min-width:80px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px;text-align:center'}, h('div',{style:'font-size:var(--fs-2xs);color:var(--muted);font-weight:700'}, 'This order'), h('b',{style:'font-size:13px'}, fmt.money(total)) ));
+          grid.appendChild(h('div',{style:'flex:1;min-width:80px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px;text-align:center;border-color:'+(closing>0?'var(--err)':'var(--ok)')}, h('div',{style:'font-size:var(--fs-2xs);color:var(--muted);font-weight:700'}, 'Closing'), h('b',{style:'font-size:13px;color:'+(closing>0?'var(--err)':'var(--ok)')}, fmt.money(closing)) ));
           host.appendChild(grid);
           if(limit){ host.appendChild(h('div',{style:'margin-top:6px;padding:6px 8px;background:var(--panel);border:1px solid var(--line);border-radius:8px;display:flex;justify-content:space-between;font-size:11px'}, h('span',null,'Limit '+fmt.money(limit)), h('span',{style:'color:'+(prev>limit?'var(--err)':'var(--muted)')}, prev>limit?'OVER LIMIT':'Available '+fmt.money(Math.max(0,limit-prev)) ) )); }
           API.call('parties.customerHistory',{customerId:c.id, limit:2},{offlineFallback:function(){return null;}}).then(function(hist){
@@ -24208,9 +24208,9 @@ window.POS2 = { S, addToCart, pay, clearCart, pickCustomer, togglePicker, bulkFl
       const advanceInput = h('input', { class: 'f-input', type: 'number', value: '', placeholder: '0.00', style: { flex:'1', minWidth:'90px' }, 'aria-label': 'Advance received' });
       const dateInput = h('input', { class: 'f-input', type: 'date', 'aria-label': 'Delivery date', style:{flex:'1', minWidth:'110px'} });
       const notesInput = h('input', { class: 'f-input', type: 'text', placeholder: 'Note (optional)', 'aria-label': 'Order note', style:{flex:'1.2', minWidth:'120px'} });
-      const advanceWrap = h('div', {class:'f-col', style:'flex:1;min-width:90px'}, h('label', {style:'font-size:10px;font-weight:700;color:var(--muted);letter-spacing:.3px'}, 'Advance'), advanceInput);
-      const dateWrap = h('div', {class:'f-col', style:'flex:1;min-width:110px'}, h('label', {style:'font-size:10px;font-weight:700;color:var(--muted)'}, 'Delivery date'), dateInput);
-      const notesWrap = h('div', {class:'f-col', style:'flex:1.2;min-width:120px'}, h('label', {style:'font-size:10px;font-weight:700;color:var(--muted)'}, 'Note'), notesInput);
+      const advanceWrap = h('div', {class:'f-col', style:'flex:1;min-width:90px'}, h('label', {style:'font-size:var(--fs-2xs);font-weight:700;color:var(--muted);letter-spacing:.3px'}, 'Advance'), advanceInput);
+      const dateWrap = h('div', {class:'f-col', style:'flex:1;min-width:110px'}, h('label', {style:'font-size:var(--fs-2xs);font-weight:700;color:var(--muted)'}, 'Delivery date'), dateInput);
+      const notesWrap = h('div', {class:'f-col', style:'flex:1.2;min-width:120px'}, h('label', {style:'font-size:var(--fs-2xs);font-weight:700;color:var(--muted)'}, 'Note'), notesInput);
 
       function totalsOf() {
         let sub = 0, disc = 0;
@@ -27565,7 +27565,7 @@ function backendDiagnosticsCard(){
         list.appendChild(h('div', { class:'list-item', style:{padding:'6px 8px', background: ch.ok ? 'var(--ok-bg, #f0fdf4)' : 'var(--err-bg, #fef2f2)', borderRadius:'8px'} },
           h('span', { style:{fontWeight:'700', color: ch.ok ? '#15803d' : '#b91c1c', minWidth:'14px'}}, ch.ok?'✓':'✗'),
           h('div', {class:'li-main'}, h('b', null, ch.name), h('span', {style:{fontSize:'var(--fs-xs)', color:'var(--muted)'}}, ch.note || '')),
-          h('span', {class:'hint', style:{fontSize:'10px'}}, (ch.ms||0)+'ms')
+          h('span', {class:'hint', style:{fontSize:'var(--fs-2xs)'}}, (ch.ms||0)+'ms')
         ));
       });
       body.appendChild(list);
@@ -31955,14 +31955,14 @@ App.registerScreen('apps', {
       var can = !app.perm || App.can(app.perm);
       var card = h('div',{class:'card', style:{display:'flex',flexDirection:'column',gap:'10px',borderLeft:'4px solid '+app.colour, position:'relative', overflow:'hidden'}});
       if(app.badge){
-        card.appendChild(h('div',{style:{position:'absolute',top:'8px',right:'8px',background:app.colour,color:'#04120a',fontSize:'10px',fontWeight:'800',padding:'2px 8px',borderRadius:'999px'}}, app.badge));
+        card.appendChild(h('div',{style:{position:'absolute',top:'8px',right:'8px',background:app.colour,color:'#04120a',fontSize:'11px',fontWeight:'800',padding:'2px 8px',borderRadius:'999px'}}, app.badge));
       }
       card.appendChild(h('div',{style:{display:'flex',gap:'12px',alignItems:'center'}},
         h('div',{style:{width:'48px',height:'48px',borderRadius:'12px',background:app.colour+'18',border:'1px solid '+app.colour+'30',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'22px'}}, app.icon),
         h('div',{style:{flex:'1'}},
           h('div',{style:{fontWeight:'800',fontSize:'16px'}}, app.name),
           h('div',{style:{fontSize:'12px',color:'var(--muted)'}}, app.desc),
-          h('div',{style:{fontSize:'10px',fontWeight:'700',letterSpacing:'.4px',textTransform:'uppercase',marginTop:'4px',color: enabled? (can?'var(--ok)':'var(--warn)') : 'var(--err)'}}, enabled ? (can? '● Ready':'● No access') : '○ Disabled in Settings')
+          h('div',{style:{fontSize:'11px',fontWeight:'700',letterSpacing:'.4px',textTransform:'uppercase',marginTop:'4px',color: enabled? (can?'var(--ok)':'var(--warn)') : 'var(--err)'}}, enabled ? (can? '● Ready':'● No access') : '○ Disabled in Settings')
         )
       ));
       // actions row
