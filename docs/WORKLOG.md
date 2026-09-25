@@ -59,4 +59,16 @@ integration + regression + UI/UX-check + error-handling + security-check pass ho
 - Next: D5 Drive bootstrap (GAS) ya D6 WhatsApp — D5 pehle (D4 hub ka Drive-location
   action usi se judta hai).
 
-## (agle slices yahan add honge — D5..D11, har entry isi format me)
+## 2026-09-25 — Round 7 (D5+D6+D7-batch1) — COMPLETE
+- Git-token mila → 5 pending commits push (`f52e91c..7f2e498` remote-main). Policy:
+  token env-only har push par (kahin save nahi — HB security rule), dobara nahi poochenge.
+- **D5 Drive bootstrap COMPLETE:** DocReg.gs (19-folder tree, get-or-create, IDs persist,
+  verify; refs docs me) + mock deterministic routes + hub ☁ Drive-setup modal.
+  Evidence: inline-gate (repeat same-ID, modal-tree, verify-toast, 0 errors).
+- **D6 context-aware share COMPLETE:** docShare() (invoice→Share.invoice engine; baqi
+  structured+wa.me+Copy) — detail/table 💬. Evidence: wa.me-URL-docNo ✓ engine-modal ✓ 0 errors.
+- **D7 batch-1 COMPLETE:** 9 surfaces T.t + dict(en/roman/ur) — live EN-pure/roman/urdu ✓.
+  Ghaltiyan pakri+fix: invalid \U escapes; TDZ (block TRANSLATIONS-decl ke baad reloc).
+- Next: D8 print-layout audit → D9 designer preview-audit → D10 QR inspect → D11 table totals.
+
+## (agle slices yahan add honge — D8..D11, har entry isi format me)

@@ -534,10 +534,10 @@ function wireShell() {
         h('button', { class: 'chip2', onclick: () => { const i = f.el.querySelector('input'); if (i) { i.value = v; i.dispatchEvent(new Event('input', { bubbles: true })); } } },
           fmt.money(v))));
       UI2.modal({
-        title: '🏪 Shop kholein (day start)', size: 'sm',
+        title: T.t('boot.shop.open', '🏪 Open shop (day start)'), size: 'sm',
         body: h('div', null, f.el, chips,
           h('div', { class: 'sub', style: { marginTop: '8px' } },
-            'Opening cash darj karein — day-end par expected vs counted ka farq khud nikal aayega.')),
+            T.t('boot.shop.openHint', 'Enter opening cash — expected vs counted difference is calculated automatically at day-end.'))),
         actions: [
           { label: '🔓 Open shop', cls: 'ok', onClick: async c => {
             const v = f.values();
@@ -567,18 +567,18 @@ function wireShell() {
     const body = h('div', { class: 'close-shop' },
       h('div', { class: 'shop-sum' },
         row('Session', (ses.sessionNo || '') + ' · ' + dur),
-        row('Opening cash', fmt.money(ses.openingCash)),
-        row('Cash in (sales)', fmt.money(t.cashIn || 0), 'ok'),
+        row(T.t('boot.shop.openingCash', 'Opening cash'), fmt.money(ses.openingCash)),
+        row(T.t('boot.shop.cashInSales', 'Cash in (sales)'), fmt.money(t.cashIn || 0), 'ok'),
         row('Cash out / expenses', '-' + fmt.money((t.cashOut || 0) + (t.expenses || 0)), 'err'),
         row('Card / wallet', fmt.money(t.card || 0)),
         row('Expected in drawer', fmt.money(ses.expectedCash || 0), 'grand')),
       h('div', { class: 'sub' }, (t.txns || 0) + ' transactions · ' + App.sessionMeta().name));
     UI2.modal({
-      title: '🏪 Shop khuli hai', size: 'sm', body,
+      title: T.t('boot.shop.isOpen', '🏪 Shop is open'), size: 'sm', body,
       actions: [
-        { label: '🔒 Close shop', cls: 'danger', onClick: c => { c(); closeShopModal(ses, after); } },
-        { label: '⬇ Cash in', onClick: c => { c(); cashMoveModal('CASH_IN', ses, after); } },
-        { label: '⬆ Cash out', onClick: c => { c(); cashMoveModal('CASH_OUT', ses, after); } },
+        { label: T.t('boot.shop.close', '\U+1F512 Close shop'), cls: 'danger', onClick: c => { c(); closeShopModal(ses, after); } },
+        { label: T.t('boot.shop.cashIn', '\u2B07 Cash in'), onClick: c => { c(); cashMoveModal('CASH_IN', ses, after); } },
+        { label: T.t('boot.shop.cashOut', '\u2B06 Cash out'), onClick: c => { c(); cashMoveModal('CASH_OUT', ses, after); } },
         { label: 'Full screen', onClick: c => { c(); App.go('shop'); } },
         { label: 'Close', onClick: c => c() }
       ]

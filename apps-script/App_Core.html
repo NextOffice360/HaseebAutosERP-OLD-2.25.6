@@ -2212,7 +2212,7 @@ App.go = function (id, params) {
   if (!App.state.session) return;
   if (!App.screens[id]) { id = 'dashboard'; }
   const s = App.screens[id];
-  if (s.perm && !App.can(s.perm)) { UI.toast('Is screen ka access nahi hai', 'err'); id = 'dashboard'; }
+  if (s.perm && !App.can(s.perm)) { UI.toast(T.t('core.noAccess', 'No access to this screen'), 'err'); id = 'dashboard'; }
   App.current = id; App.params = params || {};
   /* v2.9 §2 — deep-link/params ka tab memory me baithe jaye, taake refresh par
      wahi tab khule. Nav click (no params) par memory fresh screen ke hisab se

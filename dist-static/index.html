@@ -5364,7 +5364,7 @@ App.go = function (id, params) {
   if (!App.state.session) return;
   if (!App.screens[id]) { id = 'dashboard'; }
   const s = App.screens[id];
-  if (s.perm && !App.can(s.perm)) { UI.toast('Is screen ka access nahi hai', 'err'); id = 'dashboard'; }
+  if (s.perm && !App.can(s.perm)) { UI.toast(T.t('core.noAccess', 'No access to this screen'), 'err'); id = 'dashboard'; }
   App.current = id; App.params = params || {};
   /* v2.9 §2 — deep-link/params ka tab memory me baithe jaye, taake refresh par
      wahi tab khule. Nav click (no params) par memory fresh screen ke hisab se
@@ -14586,6 +14586,42 @@ function docSummary(r) {
     .join('\n');
 }
 
+/* ============================================================================
+ * v2.30.5 (D6, doc-intel §4) — CONTEXT-AWARE SHARE (WhatsApp/Share/Copy)
+ * Invoice-type → mojooda poori Share.invoice engine (providers/Outbox/PDF).
+ * Doosre types → structured message (summary + totals/status) + wa.me free-link
+ * + Copy-Text fallback (jab file bare ya manual bhejna ho). Koi naya messaging
+ * system nahi — Comms ke upar hi chalta hai.
+ * ==========================================================================*/
+async function docShare(r) {
+  if (/^(INVOICE|RECEIPT)$/i.test(r.docType || '') && /^(sale|invoice)$/i.test(r.entityType || '') && window.Share) {
+    try {
+      const sale = await API.call('sales.get', { id: r.entityId }, { offlineFallback: () => null });
+      if (sale && (sale.invoiceNo || sale.id)) return Share.invoice(sale.invoiceNo ? sale : Object.assign({}, sale, { invoiceNo: r.ref }));
+      UI.toast('Invoice record nahi mila — text share khul raha hai', 'warn', 2600);
+    } catch (e) { /* fall through to text share */ }
+  }
+  const msg = ['*' + (App.state.branchName || 'Haseeb Autos') + '* — ' + (r.docType || 'Document'),
+    docSummary(r), r.qr ? ('Scan code: ' + r.qr) : ''].filter(Boolean).join('\n');
+  const box = h('textarea', { rows: 8, class: 'f-input', style: { width: '100%' } });
+  box.value = msg;
+  const st = h('div', { class: 'share-status' });
+  UI2.modal({
+    title: '💬 Share ' + (r.docType || 'doc') + ' — ' + (r.docNo || r.id), size: 'md',
+    body: h('div', null,
+      h('div', { class: 'f-hint', style: { marginBottom: '6px' } }, 'Message edit karke bhejein — WhatsApp app/web khulega (koi API key nahi). Copy-Text fallback bhi mojood.'),
+      box, st),
+    actions: [
+      { label: 'Close', cls: 'ghost', onClick: c => c() },
+      { label: '⧉ Copy text', onClick: () => { try { navigator.clipboard && navigator.clipboard.writeText(box.value); } catch (e) { } st.textContent = 'Copy ho gaya ✅'; UI.toast('Message copy ho gaya', 'ok'); } },
+      { label: '💬 WhatsApp', cls: 'ok', onClick: () => {
+        window.open('https://wa.me/?text=' + encodeURIComponent(box.value), '_blank');
+        st.textContent = 'WhatsApp khul gaya ✅';
+      } }
+    ]
+  });
+}
+
 function docDetail(r, reload) {
   const host = h('div');
   const meta = h('div', { class: 'f-grid', style: { marginBottom: '10px' } },
@@ -14610,10 +14646,47 @@ function docDetail(r, reload) {
     title: '📄 ' + (r.docNo || r.id), size: 'md', body: host,
     actions: [
       { label: 'Close', cls: 'ghost', onClick: c => c() },
+      { label: '💬 WhatsApp', cls: 'ok', onClick: c => { c(); docShare(r); } },
       { label: '📋 Copy text', onClick: c => { copyText(docSummary(r)); } },
       { label: '↻ Refresh', onClick: c => { c(); if (reload) reload(); } }
     ]
   });
+}
+
+/* ============================================================================
+ * v2.30.5 (D5) — Drive setup: root-tree create-OR-reuse + verify (doc-intel §5/§6).
+ * Backend: GAS DocReg.gs (real) / mock docs.drive.* (demo). IDs config me persist
+ * hote hain — dobara chalane par koi duplicate folder nahi banta.
+ * ==========================================================================*/
+function driveSetup() {
+  const host = h('div');
+  host.appendChild(h('div', { class: 'f-hint', style: { marginBottom: '8px' } },
+    'Drive me application root + sub-folders (Documents/Media/Exports/Imports/Archive). IDs persist hoti hain — repeat par koi duplicate nahi.'));
+  const tree = h('div');
+  host.appendChild(tree);
+  UI2.modal({ title: '☁ Google Drive setup', size: 'md', body: host,
+    actions: [
+      { label: 'Close', cls: 'ghost', onClick: c => c() },
+      { label: 'Verify', onClick: async c => {
+        try {
+          const v = await API.call('docs.drive.verify', {});
+          UI.toast(v.ok ? ('Drive OK — ' + v.checked + ' folders checked') : ('Masla: ' + (v.missing || []).join(', ')), v.ok ? 'ok' : 'err', 3400);
+        } catch (e) { UI.toast(e.message, 'err'); }
+      } }
+    ] });
+  API.call('docs.drive.setup', {}).then(res => {
+    const f = (res && res.folders) || {};
+    tree.innerHTML = '';
+    const row = (label, id) => h('div', { class: 'list-item' },
+      h('div', { class: 'li-main' }, h('b', null, label), h('span', { class: 'muted' }, id || '')));
+    tree.appendChild(row('📁 ' + (f.root && f.root.name || 'root'), f.root && f.root.id));
+    ['Project', 'Documents', 'Media', 'Exports', 'Imports', 'Archive'].forEach(g => {
+      if (!f[g]) return;
+      tree.appendChild(row('  📂 ' + g, f[g].id));
+    });
+    tree.appendChild(h('div', { class: 'muted', style: { marginTop: '6px' } },
+      'Total ' + (res.folderCount || Object.keys(f).length) + ' folders · ' + (res.at || '')));
+  }).catch(e => { tree.innerHTML = ''; tree.appendChild(h('div', { class: 'empty' }, '⚠ ' + e.message)); });
 }
 
 App.registerScreen('documents', {
@@ -14623,6 +14696,7 @@ App.registerScreen('documents', {
     return [
       { label: 'Manual code', icon: '⌨', onClick: () => { if (window.HaScan) HaScan.manual({}); } },
       { label: 'Scan & Resolve', icon: '📷', cls: 'ok', onClick: () => { if (window.App.scanResolve) App.scanResolve(); else if (window.HaScan) HaScan.manual({}); } },
+      { label: 'Drive setup', icon: '☁', onClick: driveSetup },
       { label: 'Refresh', icon: '↻', onClick: () => App.refresh() }
     ];
   },
@@ -14679,6 +14753,7 @@ App.registerScreen('documents', {
             { key: 'createdAt', label: 'Created', render: r => fmt.date(r.createdAt, true) },
             { key: '_act', label: 'Actions', render: r => h('span', { style: { display: 'flex', gap: '6px' } },
               h('button', { class: 'btn sm ghost', title: 'Resolve + entity kholein', 'aria-label': 'Open ' + (r.docNo || ''), onclick: ev => { ev.stopPropagation(); App.resolveCode(r.qr || ('HA:DOC:' + r.id)); } }, '↗'),
+              h('button', { class: 'btn sm ghost', title: 'Share (WhatsApp/Copy)', 'aria-label': 'Share ' + (r.docNo || ''), onclick: ev => { ev.stopPropagation(); docShare(r); } }, '💬'),
               h('button', { class: 'btn sm ghost', title: 'Copy document text', 'aria-label': 'Copy ' + (r.docNo || ''), onclick: ev => { ev.stopPropagation(); copyText(docSummary(r)); } }, '📋')) }
           ],
           onRow: r => docDetail(r, load)
@@ -28964,10 +29039,10 @@ function wireShell() {
         h('button', { class: 'chip2', onclick: () => { const i = f.el.querySelector('input'); if (i) { i.value = v; i.dispatchEvent(new Event('input', { bubbles: true })); } } },
           fmt.money(v))));
       UI2.modal({
-        title: '🏪 Shop kholein (day start)', size: 'sm',
+        title: T.t('boot.shop.open', '🏪 Open shop (day start)'), size: 'sm',
         body: h('div', null, f.el, chips,
           h('div', { class: 'sub', style: { marginTop: '8px' } },
-            'Opening cash darj karein — day-end par expected vs counted ka farq khud nikal aayega.')),
+            T.t('boot.shop.openHint', 'Enter opening cash — expected vs counted difference is calculated automatically at day-end.'))),
         actions: [
           { label: '🔓 Open shop', cls: 'ok', onClick: async c => {
             const v = f.values();
@@ -28997,18 +29072,18 @@ function wireShell() {
     const body = h('div', { class: 'close-shop' },
       h('div', { class: 'shop-sum' },
         row('Session', (ses.sessionNo || '') + ' · ' + dur),
-        row('Opening cash', fmt.money(ses.openingCash)),
-        row('Cash in (sales)', fmt.money(t.cashIn || 0), 'ok'),
+        row(T.t('boot.shop.openingCash', 'Opening cash'), fmt.money(ses.openingCash)),
+        row(T.t('boot.shop.cashInSales', 'Cash in (sales)'), fmt.money(t.cashIn || 0), 'ok'),
         row('Cash out / expenses', '-' + fmt.money((t.cashOut || 0) + (t.expenses || 0)), 'err'),
         row('Card / wallet', fmt.money(t.card || 0)),
         row('Expected in drawer', fmt.money(ses.expectedCash || 0), 'grand')),
       h('div', { class: 'sub' }, (t.txns || 0) + ' transactions · ' + App.sessionMeta().name));
     UI2.modal({
-      title: '🏪 Shop khuli hai', size: 'sm', body,
+      title: T.t('boot.shop.isOpen', '🏪 Shop is open'), size: 'sm', body,
       actions: [
-        { label: '🔒 Close shop', cls: 'danger', onClick: c => { c(); closeShopModal(ses, after); } },
-        { label: '⬇ Cash in', onClick: c => { c(); cashMoveModal('CASH_IN', ses, after); } },
-        { label: '⬆ Cash out', onClick: c => { c(); cashMoveModal('CASH_OUT', ses, after); } },
+        { label: T.t('boot.shop.close', '\U+1F512 Close shop'), cls: 'danger', onClick: c => { c(); closeShopModal(ses, after); } },
+        { label: T.t('boot.shop.cashIn', '\u2B07 Cash in'), onClick: c => { c(); cashMoveModal('CASH_IN', ses, after); } },
+        { label: T.t('boot.shop.cashOut', '\u2B06 Cash out'), onClick: c => { c(); cashMoveModal('CASH_OUT', ses, after); } },
         { label: 'Full screen', onClick: c => { c(); App.go('shop'); } },
         { label: 'Close', onClick: c => c() }
       ]

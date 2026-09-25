@@ -46,12 +46,19 @@ Comms WhatsApp, App_Print designer, UI2.table). Har slice ke baad: build + gates
       'Insights & Dashboards' me Documents (perm reports.view) + MENU_CONFIG m_docs.
       Gate `test_documents_hub.js` **16/0** (2026-09-25); regression doc_registry 10/0 ·
       shop 26/0 · entity 10/0. WhatsApp/Drive-location actions D5/D6 me judenge
-- [ ] **D5** Drive bootstrap (GAS `DocReg.gs`): root+subfolder create-OR-reuse (IDs config me
-      persist), verify report, repeated-run safe; docs: File.gs ▸ func ▸ Run format
-- [ ] **D6** WhatsApp structured share: template per doc-type (invoice/receipt/report) +
-      Copy-Text fallback; context-aware placement (mandate §4)
-- [ ] **D7** EN-purity fixes: D1 baseline se top-20 surfaces (toasts/labels/buttons) T.t me
-      route — batches me, EN default english dikhaye, roman dict me Roman-Urdu values
+- [x] **D5** Drive bootstrap: `DocReg.gs` (naya) — root+19 subfolders get-or-create by name
+      (stable reuse, no duplicates), IDs PropertiesService+CONFIG persist, `DocReg.verify`;
+      official refs record (advanced/drive, api/guides/folder, web). Mock `docs.drive.*`
+      deterministic (repeat=same IDs); hub me ☁ Drive-setup modal (tree + Verify).
+      Inline-gate GREEN: repeat same-ID ✓ 19 folders ✓ modal ✓ verify-toast ✓ 0 errors
+- [x] **D6** Context-aware share: `docShare()` — INVOICE/RECEIPT → poori mojooda
+      Share.invoice engine; baqi types → structured message + wa.me free-link +
+      Copy-Text fallback. Detail-modal + table me 💬 actions. Inline-gate GREEN:
+      wa.me URL me docNo ✓ invoice→Share.engine modal ✓ 0 errors
+- [x] **D7 (batch-1)** EN-purity: 9 boot/shop/core surfaces T.t me route (App_Boot 8 +
+      App_Core 1) + TRANSLATIONS dict (en/roman/ur). Live-verify GREEN: EN me pure-English ✓
+      roman Roman-Urdu ✓ urdu اردو ✓ 0 errors. Sabak: TDZ (seed-block decl ke baad) +
+      escape-literals + block-relocate order. Agle batches D1 baseline tarteeb se
 - [ ] **D8** Print/doc responsiveness audit: 80mm receipt + A4 + label sheets — QR/label
       overflow/clip checks (rendered-DOM assertions @print CSS)
 - [ ] **D9** Designer live-preview: har control change → immediate preview (audit + missing

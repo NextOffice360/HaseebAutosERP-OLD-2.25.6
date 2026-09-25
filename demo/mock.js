@@ -215,6 +215,9 @@ const SALES = [];
    (docId/type/entity/module/version/qr/status) — scanner→registry→entity chain */
 const DEMO_DOCS = [];
 let DOC_SEQ = 0;
+/* v2.30.5 (D5) — demo Drive folder-map (deterministic IDs — repeat par same) */
+const MOCK_DRIVE = {};
+let MOCK_DRIVE_SEQ = 1;
 let seq = 1001;
 for (let d = 44; d >= 0; d--) {
   const date = new Date(Date.now() - d * 864e5);
@@ -780,6 +783,7 @@ let CASH_MOVES = [
     amount: 3500, reason: 'Safe drop (bank deposit)', sessionId: 'SES1' }
 ];
 const TRANSLATIONS = {
+
   'nav.dashboard': { en: 'Dashboard', roman: 'Dashboard', ur: 'ڈیش بورڈ', scope: 'UI' },
   'nav.pos': { en: 'Point of Sale', roman: 'Bill banaayein', ur: 'بل بنائیں', scope: 'UI' },
   'nav.items': { en: 'Items', roman: 'Items', ur: 'آئٹمز', scope: 'UI' },
@@ -808,6 +812,19 @@ const TRANSLATIONS = {
   'msg.saved': { en: 'Saved', roman: 'Save ho gaya', ur: 'محفوظ ہو گیا', scope: 'UI' },
   'msg.noData': { en: 'No data found', roman: 'Koi data nahi mila', ur: 'کوئی ڈیٹا نہیں ملا', scope: 'UI' }
 };
+/* v2.30.5 (D7-batch1) — EN-purity: boot/shop surfaces ka dict (en/roman/ur) */
+Object.assign(TRANSLATIONS, {
+  'boot.shop.open': { key: 'boot.shop.open', en: '🏪 Open shop (day start)', roman: '🏪 Shop kholein (din ka aaghaz)', ur: '🏪 دکان کھولیں (روز کا آغاز)' },
+  'boot.shop.openHint': { key: 'boot.shop.openHint', en: 'Enter opening cash — expected vs counted difference is calculated automatically at day-end.', roman: 'Opening cash darj karein — din ke aakhir me expected vs counted ka farq khud nikal aayega.', ur: 'افتنگ کیش درج کریں — دن کے اختتام پر توقع اور شمار کا فرقخود نکل آئے گا۔' },
+  'boot.shop.isOpen': { key: 'boot.shop.isOpen', en: '🏪 Shop is open', roman: '🏪 Shop khuli hai', ur: '🏪 دکان کھلی ہے' },
+  'boot.shop.close': { key: 'boot.shop.close', en: '🔒 Close shop', roman: '🔒 Shop band karein', ur: '🔒 دکان بند کریں' },
+  'boot.shop.cashIn': { key: 'boot.shop.cashIn', en: '\u2B07 Cash in', roman: '\u2B07 Cash aaye', ur: '\u2B07 نقد آمد' },
+  'boot.shop.cashOut': { key: 'boot.shop.cashOut', en: '\u2B06 Cash out', roman: '\u2B06 Cash kharch', ur: '\u2B06 نقد اخراجات' },
+  'boot.shop.openingCash': { key: 'boot.shop.openingCash', en: 'Opening cash', roman: 'Shuruaati cash', ur: 'ابتدائی نقد' },
+  'boot.shop.cashInSales': { key: 'boot.shop.cashInSales', en: 'Cash in (sales)', roman: 'Cash aaya (sales)', ur: 'نقد آمد (فروخت)' },
+  'core.noAccess': { key: 'core.noAccess', en: 'No access to this screen', roman: 'Is screen ka access nahi hai', ur: 'اس اسکرین کی اجازت نہیں' }
+});
+
 
 /* ============================================================================
    v2.30.5 (user mandate #1, P0) — CONFIG SNAPSHOT: settings + saari config
@@ -1350,6 +1367,22 @@ window.MockAPI = {
   'admin.removeDemoData': () => ({ removed: { Items: 10, Customers: 2, Suppliers: 1, Stock: 30, Sales: 0, Users: 1 },
     message: 'Demo data hata diya gaya (demo).' }),
   'setup.diag': () => ({ version: 'demo', linked: true, problems: [], counts: { Users: 10, Items: 25, Customers: 7, Sales: 12 }, shop: { open: !!window.__demoSessionOpen } }),
+  /* ---- v2.30.5 (D5) DRIVE folder-tree (doc-intel §5/§6) — deterministic get-or-create ---- */
+  'docs.drive.setup': () => {
+    if (!MOCK_DRIVE.root) {
+      const mk = name => ({ id: 'FLD-' + name.replace(/[^A-Za-z]/g, '').slice(0, 12) + '-' + (MOCK_DRIVE_SEQ++), url: '#' });
+      MOCK_DRIVE.root = Object.assign(mk('HaseebAutosERP'), { name: 'Haseeb Autos ERP' });
+      const g = (n, kids) => { const f = Object.assign(mk(n), { name: n }); MOCK_DRIVE[n] = f;
+        (kids || []).forEach(k => { MOCK_DRIVE[n + '/' + k] = mk(n + '/' + k); }); };
+      g('Project', ['Versions', 'Backups', 'Deployment']);
+      g('Documents', ['Invoices', 'Receipts', 'Reports', 'Ledgers', 'Quotations', 'Other']);
+      g('Media', ['Images', 'QR', 'Barcodes']);
+      g('Exports'); g('Imports'); g('Archive');
+    }
+    return { ok: true, folders: MOCK_DRIVE, folderCount: Object.keys(MOCK_DRIVE).length, at: new Date().toISOString() };
+  },
+  'docs.drive.verify': () => ({ ok: !!MOCK_DRIVE.root, rootId: MOCK_DRIVE.root ? MOCK_DRIVE.root.id : '', checked: MOCK_DRIVE.root ? 5 : 0, missing: MOCK_DRIVE.root ? [] : ['root (setup pehle chalayein)'] }),
+
   /* ---- v2.30.5 (D3) DOCUMENT REGISTRY routes (doc-intel §2) ---- */
   'docs.registry.save': p => {
     const d = p.doc || p || {};
