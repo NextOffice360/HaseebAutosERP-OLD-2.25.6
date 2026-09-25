@@ -129,7 +129,7 @@ const PROBE_WIZARD = () => {
   await sleep(1500);
   const em = await page.evaluate(PROBE_EMPTY_STATE);
   ok(!!em && em.vis, 'items: 0 rows par empty state ("koi item nahi") render hui', JSON.stringify(em));
-  ok(!!em && /Koi item nahi/.test(em.text), 'items: empty state mein wazeh paighaam + action hint', em && em.text);
+  ok(!!em && /Koi item nahi|No items/.test(em.text) /* v2.30.8: T.t EN/roman */, 'items: empty state mein wazeh paighaam + action hint', em && em.text);
 
   /* ============ 3) INVENTORY: loading + error + retry =================== */
   console.log('\n3) INVENTORY — loading / error / retry');

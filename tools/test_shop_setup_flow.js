@@ -94,11 +94,11 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   await sleep(400);
   await page.click('#btnShop');
   await sleep(900);
-  const dlg = await page.evaluate(() => !!Array.from(document.querySelectorAll('.modal2')).find(m => /Open shop \(day start\)|Shop kholein/.test(m.textContent || '')));
+  const dlg = await page.evaluate(() => !!Array.from(document.querySelectorAll('.modal2')).find(m => /Open shop \(day start\)|Shop kholein|Open the shop/.test(m.textContent || '')));
   ok('pill click \u2192 shop-open dialog (functional, lang-agnostic)', dlg);
   if (dlg) {
     await page.evaluate(() => {
-      const m = Array.from(document.querySelectorAll('.modal2')).find(x => /Open shop \(day start\)|Shop kholein/.test(x.textContent || ''));
+      const m = Array.from(document.querySelectorAll('.modal2')).find(x => /Open shop \(day start\)|Shop kholein|Open the shop/.test(x.textContent || ''));
       const b = Array.from(m.querySelectorAll('button')).find(x => /Open shop/.test(x.textContent));
       b.click();
     });

@@ -4028,6 +4028,105 @@ Object.assign(TRANSLATIONS, {
   'pos.scanned': { key: 'pos.scanned', en: 'Scanned', roman: 'Scan hua', ur: 'اسکین ہوا' },
   'pos.addedCart': { key: 'pos.addedCart', en: 'Added to cart', roman: 'Cart me add ho gaya', ur: 'کارٹ میں شامل ہو گیا' },
   'pos.codeNotFound': { key: 'pos.codeNotFound', en: 'Code not found', roman: 'Code nahi mila', ur: 'کوڈ نہیں ملا' },
+  'sc2.noPrYet': { key: 'sc2.noPrYet', en: 'No purchase returns — create via "New purchase return"', roman: 'Koi purchase return nahi — "New purchase return" se banayein', ur: 'کوئی خریداری واپسی نہیں — "نئی خریداری واپسی" سے بنائیں' },
+  'sc2.creditNeedsSupplier2': { key: 'sc2.creditNeedsSupplier2', en: 'Credit (udhaar) requires a supplier', roman: 'Credit (udhaar) ke liye supplier lazmi hai', ur: 'کریڈٹ (ادھار) کے لیے سپلائر لازمی ہے' },
+  'pos.openShopHint': { key: 'pos.openShopHint', en: 'Tap "Open the shop" — the day starts with opening cash.', roman: '"Shop kholein" dabayen — opening cash ke sath din shuru hoga.', ur: '"دکان کھولیں" پر ٹیپ کریں — دن اوپننگ کیش کے ساتھ شروع ہو گا۔' },
+  'pos.askManagerOpen': { key: 'pos.askManagerOpen', en: 'Please ask a manager/cashier to open the shop.', roman: 'Barah-e-karam manager/cashier se shop khulwayein.', ur: 'براہِ کرم مینیجر/کیشیئر سے دکان کھلوائیں۔' },
+  'pos.shopGateToast': { key: 'pos.shopGateToast', en: 'Shop must be open before starting a sale — first action (item add) was blocked.', roman: 'Sale shuru karne se pehle shop khulna zaroori hai — pehla action (item add) rok diya gaya.', ur: 'سیل شروع کرنے سے پہلے دکان کا کھلا ہونا ضروری ہے — پہلا ایکشن (آئٹم شامل) روک دیا گیا۔' },
+  'pos.openShopBtn': { key: 'pos.openShopBtn', en: '🗪 Open the shop', roman: '🗪 Shop kholein', ur: '🗪 دکان کھولیں' },
+  'pos.shopClosedBanner': { key: 'pos.shopClosedBanner', en: 'Shop is closed — sale actions are blocked. Open the shop first.', roman: 'Shop band hai — sale ke kaam rok diye gaye. Pehle shop kholein.', ur: 'دکان بند ہے — سیل کے کام روک دیے گئے۔ پہلے دکان کھولیں۔' },
+  'pos.bulkHint': { key: 'pos.bulkHint', en: 'Scan → Bulk List → Add All · or tick from search/📋 list', roman: 'Scan → Bulk List → Add All · ya search/📋 list se tick karein', ur: 'اسکین → بلک لسٹ → سب شامل کریں · یا تلاش/📋 فہرست سے ٹک کریں' },
+  'pos.bulkBadgeEnd': { key: 'pos.bulkBadgeEnd', en: ' · close', roman: ' · band karein', ur: ' · بند کریں' },
+  'pos.scanOrTypePh': { key: 'pos.scanOrTypePh', en: 'Scan or type — name / code / barcode / brand / model… (F2)', roman: 'Scan ya type karein — name / code / barcode / brand / model… (F2)', ur: 'اسکین یا ٹائپ کریں — نام / کوڈ / بارکوڈ / برانڈ / ماڈل… (F2)' },
+  'pos.cameraScan': { key: 'pos.cameraScan', en: 'Scan barcode/QR with camera', roman: 'Camera se barcode/QR scan karein', ur: 'کیمرے سے بارکوڈ/کیو آر اسکین کریں' },
+  'pos.endBulkSession': { key: 'pos.endBulkSession', en: 'End bulk session', roman: 'Bulk session khatam karein', ur: 'بلک سیشن ختم کریں' },
+  'pos.bulkBadgeInit': { key: 'pos.bulkBadgeInit', en: ' 🔁 Bulk ON · 0 · close', roman: ' 🔁 Bulk ON · 0 · band karein', ur: ' 🔁 بلک آن · 0 · بند کریں' },
+  'pos.bulkAddHint': { key: 'pos.bulkAddHint', en: 'Add multiple products at once from the checkbox list (like GRN/PO) — BULK ADD', roman: 'Checkbox list se multiple products ek saath add karein (GRN/PO jaisa) — BULK ADD', ur: 'چیک باکس فہرست سے کئی پروڈکٹس ایک ساتھ شامل کریں (جی آر این/پی او جیسا) — بلک ایڈ' },
+  'pos.gridBulkHint': { key: 'pos.gridBulkHint', en: 'Grid bulk — tick tiles to add multiple', roman: 'Grid bulk — tiles par tick karke multiple add', ur: 'گرڈ بلک — ٹائلوں پر ٹک کر کئی شامل کریں' },
+  'pos.gridSelectOn': { key: 'pos.gridSelectOn', en: 'Grid select ON — tick tiles', roman: 'Grid select ON — tiles tick karein', ur: 'گرڈ سلیکٹ آن — ٹائلیں ٹک کریں' },
+  'pos.cartLinesSelect': { key: 'pos.cartLinesSelect', en: 'Select cart lines — bulk delete / qty', roman: 'Cart lines select karein — bulk delete / qty', ur: 'کارٹ لائنیں منتخب کریں — بلک ڈیلیٹ / qty' },
+  'pos.noMatches': { key: 'pos.noMatches', en: 'No matches', roman: 'Kuch nahi mila', ur: 'کچھ نہیں ملا' },
+  'pos.quickViewHint': { key: 'pos.quickViewHint', en: 'ⓘ click for more details', roman: 'ⓘ aur detail ke liye click karein', ur: 'ⓘ مزید تفصیل کے لیے کلک کریں' },
+  'pos.makeFavourite': { key: 'pos.makeFavourite', en: 'Make favourite', roman: 'Favourite banayein', ur: 'پسندیدہ بنائیں' },
+  'pos.noHeldBills': { key: 'pos.noHeldBills', en: 'No held bills', roman: 'Koi held bill nahi', ur: 'کوئی ہولڈ بل نہیں' },
+  'pos.findItemHint': { key: 'pos.findItemHint', en: 'Search and tap an item, or scan a barcode', roman: 'Item search kar ke tap karein, ya barcode scan karein', ur: 'آئٹم تلاش کر کے ٹیپ کریں، یا بارکوڈ اسکین کریں' },
+  'pos.decrease': { key: 'pos.decrease', en: 'Decrease', roman: 'Kam karein', ur: 'کم کریں' },
+  'pos.increase': { key: 'pos.increase', en: 'Increase', roman: 'Zyada karein', ur: 'زیادہ کریں' },
+  'pos.ledgerBtn': { key: 'pos.ledgerBtn', en: '📒 Credit ledger', roman: '📒 Udhaar', ur: '📒 ادھار' },
+  'pos.minPriceTail': { key: 'pos.minPriceTail', en: ' — cannot be lower', roman: ' se kam nahi', ur: ' سے کم نہیں' },
+  'pos.custSearchPh': { key: 'pos.custSearchPh', en: 'Name or phone… (type to filter instantly)', roman: 'Naam ya phone… (type karein, foran filter hoga)', ur: 'نام یا فون… (ٹائپ کریں، فوراً فلٹر ہو گا)' },
+  'pos.noCustomer': { key: 'pos.noCustomer', en: 'No customer found', roman: 'Koi customer nahi mila', ur: 'کوئی کسٹمر نہیں ملا' },
+  'pos.selectCustomer': { key: 'pos.selectCustomer', en: 'Select a customer', roman: 'Customer select karein', ur: 'کسٹمر منتخب کریں' },
+  'pos.openingUdhaar': { key: 'pos.openingUdhaar', en: 'Opening credit', roman: 'Opening udhaar', ur: 'افتتاحی ادھار' },
+  'pos.dueClosingHtml': { key: 'pos.dueClosingHtml', en: '<span>Current due (credit) — Closing</span><span>', roman: '<span>Current Due (udhaar) — Closing</span><span>', ur: '<span>موجودہ بقایا (ادھار) — اختتام</span><span>' },
+  'pos.custForPoints': { key: 'pos.custForPoints', en: 'Select a customer — to redeem points', roman: 'Customer select karein — points redeem ke liye', ur: 'کسٹمر منتخب کریں — پوائنٹس ریڈیم کرنے کے لیے' },
+  'pos.currentDue': { key: 'pos.currentDue', en: 'Current due (credit) ', roman: 'Current Due (udhaar) ', ur: 'موجودہ بقایا (ادھار) ' },
+  'pos.billCreditTail': { key: 'pos.billCreditTail', en: ', this bill credit ', roman: ', is bill ka udhaar ', ur: ', اس بل کا ادھار ' },
+  'pos.creditTail': { key: 'pos.creditTail', en: ', credit ', roman: ', udhaar ', ur: ', ادھار ' },
+  'pos.payOptionsTail': { key: 'pos.payOptionsTail', en: ' (pay via Cash or Card, or select Credit)', roman: ' (Cash ya Card se pay karein, ya Udhaar select karein)', ur: ' (کیش یا کارڈ سے ادا کریں، یا ادھار منتخب کریں)' },
+  'pos.clearCartConfirm': { key: 'pos.clearCartConfirm', en: 'Clear cart? This removes all items from the bill.', roman: 'Cart clear karein? Ye bill ke saare items hata dega.', ur: 'کارٹ خالی کریں؟ یہ بل کے تمام آئٹمز ہٹا دے گا۔' },
+  'pos.searchInAddItems': { key: 'pos.searchInAddItems', en: ' — search in Add items', roman: ' — Add items me search karein', ur: ' — Add items میں تلاش کریں' },
+  'pos.typeBarcode': { key: 'pos.typeBarcode', en: 'Type barcode/QR code', roman: 'Barcode/QR code type karein', ur: 'بارکوڈ/کیو آر کوڈ ٹائپ کریں' },
+  'pos.shortcutsNote': { key: 'pos.shortcutsNote', en: 'All shortcuts work only on the POS screen. F-keys are ignored while typing (except Esc/F9).', roman: 'Sab shortcuts sirf POS screen par kaam karte hain. Typing ke dauran F-keys nahi chalte (except Esc/F9).', ur: 'تمام شارٹ کٹس صرف پی او ایس اسکرین پر کام کرتے ہیں۔ ٹائپنگ کے دوران F-keys نہیں چلتے (except Esc/F9)۔' },
+  'pos.scF3F4': { key: 'pos.scF3F4', en: 'F3 or F4 — pick customer', roman: 'F3 ya F4 — Customer chunein', ur: 'F3 یا F4 — کسٹمر چنیں' },
+  'pos.scF8': { key: 'pos.scF8', en: 'F8 — hold bill (pending)', roman: 'F8 — Bill hold karein (pending)', ur: 'F8 — بل ہول کریں (زیرِ التوا)' },
+  'pos.scCtrlK': { key: 'pos.scCtrlK', en: 'Ctrl+K — command palette, Esc — close', roman: 'Ctrl+K — Command palette, Esc — Band karein', ur: 'Ctrl+K — کمانڈ پیلیٹ، Esc — بند کریں' },
+  'sc2.noPo': { key: 'sc2.noPo', en: 'No POs', roman: 'Koi PO nahi', ur: 'کوئی پی او نہیں' },
+  'sc2.noGrn': { key: 'sc2.noGrn', en: 'No GRNs', roman: 'Koi GRN nahi', ur: 'کوئی جی آر این نہیں' },
+  'sc2.codeNotFound': { key: 'sc2.codeNotFound', en: 'Code not found: ', roman: 'Code nahi mila: ', ur: 'کوڈ نہیں ملا: ' },
+  'sc2.prevPayable': { key: 'sc2.prevPayable', en: 'Previous balance (payable)', roman: 'Pichhla baqaya (previous payable)', ur: 'پچھلا بقایا (ادائیگی کے لیے)' },
+  'sc2.noLineItems': { key: 'sc2.noLineItems', en: 'No line items', roman: 'Koi line item nahi', ur: 'کوئی لائن آئٹم نہیں' },
+  'sc2.openSupplier': { key: 'sc2.openSupplier', en: 'Open supplier record', roman: 'Supplier record kholein', ur: 'سپلائر ریکارڈ کھولیں' },
+  'sc2.noItemsScan': { key: 'sc2.noItemsScan', en: 'No items — add via scan or search', roman: 'Koi item nahi — scan ya search se add karein', ur: 'کوئی آئٹم نہیں — اسکین یا تلاش سے شامل کریں' },
+  'sc2.scanLineHint': { key: 'sc2.scanLineHint', en: 'Scan → line (qty merge) · edit qty in the table', roman: 'Scan → line (qty merge) · qty badalne ke liye table mein edit karein', ur: 'اسکین → لائن (qty ضم) · qty ٹیبل میں تبدیل کریں' },
+  'sc2.needOneItem': { key: 'sc2.needOneItem', en: 'Add at least one item', roman: 'Kam az kam ek item add karein', ur: 'کم از کم ایک آئٹم شامل کریں' },
+  'sc2.selectSupplier': { key: 'sc2.selectSupplier', en: 'Select a supplier', roman: 'Supplier select karein', ur: 'سپلائر منتخب کریں' },
+  'sc2.returnSaveFail': { key: 'sc2.returnSaveFail', en: 'Return could not be saved', roman: 'Return save nahi hua', ur: 'واپسی محفوظ نہیں ہوئی' },
+  'sc2.newProductCat': { key: 'sc2.newProductCat', en: 'New product not in catalog — manual entry', roman: 'Naya product jo catalog mein nahi — manual entry', ur: 'نیا پروڈکٹ کیٹلاگ میں نہیں — دستی اندراج' },
+  'sc2.prevRateNone': { key: 'sc2.prevRateNone', en: 'Previous rate: no record', roman: 'Pichhli rate: record nahi', ur: 'پچھلی ریٹ: ریکارڈ نہیں' },
+  'sc2.addItems': { key: 'sc2.addItems', en: 'Add items', roman: 'Items add karein', ur: 'آئٹمز شامل کریں' },
+  'sc2.onCredit': { key: 'sc2.onCredit', en: 'On credit (supplier credit)', roman: 'On credit (supplier udhaar)', ur: 'ادھار (سپلائر کریڈٹ)' },
+  'sc2.offCashPurchase': { key: 'sc2.offCashPurchase', en: 'Off = cash purchase (supplier balance will not increase)', roman: 'Off = cash purchase (supplier ka balance nahi barhega)', ur: 'آف = کیش خریداری (سپلائر بیلنس نہیں بڑھے گا)' },
+  'sc2.loadPendingLines': { key: 'sc2.loadPendingLines', en: 'Load pending lines of any open PO here', roman: 'Kisi bhi open PO ki pending lines yahan load karein', ur: 'کسی بھی کھلے پی او کی زیرِ التوا لائنیں یہاں لوڈ کریں' },
+  'sc2.noOpenPo': { key: 'sc2.noOpenPo', en: 'No open POs', roman: 'Koi open PO nahi', ur: 'کوئی کھلا پی او نہیں' },
+  'sc2.newProductStore': { key: 'sc2.newProductStore', en: 'New product not in store — manual entry', roman: 'Naya product jo store mein nahi — manual entry', ur: 'نیا پروڈکٹ اسٹور میں نہیں — دستی اندراج' },
+  'sc2.addToTotal': { key: 'sc2.addToTotal', en: 'Will be added to total (per supplier bill)', roman: 'Total mein jud jayega (supplier bill ke mutabiq)', ur: 'ٹوٹل میں شامل ہو گا (سپلائر بل کے مطابق)' },
+  'sc2.noLinesYet': { key: 'sc2.noLinesYet', en: 'No lines yet', roman: 'Abhi koi line nahi', ur: 'ابھی کوئی لائن نہیں' },
+  'sc2.waitingPo': { key: 'sc2.waitingPo', en: 'Waiting for PO to load… or add items via scan/search', roman: 'PO load hone ka intezar… ya scan/search se items add karein', ur: 'پی او لوڈ ہونے کا انتظار… یا اسکین/تلاش سے آئٹمز شامل کریں' },
+  'sc2.scanOrList': { key: 'sc2.scanOrList', en: 'Scan, or add items from the 📋 full list', roman: 'Scan karein ya 📋 poori list se items add karein', ur: 'اسکین کریں یا 📋 مکمل فہرست سے آئٹمز شامل کریں' },
+  'sc2.addItemsFirst': { key: 'sc2.addItemsFirst', en: 'Add items first (scan or full list)', roman: 'Pehle items add karein (scan ya poori list se)', ur: 'پہلے آئٹمز شامل کریں (اسکین یا مکمل فہرست سے)' },
+  'sc2.qtyZero': { key: 'sc2.qtyZero', en: ' line(s) have qty 0 — fix them', roman: ' line(s) ki qty 0 hai — theek karein', ur: ' لائن(وں) کی qty 0 ہے — درست کریں' },
+  'sc2.creditNeedsSupplier': { key: 'sc2.creditNeedsSupplier', en: 'Select a supplier for credit purchase', roman: 'Credit purchase ke liye supplier chunein', ur: 'کریڈٹ خریداری کے لیے سپلائر منتخب کریں' },
+  'sc2.poHint': { key: 'sc2.poHint', en: 'Pick a PO and its pending lines load automatically. No PO = direct purchase.', roman: 'PO chunein to uski pending lines khud aa jayengi. Bina PO = direct purchase.', ur: 'پی او منتخب کریں تو اس کی زیرِ التوا لائنیں خود آ جائیں گی۔ بغیر پی او = براہِ راست خریداری۔' },
+  'sc2.scannerHint': { key: 'sc2.scannerHint', en: 'Scan with a scanner (like POS): Found → Added → field cleared. Or multi-select from the 📋 list.', roman: 'Scanner se scan karein (POS jaisa): Found → Added → field khali. Ya 📋 list se multi-select.', ur: 'اسکینر سے اسکین کریں (پی او ایس جیسا): مل گیا → شامل → فیلڈ خالی۔ یا 📋 فہرست سے ملٹی سلیکٹ۔' },
+  'sc2.noEntries': { key: 'sc2.noEntries', en: 'No entries', roman: 'Koi entry nahi', ur: 'کوئی انٹری نہیں' },
+  'sc2.openingUdhaar': { key: 'sc2.openingUdhaar', en: 'Opening credit', roman: 'Opening udhaar', ur: 'افتتاحی ادھار' },
+  'sc2.noPayments': { key: 'sc2.noPayments', en: 'No payments', roman: 'Koi payment nahi', ur: 'کوئی ادائیگی نہیں' },
+  'sc2.noExpenses': { key: 'sc2.noExpenses', en: 'No expenses', roman: 'Koi kharcha nahi', ur: 'کوئی خرچ نہیں' },
+  'sc2.noCashSession': { key: 'sc2.noCashSession', en: 'No open cash session', roman: 'Koi open cash session nahi', ur: 'کوئی کھلا کیش سیشن نہیں' },
+  'sc2.countAtClose': { key: 'sc2.countAtClose', en: 'Count at closing time', roman: 'Closing ke waqt count karein', ur: 'بند کرنے کے وقت گنتی کریں' },
+  'sc2.printFail': { key: 'sc2.printFail', en: 'Could not print', roman: 'Print nahi ho saka', ur: 'پرنٹ نہیں ہو سکا' },
+  'sc2.pdfFail': { key: 'sc2.pdfFail', en: 'Could not create PDF', roman: 'PDF nahi ban saki', ur: 'پی ڈی ایف نہیں بن سکی' },
+  'sc2.copyFail': { key: 'sc2.copyFail', en: 'Could not copy', roman: 'Copy nahi ban saki', ur: 'کاپی نہیں بن سکی' },
+  'sc2.shareFail': { key: 'sc2.shareFail', en: 'Could not share', roman: 'Share nahi ho saka', ur: 'شیئر نہیں ہو سکا' },
+  'sc2.dashAll': { key: 'sc2.dashAll', en: 'Sales, profit, stock, credit — everything', roman: 'Sales, profit, stock, udhaar — sab kuch', ur: 'سیل، منافع، اسٹاک، ادھار — سب کچھ' },
+  'sc2.receivables': { key: 'sc2.receivables', en: 'Receivables (credit)', roman: 'Receivables (udhaar)', ur: 'وصولی (ادھار)' },
+  'sc2.offlineReport': { key: 'sc2.offlineReport', en: 'Offline — report data unavailable', roman: 'Offline — report data maujood nahi', ur: 'آف لائن — رپورٹ ڈیٹا موجود نہیں' },
+  'sc2.reportCatFail': { key: 'sc2.reportCatFail', en: 'Report catalog failed to load', roman: 'Report catalog load nahi hua', ur: 'رپورٹ کیٹلاگ لوڈ نہیں ہوا' },
+  'sc2.prevBalPrev': { key: 'sc2.prevBalPrev', en: 'Previous balance (prev)', roman: 'Pichhla baqaya (prev)', ur: 'پچھلا بقایا (سابقہ)' },
+  'sc2.newUdhaar': { key: 'sc2.newUdhaar', en: 'New credit', roman: 'Naya udhaar', ur: 'نیا ادھار' },
+  'sc2.collections': { key: 'sc2.collections', en: 'Collections', roman: 'Wasooli', ur: 'وصولی' },
+  'sc2.totalUdhaarClose': { key: 'sc2.totalUdhaarClose', en: 'Total credit (closing)', roman: 'Total udhaar (closing)', ur: 'کل ادھار (اختتام)' },
+  'sc2.customerUdhaar': { key: 'sc2.customerUdhaar', en: 'Customer-wise credit', roman: 'Customer-wise udhaar', ur: 'کسٹمر کے حساب ادھار' },
+  'sc2.prevBal': { key: 'sc2.prevBal', en: 'Previous balance', roman: 'Pichhla baqaya', ur: 'پچھلا بقایا' },
+  'sc2.permHint': { key: 'sc2.permHint', en: 'To grant or deny extra fields to a user/group, use the extra & denied permissions in the Users / Groups tab. ', roman: 'Kisi user/group ko extra ya denied fields dene ke liye Users / Groups tab ke extra & denied permissions istemal karein. ', ur: 'کسی یوزر/گروپ کو اضافی یا مسترد فیلڈز دینے کے لیے یوزرز / گروپس ٹیب کی extra & denied اجازتیں استعمال کریں۔ ' },
+  'sc2.permsLoadFail': { key: 'sc2.permsLoadFail', en: '⚠ Permissions failed to load', roman: '⚠ Permissions load nahi hui', ur: '⚠ اجازتیں لوڈ نہیں ہوئیں' },
+  'sc2.noLogs': { key: 'sc2.noLogs', en: 'No logs', roman: 'Koi log nahi', ur: 'کوئی لاگ نہیں' },
+  'sc2.resetPermsConfirm': { key: 'sc2.resetPermsConfirm', en: 'Reset all roles to default permissions?', roman: 'Saare roles ko default permissions par wapas karein?', ur: 'تمام رولز ڈیفالٹ اجازتوں پر واپس کریں؟' },
+  'sc2.roleSaveFail': { key: 'sc2.roleSaveFail', en: ' role could not be saved — ', roman: ' role save nahi ho sake — ', ur: ' رول محفوظ نہیں ہو سکا — ' },
+  'sc2.permCatFail': { key: 'sc2.permCatFail', en: 'Permission catalog failed to load', roman: 'Permission catalog load nahi hua', ur: 'اجازت کیٹلاگ لوڈ نہیں ہوا' },
+  'sc2.noBranches': { key: 'sc2.noBranches', en: 'No branches defined', roman: 'Koi branch defined nahi', ur: 'کوئی برانچ متعین نہیں' },
+  'sc2.permMatrixHint': { key: 'sc2.permMatrixHint', en: 'Beyond the role, “Allow” grants an extra permission, “Deny” blocks it. Click a row to cycle Inherit → Allow → Deny.', roman: 'Role ke baad “Allow” extra permission deta hai, “Deny” usay block kar deta hai. Har row par click karke Inherit → Allow → Deny badal dein.', ur: 'رول کے بعد “Allow” اضافی اجازت دیتا ہے، “Deny” اسے روکتا ہے۔ کسی قطار پر کلک کر کے Inherit → Allow → Deny بدلیں۔' },
   'sc2.labelsFail': { key: 'sc2.labelsFail', en: 'Labels failed: ', roman: 'Labels fail: ', ur: 'لیبلز ناکام: ' },
   'sc2.prPosted': { key: 'sc2.prPosted', en: 'Purchase return posted ✅', roman: 'Purchase return post ho gaya ✅', ur: 'خریداری واپسی درج ہو گئی ✅' },
   'sc2.newCopy': { key: 'sc2.newCopy', en: 'New copy added to list', roman: 'Nayi copy list mein hai', ur: 'نئی کاپی فہرست میں ہے' },
@@ -4043,6 +4142,7 @@ Object.assign(TRANSLATIONS, {
   'sc2.noPerm': { key: 'sc2.noPerm', en: 'Permission denied', roman: 'Permission nahi', ur: 'اجازت نہیں' },
   'sc2.defaultsRestored': { key: 'sc2.defaultsRestored', en: 'Defaults restored (save to keep)', roman: 'Defaults restore ho gaye (save karein)', ur: 'ڈیفالٹس بحال ہو گئے (محفوظ کریں)' },
   'sc2.noChanges': { key: 'sc2.noChanges', en: 'No changes', roman: 'Koi tabdeeli nahi', ur: 'کوئی تبدیلی نہیں' },
+  'sc2.pendingLoaded': { key: 'sc2.pendingLoaded', en: ' pending lines loaded', roman: ' pending lines load ho gayin', ur: ' زیرِ التوا لائنیں لوڈ ہو گئیں' },
   'sc2.permsSaved': { key: 'sc2.permsSaved', en: 'Permissions saved ✅', roman: 'Permissions save ho gayeen ✅', ur: 'اجازتیں محفوظ ہو گئیں ✅' },
   'sc2.usernameReq': { key: 'sc2.usernameReq', en: 'Username is required', roman: 'Username zaroori hai', ur: 'یوزر نیم ضروری ہے' },
   'pos.bulkScanDone': { key: 'pos.bulkScanDone', en: 'Bulk scan done — ', roman: 'Bulk scan khatam — ', ur: 'بلک اسکین مکمل — ' },
@@ -4051,7 +4151,7 @@ Object.assign(TRANSLATIONS, {
   'pos.nameReq': { key: 'pos.nameReq', en: 'Name is required', roman: 'Name zaroori hai', ur: 'نام ضروری ہے' },
   'pos.cartEmpty': { key: 'pos.cartEmpty', en: 'Cart is empty', roman: 'Cart khali hai', ur: 'کارٹ خالی ہے' },
   'pos.enterPoints': { key: 'pos.enterPoints', en: 'Enter points', roman: 'Points daalein', ur: 'پوائنٹس درج کریں' },
-  'pos.pointsTooMany': { key: 'pos.pointsTooMany', en: 'Cannot use that many points', roman: 'Itnе points use nahi ho sakte', ur: 'اتنے پوائنٹس استعمال نہیں ہو سکتے' },
+  'pos.pointsTooMany': { key: 'pos.pointsTooMany', en: 'Cannot use that many points', roman: 'Itne points use nahi ho sakte', ur: 'اتنے پوائنٹس استعمال نہیں ہو سکتے' },
   'pos.cashFull': { key: 'pos.cashFull', en: 'Cash sale: pay the full bill — remaining ', roman: 'Cash sale: poora bill pay karein — baqi ', ur: 'کیش سیل: پورا بل ادا کریں — باقی ' },
   'pos.creditNeedsCustomer': { key: 'pos.creditNeedsCustomer', en: 'Select a customer for credit', roman: 'Udhaar ke liye customer select karein', ur: 'ادھار کے لیے کسٹمر منتخب کریں' },
   'pos.customerBlocked': { key: 'pos.customerBlocked', en: 'Customer account inactive/blocked — credit not allowed', roman: 'Customer account inactive / blocked — udhaar nahi de sakte', ur: 'کسٹمر اکاؤنٹ غیر فعال/بلاک — ادھار نہیں دیا جا سکتا' },
@@ -6980,7 +7080,7 @@ window.MockAPI = {
 
 <script>
     /* Injected by server template */
-    window.APP_BUILD   = '2.30.7-demo';
+    window.APP_BUILD   = '2.30.8-demo';
     window.SERVE_MODE  = 'demo';   // 'apps-script' | 'static'
     window.API_URL     = '';      // filled only for static hosting
   </script>
@@ -11024,7 +11124,10 @@ const Print = {
     // Try to generate QR dataUrl synchronously if QR2 available (offline)
     let qrImg = '';
     try {
-      const txt = 'INV:'+inv+'|TOTAL:'+fmt.num(sale.total)+'|DUE:'+fmt.num(due)+'|CUST:'+custName;
+      /* D2 (round-10) — QR payload ab HA: standard (resolver-direct); total/due/cust
+         label par text me pehle se mojood — scan to verify = HA:INV. Purane printed
+         labels (INV:..|TOTAL:..|CUST:..) resolver legacy back-compat se khulte hain. */
+      const txt = 'HA:INV:'+inv;
       if (window.QR2 && QR2.dataUrl) { qrImg = '<img src="'+QR2.dataUrl(txt,{size:110,margin:0})+'" width="72" height="72" style="display:block;margin:0 auto" alt="QR"/>'; }
       else if (window.QR && QR.cache) { /* async not possible here - fallback */ qrImg = '<div style="width:72px;height:72px;border:1.5px dashed #999;display:grid;place-items:center;font-size:8px;color:#666;margin:0 auto">QR<br/>'+esc(inv)+'</div>'; }
       else { qrImg = '<div style="width:72px;height:72px;border:1.5px dashed #999;display:grid;place-items:center;font-size:8px;color:#666;margin:0 auto">QR<br/>'+esc(inv)+'</div>'; }
@@ -19931,9 +20034,9 @@ window.__ui = {
 
   <script>
 /* ==========================================================================
-   HASEEB AUTOS — SCREENS (Part 2)
-   Purchase · Customers & Suppliers · Payments & Cash · Reports · Users · Settings
-   ========================================================================== */
+   * HASEEB AUTOS — SCREENS (Part 2)
+   * Purchase · Customers & Suppliers · Payments & Cash · Reports · Users · Settings
+   * ========================================================================== */
 (function () {
 'use strict';
 
@@ -20024,7 +20127,7 @@ App.registerScreen('purchase', {
                 r.status === 'DRAFT' && App.can('purchase.po.approve') ? h('button', { class: 'btn sm sec', onclick: e => { e.stopPropagation(); approve(r.id); } }, 'Approve') : '',
                 r.pendingQty > 0 && App.can('purchase.grn') ? h('button', { class: 'btn sm', onclick: e => { e.stopPropagation(); grnForm(r); } }, 'Receive') : '',
                 h('button', { class: 'btn sm ghost', title: 'Print item label', onclick: e => { e.stopPropagation(); Print.labelFlow([r.itemId || r.id]); } }, '🏷')) }
-            ], rows, emptyText: 'Koi PO nahi', onRow: r => poForm(r)
+            ], rows, emptyText: T.t('sc2.noPo','No POs'), onRow: r => poForm(r)
           }));
         } else if (tab === 'grn') {
           const rows = await API.call('purchase.grn.list', { locationId: loc });
@@ -20052,14 +20155,14 @@ App.registerScreen('purchase', {
                 class: 'icon-btn', title: 'Print / PDF / share', 'aria-label': 'Print GRN',
                 onclick: (e) => { e.stopPropagation(); grnDocActions(r); }
               }, '🖨') }
-            ], rows, emptyText: 'Koi GRN nahi', onRow: r => grnDetail(r)
+            ], rows, emptyText: T.t('sc2.noGrn','No GRNs'), onRow: r => grnDetail(r)
           }));
         } else if (tab === 'ret') {
           /* v2.24.2 — Purchase ▸ Returns ka UI pehle MAUJOOD HI NAHI THA
-             (backend par purchase.listReturns / purchase.saveReturn aur
-             permission purchase.return tha, magar screen khaali). Ab poora
-             flow: list + "New purchase return" form jisme wahi shared
-             scan-first picker hai jo POS/PO/GRN mein hai. */
+             * (backend par purchase.listReturns / purchase.saveReturn aur
+             * permission purchase.return tha, magar screen khaali). Ab poora
+             * flow: list + "New purchase return" form jisme wahi shared
+             * scan-first picker hai jo POS/PO/GRN mein hai. */
           let rows = [];
           try { rows = await API.call('purchase.listReturns', { limit: 100 }, { offlineFallback: () => [] }) || []; }
           catch (e) { rows = []; }   /* backend purana/unavailable ho to UI phir bhi khule */
@@ -20081,7 +20184,7 @@ App.registerScreen('purchase', {
               { key: 'status', label: 'Status', render: r => h('span', { class: 'badge ok' }, r.status || 'POSTED') }
             ],
             rows,
-            emptyText: 'Koi purchase return nahi — "New purchase return" se banayein'
+            emptyText: T.t('sc2.noPrYet','No purchase returns — create via "New purchase return"')
           }));
         } else if(tab==='analysis'){
           host.innerHTML=''; host.appendChild(UI.skeleton(5));
@@ -20130,7 +20233,7 @@ App.registerScreen('purchase', {
               var hit=Object.keys(prodMap).filter(function(k){ return String(prodMap[k].code||'').toLowerCase()===lc; })[0];
               fProd.value = hit ? prodMap[hit].code : code;
               fProd.dispatchEvent(new Event('input',{bubbles:true}));
-              UI.toast(hit ? ('📷 ' + prodMap[hit].code + ' — ' + prodMap[hit].name) : ('Code nahi mila: ' + code), hit ? 'ok' : 'warn');
+              UI.toast(hit ? ('📷 ' + prodMap[hit].code + ' — ' + prodMap[hit].name) : (T.t('sc2.codeNotFound','Code not found: ') + code), hit ? 'ok' : 'warn');
             });
             var fSup=h('select',{class:'f-input', style:'max-width:140px'}, h('option',{value:''},'All suppliers'));
             Object.keys(supMap).forEach(function(s){ fSup.appendChild(h('option',{value:s},s)); });
@@ -20154,9 +20257,9 @@ App.registerScreen('purchase', {
             var supRows=Object.values(supMap).map(function(x){ var rate= x.ordered? Math.round((x.received/x.ordered)*100):100; return {supplier:x.supplier, ordered:x.ordered, received:x.received, pending:x.pending, rate:rate, pos:x.pos, reliability: rate>=90?'Good': rate>=70?'Partial':'Poor'}; });
             supRows.sort(function(a,b){ return a.rate - b.rate; });
             /* v2.24.2 — filters ko LIVE banaya (pehle bind hi nahi thay: type karne
-               par kuch nahi hota tha, sirf Refresh kaam karta tha) + supplier table
-               ko product query se filter honay ka bug hataya (product text supplier
-               rows ko gira deta tha). Ab dono tables apne-apne filter se chalti hain. */
+               * par kuch nahi hota tha, sirf Refresh kaam karta tha) + supplier table
+               * ko product query se filter honay ka bug hataya (product text supplier
+               * rows ko gira deta tha). Ab dono tables apne-apne filter se chalti hain. */
             var supTableWrap=h('div'), prodTableWrap=h('div');
             host.appendChild(h('div',{class:'card'}, h('div',{class:'card-head'}, h('h3',null,'🏭 Supplier reliability — Ordered vs Supplied')), h('div',{class:'card-body tight'}, supTableWrap)));
             function supFiltered(){ var s=(fSup.value||''); var sh=fShort.value; return supRows.filter(function(r){ if(s && r.supplier!==s) return false; if(sh==='short' && r.pending===0) return false; if(sh==='pending' && r.pending===0) return false; return true; }); }
@@ -20205,7 +20308,7 @@ App.registerScreen('purchase', {
               const ids = ((d && d.items) || []).map(x => x.itemId || x.id).filter(Boolean);
               if (!ids.length) { UI.toast(T.t('pur.grnNoItems','No items in GRN — open the detail first'), 'warn'); return; }
               Print.labelFlow(ids);
-            } catch (e) { UI.toast(T.t('sc2.labelsFail','Labels fail: ') + (e.message || e), 'err'); }
+            } catch (e) { UI.toast(T.t('sc2.labelsFail','Labels failed: ') + (e.message || e), 'err'); }
           } },
         { label: 'Close', onClick: c => c() }
       ]
@@ -20234,7 +20337,7 @@ App.registerScreen('purchase', {
       /* ---- previous balance block (customer invoice jaisa) ---- */
       h('div', { class: 'bal-card' },
         h('div', { class: 'bal-title' }, '💰 Supplier balance'),
-        h('div', { class: 'bal-row' }, h('span', null, 'Pichhla baqaya (previous payable)'),
+        h('div', { class: 'bal-row' }, h('span', null, T.t('sc2.prevPayable','Previous balance (payable)')),
           h('b', null, fmt.money(d.prevBalance || 0))),
         h('div', { class: 'bal-row' }, h('span', null, 'Is GRN ki mal'),
           h('b', null, fmt.money(d.total || 0))),
@@ -20252,7 +20355,7 @@ App.registerScreen('purchase', {
           { key: 'cost', label: 'Rate', num: true, render: r => fmt.money(r.cost) },
           { key: 'lineTotal', label: 'Amount', num: true, render: r => fmt.money(r.lineTotal) }
         ]
-      }) : h('div', { class: 'empty' }, 'Koi line item nahi'),
+      }) : h('div', { class: 'empty' }, T.t('sc2.noLineItems','No line items')),
       h('div', { class: 'tot-row grand' }, h('span', null, 'GRN total'), h('span', null, fmt.money(d.total || 0))));
 
     UI2.modal({
@@ -20280,7 +20383,7 @@ App.registerScreen('purchase', {
     UI2.modal({
       title: '💸 Supplier payment — ' + (d.supplier && d.supplier.name ? d.supplier.name : ''),
       subtitle: _supId ? UI2.entityLink('parties', { tab: 'suppliers', open: _supId },
-        (d.supplier && d.supplier.name) || 'Supplier record kholein') : '', /* v2.30.5 (D23) */
+        (d.supplier && d.supplier.name) || T.t('sc2.openSupplier','Open supplier record')) : '', /* v2.30.5 (D23) */
       size: 'sm', body: f2.el,
       actions: [{
         label: 'Pay', cls: 'ok', onClick: async c => {
@@ -20304,7 +20407,7 @@ App.registerScreen('purchase', {
 
 let SUPPLIERS = [];
 /* v2.24.2 — Purchase return form: shared scan-first picker (POS/PO/GRN ke sath
-   bilkul same scan behaviour) + supplier/reason/date + stock-aware qty row. */
+   * bilkul same scan behaviour) + supplier/reason/date + stock-aware qty row. */
 function purchaseReturnForm(onDone) {
   const items = [];          /* {id, code, name, qty, cost, stock} */
   const supplier = h('select', { class: 'f-input' }, h('option', { value: '' }, '— supplier —'),
@@ -20314,7 +20417,7 @@ function purchaseReturnForm(onDone) {
   const linesHost = h('div');
   function renderLines() {
     linesHost.innerHTML = '';
-    if (!items.length) { linesHost.appendChild(h('div', { class: 'empty' }, 'Koi item nahi — scan ya search se add karein')); return; }
+    if (!items.length) { linesHost.appendChild(h('div', { class: 'empty' }, T.t('sc2.noItemsScan','No items — add via scan or search'))); return; }
     linesHost.appendChild(UI.table({
       screen: 'preturn_lines',
       columns: [
@@ -20337,7 +20440,7 @@ function purchaseReturnForm(onDone) {
   const picker = UI2.itemPicker({
     lines: items,
     icon: '↩', title: 'Return items — scan ya search',
-    hint: 'Scan → line (qty merge) · qty badalne ke liye table mein edit karein',
+    hint: T.t('sc2.scanLineHint','Scan → line (qty merge) · edit qty in the table'),
     /* shared picker ke row ko hamari line shape mein dhaal dein (cost/stock bhi) */
     map: (r, qty) => ({
       id: r.id, code: r.code, name: r.name,
@@ -20362,7 +20465,7 @@ function purchaseReturnForm(onDone) {
       linesHost),
     actions: [{ label: 'Post return', cls: 'danger', onClick: async (c) => {
       /* v2.30.2 (T7.3) — shared validate (order/msgs wahi) */
-      const preChk = UI2.validate([() => (items.length ? '' : 'Kam az kam ek item add karein')],
+      const preChk = UI2.validate([() => (items.length ? '' : T.t('sc2.needOneItem','Add at least one item'))],
         { getValue: () => ({}), toastKey: 'preturn' });
       if (!preChk.ok) return;
       const payload = {
@@ -20370,14 +20473,14 @@ function purchaseReturnForm(onDone) {
         reason: reason.value || '', locationId: App.state.tmpLoc || '',
         items: items.map(l => ({ itemId: l.id, qty: Number(l.qty) || 1, cost: Number(l.cost) || 0 }))
       };
-      const supChk = UI2.validate([{ key: 'supplierId', required: true, msg: 'Supplier select karein' }],
+      const supChk = UI2.validate([{ key: 'supplierId', required: true, msg: T.t('sc2.selectSupplier','Select a supplier') }],
         { getValue: () => ({ supplierId: payload.supplierId }), toastKey: 'preturn2' });
       if (!supChk.ok) return;
       try {
         await API.call('purchase.saveReturn', payload);
-        UI.toast(T.t('sc2.prPosted','Purchase return post ho gaya ✅'), 'ok');
+        UI.toast(T.t('sc2.prPosted','Purchase return posted ✅'), 'ok');
         c(); onDone && onDone(); API.pullCatalog && API.pullCatalog(true);
-      } catch (e) { UI.toast(e.message || 'Return save nahi hua', 'err', 6000); }
+      } catch (e) { UI.toast(e.message || T.t('sc2.returnSaveFail','Return could not be saved'), 'err', 6000); }
     } }]
   });
 }
@@ -20404,17 +20507,17 @@ function supplierBalanceCard() {
       if (!st) { el.style.display = 'none'; return; }
       el.innerHTML = ''; el.style.display = '';
       /* v2.6 QA — English titles (title attribute me Urdu hint), aur .pb-rows
-         grid (auto-fit 120px) — ab ye 4 fields ek hi line me fit hote hain,
-         truncate/overlap nahi hote. */
+         * grid (auto-fit 120px) — ab ye 4 fields ek hi line me fit hote hain,
+         * truncate/overlap nahi hote. */
       const row = (en, ur, node, extra) => h('div',
         { class: 'pb-row' + (extra ? ' ' + extra : ''), title: ur },
         h('span', null, en), node);
       const rows = h('div', { class: 'pb-rows' });
       rows.appendChild(row('Supplier', 'سپلائر', h('b', null, st.supplier.name || '—')));
       /* v2.30.0 (N10) — supplier select karne par uski POORI configured maloomat
-         (contact · address · tax/NTN · terms · credit limit) yahan live aati hain —
-         PO aur GRN dono mein ek hi card (shared), taake dono ka behaviour same ho.
-         Sirf woh rows dikhti hain jinki value mojood ho (khali noise nahi). */
+         * (contact · address · tax/NTN · terms · credit limit) yahan live aati hain —
+         * PO aur GRN dono mein ek hi card (shared), taake dono ka behaviour same ho.
+         * Sirf woh rows dikhti hain jinki value mojood ho (khali noise nahi). */
       const sup = st.supplier || {};
       const info = (en, ur, val) => { if (val === undefined || val === null || String(val).trim() === '') return; rows.appendChild(row(en, ur, h('b', null, String(val)))); };
       info('Contact', 'رابطہ نمبر', sup.phone);
@@ -20439,7 +20542,7 @@ function supplierBalanceCard() {
 }
 
 /* v2.30.6 fix (W7.T2 regression) — shared prev-price batch fetch, module-level.
-   repaintCb har form apna pass karta hai (poForm: strip repaint; grnForm: render). */
+   * repaintCb har form apna pass karta hai (poForm: strip repaint; grnForm: render). */
 async function fetchPrevBatchShared(ls, repaintCb, supplierId) {
   const list = (ls || []).filter(l => l && l.itemId);
   if (!list.length) return;
@@ -20473,7 +20576,7 @@ function poForm(po, preset) {
   const poMeta = h('div', { class: 'po-meta', style: { display: 'none' } });
   const listEl = h('div');
   // --- Custom product for PO (when product not in catalog) ---
-  const poCustomBtn = h('button', { class: 'btn sm sec', title: 'Naya product jo catalog mein nahi — manual entry', onclick: openPoCustom }, '＋ Custom product');
+  const poCustomBtn = h('button', { class: 'btn sm sec', title: T.t('sc2.newProductCat','New product not in catalog — manual entry'), onclick: openPoCustom }, '＋ Custom product');
   /* v2.25.0 (req 1) — POS wala hi dedicated Bulk Add modal (multi-select + Add All) */
   const poBulkBtn = h('button', { class: 'btn sm sec', type: 'button',
     title: 'Bulk Add — multi-select modal (POS jaisa): scan + tick + Add All',
@@ -20559,11 +20662,11 @@ function poForm(po, preset) {
   setTimeout(loadDemandSuggest, 600);
 
   /* ---- v2.9 §7/§8 — product picker: multi-select (checkbox + qty per item),
-     list bahar click tak khuli rehti hai, 📋 se poori list, search + add. ---- */
+     * list bahar click tak khuli rehti hai, 📋 se poori list, search + add. ---- */
   /* v2.24.0 — PO form bhi ab WAHI shared scan-first picker use karta hai jo
-     GRN/Stock Issue/POS par hai. Pehle yahan custom search tha: na scan, na
-     bulk modal, na dup-merge/stock-cap — isi liye "PO par barcode kaam nahi
-     karta" wali shikayat thi. */
+     * GRN/Stock Issue/POS par hai. Pehle yahan custom search tha: na scan, na
+     * bulk modal, na dup-merge/stock-cap — isi liye "PO par barcode kaam nahi
+     * karta" wali shikayat thi. */
   const r2q = n => Math.round(Number(n) * 1000) / 1000;   // qty 3-decimal helper (render/map dono use karte hain)
   const picker = UI2.itemPicker({
     lines: lines, after: render,
@@ -20601,10 +20704,10 @@ function poForm(po, preset) {
     } catch (e) { }
   }
   /* v2.30.2 (W7.T2) — N lines ka price-history EK call me (pehle har line ka
-     alag round-trip = waterfall). Single-line add wala fetchPrev qayam hai. */
+     * alag round-trip = waterfall). Single-line add wala fetchPrev qayam hai. */
   /* v2.30.6 fix — fetchPrevBatch ab MODULE-level hai (pehle poForm scope me
-     band thi; grnForm.loadPoIntoGrn ka call ReferenceError deta tha aur PO se
-     GRN load poora ruk jata tha). repaint ab caller inject karta hai. */
+     * band thi; grnForm.loadPoIntoGrn ka call ReferenceError deta tha aur PO se
+     * GRN load poora ruk jata tha). repaint ab caller inject karta hai. */
   const fetchPrevBatch = (ls, repaintFn) => window.fetchPrevBatch(ls, repaintFn || repaint, (f && f.values ? (f.values().supplierId || '') : ''));
 
   /** Strip dobara banayein — poora list re-render nahi (taake input focus na toote).
@@ -20630,7 +20733,7 @@ function poForm(po, preset) {
       strip.appendChild(h('span', { class: 'pl-tag' },
         'Retail ' + fmt.money(l.retailPrice || 0) + ' · Wholesale ' + fmt.money(l.wholesalePrice || 0)));
     }
-    if (!prev) { strip.appendChild(h('span', { class: 'pl-hint' }, 'Pichhli rate: record nahi')); return strip; }
+    if (!prev) { strip.appendChild(h('span', { class: 'pl-hint' }, T.t('sc2.prevRateNone','Previous rate: no record'))); return strip; }
     const chg = r2(cur - prev);
     const pct = prev ? r2((chg / prev) * 100) : 0;
     strip.append(
@@ -20657,8 +20760,8 @@ function poForm(po, preset) {
       h('span', { style: { width: '28px' } }, '')));
     lines.forEach((l, i) => {
       /* v2.9 §8 — pack conversion: 1 pack = N base units (e.g. BOX = 12 PCS).
-         User pack mein qty/rate dekhta hai; line BASE units mein store hoti hai
-         taake GRN/stock/ledger sab ek hi unit par rahein. */
+         * User pack mein qty/rate dekhta hai; line BASE units mein store hoti hai
+         * taake GRN/stock/ledger sab ek hi unit par rahein. */
       const cat0 = catalogItem(l.itemId);
       l.conv = Math.max(1, Number(l.conv || (cat0 && cat0.cv) || 1));
       if (l.conv <= 1) l.mode = 'PCS';
@@ -20701,7 +20804,7 @@ function poForm(po, preset) {
         h('button', { class: 'icon-btn', title: 'Line hata dein', 'aria-label': 'Remove line',
           style: { width: '28px', height: '28px', border: 0 }, onclick: () => { lines.splice(i, 1); render(); } }, '✕')));
     });
-    if (!lines.length) listEl.appendChild(h('div', { class: 'tbl-empty' }, 'Items add karein'));
+    if (!lines.length) listEl.appendChild(h('div', { class: 'tbl-empty' }, T.t('sc2.addItems','Add items')));
     renderTot();
   }
   const tot = h('div', { class: 'po-total' });
@@ -20715,8 +20818,8 @@ function poForm(po, preset) {
 
   const f = UI.form([
     /* v2.6 QA — English titles; Urdu sirf hint (neeche chhoti line) me.
-       3-column grid: supplier 2 column leta hai (lambe naam ke liye),
-       baqi 3 fields agle line me — koi truncation/overlap nahi. */
+       * 3-column grid: supplier 2 column leta hai (lambe naam ke liye),
+       * baqi 3 fields agle line me — koi truncation/overlap nahi. */
     { key: 'supplierId', label: 'Supplier', hint: 'سپلائر منتخب کریں', span: 2, type: 'select', options: [{ value: '', label: '— select —' }].concat(SUPPLIERS.map(s => ({ value: s.id, label: s.name }))), value: po ? po.supplierId : '' },
     { key: 'locationId', label: 'Deliver to', hint: 'کہاں ڈیلیور ہونا ہے', type: 'select', options: App.state.locations.map(l => ({ value: l.id, label: l.name })), value: po ? po.locationId : App.state.locationId },
     { key: 'date', label: 'PO date', hint: 'پی او کی تاریخ', type: 'date', value: po ? String(po.date || '').slice(0, 10) : '' },
@@ -20758,14 +20861,14 @@ function poForm(po, preset) {
               ' (' + fmt.money(mine.reduce((a, x) => a + Number(x.total || 0), 0)) + ')'));
           }).catch(() => { });
         /* v2.6 §4 — print / PDF / duplicate / share */
-        poMeta.appendChild(docActions('po', po.id, { onDone: () => { UI.toast(T.t('sc2.newCopy','Nayi copy list mein hai'), 'ok'); } }));
+        poMeta.appendChild(docActions('po', po.id, { onDone: () => { UI.toast(T.t('sc2.newCopy','New copy added to list'), 'ok'); } }));
         if (d.supplier && d.supplier.name) supBal.refresh(d.supplierId);
       })
       .catch(() => { });
   }
   /* v2.6 QA — PO drawer 520px tha: 6-column items table usme kuchal raha tha
-     (fields truncate + overlap). Ab chauda drawer — purani cheezein waisi hain,
-     sirf jagah barhi hai. */
+     * (fields truncate + overlap). Ab chauda drawer — purani cheezein waisi hain,
+     * sirf jagah barhi hai. */
   UI.drawer({
     title: po ? 'PO ' + po.poNo : 'New purchase order',
     width: 'min(980px,96vw)',
@@ -20786,12 +20889,12 @@ function poForm(po, preset) {
         write: true, writeLabel: 'PO save', onClick: async (c) => {
       const v = f.values();
       /* v2.30.2 (T7.3) — shared validate */
-      const chk = UI2.validate([() => (lines.length ? '' : 'Items add karein')],
+      const chk = UI2.validate([() => (lines.length ? '' : T.t('sc2.addItems','Add items'))],
         { getValue: () => v, form: f, toastKey: 'po' });
       if (!chk.ok) return;
       /* v2.9 ka manual 'Saving…' + disabled hack HATA diya — v2.25.9 W2.T2 se
-         busy state + double-submit guard shared UI.run deta hai (modal actions
-         par khud-ba-khud lagta hai), is liye per-page patch ki zaroorat nahi. */
+         * busy state + double-submit guard shared UI.run deta hai (modal actions
+         * par khud-ba-khud lagta hai), is liye per-page patch ki zaroorat nahi. */
       try {
         /* status preserve karein — approved PO dobara DRAFT na ho */
         await API.call('purchase.po.save', { po: Object.assign({}, v, {
@@ -20842,8 +20945,8 @@ function grnForm(po) {
     ? { id: po.id || '', poNo: po.poNo || '', supplierId: po.supplierId || '' } : null;
   const isPO = () => !!(poCtx && poCtx.id);
   /* v2.25.0 — `picked` PO banner ke liye chahiye tha lekin declare nahi hua tha
-     (ReferenceError: picked is not defined → PO load aur banner dono toot jate
-     thay). Ab yahan declare hota hai. */
+     * (ReferenceError: picked is not defined → PO load aur banner dono toot jate
+     * thay). Ab yahan declare hota hai. */
   let picked = { lines: 0, total: 0 };
   const supList = (typeof SUPPLIERS !== 'undefined' && SUPPLIERS) ? SUPPLIERS : [];
 
@@ -20853,21 +20956,21 @@ function grnForm(po) {
     { key: 'supplierId', label: 'Supplier *', type: 'select', required: true,
       options: [{ value: '', label: '— select supplier —' }].concat(supList.map(s => ({ value: s.id, label: s.name }))),
       /* v2.30.0 (N10) — PO jaisa behaviour: supplier select karte hi uski contact /
-         address / tax / terms + pichhla baqaya upar card mein aa jata hai.
-         (Pehle GRN par ye sirf ek dafa load hota tha — badalne par update nahi hota tha.) */
+         * address / tax / terms + pichhla baqaya upar card mein aa jata hai.
+         * (Pehle GRN par ye sirf ek dafa load hota tha — badalne par update nahi hota tha.) */
       onChange: (v) => { try { supBal.refresh(v); } catch (e) { } },
-      hint: 'Credit (udhaar) ke liye supplier lazmi hai' },
+      hint: T.t('sc2.creditNeedsSupplier2','Credit (udhaar) requires a supplier') },
     { key: 'invoiceNo', label: 'Supplier invoice no.', placeholder: 'INV-2291',
       hint: 'Bill number — audit aur search ke liye' },
     { key: 'locationId', label: 'Receive at (warehouse)', type: 'select',
       options: App.state.locations.map(l => ({ value: l.id, label: l.name })), value: App.state.locationId },
-    { key: 'onCredit', label: 'On credit (supplier udhaar)', type: 'switch', value: true,
-      hint: 'Off = cash purchase (supplier ka balance nahi barhega)' }
+    { key: 'onCredit', label: T.t('sc2.onCredit','On credit (supplier credit)'), type: 'switch', value: true,
+      hint: T.t('sc2.offCashPurchase','Off = cash purchase (supplier balance will not increase)') }
   ]);
 
   /* ======================= 2) PO CONTEXT ======================= */
   const poPick = h('select', { class: 'f-input', 'aria-label': 'Load pending lines from purchase order',
-    title: 'Kisi bhi open PO ki pending lines yahan load karein' },
+    title: T.t('sc2.loadPendingLines','Load pending lines of any open PO here') },
     h('option', { value: '' }, '— Direct purchase (bina PO) —'));
   const poBanner = h('div', { class: 'grn-banner', hidden: 'hidden' });
   const poWrap = h('div', { class: 'grn-po-pick' },
@@ -20887,7 +20990,7 @@ function grnForm(po) {
       poPick.appendChild(h('option', { value: '' }, '— Direct purchase (bina PO) —'));
       open.forEach(r => poPick.appendChild(h('option', { value: r.id },
         (r.poNo || r.id) + ' · ' + (r.supplierName || '—') + ' · ' + pend(r) + ' pending')));
-      if (!open.length) poPick.appendChild(h('option', { value: '', disabled: 'disabled' }, 'Koi open PO nahi'));
+      if (!open.length) poPick.appendChild(h('option', { value: '', disabled: 'disabled' }, T.t('sc2.noOpenPo','No open POs')));
       if (poCtx && poCtx.id) poPick.value = poCtx.id;
     } catch (e) { }
   }
@@ -20930,8 +21033,8 @@ function grnForm(po) {
     supBal.refresh(d.supplierId);
     fetchPrevBatch(lines, repaint, (fTop && fTop.values ? (fTop.values().supplierId || '') : ''));   /* v2.30.6 scope-fix */
     poBannerPaint(); render();
-    if (!lines.length) UI.toast(T.t('sc2.poAllReceived','Is PO ki saari lines receive ho chuki hain'), 'warn');
-    else UI.toast(fresh.length + ' pending lines load ho gayin', 'ok');
+    if (!lines.length) UI.toast(T.t('sc2.poAllReceived','All lines of this PO already received'), 'warn');
+    else UI.toast(fresh.length + T.t('sc2.pendingLoaded',' pending lines loaded'), 'ok');
   }
 
   poPick.onchange = async () => {
@@ -20981,21 +21084,21 @@ function grnForm(po) {
       title: '＋ Add custom product (not in store)', size: 'md', body: cf.el,
       actions: [{ label: 'Add to GRN', cls: 'ok', onClick: c => {
         const v = cf.values();
-        if (!v.name) return UI.toast(T.t('sc2.productNameReq','Product name zaruri hai'), 'err');
+        if (!v.name) return UI.toast(T.t('sc2.productNameReq','Product name is required'), 'err');
         const l = { itemId: '', code: v.code || 'CUSTOM', name: v.name, qty: Number(v.qty) || 1,
           cost: Number(v.cost) || 0, retailPrice: 0, wholesalePrice: 0, prevPrice: 0, prevDate: '', orderedQty: undefined };
-        lines.push(l); render(); UI.toast(T.t('sc2.customAdded','Custom item add ho gaya'), 'ok'); c();
+        lines.push(l); render(); UI.toast(T.t('sc2.customAdded','Custom item added'), 'ok'); c();
       } }, { label: 'Cancel', onClick: c => c() }]
     });
   }
   const customBtn = h('button', { class: 'btn sm sec', type: 'button',
-    title: 'Naya product jo store mein nahi — manual entry', onclick: openCustomProduct }, '＋ Custom product');
+    title: T.t('sc2.newProductStore','New product not in store — manual entry'), onclick: openCustomProduct }, '＋ Custom product');
   /* v2.25.0 (req 1) — POS wala hi dedicated Bulk Add modal (multi-select + Add All).
-     Inline picker direct-scan mode mein hai (scan → line), bulk ke liye ye modal. */
+     * Inline picker direct-scan mode mein hai (scan → line), bulk ke liye ye modal. */
   const grnMap = (r, qty) => ({ itemId: r.id, code: r.code, name: r.name, unit: r.unit,
     /* v2.30.4 (W13/T13.1 · B§8) — pack conversion direct GRN lines par bhi (PO v2.9 §8 jaisa):
-       1 pack = N base units (1 BOX = 12 PCS). Line hamesha BASE units mein store hoti hai
-       taake stock/cost/ledger sab ek hi unit par rahen. */
+       * 1 pack = N base units (1 BOX = 12 PCS). Line hamesha BASE units mein store hoti hai
+       * taake stock/cost/ledger sab ek hi unit par rahen. */
     conv: Math.max(1, Number(r.conversionFactor || 1)), mode: 'PCS',
     qty: Math.max(0, Number(qty) || 1), cost: Number(r.costPrice) || 0,
     retailPrice: Number(r.retailPrice) || 0, wholesalePrice: Number(r.wholesalePrice) || 0,
@@ -21016,12 +21119,12 @@ function grnForm(po) {
   /* ======================= 4) CHARGES & SUMMARY ======================= */
   const fCharges = UI.form([
     { key: 'freight', label: 'Freight / other charges', type: 'number', value: 0,
-      hint: 'Total mein jud jayega (supplier bill ke mutabiq)' },
+      hint: T.t('sc2.addToTotal','Will be added to total (per supplier bill)') },
     { key: 'updateCost', label: 'Update item cost from GRN', type: 'switch', value: true,
       hint: 'On = item ki cost is GRN ki rate se update ho gi' }
   ]);
   /* v2.25.0 — freight badalte hi summary/total update (pehle sirf line qty/cost
-     par hota tha, is liye freight total mein foran nazar nahi aata tha) */
+     * par hota tha, is liye freight total mein foran nazar nahi aata tha) */
   fCharges.el.addEventListener('change', () => rt());   /* lazy — rt neeche define hai */
   fCharges.el.addEventListener('input', () => rt());
   const sumEl = h('div', { class: 'grn-sum' });
@@ -21048,7 +21151,7 @@ function grnForm(po) {
   };
 
   function receiveAllPending() {
-    if (!lines.length) return UI.toast(T.t('sc2.loadPoFirst','Pehle PO load karein ya items add karein'), 'warn');
+    if (!lines.length) return UI.toast(T.t('sc2.loadPoFirst','Load a PO first or add items'), 'warn');
     let n = 0;
     lines.forEach(l => {
       if (l.orderedQty !== undefined) {
@@ -21077,10 +21180,10 @@ function grnForm(po) {
     } catch (e) { }
   }
   /* v2.25.0 — crash fix: pehle `l._strip.parentNode.replaceChild(priceStrip(l), l._strip)`
-     tha, jismein `priceStrip(l)` PEHLE chalta hai (l._strip ko naya node bana deta hai)
-     aur phir wahi naya node "purana" bana kar replaceChild ko diya jata tha →
-     "The node to be replaced is not a child of this node" (do prev-rate calls
-     sath sath aane par). Ab purana node pehle capture hota hai. */
+     * tha, jismein `priceStrip(l)` PEHLE chalta hai (l._strip ko naya node bana deta hai)
+     * aur phir wahi naya node "purana" bana kar replaceChild ko diya jata tha →
+     * "The node to be replaced is not a child of this node" (do prev-rate calls
+     * sath sath aane par). Ab purana node pehle capture hota hai. */
   const repaint = (l) => {
     const old = l._strip;
     if (!old || !old.parentNode) { render(); return; }
@@ -21097,7 +21200,7 @@ function grnForm(po) {
       strip.appendChild(h('span', { class: 'pl-tag' },
         'Retail ' + fmt.money(l.retailPrice || 0) + ' · Wholesale ' + fmt.money(l.wholesalePrice || 0)));
     }
-    if (!prev) { strip.appendChild(h('span', { class: 'pl-hint' }, 'Pichhli rate: record nahi')); return strip; }
+    if (!prev) { strip.appendChild(h('span', { class: 'pl-hint' }, T.t('sc2.prevRateNone','Previous rate: no record'))); return strip; }
     const chg = r2(cur - prev);
     const pct = prev ? r2((chg / prev) * 100) : 0;
     strip.append(
@@ -21112,8 +21215,8 @@ function grnForm(po) {
   const cell = (label, node, cls) => h('span', { class: 'gl-cell ' + (cls || ''), 'data-l': label }, node);
 
   /* v2.25.0 — qty/cost badalte hi Short badge + Amount + "Receive all" button bhi
-     update hon (pehle sirf poora render() par hota tha, is liye qty badalne par
-     badge/amount purane value dikhate rehte thay — confusing). */
+     * update hon (pehle sirf poora render() par hota tha, is liye qty badalne par
+     * badge/amount purane value dikhate rehte thay — confusing). */
   function shortBadgeFor(l) {
     const s = (l.orderedQty !== undefined)
       ? (Number(l.orderedQty || 0) - Number(l.receivedQty || 0) - Number(l.qty || 0)) : null;
@@ -21146,18 +21249,18 @@ function grnForm(po) {
 
     if (!lines.length) {
       listEl.appendChild(h('div', { class: 'grn-empty' },
-        h('b', null, 'Abhi koi line nahi'),
-        h('span', null, isPO() ? 'PO load hone ka intezar… ya scan/search se items add karein'
-          : 'Scan karein ya 📋 poori list se items add karein')));
+        h('b', null, T.t('sc2.noLinesYet','No lines yet')),
+        h('span', null, isPO() ? T.t('sc2.waitingPo','Waiting for PO to load… or add items via scan/search')
+          : T.t('sc2.scanOrList','Scan, or add items from the 📋 full list'))));
       rt(); return;
     }
 
     lines.forEach((l, i) => {
       /* v2.30.4 (W13/T13.1 · B§8) — pack conversion (direct lines only; PO lines
-         base units mein aati hain is liye unhein switch ki zaroorat nahi):
-         BOX mode mein user pack-qty/pack-rate likhta hai → base qty (×conv) aur
-         per-base cost (÷conv) AUTO calculate — "1 BOX = 12 PCS, rate Rs 3,000"
-         → line base qty 12, cost 250, amount Rs 3,000. */
+         * base units mein aati hain is liye unhein switch ki zaroorat nahi):
+         * BOX mode mein user pack-qty/pack-rate likhta hai → base qty (×conv) aur
+         * per-base cost (÷conv) AUTO calculate — "1 BOX = 12 PCS, rate Rs 3,000"
+         * → line base qty 12, cost 250, amount Rs 3,000. */
       l.conv = Math.max(1, Number(l.conv || 1));
       const canPack = !isPO() && l.conv > 1;
       const isBox = canPack && l.mode === 'BOX';
@@ -21221,9 +21324,9 @@ function grnForm(po) {
     const v = values();
     /* v2.30.2 (T7.3) — shared validate (msg/order wahi, ab highlight + focus bhi) */
     const chk = UI2.validate([
-      () => (lines.length ? '' : 'Pehle items add karein (scan ya poori list se)'),
-      () => { const z = lines.filter(l => !(Number(l.qty) > 0)).length; return z ? z + ' line(s) ki qty 0 hai — theek karein' : ''; },
-      { key: 'supplierId', test: vv => (vv.onCredit && !vv.supplierId ? 'Credit purchase ke liye supplier chunein' : ''), msg: 'Credit purchase ke liye supplier chunein' }
+      () => (lines.length ? '' : T.t('sc2.addItemsFirst','Add items first (scan or full list)')),
+      () => { const z = lines.filter(l => !(Number(l.qty) > 0)).length; return z ? z + T.t('sc2.qtyZero',' line(s) have qty 0 — fix them') : ''; },
+      { key: 'supplierId', test: vv => (vv.onCredit && !vv.supplierId ? T.t('sc2.creditNeedsSupplier','Select a supplier for credit purchase') : ''), msg: T.t('sc2.creditNeedsSupplier','Select a supplier for credit purchase') }
     ], { getValue: () => v, form: fTop, toastKey: 'grn' });
     if (!chk.ok) return;
     try {
@@ -21232,7 +21335,7 @@ function grnForm(po) {
         poId: isPO() ? poCtx.id : '',
         freight: Number(v.freight) || 0
       }) });
-      UI.toast(T.t('sc2.grnPosted','GRN posted — stock update ho gaya'), 'ok');
+      UI.toast(T.t('sc2.grnPosted','GRN posted — stock updated'), 'ok');
       /* v2.30.5 (D24) — GRN = generated purchase document → registry (fire-and-forget) */
       try { if (window.Docs) Docs.register({ docType: 'GRN',
         entityType: 'supplier', entityId: v.supplierId || '', ref: (_g && (_g.grnNo || _g.id)) || '',
@@ -21248,10 +21351,10 @@ function grnForm(po) {
       { desc: 'Kis supplier se maal aaya, bill number, aur kis warehouse mein jama hoga.' }),
     fTop.el, supBal,
     UI2.section('📄 Purchase order (optional)', null, 'info',
-      { desc: 'PO chunein to uski pending lines khud aa jayengi. Bina PO = direct purchase.' }),
+      { desc: T.t('sc2.poHint','Pick a PO and its pending lines load automatically. No PO = direct purchase.') }),
     poWrap,
     UI2.section('📦 Items — scan ya poori list se add', [allBtn, bulkBtn, customBtn], 'inv',
-      { desc: 'Scanner se scan karein (POS jaisa): Found → Added → field khali. Ya 📋 list se multi-select.' }),
+      { desc: T.t('sc2.scannerHint','Scan with a scanner (like POS): Found → Added → field cleared. Or multi-select from the 📋 list.') }),
     h('div', { class: 'picker-field' }, picker),
     listEl, tot, sumEl,
     UI2.section('🧾 Charges & costing', null, 'warn',
@@ -21270,9 +21373,9 @@ function grnForm(po) {
   });
 
   /* v2.25.0 (req 2) — title bhi PO context ke sath badalta rahe (pehle PO load
-     karne par bhi "Direct Purchase" hi likha reh jata tha — confusing). */
+     * karne par bhi "Direct Purchase" hi likha reh jata tha — confusing). */
   /* UI.drawer `{ close, body }` deta hai (`.el` nahi) — title body ke closest
-     `.drawer` se nikalta hai. */
+     * `.drawer` se nikalta hai. */
   const headTitle = (dr && dr.body && dr.body.closest) ? dr.body.closest('.drawer').querySelector('.modal-head h3') : null;
   paintTitle();
   function paintTitle() {
@@ -21336,7 +21439,7 @@ function ledger(type, party) {
         { key: 'debit', label: 'Debit', num: true, render: r => r.debit ? fmt.money(r.debit) : '—' },
         { key: 'credit', label: 'Credit', num: true, render: r => r.credit ? fmt.money(r.credit) : '—' },
         { key: 'balance', label: 'Balance', num: true, render: r => h('b', null, fmt.money(r.balance)) }
-      ], rows: res.rows, emptyText: 'Koi entry nahi'
+      ], rows: res.rows, emptyText: T.t('sc2.noEntries','No entries')
     }));
   }).catch(e => host.appendChild(h('div', { class: 'empty' }, e.message)));
   UI.drawer({ title: '📒 Ledger — ' + party.name, body: host });
@@ -21390,13 +21493,13 @@ function customerForm(c) {
     { key: 'cnic', label: 'CNIC' },
     { key: 'ntn', label: 'NTN' },
     { key: 'creditLimit', label: 'Credit limit', type: 'number' },
-    { key: 'openingBalance', label: 'Opening udhaar', type: 'number' },
+    { key: 'openingBalance', label: T.t('sc2.openingUdhaar','Opening credit'), type: 'number' },
     { key: 'notes', label: 'Notes', type: 'textarea', full: true }
   ], c || {});
   UI.drawer({
     title: c ? '✏ ' + c.name : '➕ Naya customer', body: f.el,
     actions: [{ label: 'Save', onClick: async (close) => {
-      const v = f.values(); if (!v.name) return UI.toast(T.t('sc2.nameReq','Name zaroori hai'), 'err');
+      const v = f.values(); if (!v.name) return UI.toast(T.t('sc2.nameReq','Name is required'), 'err');
       try { await API.call('customers.save', { customer: v }); UI.toast('Saved ✅', 'ok'); close(); App.refresh(); } catch (e) { UI.toast(e.message, 'err'); }
     } }]
   });
@@ -21416,7 +21519,7 @@ function supplierForm(s) {
   UI.drawer({
     title: s ? '✏ ' + s.name : '➕ Naya supplier', body: f.el,
     actions: [{ label: 'Save', onClick: async (close) => {
-      const v = f.values(); if (!v.name) return UI.toast(T.t('sc2.nameReq','Name zaroori hai'), 'err');
+      const v = f.values(); if (!v.name) return UI.toast(T.t('sc2.nameReq','Name is required'), 'err');
       try { await API.call('suppliers.save', { supplier: v }); UI.toast('Saved ✅', 'ok'); close(); App.refresh(); SUPPLIERS = await Shared.suppliers({}); } catch (e) { UI.toast(e.message, 'err'); }
     } }]
   });
@@ -21455,7 +21558,7 @@ App.registerScreen('money', {
               { key: 'partyName', label: 'Party' }, { key: 'type', label: 'Type' }, { key: 'method', label: 'Method' },
               { key: 'amount', label: 'Amount', num: true, render: r => h('b', null, fmt.money(r.amount)) },
               { key: 'reference', label: 'Ref' }
-            ], rows, emptyText: 'Koi payment nahi'
+            ], rows, emptyText: T.t('sc2.noPayments','No payments')
           }));
           host.appendChild(h('div', { class: 'pager' }, 'Total: ' + fmt.money(rows.reduce((a, r) => a + r.amount, 0))));
         } else if (tab === 'expenses') {
@@ -21467,14 +21570,14 @@ App.registerScreen('money', {
               { key: 'category', label: 'Category' }, { key: 'paidTo', label: 'Paid to' }, { key: 'method', label: 'Method' },
               { key: 'amount', label: 'Amount', num: true, render: r => h('b', { style: { color: 'var(--err)' } }, fmt.money(r.amount)) },
               { key: 'notes', label: 'Notes' }
-            ], rows, emptyText: 'Koi kharcha nahi'
+            ], rows, emptyText: T.t('sc2.noExpenses','No expenses')
           }));
         } else {
           const s = await API.call('cash.session.current', { locationId: App.state.locationId });
           host.innerHTML = '';
           if (!s) {
             host.appendChild(h('div', { class: 'empty' }, h('span', { class: 'big' }, '🏦'),
-              h('div', null, 'Koi open cash session nahi'),
+              h('div', null, T.t('sc2.noCashSession','No open cash session')),
               App.can('pos.cash.manage') ? h('button', { class: 'btn', style: { marginTop: '12px' }, onclick: openSession }, 'Open session') : ''));
           } else {
             const t = s.totals || {};
@@ -21482,7 +21585,7 @@ App.registerScreen('money', {
               UI.kpi('🏦', 'Session', s.sessionNo, fmt.rel(s.openedAt), 'info'),
               UI.kpi('💵', 'Opening', fmt.money(s.openingCash), ''),
               UI.kpi('⬇', 'Cash in', fmt.money(t.cashIn), t.txns + ' txns', 'ok'),
-              UI.kpi('💰', 'Expected', fmt.money(s.expectedCash), 'Closing ke waqt count karein')));
+              UI.kpi('💰', 'Expected', fmt.money(s.expectedCash), T.t('sc2.countAtClose','Count at closing time'))));
             host.appendChild(h('div', { style: { marginTop: '14px', display: 'flex', gap: '8px' } },
               h('button', { class: 'btn danger', onclick: closeSession }, '🔒 Close session (count cash)')));
           }
@@ -21509,7 +21612,7 @@ App.registerScreen('money', {
           const v = Number(r.variance);
           UI.toast('Session closed. Variance: ' + fmt.money(v), Math.abs(v) > 1 ? 'warn' : 'ok'); c(); load();
           /* v2.6 §7 — is raaste se report GHAIB thi (sirf toast aata tha).
-             Ab yahan bhi wahi dayReportModal (print / PDF / WhatsApp / CSV). */
+             * Ab yahan bhi wahi dayReportModal (print / PDF / WhatsApp / CSV). */
           try {
             const sid = (r && (r.id || r.sessionId)) || '';
             if (sid) setTimeout(() => dayReportModal(sid), 350);
@@ -21541,12 +21644,12 @@ function expenseForm() {
 /* ================================ REPORTS ================================= */
 
 /* ==========================================================================
-   v2.6 §4 — PO / GRN document actions: print · PDF · duplicate · share
-   Ek hi helper, dono jagah (PO drawer + GRN drawer).
-   ========================================================================== */
+   * v2.6 §4 — PO / GRN document actions: print · PDF · duplicate · share
+   * Ek hi helper, dono jagah (PO drawer + GRN drawer).
+   * ========================================================================== */
 function docPrint(html, title) {
   const w = window.open('', '_blank');
-  if (!w) { UI.toast(T.t('sc2.popupBlocked','Popup blocked — print ke liye popups allow karein'), 'warn'); return; }
+  if (!w) { UI.toast(T.t('sc2.popupBlocked','Popup blocked — allow popups to print'), 'warn'); return; }
   w.document.write(html); w.document.close();
   setTimeout(() => w.print(), 300);
 }
@@ -21560,22 +21663,22 @@ function docActions(kind, id, extra) {
     try {
       const d = await API.call('purchase.' + kind + '.html', { id });
       docPrint(ExportsWrap(d), (isPO ? 'PO ' : 'GRN ') + id);
-    } catch (e) { UI.toast(e.message || 'Print nahi ho saka', 'err'); }
+    } catch (e) { UI.toast(e.message || T.t('sc2.printFail','Could not print'), 'err'); }
   });
   btn('📄 PDF', 'PDF download', async () => {
     try {
       const d = await API.call('purchase.' + kind + '.pdf', { id });
       if (d && d.url) window.open(d.url, '_blank');
-      else UI.toast(T.t('sc2.pdfDone','PDF ban gayi'), 'ok');
-    } catch (e) { UI.toast(e.message || 'PDF nahi ban saki', 'err'); }
+      else UI.toast(T.t('sc2.pdfDone','PDF created'), 'ok');
+    } catch (e) { UI.toast(e.message || T.t('sc2.pdfFail','Could not create PDF'), 'err'); }
   });
   if (isPO) {
     btn('📋 Duplicate', 'Is PO ki copy → naya draft', async () => {
       try {
         const d = await API.call('purchase.po.duplicate', { id });
-        UI.toast(T.t('sc2.copyDone','Copy ban gayi: ') + (d.poNo || ''), 'ok');
+        UI.toast(T.t('sc2.copyDone','Copy created: ') + (d.poNo || ''), 'ok');
         if (extra && extra.onDone) extra.onDone(d);
-      } catch (e) { UI.toast(e.message || 'Copy nahi ban saki', 'err'); }
+      } catch (e) { UI.toast(e.message || T.t('sc2.copyFail','Could not copy'), 'err'); }
     });
   }
   btn('📤 Share', 'WhatsApp / share', async () => {
@@ -21584,7 +21687,7 @@ function docActions(kind, id, extra) {
       const txt = (isPO ? 'Purchase Order ' : 'GRN ') + (d.poNo || d.grnNo || id);
       if (typeof Share !== 'undefined' && Share.text) Share.text(txt, txt);
       else UI.toast('Share unavailable', 'warn');
-    } catch (e) { UI.toast(e.message || 'Share nahi ho saka', 'err'); }
+    } catch (e) { UI.toast(e.message || T.t('sc2.shareFail','Could not share'), 'err'); }
   });
   return wrap;
 }
@@ -21596,12 +21699,12 @@ function ExportsWrap(html) {
 
 App.registerScreen('reports', {
   title: 'Reports', icon: '📈', perm: 'reports.view',
-  subtitle: () => 'Sales, profit, stock, udhaar — sab kuch',
+  subtitle: () => T.t('sc2.dashAll','Sales, profit, stock, credit — everything'),
   render(body) {
     const types = [
       ['sales', 'Sales summary'], ['salesByItem', 'Item-wise sales'], ['salesByCategory', 'Category sales'],
       ['profit', 'Profit & loss'], ['inventoryValuation', 'Stock valuation'], ['lowStock', 'Low stock'],
-      ['receivables', 'Receivables (udhaar)'], ['payables', 'Payables'],
+      ['receivables', T.t('sc2.receivables','Receivables (credit)')], ['payables', 'Payables'],
       ['partyBalances', 'Party balances (prev / new / closing)'], ['cashbook', 'Cash book']
     ];
     let type = 'sales';
@@ -21613,9 +21716,9 @@ App.registerScreen('reports', {
       ...types.map(([v, l]) => h('option', { value: v }, l)));
 
     /* =====================================================================
-       v2.6 §9 — SAB REPORTS (54): catalog se chalne wala browser.
-       Ek hi code path — naya report banana sirf catalog mein ek line hai.
-       ===================================================================== */
+       * v2.6 §9 — SAB REPORTS (54): catalog se chalne wala browser.
+       * Ek hi code path — naya report banana sirf catalog mein ek line hai.
+       * ===================================================================== */
     let zGroup = '', zReport = '';
     const zResult = h('div');
     const allHost = h('div');
@@ -21626,7 +21729,7 @@ App.registerScreen('reports', {
     }
     function zPrint(res) {
       const w = window.open('', '_blank');
-      if (!w) { UI.toast(T.t('sc2.popupBlocked','Popup blocked — print ke liye popups allow karein'), 'warn'); return; }
+      if (!w) { UI.toast(T.t('sc2.popupBlocked','Popup blocked — allow popups to print'), 'warn'); return; }
       const cell = r => res.cols.map(c =>
         '<td>' + zEsc(c.money ? fmt.money(r[c.key]) : (r[c.key] === undefined || r[c.key] === null ? '' : r[c.key])) + '</td>').join('');
       w.document.write('<html><head><title>' + zEsc(res.meta.name) + '</title><style>' +
@@ -21656,7 +21759,7 @@ App.registerScreen('reports', {
       try {
         const res = await API.call('reports.run', params, { offlineFallback: () => null });
         zResult.innerHTML = '';
-        if (!res) { zResult.appendChild(h('div', { class: 'tbl-empty' }, 'Offline — report data maujood nahi')); return; }
+        if (!res) { zResult.appendChild(h('div', { class: 'tbl-empty' }, T.t('sc2.offlineReport','Offline — report data unavailable'))); return; }
         const columns = res.cols.map(c => ({
           key: c.key, label: c.label, num: !!(c.num || c.money),
           render: c.money ? (r => (r.__total ? '' : fmt.money(r[c.key]))) : (c.num ? (r => fmt.num(r[c.key])) : null)
@@ -21699,7 +21802,7 @@ App.registerScreen('reports', {
       catch (e) { cats = []; }
       if (!cats.length) {
         allHost.innerHTML = '';
-        allHost.appendChild(h('div', { class: 'tbl-empty' }, 'Report catalog load nahi hua'));
+        allHost.appendChild(h('div', { class: 'tbl-empty' }, T.t('sc2.reportCatFail','Report catalog failed to load')));
         return;
       }
       if (!zGroup) zGroup = cats[0].group;
@@ -21815,7 +21918,7 @@ App.registerScreen('reports', {
             UI.kpi('🏷', 'Retail value', fmt.moneyCompact(data.summary.retailValue), fmt.money(data.summary.retailValue)),
             UI.kpi('🔢', 'Units', fmt.num(data.summary.units), '', 'info'),
             /* v2.8.5 — "Potential margin" user ko samajh nahi aata tha; ab sub
-               line khud batati hai ke ye kya hai (Retail − Cost). */
+               * line khud batati hai ke ye kya hai (Retail − Cost). */
             UI.kpi('🏆', 'Potential margin', fmt.moneyCompact(data.summary.retailValue - data.summary.costValue),
               'Retail − Cost · agar poora stock bik jaye', 'ok')));
           host.appendChild(h('div', { class: 'card' }, h('div', { class: 'card-body tight' }, UI.table({
@@ -21839,24 +21942,24 @@ App.registerScreen('reports', {
           const isRec = type === 'receivables';
           const pTY = isRec ? 'CUSTOMER' : 'SUPPLIER';
           host.appendChild(h('div', { class: 'grid g4' },
-            UI.kpi('📅', 'Pichhla baqaya (prev)', fmt.moneyCompact(data.prevTotal), fmt.money(data.prevTotal), 'info'),
-            UI.kpi('➕', isRec ? 'Naya udhaar' : 'Naya purchase', fmt.moneyCompact(data.newTotal), fmt.money(data.newTotal), 'warn'),
-            UI.kpi('✅', isRec ? 'Wasooli' : 'Payment', fmt.moneyCompact(data.settledTotal), fmt.money(data.settledTotal), 'ok'),
-            UI.kpi(isRec ? '📒' : '🧾', isRec ? 'Total udhaar (closing)' : 'Total payable (closing)',
+            UI.kpi('📅', T.t('sc2.prevBalPrev','Previous balance (prev)'), fmt.moneyCompact(data.prevTotal), fmt.money(data.prevTotal), 'info'),
+            UI.kpi('➕', isRec ? T.t('sc2.newUdhaar','New credit') : 'Naya purchase', fmt.moneyCompact(data.newTotal), fmt.money(data.newTotal), 'warn'),
+            UI.kpi('✅', isRec ? T.t('sc2.collections','Collections') : 'Payment', fmt.moneyCompact(data.settledTotal), fmt.money(data.settledTotal), 'ok'),
+            UI.kpi(isRec ? '📒' : '🧾', isRec ? T.t('sc2.totalUdhaarClose','Total credit (closing)') : 'Total payable (closing)',
               fmt.moneyCompact(data.total), fmt.money(data.total), isRec ? 'err' : 'warn')));
           host.appendChild(h('div', { class: 'card' },
             h('div', { class: 'card-head' },
-              h('h3', null, isRec ? 'Customer-wise udhaar' : 'Supplier-wise payable'),
+              h('h3', null, isRec ? T.t('sc2.customerUdhaar','Customer-wise credit') : 'Supplier-wise payable'),
               h('div', { class: 'actions' },
                 h('span', { class: 'muted', style: { fontSize: 'var(--fs-xs)', marginRight: '8px' } },
-                  'Prev + ' + (isRec ? 'Naya' : 'Purchase') + ' − ' + (isRec ? 'Wasooli' : 'Paid') + ' = Closing'),
+                  'Prev + ' + (isRec ? 'Naya' : 'Purchase') + ' − ' + (isRec ? T.t('sc2.collections','Collections') : 'Paid') + ' = Closing'),
                 h('button', { class: 'btn sm sec', onclick: () => exportCsv(type, params) }, '⬇ CSV'))),
             h('div', { class: 'card-body tight' }, UI.table({
               columns: [
                 { key: 'code', label: 'Code' }, { key: 'name', label: 'Name' }, { key: 'phone', label: 'Phone' },
                 { key: 'prevBalance', label: 'Prev', num: true, render: r => h('span', { class: 'muted' }, fmt.money(r.prevBalance)) },
                 { key: 'newAmount', label: isRec ? 'Naya' : 'Purchase', num: true, render: r => fmt.money(r.newAmount) },
-                { key: 'settled', label: isRec ? 'Wasooli' : 'Paid', num: true, render: r => fmt.money(r.settled) },
+                { key: 'settled', label: isRec ? T.t('sc2.collections','Collections') : 'Paid', num: true, render: r => fmt.money(r.settled) },
                 { key: 'balance', label: 'Closing', num: true, render: r => h('b', { style: { color: 'var(--err)' } }, fmt.money(r.balance)) },
                 { key: 'id', label: '', render: r => h('button', { class: 'btn sm sec', onclick: e => { e.stopPropagation(); ledger(pTY, r); } }, 'Ledger') }
               ], rows: data.rows || [], onRow: r => ledger(pTY, r)
@@ -21864,7 +21967,7 @@ App.registerScreen('reports', {
         } else if (type === 'partyBalances') {
           const rows = data.rows || [];
           host.appendChild(h('div', { class: 'grid g4' },
-            UI.kpi('📅', 'Pichhla baqaya', fmt.moneyCompact(data.prevTotal), fmt.money(data.prevTotal), 'info'),
+            UI.kpi('📅', T.t('sc2.prevBal','Previous balance'), fmt.moneyCompact(data.prevTotal), fmt.money(data.prevTotal), 'info'),
             UI.kpi('➕', 'Naya', fmt.moneyCompact(data.newTotal), fmt.money(data.newTotal), 'warn'),
             UI.kpi('✅', 'Wasool / paid', fmt.moneyCompact(data.settledTotal), fmt.money(data.settledTotal), 'ok'),
             UI.kpi('📒', 'Closing', fmt.moneyCompact(data.total), fmt.money(data.total), 'err')));
@@ -22038,11 +22141,11 @@ App.registerScreen('users', {
           host.appendChild(h('div', { class: 'card-body' },
             h('div', { style: { fontSize: 'var(--fs-xs)', color: 'var(--muted)' } },
               'Live matrix: kaun sa role kin sensitive fields ka data dekhta hai \u2014 backend response par bhi yehi rok lagti hai (Fields.wrap). ',
-              'Kisi user/group ko extra ya denied fields dene ke liye Users / Groups tab ke extra & denied permissions istemal karein. ',
+              T.t('sc2.permHint','To grant or deny extra fields to a user/group, use the extra & denied permissions in the Users / Groups tab. '),
               '\u062d\u0633\u0627\u0633 \u0641\u06cc\u0644\u0688\u0632 (\u0644\u0627\u06af\u062a\u060c \u0645\u0627\u0631\u06af\u0646\u060c \u0631\u0627\u0628\u0637\u06c1) \u0631\u0648\u0644 \u06a9\u06d2 \u0645\u0637\u0627\u0628\u0642 \u062f\u06cc\u06a9\u06be\u0627\u0626\u06cc \u062c\u0627\u062a\u06cc \u06c1\u06cc\u06ba\u06d4')));
         } else if (tab === 'perms') {
           const meta = await API.call('users.perms', {}, { offlineFallback: () => null });
-          if (!meta) { host.innerHTML = ''; host.appendChild(h('div', { class: 'empty' }, '⚠ Permissions load nahi hui')); return; }
+          if (!meta) { host.innerHTML = ''; host.appendChild(h('div', { class: 'empty' }, T.t('sc2.permsLoadFail','⚠ Permissions failed to load'))); return; }
           host.innerHTML = '';
           host.appendChild(buildPermMatrix(meta));
         } else {
@@ -22055,7 +22158,7 @@ App.registerScreen('users', {
               { key: 'entity', label: 'Entity' },
               { key: 'entityId', label: 'Record', render: r => String(r.entityId || '').slice(0, 14) },
               { key: 'id', label: '', render: r => h('button', { class: 'btn sm sec', onclick: e => { e.stopPropagation(); showAudit(r); } }, 'Diff') }
-            ], rows, emptyText: 'Koi log nahi'
+            ], rows, emptyText: T.t('sc2.noLogs','No logs')
           }));
         }
       } catch (e) { host.innerHTML = ''; host.appendChild(h('div', { class: 'empty' }, '⚠ ' + e.message)); }
@@ -22166,8 +22269,8 @@ function buildPermMatrix(meta) {
     if (badge && !/•/.test(badge.textContent)) badge.textContent += ' • unsaved';
   }
   async function resetAll() {
-    if (!canEdit) return UI.toast(T.t('sc2.noPerm','Permission nahi'), 'err');
-    if (!(await UI.confirm('Saare roles ko default permissions par wapas karein?'))) return;
+    if (!canEdit) return UI.toast(T.t('sc2.noPerm','Permission denied'), 'err');
+    if (!(await UI.confirm(T.t('sc2.resetPermsConfirm','Reset all roles to default permissions?')))) return;
     try {
       const fresh = await API.call('users.perms', {});
       roleList.forEach(r => {
@@ -22178,14 +22281,14 @@ function buildPermMatrix(meta) {
         });
       });
       Object.keys(dirty).forEach(k => delete dirty[k]);
-      UI.toast(T.t('sc2.defaultsRestored','Defaults restore ho gaye (save karein)'), 'ok', 2600);
+      UI.toast(T.t('sc2.defaultsRestored','Defaults restored (save to keep)'), 'ok', 2600);
     } catch (e) { UI.toast(e.message, 'err'); }
   }
   async function save() {
     const rolesToSave = Object.keys(dirty).filter(r => locked.indexOf(r) === -1);
-    if (!rolesToSave.length) return UI.toast(T.t('sc2.noChanges','Koi tabdeeli nahi'), 'warn');
+    if (!rolesToSave.length) return UI.toast(T.t('sc2.noChanges','No changes'), 'warn');
     /* W7 (v2.26.0) — pehle har role ka apna round-trip (sequential) aur pehli ghalti par
-       baqi roles chhoot jate the. Ab parallel batches; sab errors jama ho kar batate hain. */
+       * baqi roles chhoot jate the. Ab parallel batches; sab errors jama ho kar batate hain. */
     const jobs = rolesToSave.map(role => ({
       role, fn: () => API.call('users.perms.save', { role, permissions:
         boxes.filter(b => b.role === role && !b.locked && b.cb.classList.contains('on')).map(b => b.perm) })
@@ -22193,11 +22296,11 @@ function buildPermMatrix(meta) {
     const res = await API.parallel(jobs.map(j => j.fn), 4);
     const errs = [];
     res.forEach((r, i) => { if (r && r.__err) errs.push(jobs[i].role + ': ' + r.__err); });
-    if (errs.length) { UI.toast(errs.length + ' role save nahi ho sake — ' + errs.slice(0, 2).join(' · '), 'err'); return; }
+    if (errs.length) { UI.toast(errs.length + T.t('sc2.roleSaveFail',' role could not be saved — ') + errs.slice(0, 2).join(' · '), 'err'); return; }
     Object.keys(dirty).forEach(k => delete dirty[k]);
     const badge = wrap.querySelector('.pm-count');
     if (badge) badge.textContent = badge.textContent.replace(' • unsaved', '');
-    UI.toast(T.t('sc2.permsSaved','Permissions save ho gayeen ✅'), 'ok');
+    UI.toast(T.t('sc2.permsSaved','Permissions saved ✅'), 'ok');
     App.refresh();
   }
 
@@ -22250,7 +22353,7 @@ function userRulesEditor(u, roleRef) {
   permMeta().then(meta => {
     wrap.innerHTML = '';
     if (!meta || !(meta.catalog || []).length) {
-      wrap.appendChild(h('div', { class: 'empty' }, 'Permission catalog load nahi hua'));
+      wrap.appendChild(h('div', { class: 'empty' }, T.t('sc2.permCatFail','Permission catalog failed to load')));
       return;
     }
     const lang = (App.state && App.state.lang) || 'en';
@@ -22330,9 +22433,9 @@ function userForm(u) {
     { key: 'active', label: 'Active', type: 'switch', value: true }
   ], u || {});
   /* v2.6 QA — "Users & Security main Branch access main toggle button theek
-     nahi hain". Wajah: ye raw <label class="switch"> haath se bana hua tha,
-     shared UI2.toggle() (On/Off state + keyboard focus) use hi nahi hua tha.
-     Ab har branch ek professional switch-row hai (§1/§17: EK hi component). */
+     * nahi hain". Wajah: ye raw <label class="switch"> haath se bana hua tha,
+     * shared UI2.toggle() (On/Off state + keyboard focus) use hi nahi hua tha.
+     * Ab har branch ek professional switch-row hai (§1/§17: EK hi component). */
   const locBox = h('div', { class: 'field full' }, h('label', null, 'Branch access'),
     h('div', { class: 'ui2-block', style: { padding: '10px 12px' } },
       App.state.locations.length
@@ -22346,7 +22449,7 @@ function userForm(u) {
           tg.input.dataset.loc = l.id;      /* save() isi se padhta hai */
           return tg.el;
         })
-        : h('div', { class: 'empty' }, 'Koi branch defined nahi')));
+        : h('div', { class: 'empty' }, T.t('sc2.noBranches','No branches defined'))));
   f.el.appendChild(locBox);
 
   /* ---------- v2.5: per-user rules (allow / disallow actions) ---------- */
@@ -22356,7 +22459,7 @@ function userForm(u) {
   const rulesHost = h('div', { class: 'field full' });
   rulesHost.appendChild(h('label', null, 'Rules — kaun se actions allow / disallow hain'));
   rulesHost.appendChild(h('div', { class: 'sub', style: { fontSize: 'var(--fs-xs)', color: 'var(--muted)', marginBottom: '6px' } },
-    'Role ke baad “Allow” extra permission deta hai, “Deny” usay block kar deta hai. Har row par click karke Inherit → Allow → Deny badal dein.'));
+    T.t('sc2.permMatrixHint','Beyond the role, “Allow” grants an extra permission, “Deny” blocks it. Click a row to cycle Inherit → Allow → Deny.')));
   rulesHost.appendChild(rules.el);
   f.el.appendChild(rulesHost);
 
@@ -22365,7 +22468,7 @@ function userForm(u) {
     actions: [{ label: 'Save', onClick: async (c) => {
       const v = Object.assign({}, f.values(), rules.values());
       v.locationIds = Array.from(locBox.querySelectorAll('input:checked')).map(i => i.dataset.loc);
-      if (!v.username) return UI.toast(T.t('sc2.usernameReq','Username zaroori hai'), 'err');
+      if (!v.username) return UI.toast(T.t('sc2.usernameReq','Username is required'), 'err');
       try {
         if (u) await API.call('users.update', { id: u.id, patch: v });
         else await API.call('users.create', { user: v });
@@ -22394,9 +22497,9 @@ function groupForm(g) {
 }
 
 /* v2.28.0 (W5) — permission matrix builder ko app-level par expose karo:
-   Users & Security ke ilawa Reports/settings bhi isi builder ko reuse kar sakte
-   hain (spec: "controls should be reusable globally") aur QA rendered-DOM proof
-   leta hai (koi duplicate builder nahi). */
+   * Users & Security ke ilawa Reports/settings bhi isi builder ko reuse kar sakte
+   * hain (spec: "controls should be reusable globally") aur QA rendered-DOM proof
+   * leta hai (koi duplicate builder nahi). */
 try { window.buildPermMatrix = buildPermMatrix; } catch (e) { }
 
 })();
@@ -22404,11 +22507,11 @@ try { window.buildPermMatrix = buildPermMatrix; } catch (e) { }
 
   <script>
 /* ==========================================================================
-   HASEEB AUTOS — POS v2
-   Product cards · category rail · as-you-type filter (har field) · quick keys
-   · cart (side panel / offcanvas) · qty pad · split payment · holds · scan
-   Sab kuch Settings ▸ POS se configurable (layout, cards per row, stock badge…)
-   ========================================================================== */
+   * HASEEB AUTOS — POS v2
+   * Product cards · category rail · as-you-type filter (har field) · quick keys
+   * · cart (side panel / offcanvas) · qty pad · split payment · holds · scan
+   * Sab kuch Settings ▸ POS se configurable (layout, cards per row, stock badge…)
+   * ========================================================================== */
 (function () {
 'use strict';
 
@@ -22445,15 +22548,15 @@ function totalTax() { return S.cart.reduce((a, l) => a + (l.tax || 0), 0); }
 function grandTotal() { return Math.max(0, subTotal() - Number(S.discount || 0) + totalTax()); }
 function estProfit() {
   /* v2.28.0 (W5) — cost family band ho to ye estimate ghalat hota (cost 0),
-     is liye 0 return karo aur UI (showProfit) ise dikhata hi nahi. */
+     * is liye 0 return karo aur UI (showProfit) ise dikhata hi nahi. */
   if (!App.field('margin')) return 0;
   return S.cart.reduce((a, l) => a + (l.price - (l.cost || 0)) * l.qty - (l.discount || 0), 0);
 }
 
 /* --------------------------- shop gate (W7 v2.30.5) ------------------------
-   User-report: POS pehle action (cart add) par rok nahi lagta. Ab: pehla sale
-   action par hi check (30s cache) — band ho to popup + banner, cart me kuch
-   nahi jata. window.__shopSession loadShopState sab users ke liye set karta hai. */
+   * User-report: POS pehle action (cart add) par rok nahi lagta. Ab: pehla sale
+   * action par hi check (30s cache) — band ho to popup + banner, cart me kuch
+   * nahi jata. window.__shopSession loadShopState sab users ke liye set karta hai. */
 let _posShopChk = { at: 0, open: true };
 async function shopOpenOk() {
   try { if (String((App.state.settings || {})['shop.requireOpen']) === 'false') return true; } catch (e) { }
@@ -22471,14 +22574,14 @@ function shopBlockedPopup() {
     UI2.modal({
       title: '🔒 Shop band hai', size: 'sm',
       body: h('div', null,
-        h('p', { style: { margin: '0 0 8px' } }, 'Sale shuru karne se pehle shop khulna zaroori hai — pehla action (item add) rok diya gaya.'),
-        h('p', { class: 'sub', style: { margin: 0 } }, canOpen ? '"Shop kholein" dabayen — opening cash ke sath din shuru hoga.' : 'Barah-e-karam manager/cashier se shop khulwayein.')),
+        h('p', { style: { margin: '0 0 8px' } }, T.t('pos.shopGateToast','Shop must be open before starting a sale — first action (item add) was blocked.')),
+        h('p', { class: 'sub', style: { margin: 0 } }, canOpen ? T.t('pos.openShopHint','Tap "Open the shop" — the day starts with opening cash.') : T.t('pos.askManagerOpen','Please ask a manager/cashier to open the shop.'))),
       actions: [ { label: 'Close', onClick: c => c() },
-        canOpen ? { label: '🗪 Shop kholein', cls: 'ok', onClick: c => { c(); try { window.shopQuickDialog(); } catch (e) { UI.toast(T.t('pos.shopDialogFail','Shop dialog did not open'), 'err'); } } } : null
+        canOpen ? { label: T.t('pos.openShopBtn','🗪 Open the shop'), cls: 'ok', onClick: c => { c(); try { window.shopQuickDialog(); } catch (e) { UI.toast(T.t('pos.shopDialogFail','Shop dialog did not open'), 'err'); } } } : null
       ].filter(Boolean)
     });
   } catch (e) { }
-  try { ShopUI.show('Shop band hai — sale ke kaam rok diye gaye. Pehle shop kholein.', 'block', { shop: canOpen }); } catch (e) { }
+  try { ShopUI.show(T.t('pos.shopClosedBanner','Shop is closed — sale actions are blocked. Open the shop first.'), 'block', { shop: canOpen }); } catch (e) { }
 }
 /* ------------------------------ add to cart ------------------------------- */
 async function addToCart(item, qty) {
@@ -22577,12 +22680,12 @@ function openBulkAddModal(){
   try{
     if (typeof UI2 === 'undefined' || !UI2.itemPicker) { UI.toast(T.t('pos.pickerFail','Product picker did not load'), 'err'); return; }
     /* v2.24.0 — picker ab khud scan-first hai: mode:'multi' se scan block +
-       checkboxes + Bulk List foran taiyar. DOM ko poke karne ki zarurat nahi. */
+       * checkboxes + Bulk List foran taiyar. DOM ko poke karne ki zarurat nahi. */
     const picker = UI2.itemPicker({
       mode: 'multi',
       icon: '🛒',
       title: 'Bulk Add — Multi Select',
-      hint: 'Scan → Bulk List → Add All · ya search/📋 list se tick karein',
+      hint: T.t('pos.bulkHint','Scan → Bulk List → Add All · or tick from search/📋 list'),
       commitLabel: 'Add Selected to Cart',
       placeholder: 'Search product — name / code / barcode…',
       map: (r, q) => ({ r: r, q: q }),
@@ -22617,7 +22720,7 @@ function openBulkAddModal(){
       ]
     });
     /* picker ke andar wala apna "Add to list" bar bhi wrapper band kar de —
-       warna stale scrim POS ke upar reh jata hai. */
+       * warna stale scrim POS ke upar reh jata hai. */
     const addBarEl = picker.querySelector('.po-addbar');
     if (addBarEl) addBarEl.addEventListener('click', e => {
       if (e.target && e.target.closest && e.target.closest('.btn.ok')) setTimeout(() => { try { modal.close(); } catch (err) {} }, 30);
@@ -22636,7 +22739,7 @@ function bulkFlow() {
   let n = 0, miss = 0; const misses = []; let finished = false;
   const mark = () => {
     if (!badge) return;
-    const txt = ' 🔁 Bulk ON · ' + n + (miss ? ' · unknown ' + miss : '') + ' · band karein';
+    const txt = ' 🔁 Bulk ON · ' + n + (miss ? ' · unknown ' + miss : '') + T.t('pos.bulkBadgeEnd',' · close');
     // preserve ha-ico SVG if present (v2.16 premium toolbar)
     const ico = badge.querySelector('.ha-ico');
     if (ico) { badge.textContent = ''; badge.appendChild(ico); badge.append(document.createTextNode(txt)); }
@@ -22859,8 +22962,8 @@ App.registerScreen('pos', {
     if (['all', 'categories', 'favorites', 'recent', 'held'].indexOf(S.view) === -1) S.view = 'all';
     const wrap = h('div', { class: 'pos2' });
     /* v2.14.0 mobile UX: cart ab drawer (neeche "Cart dekhhein" bar) — poora
-       44vh panel grid ke upar chadta tha ("blocks are blocking the main
-       screen"). Bar desktop par display:none, drawer kholta hai. */
+       * 44vh panel grid ke upar chadta tha ("blocks are blocking the main
+       * screen"). Bar desktop par display:none, drawer kholta hai. */
     const cartBar = h('button', { class: 'pos2-cartbar', type: 'button',
       onclick: () => { try { openCartOffcanvas(); } catch (e) { } } },
       h('span', { class: 'pcb-count' }, '🛒 0 items'),
@@ -22868,10 +22971,10 @@ App.registerScreen('pos', {
       h('span', { class: 'pcb-go' }, 'Cart dekhhein ▸'));
 
     /* ---------------- LEFT: search + tabs + rail + cards ---------------- */
-    const searchInput = h('input', { type: 'text', placeholder: 'Scan ya type karein — name / code / barcode / brand / model… (F2)', autocomplete: 'off', autocapitalize: 'off', spellcheck: 'false' });
+    const searchInput = h('input', { type: 'text', placeholder: T.t('pos.scanOrTypePh','Scan or type — name / code / barcode / brand / model… (F2)'), autocomplete: 'off', autocapitalize: 'off', spellcheck: 'false' });
     const searchBox = h('div', { class: 'pos2-search' }, h('span', { class: 'ha-ico', html: '<svg viewBox=\"0 0 24 24\" width=\"16\" height=\"16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" aria-hidden=\"true\"><circle cx=\"11\" cy=\"11\" r=\"7\"/><line x1=\"16.5\" y1=\"16.5\" x2=\"21\" y2=\"21\"/></svg>', 'aria-hidden': 'true' }), searchInput,
       h('span', { class: 'kbd' }, 'F2'),
-      h('button', { class: 'btn sm sec', title: 'Camera se barcode/QR scan karein',
+      h('button', { class: 'btn sm sec', title: T.t('pos.cameraScan','Scan barcode/QR with camera'),
         onclick: () => scanBarcode(v => {
           const hit = S.catalog.find(i => String(i.bc).toLowerCase() === String(v).toLowerCase() ||
             String(i.code).toLowerCase() === String(v).toLowerCase());
@@ -22909,20 +23012,20 @@ App.registerScreen('pos', {
       h('span', { class: 'badge brand', id: 'cartCount2' }, '0 items'),
       h('button', { class: 'btn sm ghost', style: { marginLeft: 'auto' }, onclick: clearCart }, '🗑'));
     /* v2.16 — cart toolbar: premium aligned (SVG + emoji for tests, 32px taps, Add items / Bulk scan / Bulk ON pill) */
-    const bulkBadge = h('button', { class: 'pos2-bulk', type: 'button', hidden: true, title: 'Bulk session khatam karein',
+    const bulkBadge = h('button', { class: 'pos2-bulk', type: 'button', hidden: true, title: T.t('pos.endBulkSession','End bulk session'),
       onclick: () => { const hd = POS2.bulkHandle; if (hd) { try { hd.cancel ? hd.cancel() : (hd.close && hd.close()); } catch (e) { } } } },
-      h('span', { class: 'ha-ico', html: '<svg viewBox=\"0 0 24 24\" width=\"14\" height=\"14\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"M21 12a9 9 0 1 1-2.64-6.36\"/><path d=\"M21 3v6h-6\"/></svg>', 'aria-hidden': 'true' }), ' 🔁 Bulk ON · 0 · band karein');
+      h('span', { class: 'ha-ico', html: '<svg viewBox=\"0 0 24 24\" width=\"14\" height=\"14\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"M21 12a9 9 0 1 1-2.64-6.36\"/><path d=\"M21 3v6h-6\"/></svg>', 'aria-hidden': 'true' }), T.t('pos.bulkBadgeInit',' 🔁 Bulk ON · 0 · close'));
     // ☑ Add items — renamed to ☑ BULK ADD per UX polish (keeps legacy alias for tests)
     if(!S._bulkCartSel) S._bulkCartSel=new Set();
     if(typeof S.bulkCartMode==='undefined') S.bulkCartMode=false;
     const cartTools = h('div', { class: 'cart2-tools' },
-      h('button', { class: 'btn sm sec', type: 'button', title: 'Checkbox list se multiple products ek saath add karein (GRN/PO jaisa) — BULK ADD',
+      h('button', { class: 'btn sm sec', type: 'button', title: T.t('pos.bulkAddHint','Add multiple products at once from the checkbox list (like GRN/PO) — BULK ADD'),
         onclick: () => togglePicker() },
         h('span', { class: 'ha-ico', html: '<svg viewBox=\"0 0 24 24\" width=\"14\" height=\"14\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2\"/><path d=\"M9 12l2 2 4-4\"/></svg>', 'aria-hidden': 'true' }), ' ☑ BULK ADD'),
-      h('button', { class: 'btn sm ghost', type: 'button', title: 'Grid bulk — tiles par tick karke multiple add',
-        onclick: () => { S.bulkGridMode=!S.bulkGridMode; if(!S.bulkGridMode) S._bulkGridSel.clear(); renderGrid(); UI.toast(S.bulkGridMode?'Grid select ON — tiles tick karein':'Grid select OFF','ok'); }},
+      h('button', { class: 'btn sm ghost', type: 'button', title: T.t('pos.gridBulkHint','Grid bulk — tick tiles to add multiple'),
+        onclick: () => { S.bulkGridMode=!S.bulkGridMode; if(!S.bulkGridMode) S._bulkGridSel.clear(); renderGrid(); UI.toast(S.bulkGridMode?T.t('pos.gridSelectOn','Grid select ON — tick tiles'):'Grid select OFF','ok'); }},
         h('span', { class: 'ha-ico', html: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 12l2 2 4-4"/></svg>', 'aria-hidden': 'true' }), ' ⊞ Grid'),
-      h('button', { class: 'btn sm ghost', type: 'button', title: 'Cart lines select karein — bulk delete / qty',
+      h('button', { class: 'btn sm ghost', type: 'button', title: T.t('pos.cartLinesSelect','Select cart lines — bulk delete / qty'),
         onclick: () => { S.bulkCartMode=!S.bulkCartMode; if(!S.bulkCartMode) S._bulkCartSel.clear(); renderCart(); UI.toast(S.bulkCartMode?'Cart select ON':'Cart select OFF','ok'); }},
         h('span', { class: 'ha-ico', html: '<svg viewBox=\"0 0 24 24\" width=\"14\" height=\"14\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2\"/><path d=\"M9 9h6\"/><path d=\"M9 15h6\"/></svg>', 'aria-hidden': 'true' }), ' ☑ Select'),
       h('button', { class: 'btn sm sec', type: 'button', title: 'Lagataar scan — har code foran cart mein add',
@@ -22944,7 +23047,7 @@ App.registerScreen('pos', {
         const hit = findProductByBarcode(code);
         if (hit) { addToCart({ id: hit.id, code: hit.code, name: hit.name, retailPrice: hit.rp, wholesalePrice: hit.wp, costPrice: hit.cp, stock: hit.qty, imageUrl: hit.img }, 1); inp.value = ''; S.q=''; try{renderGrid();}catch(e){} inp.focus(); UI.toast('Added: ' + hit.name+' — Cart updated','ok'); }
         else {
-          UI.toast(T.t('pos.productNotFound','Product nahi mila: ') + code + ' — try manual search (F2)','warn'); inp.value=''; inp.focus();
+          UI.toast(T.t('pos.productNotFound','Product not found: ') + code + ' — try manual search (F2)','warn'); inp.value=''; inp.focus();
         }
       };
       inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); doAdd(); } });
@@ -23037,7 +23140,7 @@ App.registerScreen('pos', {
       gridHost.innerHTML = '';
       if (!list.length) {
         gridHost.appendChild(h('div', { class: 'empty' }, h('span', { class: 'big' }, '😕'),
-          h('div', null, 'Kuch nahi mila'),
+          h('div', null, T.t('pos.noMatches','No matches')),
           h('button', { class: 'btn sm', style: { marginTop: '10px' }, onclick: () => quickAdd(q) }, '➕ Naya item banaayein')));
         return;
       }
@@ -23116,18 +23219,18 @@ App.registerScreen('pos', {
 
 
 /* ============================================================================
-   v2.6 QA — "product cards main double product name show ho raha hay"
-   ----------------------------------------------------------------------------
-   Misaal:  naam  = "FLAMINGO DASHBOARD POLISH 450ML"
-            card  = "FLAMINGO DASHBOARD POLISH 450ML"
-                    "FL00000 · Flamingo · DashBoard Polish Spray"   ← dohrao!
-
-   Wajah: card brand + category bhi dikha raha tha, aur seed data mein
-   category ("DashBoard Polish Spray") naam ke lafz repeat karta hai.
-
-   Hal: jo hissa (brand/category/sub-category) PEHLE HI naam mein maujood ho,
-   usay chhupao. Asal maloomat (code, supplier, price) waisi hi rahegi.
-   ========================================================================== */
+   * v2.6 QA — "product cards main double product name show ho raha hay"
+   * ----------------------------------------------------------------------------
+   * Misaal:  naam  = "FLAMINGO DASHBOARD POLISH 450ML"
+            * card  = "FLAMINGO DASHBOARD POLISH 450ML"
+                    * "FL00000 · Flamingo · DashBoard Polish Spray"   ← dohrao!
+* 
+   * Wajah: card brand + category bhi dikha raha tha, aur seed data mein
+   * category ("DashBoard Polish Spray") naam ke lafz repeat karta hai.
+* 
+   * Hal: jo hissa (brand/category/sub-category) PEHLE HI naam mein maujood ho,
+   * usay chhupao. Asal maloomat (code, supplier, price) waisi hi rahegi.
+   * ========================================================================== */
 function redundantWithName(name, part) {
   const norm = v => String(v || '').toUpperCase()
     .replace(/[^A-Z0-9 ]/g, ' ').split(/\s+/).filter(w => w.length > 2);
@@ -23178,7 +23281,7 @@ function cardSubParts(name, parts) {
             i.wp ? h('div', { class: 'pop-r' }, h('span', null, 'Wholesale'), h('b', null, fmt.money(i.wp))) : '',
             h('div', { class: 'pop-r' }, h('span', null, 'Cost'), h('b', null, fmt.money(i.cp))),
             i.rack ? h('div', { class: 'pop-r' }, h('span', null, 'Rack'), h('b', null, i.rack)) : '',
-            h('div', { class: 'pop-f' }, 'ⓘ aur detail ke liye click karein'));
+            h('div', { class: 'pop-f' }, T.t('pos.quickViewHint','ⓘ click for more details')));
           el.appendChild(pop);
         }, 350);
       };
@@ -23207,7 +23310,7 @@ function cardSubParts(name, parts) {
             onclick: e => { e.stopPropagation(); quickViewItem(i); },
             onkeydown: e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); quickViewItem(i); } }
           }, 'ⓘ')) : '',
-        h('span', { class: 'pc-fav', title: isFav(i.id) ? 'Favourite hatayein' : 'Favourite banayein',
+        h('span', { class: 'pc-fav', title: isFav(i.id) ? 'Favourite hatayein' : T.t('pos.makeFavourite','Make favourite'),
           onclick: e => { e.stopPropagation(); toggleFav(i.id); } }, isFav(i.id) ? '★' : '☆'),
         h('div', { class: 'pc-body' },
           h('div', { class: 'pc-name' }, name),
@@ -23292,7 +23395,7 @@ function cardSubParts(name, parts) {
       bar.appendChild(h('b', null, S._bulkGridSel.size+' selected'));
       bar.appendChild(h('button', { class: 'btn sm ghost', onclick: ()=>{ S._bulkGridSel.clear(); renderGrid(); }}, 'Clear'));
       bar.appendChild(h('button', { class: 'btn sm ok', onclick: ()=>{
-        if(!S._bulkGridSel.size) return UI.toast(T.t('pos.nothingSelected','Koi select nahi'),'warn');
+        if(!S._bulkGridSel.size) return UI.toast(T.t('pos.nothingSelected','Nothing selected'),'warn');
         let n=0;
         S._bulkGridSel.forEach(k=>{
           const it=S.catalog.find(x=> String(x.id)===String(k));
@@ -23315,7 +23418,7 @@ function cardSubParts(name, parts) {
           h('div', { class: 'li-main' }, h('b', null, hb.ref), h('span', null, (hb.items || 0) + ' items · ' + fmt.money(hb.total || 0) + ' · ' + fmt.rel(hb.createdAt))),
           h('button', { class: 'btn sm', onclick: () => resumeHeld(hb.id) }, 'Resume'),
           h('button', { class: 'btn sm danger', onclick: async () => { await API.call('sales.held.resume', { id: hb.id }); loadHeld(); App.refresh(); } }, '🗑')))
-          : h('div', { class: 'empty' }, h('span', { class: 'big' }, '⏸'), h('div', null, 'Koi held bill nahi')))));
+          : h('div', { class: 'empty' }, h('span', { class: 'big' }, '⏸'), h('div', null, T.t('pos.noHeldBills','No held bills'))))));
     }
   }
 });
@@ -23344,7 +23447,7 @@ function renderCart() {
     body.appendChild(h('div', { class: 'empty', style: { padding: '34px 12px' } },
       h('span', { class: 'big' }, '🧺'), h('div', null, 'Cart khali hai'),
       h('div', { style: { fontSize: 'var(--fs-xs)', color: 'var(--muted-2)', marginTop: '6px' } },
-        'Item search kar ke tap karein, ya barcode scan karein')));
+        T.t('pos.findItemHint','Search and tap an item, or scan a barcode'))));
     // also update drawer count if open
     try { if (POS2.drawerCust) POS2.drawerCust.querySelector('#custNameM'); } catch (e) { }
     return;
@@ -23365,7 +23468,7 @@ function renderCart() {
     if(!S._bulkCartSel) S._bulkCartSel=new Set();
     const selAll = h('label', { class: 'chk', style: { display: 'flex', gap: '8px', alignItems: 'center', padding: '8px', background: 'var(--panel-2)', border: '1px solid var(--line)', borderRadius: '10px', fontSize: '12px', fontWeight: '800', marginBottom: '8px' } },
       h('input', { type: 'checkbox', checked: S.cart.every((_,i)=> S._bulkCartSel.has(i)), onchange: e=>{ if(e.target.checked) S.cart.forEach((_,i)=> S._bulkCartSel.add(i)); else S._bulkCartSel.clear(); renderCart(); }}), 'Select all ('+S.cart.length+')',
-      h('button', { class: 'btn sm danger', style: { marginLeft: 'auto' }, onclick: ()=>{ if(!S._bulkCartSel.size) return UI.toast(T.t('pos.nothingSelected','Koi select nahi'),'warn'); const sel=Array.from(S._bulkCartSel).sort((a,b)=>b-a); sel.forEach(i=> S.cart.splice(i,1)); S._bulkCartSel.clear(); renderCart(); renderTotals(); UI.toast(sel.length+' removed','ok'); }}, '🗑 Delete'),
+      h('button', { class: 'btn sm danger', style: { marginLeft: 'auto' }, onclick: ()=>{ if(!S._bulkCartSel.size) return UI.toast(T.t('pos.nothingSelected','Nothing selected'),'warn'); const sel=Array.from(S._bulkCartSel).sort((a,b)=>b-a); sel.forEach(i=> S.cart.splice(i,1)); S._bulkCartSel.clear(); renderCart(); renderTotals(); UI.toast(sel.length+' removed','ok'); }}, '🗑 Delete'),
       h('button', { class: 'btn sm ghost', onclick: ()=>{ S.bulkCartMode=false; S._bulkCartSel.clear(); renderCart(); }}, '✕')
     );
     body.appendChild(selAll);
@@ -23384,14 +23487,14 @@ function renderCart() {
           ? h('div', { style: { fontSize: 'var(--fs-xs)', color: 'var(--warn)' } },
             '⚠ Stock ' + l.stock + ' hai') : ''),
       showQty ? h('div', { class: 'qty-ctl' },
-        h('button', { title: 'Kam karein', 'aria-label': 'Qty minus', onclick: () => { l.qty = Math.max(1, l.qty - 1); l.lineTotal = l.qty * l.price - (l.discount || 0); renderCart(); renderTotals(); } }, '−'),
+        h('button', { title: T.t('pos.decrease','Decrease'), 'aria-label': 'Qty minus', onclick: () => { l.qty = Math.max(1, l.qty - 1); l.lineTotal = l.qty * l.price - (l.discount || 0); renderCart(); renderTotals(); } }, '−'),
         (function () {
           const inp = h('input', { type: 'number', value: l.qty, min: '1', style: { width: '42px', textAlign: 'center' }, 'aria-label': 'Qty', title: 'Qty' });
           inp.onchange = () => { const v = Number(inp.value) || 1; l.qty = Math.max(1, v); l.lineTotal = l.qty * l.price - (l.discount || 0); renderCart(); renderTotals(); };
           inp.onkeydown = e => { if (e.key === 'Enter') inp.blur(); };
           return inp;
         })(),
-        h('button', { title: 'Zyada karein', 'aria-label': 'Qty plus', onclick: () => { l.qty += 1; l.lineTotal = l.qty * l.price - (l.discount || 0); renderCart(); renderTotals(); } }, '+')) : h('span', { class: 'cr-rate', style: { gridColumn: '2' } }, '×' + l.qty),
+        h('button', { title: T.t('pos.increase','Increase'), 'aria-label': 'Qty plus', onclick: () => { l.qty += 1; l.lineTotal = l.qty * l.price - (l.discount || 0); renderCart(); renderTotals(); } }, '+')) : h('span', { class: 'cr-rate', style: { gridColumn: '2' } }, '×' + l.qty),
       showRate ? h('span', { class: 'cr-rate' }, fmt.money(l.price)) : '',
       h('b', { class: 'cr-amt' }, fmt.money(l.lineTotal)),
       showActs ? h('div', { class: 'cr-acts' },
@@ -23415,7 +23518,7 @@ function renderTotals() {
   if (!foot) return;
   // respect admin toggles
   /* v2.28.0 (W5) — margin family bhi zaroori (backend cost/margin strip kar deta hai,
-     warna client-side estimate ghalat "munafa" dikhata) */
+     * warna client-side estimate ghalat "munafa" dikhata) */
   const showProfit = cfg('pos.showProfit') !== false && App.can('reports.financial') && App.field('margin');
   const showTax = cfg('pos.showTax') !== false;
   const payBtnsCfg = String(cfg('pos.payButtons') || 'CASH,CARD,SPLIT,CREDIT').split(',').map(s => s.trim().toUpperCase()).filter(Boolean);
@@ -23423,7 +23526,7 @@ function renderTotals() {
     CASH: { label: '💵 Cash (F9)', cls: 'ok', method: 'CASH' },
     CARD: { label: '💳 Card', cls: 'sec', method: 'CARD' },
     SPLIT: { label: '🔀 Split', cls: 'sec', method: 'SPLIT' },
-    CREDIT: { label: '📒 Udhaar', cls: 'sec', method: 'CREDIT' }
+    CREDIT: { label: T.t('pos.ledgerBtn','📒 Credit ledger'), cls: 'sec', method: 'CREDIT' }
   };
   const payBtns = payBtnsCfg.filter(k => btnMap[k]).map(k => h('button', { class: 'btn ' + btnMap[k].cls, onclick: () => pay(btnMap[k].method) }, btnMap[k].label));
   foot.textContent = '';
@@ -23469,7 +23572,7 @@ function lineEdit(idx) {
     actions: [{ label: 'Apply', cls: 'ok', onClick: async (c) => {
       const v = f.values();
       if (l.minPrice && Number(v.price) < l.minPrice && !App.can('items.price.edit')) {
-        return UI.toast('Min price ' + fmt.money(l.minPrice) + ' se kam nahi', 'err');
+        return UI.toast('Min price ' + fmt.money(l.minPrice) + T.t('pos.minPriceTail',' — cannot be lower'), 'err');
       }
       l.qty = Math.max(1, Number(v.qty) || 1);
       l.price = Number(v.price); l.discount = Number(v.discount) || 0; l.note = v.note;
@@ -23532,7 +23635,7 @@ async function qtyPad(item) {
 
 /* ============================== CUSTOMER ================================== */
 function pickCustomer() {
-  const q = h('input', { class: 'st2-q', type: 'search', placeholder: 'Naam ya phone… (type karein, foran filter hoga)', autocomplete: 'off' });
+  const q = h('input', { class: 'st2-q', type: 'search', placeholder: T.t('pos.custSearchPh','Name or phone… (type to filter instantly)'), autocomplete: 'off' });
   const list = h('div', { style: { maxHeight: '50vh', overflow: 'auto', marginTop: '8px' } });
   const recentCustomers = (App.state.catalog.customers || []).slice(0, 3);
   const quickHost = recentCustomers.length ? h('div', { style: { display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '8px' } },
@@ -23543,7 +23646,7 @@ function pickCustomer() {
     const rows = await Shared.customers({ q: term, withBalance: true, limit: 40,
       offline: () => ({ rows: (App.state.catalog.customers || []).filter(c => !term || (c.name + c.phone).toLowerCase().includes(term.toLowerCase())) }) });
     list.innerHTML = '';
-    if (!rows.length) list.appendChild(h('div', { class: 'tbl-empty' }, 'Koi customer nahi mila'));
+    if (!rows.length) list.appendChild(h('div', { class: 'tbl-empty' }, T.t('pos.noCustomer','No customer found')));
     rows.forEach(c => list.appendChild(h('div', { class: 'list-item', style: { cursor: 'pointer', padding: '8px 10px' }, onclick: () => {
       S.customer = c; updateCustBar(); m.close(); applyCustomerPricing();
     } },
@@ -23554,7 +23657,7 @@ function pickCustomer() {
   q.addEventListener('input', debounce(() => run(q.value.trim()), 120));
   q.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); const first = list.querySelector('.list-item'); if (first) first.click(); } });
   const m = UI2.modal({
-    title: 'Customer select karein', size: 'sm',
+    title: T.t('pos.selectCustomer','Select a customer'), size: 'sm',
     body: h('div', null, q, quickHost, list,
       h('button', { class: 'btn sec block', style: { marginTop: '10px' }, onclick: () => newCustomer(() => run(q.value.trim()||'')) }, '➕ Naya customer')),
     actions: [{ label: 'Walk-in (no customer)', cls: 'ghost', onClick: c => { S.customer = null; updateCustBar(); c(); } }]
@@ -23572,14 +23675,14 @@ function newCustomer(after) {
       { key: 'phone', label: 'Phone' },
       { key: 'customerTypeId', label: 'Customer type', type: 'select', options: [{ value: '', label: '—' }].concat(types.map(t => ({ value: t.id, label: t.name }))) },
       { key: 'address', label: 'Address', full: true },
-      { key: 'openingBalance', label: 'Opening udhaar', type: 'number' }
+      { key: 'openingBalance', label: T.t('pos.openingUdhaar','Opening credit'), type: 'number' }
     ]
   });
   UI2.modal({
     title: 'Naya customer', size: 'sm', body: f.el,
     actions: [{ label: 'Save', cls: 'ok', onClick: async c => {
       const v = f.values();
-      if (!v.name) return UI.toast(T.t('pos.nameReq','Name zaroori hai'), 'err');
+      if (!v.name) return UI.toast(T.t('pos.nameReq','Name is required'), 'err');
       try { const saved = await API.call('customers.save', { customer: v });
         S.customer = saved; updateCustBar(); UI.toast('Saved ✅', 'ok'); c(); after && after(saved);
       } catch (e) { UI.toast(e.message, 'err'); }
@@ -23756,8 +23859,8 @@ async function pay(method) {
       ['Total', fmt.money(total)]
     ];
     /* v2.30.0 (N4) — redeem kiye gaye points bill summary mein saaf dikhein
-       (display-only line — paisa hamesha LOYALTY payment row se aata hai, yahan
-       sirf nazar aata hai, is liye double-counting ka koi sawal nahi). */
+       * (display-only line — paisa hamesha LOYALTY payment row se aata hai, yahan
+       * sirf nazar aata hai, is liye double-counting ka koi sawal nahi). */
     const loyPtsRow = payments.filter(p => String(p.method || '').toUpperCase() === 'LOYALTY')
       .reduce((a, p) => a + (Number(p.points) || 0), 0);
     const loyValRow = payments.filter(p => String(p.method || '').toUpperCase() === 'LOYALTY')
@@ -23810,7 +23913,7 @@ async function pay(method) {
     const chg = Math.max(0, U2round(paid - amountOwed));
     const invoiceDue = Math.max(0, U2round(total - Math.min(paid, total)));
     paidEl.innerHTML = '<span>Paid</span><span>' + fmt.money(paid) + '</span>';
-    dueEl.innerHTML = closing > 0.5 ? '<span>Current Due (udhaar) — Closing</span><span>' + fmt.money(closing) + '</span>' : '<span>Current Due</span><span style="color:var(--ok)">0 (Clear)</span>';
+    dueEl.innerHTML = closing > 0.5 ? T.t('pos.dueClosingHtml','<span>Current due (credit) — Closing</span><span>') + fmt.money(closing) + '</span>' : '<span>Current Due</span><span style="color:var(--ok)">0 (Clear)</span>';
     chgEl.innerHTML = chg > 0.5 ? '<span>Change</span><span>' + fmt.money(chg) + '</span>' : (invoiceDue>0.5? '<span>Remaining of invoice</span><span>'+fmt.money(invoiceDue)+'</span>' : '');
     return { paid, due: closing, closing, change: chg, invoiceDue };
   }
@@ -23896,7 +23999,7 @@ async function pay(method) {
           const ptsInput = h('input', { class: 'f-input', type: 'number', min: '0',
             max: String(sum.usablePoints || 0), value: String(pointsInput.value||'0'), style: { width: '110px' }, 'aria-label': 'Redeem points' });
           /* v2.30.0 (N4) — dono inputs ek hi cap share karte hain (pehle ek taraf
-             clamp hota tha, doosra raw reh jata tha → sale mein galat points). */
+             * clamp hota tha, doosra raw reh jata tha → sale mein galat points). */
           const capPts = () => Number(sum.usablePoints || 0);
           const clampBoth = (from) => {
             const max = capPts();
@@ -23915,7 +24018,7 @@ async function pay(method) {
             h('button', { class: 'btn sm ok', onclick: () => {
               const pts = Number(ptsInput.value || 0);
               if (pts <= 0) return UI.toast(T.t('pos.enterPoints','Points daalein'), 'warn');
-              if (pts > (sum.usablePoints || 0)) return UI.toast(T.t('pos.pointsTooMany','Itne points use nahi ho sakte'), 'err');
+              if (pts > (sum.usablePoints || 0)) return UI.toast(T.t('pos.pointsTooMany','Cannot use that many points'), 'err');
               const val = pts * (sum.rate || 1);
               const existing = payments.find(p => p.method === 'LOYALTY');
               if (existing) { existing.points = pts; existing.amount = Math.min(val, total); }
@@ -23950,7 +24053,7 @@ async function pay(method) {
           setPointsHint('1 point = ' + fmt.money(loySum.rate || 1) + ' · balance ' + fmt.num(loySum.points || 0) + ' pts' +
             (loySum.usablePoints ? ' · is bill par max ' + fmt.num(loySum.usablePoints) : ''));
         } else if (!S.customer) {
-          setPointsHint('Customer select karein — points redeem ke liye');
+          setPointsHint(T.t('pos.custForPoints','Select a customer — to redeem points'));
         } else {
           setPointsHint('Loyalty off hai (Settings \u25B8 Trade \u25B8 Loyalty)');
         }
@@ -23981,12 +24084,12 @@ async function pay(method) {
   // promised date and points row setup
   const promisedWrap = h('div', { style: { display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '8px' } }, h('label', { style: { fontSize: '11px', letterSpacing: '.4px', fontWeight: '700', color: 'var(--muted)' } }, 'PROMISED PAYMENT DATE'), promisedInput);
   /* v2.30.0 (N4) — is row par pehle CREDIT settlement ka text chipka hua tha
-     ("Koi fee nahi - settlement <date>") jo points se bilkul be-taaluq tha.
-     Ab ye hint sirf loyalty ka sach batata hai (rate / balance / applied points). */
+     * ("Koi fee nahi - settlement <date>") jo points se bilkul be-taaluq tha.
+     * Ab ye hint sirf loyalty ka sach batata hai (rate / balance / applied points). */
   const pointsHint = h('span', { class: 'muted points-hint', style: { fontSize: '11px', whiteSpace: 'nowrap' } },
-    'Customer select karein — points redeem ke liye');
+    T.t('pos.custForPoints','Select a customer — to redeem points'));
   /* v2.30.0 (N4) — setter: paint() pehle chalta hai (const se pehle), is liye
-     seedha variable ke bajaye class se element dhoondo (koi TDZ crash nahi). */
+     * seedha variable ke bajaye class se element dhoondo (koi TDZ crash nahi). */
   function setPointsHint(t) {
     try {
       const el = document.querySelector('.modal-scrim .modal2 .points-hint') ||
@@ -23998,9 +24101,9 @@ async function pay(method) {
     h('label', { style: { fontSize: '11px', fontWeight: '700', minWidth: '56px' } }, 'POINTS'), pointsInput, pointsHint);
 
   /* v2.30.0 (N4/N5) — desktop par WIDE modal + 2 hisse (left: bill summary +
-     quick chips + note · right: payment methods + POINTS + loyalty + footer).
-     900px se neeche CSS khud single column kar deta hai (mobile responsive). */
-  const payFoot = h('div', { class: 'pay-footer', style: { display: 'flex', justifyContent: 'space-between', gap: '10px', padding: '10px', border: '1.5px dashed var(--line)', borderRadius: '12px', background: 'var(--panel-2)', fontWeight: '800', fontSize: '13px', marginTop: '8px' } }, h('span', { style: { color: 'var(--ok)' } }, 'PAID BY Loyalty Points ', h('b', { id: 'payLoyAmt2' }, 'Rs 0')), h('span', { style: { color: 'var(--err)' } }, 'Current Due (udhaar) ', h('b', { id: 'payDue2' }, 'Rs 0')));
+     * quick chips + note · right: payment methods + POINTS + loyalty + footer).
+     * 900px se neeche CSS khud single column kar deta hai (mobile responsive). */
+  const payFoot = h('div', { class: 'pay-footer', style: { display: 'flex', justifyContent: 'space-between', gap: '10px', padding: '10px', border: '1.5px dashed var(--line)', borderRadius: '12px', background: 'var(--panel-2)', fontWeight: '800', fontSize: '13px', marginTop: '8px' } }, h('span', { style: { color: 'var(--ok)' } }, 'PAID BY Loyalty Points ', h('b', { id: 'payLoyAmt2' }, 'Rs 0')), h('span', { style: { color: 'var(--err)' } }, T.t('pos.currentDue','Current due (credit) '), h('b', { id: 'payDue2' }, 'Rs 0')));
   UI2.modal({
     title: 'Payment — ' + fmt.money(total),
     subtitle: (S.customer ? S.customer.name : 'Walk-in') + ' · ' + S.cart.reduce((a, l) => a + l.qty, 0) + ' items',
@@ -24028,35 +24131,35 @@ async function pay(method) {
         // cash sale must pay full (when no credit)
         if (!wantsCredit && effectiveDue > 0.5) {
           if (method === 'CASH' || rows.some(p => p.method === 'CASH')) {
-            return UI.toast(T.t('pos.cashFull','Cash sale: poora bill pay karein — baqi ') + fmt.money(effectiveDue) + ' due hai', 'err', 3200);
+            return UI.toast(T.t('pos.cashFull','Cash sale: pay the full bill — remaining ') + fmt.money(effectiveDue) + ' due hai', 'err', 3200);
           }
         }
         if (wantsCredit) {
-          if (!S.customer) return UI.toast(T.t('pos.creditNeedsCustomer','Udhaar ke liye customer select karein'), 'err');
+          if (!S.customer) return UI.toast(T.t('pos.creditNeedsCustomer','Select a customer for credit'), 'err');
           // active account check
           if (S.customer.active === false || String(S.customer.status || '').toLowerCase() === 'inactive' || String(S.customer.blocked || '').toLowerCase() === 'true') {
-            return UI.toast(T.t('pos.customerBlocked','Customer account inactive / blocked — udhaar nahi de sakte'), 'err', 3500);
+            return UI.toast(T.t('pos.customerBlocked','Customer account inactive/blocked — credit not allowed'), 'err', 3500);
           }
           let limit = Number(S.customer.creditLimit ?? S.customer.limit ?? S.customer.credit ?? App.state.settings.customerCreditLimit ?? App.state.settings.defaultCreditLimit ?? 0);
           let bal = Number(S.__prevBalance ?? S.customer.balance ?? S.customer.bal ?? 0);
           if (limit > 0) {
             const avail = Math.max(0, limit - bal);
             if (effectiveDue > avail + 0.5) {
-              return UI.toast(T.t('pos.limitExceeded','Credit limit exceeded — limit ') + fmt.money(limit) + ', previous ' + fmt.money(bal) + ', available ' + fmt.money(avail) + ', is bill ka udhaar ' + fmt.money(effectiveDue), 'err', 5000);
+              return UI.toast(T.t('pos.limitExceeded','Credit limit exceeded — limit ') + fmt.money(limit) + ', previous ' + fmt.money(bal) + ', available ' + fmt.money(avail) + T.t('pos.billCreditTail',', this bill credit ') + fmt.money(effectiveDue), 'err', 5000);
             }
             // partial payment info: remaining credit after sale
             const remain = Math.max(0, avail - effectiveDue);
             if (effectiveDue > 0.5 && Number(paid || 0) > 0) {
-              UI.toast('Partial payment: paid ' + fmt.money(paid) + ', udhaar ' + fmt.money(effectiveDue) + ' · credit baqi ' + fmt.money(remain), 'ok', 3500);
+              UI.toast('Partial payment: paid ' + fmt.money(paid) + T.t('pos.creditTail',', credit ') + fmt.money(effectiveDue) + ' · credit baqi ' + fmt.money(remain), 'ok', 3500);
             }
           }
         } else {
           // non-credit sale: must be fully paid (no due)
           if (effectiveDue > 0.5) {
-            return UI.toast(T.t('pos.fullPayReq','Full payment required — baqi ') + fmt.money(effectiveDue) + ' (Cash ya Card se pay karein, ya Udhaar select karein)', 'err', 3200);
+            return UI.toast(T.t('pos.fullPayReq','Full payment required — remaining ') + fmt.money(effectiveDue) + T.t('pos.payOptionsTail',' (pay via Cash or Card, or select Credit)'), 'err', 3200);
           }
         }
-        if (!effectiveRows.length && !wantsCredit) return UI.toast(T.t('pos.noPayment','Koi payment nahi dali'), 'warn');
+        if (!effectiveRows.length && !wantsCredit) return UI.toast(T.t('pos.noPayment','No payment entered'), 'warn');
         const rowsForValidate = effectiveRows.length ? effectiveRows : rows;
         /* method-wise validation (wallet txn id, cheque no/date, limits…) */
         const bad = await PayUI.validate(rowsForValidate.filter(p => Number(p.amount) > 0));
@@ -24075,19 +24178,19 @@ async function pay(method) {
           const dv = promisedInput.value || '';
           if(dv) rowsForValidate.forEach(p=>{ if(String(p.method).toUpperCase()==='CREDIT') p.dueDate=dv; });
           /* v2.30.0 (N4) — ASLI MATH BUG FIX:
-             Pehle POINTS textbox ki value seedhi sale mein copy ho jati thi. User
-             cap se zyada likh deta to sale mein points 500 record hote aur
-             customer ke poore points kat jate, magar bill par sirf 89 points ki
-             value lagti thi (deduction ≠ value). Ab: amount authoritative hai,
-             points usi se derive hote hain, usablePoints par CAP, aur invoice se
-             zyada value kabhi nahi lagti. */
+             * Pehle POINTS textbox ki value seedhi sale mein copy ho jati thi. User
+             * cap se zyada likh deta to sale mein points 500 record hote aur
+             * customer ke poore points kat jate, magar bill par sirf 89 points ki
+             * value lagti thi (deduction ≠ value). Ab: amount authoritative hai,
+             * points usi se derive hote hain, usablePoints par CAP, aur invoice se
+             * zyada value kabhi nahi lagti. */
           const loyRow = rowsForValidate.find(p => String(p.method).toUpperCase() === 'LOYALTY');
           if (loyRow) {
             const rate = Number((loySum && loySum.rate) || App.state.settings['loyalty.rate'] || 1) || 1;
             const cap = loySum ? Number(loySum.usablePoints || 0) : 0;
             const typed = Number(pointsInput.value || 0);
             let pts = typed > 0 ? Math.floor(typed) : Math.floor(Number(loyRow.amount || 0) / rate);
-            if (cap && pts > cap) { UI.toast(T.t('pos.pointsCap','Points cap: is bill par max ') + fmt.num(cap), 'warn', 2600); pts = cap; }
+            if (cap && pts > cap) { UI.toast(T.t('pos.pointsCap','Points cap: max on this bill ') + fmt.num(cap), 'warn', 2600); pts = cap; }
             if (pts < 0) pts = 0;
             const others = rowsForValidate.reduce((a, pp) => a + (String(pp.method).toUpperCase() === 'LOYALTY' ? 0 : Number(pp.amount || 0)), 0);
             const value = Math.max(0, Math.min(Math.round(pts * rate * 100) / 100, Math.max(0, total - Math.min(others, total))));
@@ -24188,7 +24291,7 @@ function showInvoiceConfirmation(sale) {
           const mail = (sale.customerEmail || S.customer && S.customer.email || '');
           if (mail) window.open('mailto:' + mail + '?subject=' + subj + '&body=' + bodyTxt);
           else if (navigator.share) navigator.share({ title: 'Invoice ' + invNo, text: 'Total ' + total });
-          else UI.toast(T.t('pos.sendVia','Send: WhatsApp / Email se share karein (') + invNo + ')', 'ok');
+          else UI.toast(T.t('pos.sendVia','Send: share via WhatsApp / Email (') + invNo + ')', 'ok');
         } catch (e) { UI.toast(e.message, 'err'); }
       } },
     { label: '💾 Save (PDF)', onClick: c => {
@@ -24214,7 +24317,7 @@ async function submit(payments, note) {
     if(dueDateVal) payments.forEach(p=>{ if(String(p.method).toUpperCase()==='CREDIT') p.dueDate=dueDateVal; });
   }catch(e){}
   /* v2.30.0 (N4) — points ka EK hi source of truth: LOYALTY row.
-     (Pehle yahan textbox ki value dobara copy hoti thi — wahi bug dobara aa sakta tha.) */
+     * (Pehle yahan textbox ki value dobara copy hoti thi — wahi bug dobara aa sakta tha.) */
   try{
     const rate0 = Number((loySum && loySum.rate) || App.state.settings['loyalty.rate'] || 1) || 1;
     const cap0 = loySum ? Number(loySum.usablePoints || 0) : 0;
@@ -24242,7 +24345,7 @@ async function submit(payments, note) {
   if (!navigator.onLine) payload.offlineId = uid('bill');
   try {
     const sale = await API.call('sales.create', { sale: payload });
-    if (sale && sale.queued) { UI.toast(T.t('pos.offlineQueued','Offline bill queue ho gaya'), 'warn'); clearCart(true); return; }
+    if (sale && sale.queued) { UI.toast(T.t('pos.offlineQueued','Offline — bill queued'), 'warn'); clearCart(true); return; }
     // v2.16 performance: measure bill generation
     const ms = Math.round(performance.now() - t0);
     UI.toast('Sale complete ✅ ' + (sale.invoiceNo || '') + (ms > 200 ? ' · ' + ms + 'ms' : ''), 'ok');
@@ -24262,7 +24365,7 @@ async function holdBill() {
     await API.call('sales.hold', { ref: 'HOLD-' + Date.now().toString().slice(-5),
       cart: { items: S.cart, total: grandTotal(), discount: S.discount },
       customerId: S.customer ? S.customer.id : '' });
-    UI.toast(T.t('pos.billHeld','Bill hold ho gaya ⏸'), 'ok'); clearCart(true);
+    UI.toast(T.t('pos.billHeld','Bill held ⏸'), 'ok'); clearCart(true);
   } catch (e) { UI.toast(e.message, 'err'); }
 }
 
@@ -24277,10 +24380,10 @@ async function loadHeld() {
 
 async function clearCart(silent) {
   /* v2.25.0 (req 6) — native confirm() ki jagah shared dialog: sandboxed
-     preview/iframe mein native confirm block ho jata hai (button "kuch nahi karta"
-     lagta hai) aur design system se bahar bhi hai. silent=true par koi await
-     nahi hota, is liye baqi callers ka synchronous flow waisa hi rehta hai. */
-  if (!silent && S.cart.length && !(await UI2.confirm('Cart clear karein? Ye bill ke saare items hata dega.', null, true))) return;
+     * preview/iframe mein native confirm block ho jata hai (button "kuch nahi karta"
+     * lagta hai) aur design system se bahar bhi hai. silent=true par koi await
+     * nahi hota, is liye baqi callers ka synchronous flow waisa hi rehta hai. */
+  if (!silent && S.cart.length && !(await UI2.confirm(T.t('pos.clearCartConfirm','Clear cart? This removes all items from the bill.'), null, true))) return;
   S.cart = []; S.discount = 0; S.discountCode = ''; S.customer = null;
   renderCart(); renderTotals(); updateCustBar();
 }
@@ -24312,7 +24415,7 @@ function openCartOffcanvas() {
     const hit = findProductByBarcode(code) || S.catalog.find(i => U_norm(i.name).includes(U_norm(code)));
     if (hit) { addToCart({ id: hit.id, code: hit.code, name: hit.name, retailPrice: hit.rp, wholesalePrice: hit.wp, costPrice: hit.cp, stock: hit.qty, imageUrl: hit.img }, 1); inlineInp.value = ''; inlineInp.focus(); UI.toast('Added: ' + hit.name+' ('+code+') — Cart updated','ok'); }
     else {
-      UI.toast(T.t('pos.productNotFound','Product nahi mila: ') + code + ' — Add items me search karein', 'warn'); inlineInp.value=''; inlineInp.focus();
+      UI.toast(T.t('pos.productNotFound','Product not found: ') + code + T.t('pos.searchInAddItems',' — search in Add items'), 'warn'); inlineInp.value=''; inlineInp.focus();
     }
   };
   inlineInp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); doInlineAdd(); } });
@@ -24369,7 +24472,7 @@ function quickAdd(name) {
     title: '➕ Naya item', size: 'md', body: f.el,
     actions: [{ label: 'Save & add', cls: 'ok', onClick: async c => {
       const v = f.values();
-      if (!v.name) return UI.toast(T.t('pos.nameReq','Name zaroori hai'), 'err');
+      if (!v.name) return UI.toast(T.t('pos.nameReq','Name is required'), 'err');
       try {
         const saved = await API.call('items.save', { item: v });
         UI.toast('Item saved ✅', 'ok'); c();
@@ -24388,7 +24491,7 @@ function quickAdd(name) {
  *  hai — release/QR-LIVE-CAMERA-GUIDE.md mein poora rationale + hosting. */
 function scanBarcode(onDetect) {
   if (window.HaScan) return HaScan.scan({ onDetect: onDetect });
-  var input = h('input', { class: 'f-input', type: 'text', placeholder: 'Barcode/QR code type karein', autocomplete: 'off' });
+  var input = h('input', { class: 'f-input', type: 'text', placeholder: T.t('pos.typeBarcode','Type barcode/QR code'), autocomplete: 'off' });
   var m = UI2.modal({
     title: '⌨ Code entry', size: 'sm', body: input,
     actions: [{ label: 'Close', cls: 'ghost', onClick: c => c() },
@@ -24413,23 +24516,23 @@ function beep() {
 }
 
 /* ============================== SHORTCUTS — GS1/WCAG keyboard accessible ================================
-   F1: Help (shortcuts) — F2: Search/Scan focus — F3: Customer (F4 also) — F6: Discount — F8: Hold — F9: Cash — F10: Card — Esc: Close
-   All shortcuts prevent browser default only when POS is active and not typing. Help shows bilingual (EN + Roman Urdu).
-   WCAG 2.1: No character-key shortcuts without modifier; all F-keys are safe, no destructive auto-trigger.
+   * F1: Help (shortcuts) — F2: Search/Scan focus — F3: Customer (F4 also) — F6: Discount — F8: Hold — F9: Cash — F10: Card — Esc: Close
+   * All shortcuts prevent browser default only when POS is active and not typing. Help shows bilingual (EN + Roman Urdu).
+   * WCAG 2.1: No character-key shortcuts without modifier; all F-keys are safe, no destructive auto-trigger.
 */
 function showShortcutsHelp(){
   const body = h('div', {style:'display:flex;flex-direction:column;gap:12px;max-height:60vh;overflow:auto'},
     h('div', {style:'padding:10px;background:var(--info-soft);border:1px solid var(--info);border-radius:10px;font-size:12px'}, 
-      h('b',null,'Keyboard Shortcuts — POS / ERP'), h('div',{style:'font-size:11px;color:var(--muted);margin-top:4px'}, 'Sab shortcuts sirf POS screen par kaam karte hain. Typing ke dauran F-keys nahi chalte (except Esc/F9).')),
+      h('b',null,'Keyboard Shortcuts — POS / ERP'), h('div',{style:'font-size:11px;color:var(--muted);margin-top:4px'}, T.t('pos.shortcutsNote','All shortcuts work only on the POS screen. F-keys are ignored while typing (except Esc/F9).'))),
     h('div', {class:'grid', style:'display:grid;grid-template-columns:1fr 1fr;gap:8px'},
       h('div', {class:'card', style:'padding:10px'}, h('b',null,'F1 / ?'), h('div',{style:'font-size:11px;color:var(--muted)'}, 'Help — yeh madad / shortcuts dekhein'), h('div',{style:'font-size:11px'}, 'Press F1 or ? for help — Madad ke liye F1 dabayein')),
       h('div', {class:'card', style:'padding:10px'}, h('b',null,'F2'), h('div',{style:'font-size:11px;color:var(--muted)'}, 'Search / Scan focus'), h('div',{style:'font-size:11px'}, 'F2 — Search par jayein, scan ke liye ready')),
-      h('div', {class:'card', style:'padding:10px'}, h('b',null,'F3 / F4'), h('div',{style:'font-size:11px;color:var(--muted)'}, 'Customer select'), h('div',{style:'font-size:11px'}, 'F3 ya F4 — Customer chunein')),
+      h('div', {class:'card', style:'padding:10px'}, h('b',null,'F3 / F4'), h('div',{style:'font-size:11px;color:var(--muted)'}, 'Customer select'), h('div',{style:'font-size:11px'}, T.t('pos.scF3F4','F3 or F4 — pick customer'))),
       h('div', {class:'card', style:'padding:10px'}, h('b',null,'F6'), h('div',{style:'font-size:11px;color:var(--muted)'}, 'Discount'), h('div',{style:'font-size:11px'}, 'F6 — Bill discount lagayein')),
-      h('div', {class:'card', style:'padding:10px'}, h('b',null,'F8'), h('div',{style:'font-size:11px;color:var(--muted)'}, 'Hold bill'), h('div',{style:'font-size:11px'}, 'F8 — Bill hold karein (pending)')),
+      h('div', {class:'card', style:'padding:10px'}, h('b',null,'F8'), h('div',{style:'font-size:11px;color:var(--muted)'}, 'Hold bill'), h('div',{style:'font-size:11px'}, T.t('pos.scF8','F8 — hold bill (pending)'))),
       h('div', {class:'card', style:'padding:10px'}, h('b',null,'F9'), h('div',{style:'font-size:11px;color:var(--muted)'}, 'Cash payment'), h('div',{style:'font-size:11px'}, 'F9 — Cash se payment')),
       h('div', {class:'card', style:'padding:10px'}, h('b',null,'F10'), h('div',{style:'font-size:11px;color:var(--muted)'}, 'Card payment'), h('div',{style:'font-size:11px'}, 'F10 — Card se payment')),
-      h('div', {class:'card', style:'padding:10px'}, h('b',null,'Ctrl+K / Esc'), h('div',{style:'font-size:11px;color:var(--muted)'}, 'Palette / Close'), h('div',{style:'font-size:11px'}, 'Ctrl+K — Command palette, Esc — Band karein'))
+      h('div', {class:'card', style:'padding:10px'}, h('b',null,'Ctrl+K / Esc'), h('div',{style:'font-size:11px;color:var(--muted)'}, 'Palette / Close'), h('div',{style:'font-size:11px'}, T.t('pos.scCtrlK','Ctrl+K — command palette, Esc — close')))
     ),
     h('div', {style:'font-size:11px;color:var(--muted);border-top:1px solid var(--line);padding-top:8px'}, 'WCAG: All F-keys require no modifier, no accidental destructive action. Focus stays on scan field after scan for continuous scanning.')
   );

@@ -10,8 +10,8 @@ const { execSync } = require('child_process');
 const ROOT = path.join(__dirname, '..');
 
 /* [totalHits, totalTt] — 2026-09-25 round-9 slice-1 ke baad naapa gaya */
-const BASELINE_HITS = 866;
-const BASELINE_TT = 93;
+const BASELINE_HITS = 732; /* r10 slice-2: Screens2+POS2 pure */
+const BASELINE_TT = 199; /* r10 slice-2 */
 
 let pass = 0, fail = 0;
 const ok = (c, n, d) => { if (c) { pass++; console.log('  \u2714 ' + n + (d ? '  \u2192 ' + d : '')); } else { fail++; console.log('  \u2716 ' + n + (d ? '  \u2192 ' + d : '')); } };
@@ -23,7 +23,7 @@ try {
   ok(a.totalHits <= BASELINE_HITS, 'Roman-Urdu hits <= baseline ' + BASELINE_HITS, 'hits=' + a.totalHits);
   ok(a.totalTt >= BASELINE_TT, 'T.t call-sites >= baseline ' + BASELINE_TT, 'T.t=' + a.totalTt);
   /* har file me hits baseline-file se zyada na hon (per-file floor) */
-  const BL_PER = { 'App_Core.html': 81, 'App_Screens2.html': 77, 'App_POS2.html': 58, 'App_AIConfig.html': 50 };
+  const BL_PER = { 'App_Core.html': 80, 'App_AIConfig.html': 50, 'App_UI2.html': 48, 'App_Dashboards.html': 47 };
   const byFile = {};
   (a.files || []).forEach(f => { byFile[f.file] = f.hits; });
   const bad = Object.keys(BL_PER).filter(k => (byFile[k] || 0) > BL_PER[k]);

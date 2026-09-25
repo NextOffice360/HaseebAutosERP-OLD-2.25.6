@@ -1196,21 +1196,21 @@ async function clickAll(view, label, selector, limit) {
         return (doc.querySelector('#view').textContent || '');
       };
       let t = await run('receivables');
-      check('receivables report shows previous balance KPI', /Pichhla baqaya \(prev\)/i.test(t), t.slice(0, 140));
-      check('receivables report shows closing KPI', /Total udhaar \(closing\)/i.test(t), t.slice(0, 140));
+      check('receivables report shows previous balance KPI', /Pichhla baqaya \(prev\)|Previous balance \(prev\)/i.test(t), t.slice(0, 140)); /* v2.30.8 T.t */
+      check('receivables report shows closing KPI', /Total udhaar \(closing\)|Total credit \(closing\)/i.test(t), t.slice(0, 140));
       check('receivables table has prev / new / wasooli / closing columns',
-        /Prev/i.test(t) && /Naya/i.test(t) && /Wasooli/i.test(t) && /Closing/i.test(t), t.slice(0, 160));
+        /Prev/i.test(t) && /Naya|New credit/i.test(t) && /Wasooli|Collections/i.test(t) && /Closing/i.test(t), t.slice(0, 160));
       check('receivables rows show no NaN', !/NaN/.test(t), 'NaN found');
 
       t = await run('payables');
-      check('payables report shows previous payable KPI', /Pichhla baqaya \(prev\)/i.test(t), t.slice(0, 140));
+      check('payables report shows previous payable KPI', /Pichhla baqaya \(prev\)|Previous balance \(prev\)/i.test(t), t.slice(0, 140));
       check('payables table has pichhla baqaya / purchase / paid / closing',
         /Prev/i.test(t) && /Purchase/i.test(t) && /Paid/i.test(t) && /Closing/i.test(t), (t.match(/Supplier-wise[\s\S]{0,200}/) || [t.slice(0, 200)])[0]);
       check('payables rows show no NaN', !/NaN/.test(t), 'NaN found');
 
       t = await run('partyBalances');
       check('party balances report renders prev / new / settled / closing',
-        /Pichhla baqaya/i.test(t) && /Closing/i.test(t), t.slice(0, 160));
+        /Pichhla baqaya|Previous balance/i.test(t) && /Closing/i.test(t), t.slice(0, 160)); /* v2.30.8 T.t */
       check('party balances rows show no NaN', !/NaN/.test(t), 'NaN found');
 
       /* v2.5.1: cash book — opening → in → out → closing */

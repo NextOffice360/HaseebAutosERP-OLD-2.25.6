@@ -1,16 +1,16 @@
 {
-  "generatedAt": "2026-09-25T10:14:40.093Z",
+  "generatedAt": "2026-09-25T10:50:00.668Z",
   "sites": [
     {
       "file": "App_Barcode.html",
-      "line": 237,
+      "line": 240,
       "payload": "txt",
       "fmt": "raw",
       "resolvable": false
     },
     {
       "file": "App_Barcode.html",
-      "line": 434,
+      "line": 437,
       "payload": "r.qr || ('HA:ITM:' + (r.id || r.code || ''",
       "fmt": "kv",
       "resolvable": true

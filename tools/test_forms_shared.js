@@ -193,7 +193,7 @@ console.log('\x1b[1mPART 1 — source contract\x1b[0m');
   ok(/destination alag/.test(d2) && r5.callsSame === 0,
     '⑤b from==to → engine "alag" error + NO API (N8 dedupe: same-key toast node merge hota hai)',
     'd2=' + d2);
-  ok(/Items add karein/.test(d3) && r5.callsValid === 0,
+  ok(/Items add karein|Add items/.test(d3) /* v2.30.8: T.t EN/roman */ && r5.callsValid === 0,
     '⑤c structural theek → content rule (Items add karein) + NO API (order qayam)', 'd3=' + d3);
 
   await browser.close();

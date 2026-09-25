@@ -1,10 +1,10 @@
 <script>
 /* ==========================================================================
-   HASEEB AUTOS — POS v2
-   Product cards · category rail · as-you-type filter (har field) · quick keys
-   · cart (side panel / offcanvas) · qty pad · split payment · holds · scan
-   Sab kuch Settings ▸ POS se configurable (layout, cards per row, stock badge…)
-   ========================================================================== */
+   * HASEEB AUTOS — POS v2
+   * Product cards · category rail · as-you-type filter (har field) · quick keys
+   * · cart (side panel / offcanvas) · qty pad · split payment · holds · scan
+   * Sab kuch Settings ▸ POS se configurable (layout, cards per row, stock badge…)
+   * ========================================================================== */
 (function () {
 'use strict';
 
@@ -41,15 +41,15 @@ function totalTax() { return S.cart.reduce((a, l) => a + (l.tax || 0), 0); }
 function grandTotal() { return Math.max(0, subTotal() - Number(S.discount || 0) + totalTax()); }
 function estProfit() {
   /* v2.28.0 (W5) — cost family band ho to ye estimate ghalat hota (cost 0),
-     is liye 0 return karo aur UI (showProfit) ise dikhata hi nahi. */
+     * is liye 0 return karo aur UI (showProfit) ise dikhata hi nahi. */
   if (!App.field('margin')) return 0;
   return S.cart.reduce((a, l) => a + (l.price - (l.cost || 0)) * l.qty - (l.discount || 0), 0);
 }
 
 /* --------------------------- shop gate (W7 v2.30.5) ------------------------
-   User-report: POS pehle action (cart add) par rok nahi lagta. Ab: pehla sale
-   action par hi check (30s cache) — band ho to popup + banner, cart me kuch
-   nahi jata. window.__shopSession loadShopState sab users ke liye set karta hai. */
+   * User-report: POS pehle action (cart add) par rok nahi lagta. Ab: pehla sale
+   * action par hi check (30s cache) — band ho to popup + banner, cart me kuch
+   * nahi jata. window.__shopSession loadShopState sab users ke liye set karta hai. */
 let _posShopChk = { at: 0, open: true };
 async function shopOpenOk() {
   try { if (String((App.state.settings || {})['shop.requireOpen']) === 'false') return true; } catch (e) { }
@@ -67,14 +67,14 @@ function shopBlockedPopup() {
     UI2.modal({
       title: '🔒 Shop band hai', size: 'sm',
       body: h('div', null,
-        h('p', { style: { margin: '0 0 8px' } }, 'Sale shuru karne se pehle shop khulna zaroori hai — pehla action (item add) rok diya gaya.'),
-        h('p', { class: 'sub', style: { margin: 0 } }, canOpen ? '"Shop kholein" dabayen — opening cash ke sath din shuru hoga.' : 'Barah-e-karam manager/cashier se shop khulwayein.')),
+        h('p', { style: { margin: '0 0 8px' } }, T.t('pos.shopGateToast','Shop must be open before starting a sale — first action (item add) was blocked.')),
+        h('p', { class: 'sub', style: { margin: 0 } }, canOpen ? T.t('pos.openShopHint','Tap "Open the shop" — the day starts with opening cash.') : T.t('pos.askManagerOpen','Please ask a manager/cashier to open the shop.'))),
       actions: [ { label: 'Close', onClick: c => c() },
-        canOpen ? { label: '🗪 Shop kholein', cls: 'ok', onClick: c => { c(); try { window.shopQuickDialog(); } catch (e) { UI.toast(T.t('pos.shopDialogFail','Shop dialog did not open'), 'err'); } } } : null
+        canOpen ? { label: T.t('pos.openShopBtn','🗪 Open the shop'), cls: 'ok', onClick: c => { c(); try { window.shopQuickDialog(); } catch (e) { UI.toast(T.t('pos.shopDialogFail','Shop dialog did not open'), 'err'); } } } : null
       ].filter(Boolean)
     });
   } catch (e) { }
-  try { ShopUI.show('Shop band hai — sale ke kaam rok diye gaye. Pehle shop kholein.', 'block', { shop: canOpen }); } catch (e) { }
+  try { ShopUI.show(T.t('pos.shopClosedBanner','Shop is closed — sale actions are blocked. Open the shop first.'), 'block', { shop: canOpen }); } catch (e) { }
 }
 /* ------------------------------ add to cart ------------------------------- */
 async function addToCart(item, qty) {
@@ -173,12 +173,12 @@ function openBulkAddModal(){
   try{
     if (typeof UI2 === 'undefined' || !UI2.itemPicker) { UI.toast(T.t('pos.pickerFail','Product picker did not load'), 'err'); return; }
     /* v2.24.0 — picker ab khud scan-first hai: mode:'multi' se scan block +
-       checkboxes + Bulk List foran taiyar. DOM ko poke karne ki zarurat nahi. */
+       * checkboxes + Bulk List foran taiyar. DOM ko poke karne ki zarurat nahi. */
     const picker = UI2.itemPicker({
       mode: 'multi',
       icon: '🛒',
       title: 'Bulk Add — Multi Select',
-      hint: 'Scan → Bulk List → Add All · ya search/📋 list se tick karein',
+      hint: T.t('pos.bulkHint','Scan → Bulk List → Add All · or tick from search/📋 list'),
       commitLabel: 'Add Selected to Cart',
       placeholder: 'Search product — name / code / barcode…',
       map: (r, q) => ({ r: r, q: q }),
@@ -213,7 +213,7 @@ function openBulkAddModal(){
       ]
     });
     /* picker ke andar wala apna "Add to list" bar bhi wrapper band kar de —
-       warna stale scrim POS ke upar reh jata hai. */
+       * warna stale scrim POS ke upar reh jata hai. */
     const addBarEl = picker.querySelector('.po-addbar');
     if (addBarEl) addBarEl.addEventListener('click', e => {
       if (e.target && e.target.closest && e.target.closest('.btn.ok')) setTimeout(() => { try { modal.close(); } catch (err) {} }, 30);
@@ -232,7 +232,7 @@ function bulkFlow() {
   let n = 0, miss = 0; const misses = []; let finished = false;
   const mark = () => {
     if (!badge) return;
-    const txt = ' 🔁 Bulk ON · ' + n + (miss ? ' · unknown ' + miss : '') + ' · band karein';
+    const txt = ' 🔁 Bulk ON · ' + n + (miss ? ' · unknown ' + miss : '') + T.t('pos.bulkBadgeEnd',' · close');
     // preserve ha-ico SVG if present (v2.16 premium toolbar)
     const ico = badge.querySelector('.ha-ico');
     if (ico) { badge.textContent = ''; badge.appendChild(ico); badge.append(document.createTextNode(txt)); }
@@ -455,8 +455,8 @@ App.registerScreen('pos', {
     if (['all', 'categories', 'favorites', 'recent', 'held'].indexOf(S.view) === -1) S.view = 'all';
     const wrap = h('div', { class: 'pos2' });
     /* v2.14.0 mobile UX: cart ab drawer (neeche "Cart dekhhein" bar) — poora
-       44vh panel grid ke upar chadta tha ("blocks are blocking the main
-       screen"). Bar desktop par display:none, drawer kholta hai. */
+       * 44vh panel grid ke upar chadta tha ("blocks are blocking the main
+       * screen"). Bar desktop par display:none, drawer kholta hai. */
     const cartBar = h('button', { class: 'pos2-cartbar', type: 'button',
       onclick: () => { try { openCartOffcanvas(); } catch (e) { } } },
       h('span', { class: 'pcb-count' }, '🛒 0 items'),
@@ -464,10 +464,10 @@ App.registerScreen('pos', {
       h('span', { class: 'pcb-go' }, 'Cart dekhhein ▸'));
 
     /* ---------------- LEFT: search + tabs + rail + cards ---------------- */
-    const searchInput = h('input', { type: 'text', placeholder: 'Scan ya type karein — name / code / barcode / brand / model… (F2)', autocomplete: 'off', autocapitalize: 'off', spellcheck: 'false' });
+    const searchInput = h('input', { type: 'text', placeholder: T.t('pos.scanOrTypePh','Scan or type — name / code / barcode / brand / model… (F2)'), autocomplete: 'off', autocapitalize: 'off', spellcheck: 'false' });
     const searchBox = h('div', { class: 'pos2-search' }, h('span', { class: 'ha-ico', html: '<svg viewBox=\"0 0 24 24\" width=\"16\" height=\"16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" aria-hidden=\"true\"><circle cx=\"11\" cy=\"11\" r=\"7\"/><line x1=\"16.5\" y1=\"16.5\" x2=\"21\" y2=\"21\"/></svg>', 'aria-hidden': 'true' }), searchInput,
       h('span', { class: 'kbd' }, 'F2'),
-      h('button', { class: 'btn sm sec', title: 'Camera se barcode/QR scan karein',
+      h('button', { class: 'btn sm sec', title: T.t('pos.cameraScan','Scan barcode/QR with camera'),
         onclick: () => scanBarcode(v => {
           const hit = S.catalog.find(i => String(i.bc).toLowerCase() === String(v).toLowerCase() ||
             String(i.code).toLowerCase() === String(v).toLowerCase());
@@ -505,20 +505,20 @@ App.registerScreen('pos', {
       h('span', { class: 'badge brand', id: 'cartCount2' }, '0 items'),
       h('button', { class: 'btn sm ghost', style: { marginLeft: 'auto' }, onclick: clearCart }, '🗑'));
     /* v2.16 — cart toolbar: premium aligned (SVG + emoji for tests, 32px taps, Add items / Bulk scan / Bulk ON pill) */
-    const bulkBadge = h('button', { class: 'pos2-bulk', type: 'button', hidden: true, title: 'Bulk session khatam karein',
+    const bulkBadge = h('button', { class: 'pos2-bulk', type: 'button', hidden: true, title: T.t('pos.endBulkSession','End bulk session'),
       onclick: () => { const hd = POS2.bulkHandle; if (hd) { try { hd.cancel ? hd.cancel() : (hd.close && hd.close()); } catch (e) { } } } },
-      h('span', { class: 'ha-ico', html: '<svg viewBox=\"0 0 24 24\" width=\"14\" height=\"14\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"M21 12a9 9 0 1 1-2.64-6.36\"/><path d=\"M21 3v6h-6\"/></svg>', 'aria-hidden': 'true' }), ' 🔁 Bulk ON · 0 · band karein');
+      h('span', { class: 'ha-ico', html: '<svg viewBox=\"0 0 24 24\" width=\"14\" height=\"14\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"M21 12a9 9 0 1 1-2.64-6.36\"/><path d=\"M21 3v6h-6\"/></svg>', 'aria-hidden': 'true' }), T.t('pos.bulkBadgeInit',' 🔁 Bulk ON · 0 · close'));
     // ☑ Add items — renamed to ☑ BULK ADD per UX polish (keeps legacy alias for tests)
     if(!S._bulkCartSel) S._bulkCartSel=new Set();
     if(typeof S.bulkCartMode==='undefined') S.bulkCartMode=false;
     const cartTools = h('div', { class: 'cart2-tools' },
-      h('button', { class: 'btn sm sec', type: 'button', title: 'Checkbox list se multiple products ek saath add karein (GRN/PO jaisa) — BULK ADD',
+      h('button', { class: 'btn sm sec', type: 'button', title: T.t('pos.bulkAddHint','Add multiple products at once from the checkbox list (like GRN/PO) — BULK ADD'),
         onclick: () => togglePicker() },
         h('span', { class: 'ha-ico', html: '<svg viewBox=\"0 0 24 24\" width=\"14\" height=\"14\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2\"/><path d=\"M9 12l2 2 4-4\"/></svg>', 'aria-hidden': 'true' }), ' ☑ BULK ADD'),
-      h('button', { class: 'btn sm ghost', type: 'button', title: 'Grid bulk — tiles par tick karke multiple add',
-        onclick: () => { S.bulkGridMode=!S.bulkGridMode; if(!S.bulkGridMode) S._bulkGridSel.clear(); renderGrid(); UI.toast(S.bulkGridMode?'Grid select ON — tiles tick karein':'Grid select OFF','ok'); }},
+      h('button', { class: 'btn sm ghost', type: 'button', title: T.t('pos.gridBulkHint','Grid bulk — tick tiles to add multiple'),
+        onclick: () => { S.bulkGridMode=!S.bulkGridMode; if(!S.bulkGridMode) S._bulkGridSel.clear(); renderGrid(); UI.toast(S.bulkGridMode?T.t('pos.gridSelectOn','Grid select ON — tick tiles'):'Grid select OFF','ok'); }},
         h('span', { class: 'ha-ico', html: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 12l2 2 4-4"/></svg>', 'aria-hidden': 'true' }), ' ⊞ Grid'),
-      h('button', { class: 'btn sm ghost', type: 'button', title: 'Cart lines select karein — bulk delete / qty',
+      h('button', { class: 'btn sm ghost', type: 'button', title: T.t('pos.cartLinesSelect','Select cart lines — bulk delete / qty'),
         onclick: () => { S.bulkCartMode=!S.bulkCartMode; if(!S.bulkCartMode) S._bulkCartSel.clear(); renderCart(); UI.toast(S.bulkCartMode?'Cart select ON':'Cart select OFF','ok'); }},
         h('span', { class: 'ha-ico', html: '<svg viewBox=\"0 0 24 24\" width=\"14\" height=\"14\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2\"/><path d=\"M9 9h6\"/><path d=\"M9 15h6\"/></svg>', 'aria-hidden': 'true' }), ' ☑ Select'),
       h('button', { class: 'btn sm sec', type: 'button', title: 'Lagataar scan — har code foran cart mein add',
@@ -540,7 +540,7 @@ App.registerScreen('pos', {
         const hit = findProductByBarcode(code);
         if (hit) { addToCart({ id: hit.id, code: hit.code, name: hit.name, retailPrice: hit.rp, wholesalePrice: hit.wp, costPrice: hit.cp, stock: hit.qty, imageUrl: hit.img }, 1); inp.value = ''; S.q=''; try{renderGrid();}catch(e){} inp.focus(); UI.toast('Added: ' + hit.name+' — Cart updated','ok'); }
         else {
-          UI.toast(T.t('pos.productNotFound','Product nahi mila: ') + code + ' — try manual search (F2)','warn'); inp.value=''; inp.focus();
+          UI.toast(T.t('pos.productNotFound','Product not found: ') + code + ' — try manual search (F2)','warn'); inp.value=''; inp.focus();
         }
       };
       inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); doAdd(); } });
@@ -633,7 +633,7 @@ App.registerScreen('pos', {
       gridHost.innerHTML = '';
       if (!list.length) {
         gridHost.appendChild(h('div', { class: 'empty' }, h('span', { class: 'big' }, '😕'),
-          h('div', null, 'Kuch nahi mila'),
+          h('div', null, T.t('pos.noMatches','No matches')),
           h('button', { class: 'btn sm', style: { marginTop: '10px' }, onclick: () => quickAdd(q) }, '➕ Naya item banaayein')));
         return;
       }
@@ -712,18 +712,18 @@ App.registerScreen('pos', {
 
 
 /* ============================================================================
-   v2.6 QA — "product cards main double product name show ho raha hay"
-   ----------------------------------------------------------------------------
-   Misaal:  naam  = "FLAMINGO DASHBOARD POLISH 450ML"
-            card  = "FLAMINGO DASHBOARD POLISH 450ML"
-                    "FL00000 · Flamingo · DashBoard Polish Spray"   ← dohrao!
-
-   Wajah: card brand + category bhi dikha raha tha, aur seed data mein
-   category ("DashBoard Polish Spray") naam ke lafz repeat karta hai.
-
-   Hal: jo hissa (brand/category/sub-category) PEHLE HI naam mein maujood ho,
-   usay chhupao. Asal maloomat (code, supplier, price) waisi hi rahegi.
-   ========================================================================== */
+   * v2.6 QA — "product cards main double product name show ho raha hay"
+   * ----------------------------------------------------------------------------
+   * Misaal:  naam  = "FLAMINGO DASHBOARD POLISH 450ML"
+            * card  = "FLAMINGO DASHBOARD POLISH 450ML"
+                    * "FL00000 · Flamingo · DashBoard Polish Spray"   ← dohrao!
+* 
+   * Wajah: card brand + category bhi dikha raha tha, aur seed data mein
+   * category ("DashBoard Polish Spray") naam ke lafz repeat karta hai.
+* 
+   * Hal: jo hissa (brand/category/sub-category) PEHLE HI naam mein maujood ho,
+   * usay chhupao. Asal maloomat (code, supplier, price) waisi hi rahegi.
+   * ========================================================================== */
 function redundantWithName(name, part) {
   const norm = v => String(v || '').toUpperCase()
     .replace(/[^A-Z0-9 ]/g, ' ').split(/\s+/).filter(w => w.length > 2);
@@ -774,7 +774,7 @@ function cardSubParts(name, parts) {
             i.wp ? h('div', { class: 'pop-r' }, h('span', null, 'Wholesale'), h('b', null, fmt.money(i.wp))) : '',
             h('div', { class: 'pop-r' }, h('span', null, 'Cost'), h('b', null, fmt.money(i.cp))),
             i.rack ? h('div', { class: 'pop-r' }, h('span', null, 'Rack'), h('b', null, i.rack)) : '',
-            h('div', { class: 'pop-f' }, 'ⓘ aur detail ke liye click karein'));
+            h('div', { class: 'pop-f' }, T.t('pos.quickViewHint','ⓘ click for more details')));
           el.appendChild(pop);
         }, 350);
       };
@@ -803,7 +803,7 @@ function cardSubParts(name, parts) {
             onclick: e => { e.stopPropagation(); quickViewItem(i); },
             onkeydown: e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); quickViewItem(i); } }
           }, 'ⓘ')) : '',
-        h('span', { class: 'pc-fav', title: isFav(i.id) ? 'Favourite hatayein' : 'Favourite banayein',
+        h('span', { class: 'pc-fav', title: isFav(i.id) ? 'Favourite hatayein' : T.t('pos.makeFavourite','Make favourite'),
           onclick: e => { e.stopPropagation(); toggleFav(i.id); } }, isFav(i.id) ? '★' : '☆'),
         h('div', { class: 'pc-body' },
           h('div', { class: 'pc-name' }, name),
@@ -888,7 +888,7 @@ function cardSubParts(name, parts) {
       bar.appendChild(h('b', null, S._bulkGridSel.size+' selected'));
       bar.appendChild(h('button', { class: 'btn sm ghost', onclick: ()=>{ S._bulkGridSel.clear(); renderGrid(); }}, 'Clear'));
       bar.appendChild(h('button', { class: 'btn sm ok', onclick: ()=>{
-        if(!S._bulkGridSel.size) return UI.toast(T.t('pos.nothingSelected','Koi select nahi'),'warn');
+        if(!S._bulkGridSel.size) return UI.toast(T.t('pos.nothingSelected','Nothing selected'),'warn');
         let n=0;
         S._bulkGridSel.forEach(k=>{
           const it=S.catalog.find(x=> String(x.id)===String(k));
@@ -911,7 +911,7 @@ function cardSubParts(name, parts) {
           h('div', { class: 'li-main' }, h('b', null, hb.ref), h('span', null, (hb.items || 0) + ' items · ' + fmt.money(hb.total || 0) + ' · ' + fmt.rel(hb.createdAt))),
           h('button', { class: 'btn sm', onclick: () => resumeHeld(hb.id) }, 'Resume'),
           h('button', { class: 'btn sm danger', onclick: async () => { await API.call('sales.held.resume', { id: hb.id }); loadHeld(); App.refresh(); } }, '🗑')))
-          : h('div', { class: 'empty' }, h('span', { class: 'big' }, '⏸'), h('div', null, 'Koi held bill nahi')))));
+          : h('div', { class: 'empty' }, h('span', { class: 'big' }, '⏸'), h('div', null, T.t('pos.noHeldBills','No held bills'))))));
     }
   }
 });
@@ -940,7 +940,7 @@ function renderCart() {
     body.appendChild(h('div', { class: 'empty', style: { padding: '34px 12px' } },
       h('span', { class: 'big' }, '🧺'), h('div', null, 'Cart khali hai'),
       h('div', { style: { fontSize: 'var(--fs-xs)', color: 'var(--muted-2)', marginTop: '6px' } },
-        'Item search kar ke tap karein, ya barcode scan karein')));
+        T.t('pos.findItemHint','Search and tap an item, or scan a barcode'))));
     // also update drawer count if open
     try { if (POS2.drawerCust) POS2.drawerCust.querySelector('#custNameM'); } catch (e) { }
     return;
@@ -961,7 +961,7 @@ function renderCart() {
     if(!S._bulkCartSel) S._bulkCartSel=new Set();
     const selAll = h('label', { class: 'chk', style: { display: 'flex', gap: '8px', alignItems: 'center', padding: '8px', background: 'var(--panel-2)', border: '1px solid var(--line)', borderRadius: '10px', fontSize: '12px', fontWeight: '800', marginBottom: '8px' } },
       h('input', { type: 'checkbox', checked: S.cart.every((_,i)=> S._bulkCartSel.has(i)), onchange: e=>{ if(e.target.checked) S.cart.forEach((_,i)=> S._bulkCartSel.add(i)); else S._bulkCartSel.clear(); renderCart(); }}), 'Select all ('+S.cart.length+')',
-      h('button', { class: 'btn sm danger', style: { marginLeft: 'auto' }, onclick: ()=>{ if(!S._bulkCartSel.size) return UI.toast(T.t('pos.nothingSelected','Koi select nahi'),'warn'); const sel=Array.from(S._bulkCartSel).sort((a,b)=>b-a); sel.forEach(i=> S.cart.splice(i,1)); S._bulkCartSel.clear(); renderCart(); renderTotals(); UI.toast(sel.length+' removed','ok'); }}, '🗑 Delete'),
+      h('button', { class: 'btn sm danger', style: { marginLeft: 'auto' }, onclick: ()=>{ if(!S._bulkCartSel.size) return UI.toast(T.t('pos.nothingSelected','Nothing selected'),'warn'); const sel=Array.from(S._bulkCartSel).sort((a,b)=>b-a); sel.forEach(i=> S.cart.splice(i,1)); S._bulkCartSel.clear(); renderCart(); renderTotals(); UI.toast(sel.length+' removed','ok'); }}, '🗑 Delete'),
       h('button', { class: 'btn sm ghost', onclick: ()=>{ S.bulkCartMode=false; S._bulkCartSel.clear(); renderCart(); }}, '✕')
     );
     body.appendChild(selAll);
@@ -980,14 +980,14 @@ function renderCart() {
           ? h('div', { style: { fontSize: 'var(--fs-xs)', color: 'var(--warn)' } },
             '⚠ Stock ' + l.stock + ' hai') : ''),
       showQty ? h('div', { class: 'qty-ctl' },
-        h('button', { title: 'Kam karein', 'aria-label': 'Qty minus', onclick: () => { l.qty = Math.max(1, l.qty - 1); l.lineTotal = l.qty * l.price - (l.discount || 0); renderCart(); renderTotals(); } }, '−'),
+        h('button', { title: T.t('pos.decrease','Decrease'), 'aria-label': 'Qty minus', onclick: () => { l.qty = Math.max(1, l.qty - 1); l.lineTotal = l.qty * l.price - (l.discount || 0); renderCart(); renderTotals(); } }, '−'),
         (function () {
           const inp = h('input', { type: 'number', value: l.qty, min: '1', style: { width: '42px', textAlign: 'center' }, 'aria-label': 'Qty', title: 'Qty' });
           inp.onchange = () => { const v = Number(inp.value) || 1; l.qty = Math.max(1, v); l.lineTotal = l.qty * l.price - (l.discount || 0); renderCart(); renderTotals(); };
           inp.onkeydown = e => { if (e.key === 'Enter') inp.blur(); };
           return inp;
         })(),
-        h('button', { title: 'Zyada karein', 'aria-label': 'Qty plus', onclick: () => { l.qty += 1; l.lineTotal = l.qty * l.price - (l.discount || 0); renderCart(); renderTotals(); } }, '+')) : h('span', { class: 'cr-rate', style: { gridColumn: '2' } }, '×' + l.qty),
+        h('button', { title: T.t('pos.increase','Increase'), 'aria-label': 'Qty plus', onclick: () => { l.qty += 1; l.lineTotal = l.qty * l.price - (l.discount || 0); renderCart(); renderTotals(); } }, '+')) : h('span', { class: 'cr-rate', style: { gridColumn: '2' } }, '×' + l.qty),
       showRate ? h('span', { class: 'cr-rate' }, fmt.money(l.price)) : '',
       h('b', { class: 'cr-amt' }, fmt.money(l.lineTotal)),
       showActs ? h('div', { class: 'cr-acts' },
@@ -1011,7 +1011,7 @@ function renderTotals() {
   if (!foot) return;
   // respect admin toggles
   /* v2.28.0 (W5) — margin family bhi zaroori (backend cost/margin strip kar deta hai,
-     warna client-side estimate ghalat "munafa" dikhata) */
+     * warna client-side estimate ghalat "munafa" dikhata) */
   const showProfit = cfg('pos.showProfit') !== false && App.can('reports.financial') && App.field('margin');
   const showTax = cfg('pos.showTax') !== false;
   const payBtnsCfg = String(cfg('pos.payButtons') || 'CASH,CARD,SPLIT,CREDIT').split(',').map(s => s.trim().toUpperCase()).filter(Boolean);
@@ -1019,7 +1019,7 @@ function renderTotals() {
     CASH: { label: '💵 Cash (F9)', cls: 'ok', method: 'CASH' },
     CARD: { label: '💳 Card', cls: 'sec', method: 'CARD' },
     SPLIT: { label: '🔀 Split', cls: 'sec', method: 'SPLIT' },
-    CREDIT: { label: '📒 Udhaar', cls: 'sec', method: 'CREDIT' }
+    CREDIT: { label: T.t('pos.ledgerBtn','📒 Credit ledger'), cls: 'sec', method: 'CREDIT' }
   };
   const payBtns = payBtnsCfg.filter(k => btnMap[k]).map(k => h('button', { class: 'btn ' + btnMap[k].cls, onclick: () => pay(btnMap[k].method) }, btnMap[k].label));
   foot.textContent = '';
@@ -1065,7 +1065,7 @@ function lineEdit(idx) {
     actions: [{ label: 'Apply', cls: 'ok', onClick: async (c) => {
       const v = f.values();
       if (l.minPrice && Number(v.price) < l.minPrice && !App.can('items.price.edit')) {
-        return UI.toast('Min price ' + fmt.money(l.minPrice) + ' se kam nahi', 'err');
+        return UI.toast('Min price ' + fmt.money(l.minPrice) + T.t('pos.minPriceTail',' — cannot be lower'), 'err');
       }
       l.qty = Math.max(1, Number(v.qty) || 1);
       l.price = Number(v.price); l.discount = Number(v.discount) || 0; l.note = v.note;
@@ -1128,7 +1128,7 @@ async function qtyPad(item) {
 
 /* ============================== CUSTOMER ================================== */
 function pickCustomer() {
-  const q = h('input', { class: 'st2-q', type: 'search', placeholder: 'Naam ya phone… (type karein, foran filter hoga)', autocomplete: 'off' });
+  const q = h('input', { class: 'st2-q', type: 'search', placeholder: T.t('pos.custSearchPh','Name or phone… (type to filter instantly)'), autocomplete: 'off' });
   const list = h('div', { style: { maxHeight: '50vh', overflow: 'auto', marginTop: '8px' } });
   const recentCustomers = (App.state.catalog.customers || []).slice(0, 3);
   const quickHost = recentCustomers.length ? h('div', { style: { display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '8px' } },
@@ -1139,7 +1139,7 @@ function pickCustomer() {
     const rows = await Shared.customers({ q: term, withBalance: true, limit: 40,
       offline: () => ({ rows: (App.state.catalog.customers || []).filter(c => !term || (c.name + c.phone).toLowerCase().includes(term.toLowerCase())) }) });
     list.innerHTML = '';
-    if (!rows.length) list.appendChild(h('div', { class: 'tbl-empty' }, 'Koi customer nahi mila'));
+    if (!rows.length) list.appendChild(h('div', { class: 'tbl-empty' }, T.t('pos.noCustomer','No customer found')));
     rows.forEach(c => list.appendChild(h('div', { class: 'list-item', style: { cursor: 'pointer', padding: '8px 10px' }, onclick: () => {
       S.customer = c; updateCustBar(); m.close(); applyCustomerPricing();
     } },
@@ -1150,7 +1150,7 @@ function pickCustomer() {
   q.addEventListener('input', debounce(() => run(q.value.trim()), 120));
   q.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); const first = list.querySelector('.list-item'); if (first) first.click(); } });
   const m = UI2.modal({
-    title: 'Customer select karein', size: 'sm',
+    title: T.t('pos.selectCustomer','Select a customer'), size: 'sm',
     body: h('div', null, q, quickHost, list,
       h('button', { class: 'btn sec block', style: { marginTop: '10px' }, onclick: () => newCustomer(() => run(q.value.trim()||'')) }, '➕ Naya customer')),
     actions: [{ label: 'Walk-in (no customer)', cls: 'ghost', onClick: c => { S.customer = null; updateCustBar(); c(); } }]
@@ -1168,14 +1168,14 @@ function newCustomer(after) {
       { key: 'phone', label: 'Phone' },
       { key: 'customerTypeId', label: 'Customer type', type: 'select', options: [{ value: '', label: '—' }].concat(types.map(t => ({ value: t.id, label: t.name }))) },
       { key: 'address', label: 'Address', full: true },
-      { key: 'openingBalance', label: 'Opening udhaar', type: 'number' }
+      { key: 'openingBalance', label: T.t('pos.openingUdhaar','Opening credit'), type: 'number' }
     ]
   });
   UI2.modal({
     title: 'Naya customer', size: 'sm', body: f.el,
     actions: [{ label: 'Save', cls: 'ok', onClick: async c => {
       const v = f.values();
-      if (!v.name) return UI.toast(T.t('pos.nameReq','Name zaroori hai'), 'err');
+      if (!v.name) return UI.toast(T.t('pos.nameReq','Name is required'), 'err');
       try { const saved = await API.call('customers.save', { customer: v });
         S.customer = saved; updateCustBar(); UI.toast('Saved ✅', 'ok'); c(); after && after(saved);
       } catch (e) { UI.toast(e.message, 'err'); }
@@ -1352,8 +1352,8 @@ async function pay(method) {
       ['Total', fmt.money(total)]
     ];
     /* v2.30.0 (N4) — redeem kiye gaye points bill summary mein saaf dikhein
-       (display-only line — paisa hamesha LOYALTY payment row se aata hai, yahan
-       sirf nazar aata hai, is liye double-counting ka koi sawal nahi). */
+       * (display-only line — paisa hamesha LOYALTY payment row se aata hai, yahan
+       * sirf nazar aata hai, is liye double-counting ka koi sawal nahi). */
     const loyPtsRow = payments.filter(p => String(p.method || '').toUpperCase() === 'LOYALTY')
       .reduce((a, p) => a + (Number(p.points) || 0), 0);
     const loyValRow = payments.filter(p => String(p.method || '').toUpperCase() === 'LOYALTY')
@@ -1406,7 +1406,7 @@ async function pay(method) {
     const chg = Math.max(0, U2round(paid - amountOwed));
     const invoiceDue = Math.max(0, U2round(total - Math.min(paid, total)));
     paidEl.innerHTML = '<span>Paid</span><span>' + fmt.money(paid) + '</span>';
-    dueEl.innerHTML = closing > 0.5 ? '<span>Current Due (udhaar) — Closing</span><span>' + fmt.money(closing) + '</span>' : '<span>Current Due</span><span style="color:var(--ok)">0 (Clear)</span>';
+    dueEl.innerHTML = closing > 0.5 ? T.t('pos.dueClosingHtml','<span>Current due (credit) — Closing</span><span>') + fmt.money(closing) + '</span>' : '<span>Current Due</span><span style="color:var(--ok)">0 (Clear)</span>';
     chgEl.innerHTML = chg > 0.5 ? '<span>Change</span><span>' + fmt.money(chg) + '</span>' : (invoiceDue>0.5? '<span>Remaining of invoice</span><span>'+fmt.money(invoiceDue)+'</span>' : '');
     return { paid, due: closing, closing, change: chg, invoiceDue };
   }
@@ -1492,7 +1492,7 @@ async function pay(method) {
           const ptsInput = h('input', { class: 'f-input', type: 'number', min: '0',
             max: String(sum.usablePoints || 0), value: String(pointsInput.value||'0'), style: { width: '110px' }, 'aria-label': 'Redeem points' });
           /* v2.30.0 (N4) — dono inputs ek hi cap share karte hain (pehle ek taraf
-             clamp hota tha, doosra raw reh jata tha → sale mein galat points). */
+             * clamp hota tha, doosra raw reh jata tha → sale mein galat points). */
           const capPts = () => Number(sum.usablePoints || 0);
           const clampBoth = (from) => {
             const max = capPts();
@@ -1511,7 +1511,7 @@ async function pay(method) {
             h('button', { class: 'btn sm ok', onclick: () => {
               const pts = Number(ptsInput.value || 0);
               if (pts <= 0) return UI.toast(T.t('pos.enterPoints','Points daalein'), 'warn');
-              if (pts > (sum.usablePoints || 0)) return UI.toast(T.t('pos.pointsTooMany','Itne points use nahi ho sakte'), 'err');
+              if (pts > (sum.usablePoints || 0)) return UI.toast(T.t('pos.pointsTooMany','Cannot use that many points'), 'err');
               const val = pts * (sum.rate || 1);
               const existing = payments.find(p => p.method === 'LOYALTY');
               if (existing) { existing.points = pts; existing.amount = Math.min(val, total); }
@@ -1546,7 +1546,7 @@ async function pay(method) {
           setPointsHint('1 point = ' + fmt.money(loySum.rate || 1) + ' · balance ' + fmt.num(loySum.points || 0) + ' pts' +
             (loySum.usablePoints ? ' · is bill par max ' + fmt.num(loySum.usablePoints) : ''));
         } else if (!S.customer) {
-          setPointsHint('Customer select karein — points redeem ke liye');
+          setPointsHint(T.t('pos.custForPoints','Select a customer — to redeem points'));
         } else {
           setPointsHint('Loyalty off hai (Settings \u25B8 Trade \u25B8 Loyalty)');
         }
@@ -1577,12 +1577,12 @@ async function pay(method) {
   // promised date and points row setup
   const promisedWrap = h('div', { style: { display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '8px' } }, h('label', { style: { fontSize: '11px', letterSpacing: '.4px', fontWeight: '700', color: 'var(--muted)' } }, 'PROMISED PAYMENT DATE'), promisedInput);
   /* v2.30.0 (N4) — is row par pehle CREDIT settlement ka text chipka hua tha
-     ("Koi fee nahi - settlement <date>") jo points se bilkul be-taaluq tha.
-     Ab ye hint sirf loyalty ka sach batata hai (rate / balance / applied points). */
+     * ("Koi fee nahi - settlement <date>") jo points se bilkul be-taaluq tha.
+     * Ab ye hint sirf loyalty ka sach batata hai (rate / balance / applied points). */
   const pointsHint = h('span', { class: 'muted points-hint', style: { fontSize: '11px', whiteSpace: 'nowrap' } },
-    'Customer select karein — points redeem ke liye');
+    T.t('pos.custForPoints','Select a customer — to redeem points'));
   /* v2.30.0 (N4) — setter: paint() pehle chalta hai (const se pehle), is liye
-     seedha variable ke bajaye class se element dhoondo (koi TDZ crash nahi). */
+     * seedha variable ke bajaye class se element dhoondo (koi TDZ crash nahi). */
   function setPointsHint(t) {
     try {
       const el = document.querySelector('.modal-scrim .modal2 .points-hint') ||
@@ -1594,9 +1594,9 @@ async function pay(method) {
     h('label', { style: { fontSize: '11px', fontWeight: '700', minWidth: '56px' } }, 'POINTS'), pointsInput, pointsHint);
 
   /* v2.30.0 (N4/N5) — desktop par WIDE modal + 2 hisse (left: bill summary +
-     quick chips + note · right: payment methods + POINTS + loyalty + footer).
-     900px se neeche CSS khud single column kar deta hai (mobile responsive). */
-  const payFoot = h('div', { class: 'pay-footer', style: { display: 'flex', justifyContent: 'space-between', gap: '10px', padding: '10px', border: '1.5px dashed var(--line)', borderRadius: '12px', background: 'var(--panel-2)', fontWeight: '800', fontSize: '13px', marginTop: '8px' } }, h('span', { style: { color: 'var(--ok)' } }, 'PAID BY Loyalty Points ', h('b', { id: 'payLoyAmt2' }, 'Rs 0')), h('span', { style: { color: 'var(--err)' } }, 'Current Due (udhaar) ', h('b', { id: 'payDue2' }, 'Rs 0')));
+     * quick chips + note · right: payment methods + POINTS + loyalty + footer).
+     * 900px se neeche CSS khud single column kar deta hai (mobile responsive). */
+  const payFoot = h('div', { class: 'pay-footer', style: { display: 'flex', justifyContent: 'space-between', gap: '10px', padding: '10px', border: '1.5px dashed var(--line)', borderRadius: '12px', background: 'var(--panel-2)', fontWeight: '800', fontSize: '13px', marginTop: '8px' } }, h('span', { style: { color: 'var(--ok)' } }, 'PAID BY Loyalty Points ', h('b', { id: 'payLoyAmt2' }, 'Rs 0')), h('span', { style: { color: 'var(--err)' } }, T.t('pos.currentDue','Current due (credit) '), h('b', { id: 'payDue2' }, 'Rs 0')));
   UI2.modal({
     title: 'Payment — ' + fmt.money(total),
     subtitle: (S.customer ? S.customer.name : 'Walk-in') + ' · ' + S.cart.reduce((a, l) => a + l.qty, 0) + ' items',
@@ -1624,35 +1624,35 @@ async function pay(method) {
         // cash sale must pay full (when no credit)
         if (!wantsCredit && effectiveDue > 0.5) {
           if (method === 'CASH' || rows.some(p => p.method === 'CASH')) {
-            return UI.toast(T.t('pos.cashFull','Cash sale: poora bill pay karein — baqi ') + fmt.money(effectiveDue) + ' due hai', 'err', 3200);
+            return UI.toast(T.t('pos.cashFull','Cash sale: pay the full bill — remaining ') + fmt.money(effectiveDue) + ' due hai', 'err', 3200);
           }
         }
         if (wantsCredit) {
-          if (!S.customer) return UI.toast(T.t('pos.creditNeedsCustomer','Udhaar ke liye customer select karein'), 'err');
+          if (!S.customer) return UI.toast(T.t('pos.creditNeedsCustomer','Select a customer for credit'), 'err');
           // active account check
           if (S.customer.active === false || String(S.customer.status || '').toLowerCase() === 'inactive' || String(S.customer.blocked || '').toLowerCase() === 'true') {
-            return UI.toast(T.t('pos.customerBlocked','Customer account inactive / blocked — udhaar nahi de sakte'), 'err', 3500);
+            return UI.toast(T.t('pos.customerBlocked','Customer account inactive/blocked — credit not allowed'), 'err', 3500);
           }
           let limit = Number(S.customer.creditLimit ?? S.customer.limit ?? S.customer.credit ?? App.state.settings.customerCreditLimit ?? App.state.settings.defaultCreditLimit ?? 0);
           let bal = Number(S.__prevBalance ?? S.customer.balance ?? S.customer.bal ?? 0);
           if (limit > 0) {
             const avail = Math.max(0, limit - bal);
             if (effectiveDue > avail + 0.5) {
-              return UI.toast(T.t('pos.limitExceeded','Credit limit exceeded — limit ') + fmt.money(limit) + ', previous ' + fmt.money(bal) + ', available ' + fmt.money(avail) + ', is bill ka udhaar ' + fmt.money(effectiveDue), 'err', 5000);
+              return UI.toast(T.t('pos.limitExceeded','Credit limit exceeded — limit ') + fmt.money(limit) + ', previous ' + fmt.money(bal) + ', available ' + fmt.money(avail) + T.t('pos.billCreditTail',', this bill credit ') + fmt.money(effectiveDue), 'err', 5000);
             }
             // partial payment info: remaining credit after sale
             const remain = Math.max(0, avail - effectiveDue);
             if (effectiveDue > 0.5 && Number(paid || 0) > 0) {
-              UI.toast('Partial payment: paid ' + fmt.money(paid) + ', udhaar ' + fmt.money(effectiveDue) + ' · credit baqi ' + fmt.money(remain), 'ok', 3500);
+              UI.toast('Partial payment: paid ' + fmt.money(paid) + T.t('pos.creditTail',', credit ') + fmt.money(effectiveDue) + ' · credit baqi ' + fmt.money(remain), 'ok', 3500);
             }
           }
         } else {
           // non-credit sale: must be fully paid (no due)
           if (effectiveDue > 0.5) {
-            return UI.toast(T.t('pos.fullPayReq','Full payment required — baqi ') + fmt.money(effectiveDue) + ' (Cash ya Card se pay karein, ya Udhaar select karein)', 'err', 3200);
+            return UI.toast(T.t('pos.fullPayReq','Full payment required — remaining ') + fmt.money(effectiveDue) + T.t('pos.payOptionsTail',' (pay via Cash or Card, or select Credit)'), 'err', 3200);
           }
         }
-        if (!effectiveRows.length && !wantsCredit) return UI.toast(T.t('pos.noPayment','Koi payment nahi dali'), 'warn');
+        if (!effectiveRows.length && !wantsCredit) return UI.toast(T.t('pos.noPayment','No payment entered'), 'warn');
         const rowsForValidate = effectiveRows.length ? effectiveRows : rows;
         /* method-wise validation (wallet txn id, cheque no/date, limits…) */
         const bad = await PayUI.validate(rowsForValidate.filter(p => Number(p.amount) > 0));
@@ -1671,19 +1671,19 @@ async function pay(method) {
           const dv = promisedInput.value || '';
           if(dv) rowsForValidate.forEach(p=>{ if(String(p.method).toUpperCase()==='CREDIT') p.dueDate=dv; });
           /* v2.30.0 (N4) — ASLI MATH BUG FIX:
-             Pehle POINTS textbox ki value seedhi sale mein copy ho jati thi. User
-             cap se zyada likh deta to sale mein points 500 record hote aur
-             customer ke poore points kat jate, magar bill par sirf 89 points ki
-             value lagti thi (deduction ≠ value). Ab: amount authoritative hai,
-             points usi se derive hote hain, usablePoints par CAP, aur invoice se
-             zyada value kabhi nahi lagti. */
+             * Pehle POINTS textbox ki value seedhi sale mein copy ho jati thi. User
+             * cap se zyada likh deta to sale mein points 500 record hote aur
+             * customer ke poore points kat jate, magar bill par sirf 89 points ki
+             * value lagti thi (deduction ≠ value). Ab: amount authoritative hai,
+             * points usi se derive hote hain, usablePoints par CAP, aur invoice se
+             * zyada value kabhi nahi lagti. */
           const loyRow = rowsForValidate.find(p => String(p.method).toUpperCase() === 'LOYALTY');
           if (loyRow) {
             const rate = Number((loySum && loySum.rate) || App.state.settings['loyalty.rate'] || 1) || 1;
             const cap = loySum ? Number(loySum.usablePoints || 0) : 0;
             const typed = Number(pointsInput.value || 0);
             let pts = typed > 0 ? Math.floor(typed) : Math.floor(Number(loyRow.amount || 0) / rate);
-            if (cap && pts > cap) { UI.toast(T.t('pos.pointsCap','Points cap: is bill par max ') + fmt.num(cap), 'warn', 2600); pts = cap; }
+            if (cap && pts > cap) { UI.toast(T.t('pos.pointsCap','Points cap: max on this bill ') + fmt.num(cap), 'warn', 2600); pts = cap; }
             if (pts < 0) pts = 0;
             const others = rowsForValidate.reduce((a, pp) => a + (String(pp.method).toUpperCase() === 'LOYALTY' ? 0 : Number(pp.amount || 0)), 0);
             const value = Math.max(0, Math.min(Math.round(pts * rate * 100) / 100, Math.max(0, total - Math.min(others, total))));
@@ -1784,7 +1784,7 @@ function showInvoiceConfirmation(sale) {
           const mail = (sale.customerEmail || S.customer && S.customer.email || '');
           if (mail) window.open('mailto:' + mail + '?subject=' + subj + '&body=' + bodyTxt);
           else if (navigator.share) navigator.share({ title: 'Invoice ' + invNo, text: 'Total ' + total });
-          else UI.toast(T.t('pos.sendVia','Send: WhatsApp / Email se share karein (') + invNo + ')', 'ok');
+          else UI.toast(T.t('pos.sendVia','Send: share via WhatsApp / Email (') + invNo + ')', 'ok');
         } catch (e) { UI.toast(e.message, 'err'); }
       } },
     { label: '💾 Save (PDF)', onClick: c => {
@@ -1810,7 +1810,7 @@ async function submit(payments, note) {
     if(dueDateVal) payments.forEach(p=>{ if(String(p.method).toUpperCase()==='CREDIT') p.dueDate=dueDateVal; });
   }catch(e){}
   /* v2.30.0 (N4) — points ka EK hi source of truth: LOYALTY row.
-     (Pehle yahan textbox ki value dobara copy hoti thi — wahi bug dobara aa sakta tha.) */
+     * (Pehle yahan textbox ki value dobara copy hoti thi — wahi bug dobara aa sakta tha.) */
   try{
     const rate0 = Number((loySum && loySum.rate) || App.state.settings['loyalty.rate'] || 1) || 1;
     const cap0 = loySum ? Number(loySum.usablePoints || 0) : 0;
@@ -1838,7 +1838,7 @@ async function submit(payments, note) {
   if (!navigator.onLine) payload.offlineId = uid('bill');
   try {
     const sale = await API.call('sales.create', { sale: payload });
-    if (sale && sale.queued) { UI.toast(T.t('pos.offlineQueued','Offline bill queue ho gaya'), 'warn'); clearCart(true); return; }
+    if (sale && sale.queued) { UI.toast(T.t('pos.offlineQueued','Offline — bill queued'), 'warn'); clearCart(true); return; }
     // v2.16 performance: measure bill generation
     const ms = Math.round(performance.now() - t0);
     UI.toast('Sale complete ✅ ' + (sale.invoiceNo || '') + (ms > 200 ? ' · ' + ms + 'ms' : ''), 'ok');
@@ -1858,7 +1858,7 @@ async function holdBill() {
     await API.call('sales.hold', { ref: 'HOLD-' + Date.now().toString().slice(-5),
       cart: { items: S.cart, total: grandTotal(), discount: S.discount },
       customerId: S.customer ? S.customer.id : '' });
-    UI.toast(T.t('pos.billHeld','Bill hold ho gaya ⏸'), 'ok'); clearCart(true);
+    UI.toast(T.t('pos.billHeld','Bill held ⏸'), 'ok'); clearCart(true);
   } catch (e) { UI.toast(e.message, 'err'); }
 }
 
@@ -1873,10 +1873,10 @@ async function loadHeld() {
 
 async function clearCart(silent) {
   /* v2.25.0 (req 6) — native confirm() ki jagah shared dialog: sandboxed
-     preview/iframe mein native confirm block ho jata hai (button "kuch nahi karta"
-     lagta hai) aur design system se bahar bhi hai. silent=true par koi await
-     nahi hota, is liye baqi callers ka synchronous flow waisa hi rehta hai. */
-  if (!silent && S.cart.length && !(await UI2.confirm('Cart clear karein? Ye bill ke saare items hata dega.', null, true))) return;
+     * preview/iframe mein native confirm block ho jata hai (button "kuch nahi karta"
+     * lagta hai) aur design system se bahar bhi hai. silent=true par koi await
+     * nahi hota, is liye baqi callers ka synchronous flow waisa hi rehta hai. */
+  if (!silent && S.cart.length && !(await UI2.confirm(T.t('pos.clearCartConfirm','Clear cart? This removes all items from the bill.'), null, true))) return;
   S.cart = []; S.discount = 0; S.discountCode = ''; S.customer = null;
   renderCart(); renderTotals(); updateCustBar();
 }
@@ -1908,7 +1908,7 @@ function openCartOffcanvas() {
     const hit = findProductByBarcode(code) || S.catalog.find(i => U_norm(i.name).includes(U_norm(code)));
     if (hit) { addToCart({ id: hit.id, code: hit.code, name: hit.name, retailPrice: hit.rp, wholesalePrice: hit.wp, costPrice: hit.cp, stock: hit.qty, imageUrl: hit.img }, 1); inlineInp.value = ''; inlineInp.focus(); UI.toast('Added: ' + hit.name+' ('+code+') — Cart updated','ok'); }
     else {
-      UI.toast(T.t('pos.productNotFound','Product nahi mila: ') + code + ' — Add items me search karein', 'warn'); inlineInp.value=''; inlineInp.focus();
+      UI.toast(T.t('pos.productNotFound','Product not found: ') + code + T.t('pos.searchInAddItems',' — search in Add items'), 'warn'); inlineInp.value=''; inlineInp.focus();
     }
   };
   inlineInp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); doInlineAdd(); } });
@@ -1965,7 +1965,7 @@ function quickAdd(name) {
     title: '➕ Naya item', size: 'md', body: f.el,
     actions: [{ label: 'Save & add', cls: 'ok', onClick: async c => {
       const v = f.values();
-      if (!v.name) return UI.toast(T.t('pos.nameReq','Name zaroori hai'), 'err');
+      if (!v.name) return UI.toast(T.t('pos.nameReq','Name is required'), 'err');
       try {
         const saved = await API.call('items.save', { item: v });
         UI.toast('Item saved ✅', 'ok'); c();
@@ -1984,7 +1984,7 @@ function quickAdd(name) {
  *  hai — release/QR-LIVE-CAMERA-GUIDE.md mein poora rationale + hosting. */
 function scanBarcode(onDetect) {
   if (window.HaScan) return HaScan.scan({ onDetect: onDetect });
-  var input = h('input', { class: 'f-input', type: 'text', placeholder: 'Barcode/QR code type karein', autocomplete: 'off' });
+  var input = h('input', { class: 'f-input', type: 'text', placeholder: T.t('pos.typeBarcode','Type barcode/QR code'), autocomplete: 'off' });
   var m = UI2.modal({
     title: '⌨ Code entry', size: 'sm', body: input,
     actions: [{ label: 'Close', cls: 'ghost', onClick: c => c() },
@@ -2009,23 +2009,23 @@ function beep() {
 }
 
 /* ============================== SHORTCUTS — GS1/WCAG keyboard accessible ================================
-   F1: Help (shortcuts) — F2: Search/Scan focus — F3: Customer (F4 also) — F6: Discount — F8: Hold — F9: Cash — F10: Card — Esc: Close
-   All shortcuts prevent browser default only when POS is active and not typing. Help shows bilingual (EN + Roman Urdu).
-   WCAG 2.1: No character-key shortcuts without modifier; all F-keys are safe, no destructive auto-trigger.
+   * F1: Help (shortcuts) — F2: Search/Scan focus — F3: Customer (F4 also) — F6: Discount — F8: Hold — F9: Cash — F10: Card — Esc: Close
+   * All shortcuts prevent browser default only when POS is active and not typing. Help shows bilingual (EN + Roman Urdu).
+   * WCAG 2.1: No character-key shortcuts without modifier; all F-keys are safe, no destructive auto-trigger.
 */
 function showShortcutsHelp(){
   const body = h('div', {style:'display:flex;flex-direction:column;gap:12px;max-height:60vh;overflow:auto'},
     h('div', {style:'padding:10px;background:var(--info-soft);border:1px solid var(--info);border-radius:10px;font-size:12px'}, 
-      h('b',null,'Keyboard Shortcuts — POS / ERP'), h('div',{style:'font-size:11px;color:var(--muted);margin-top:4px'}, 'Sab shortcuts sirf POS screen par kaam karte hain. Typing ke dauran F-keys nahi chalte (except Esc/F9).')),
+      h('b',null,'Keyboard Shortcuts — POS / ERP'), h('div',{style:'font-size:11px;color:var(--muted);margin-top:4px'}, T.t('pos.shortcutsNote','All shortcuts work only on the POS screen. F-keys are ignored while typing (except Esc/F9).'))),
     h('div', {class:'grid', style:'display:grid;grid-template-columns:1fr 1fr;gap:8px'},
       h('div', {class:'card', style:'padding:10px'}, h('b',null,'F1 / ?'), h('div',{style:'font-size:11px;color:var(--muted)'}, 'Help — yeh madad / shortcuts dekhein'), h('div',{style:'font-size:11px'}, 'Press F1 or ? for help — Madad ke liye F1 dabayein')),
       h('div', {class:'card', style:'padding:10px'}, h('b',null,'F2'), h('div',{style:'font-size:11px;color:var(--muted)'}, 'Search / Scan focus'), h('div',{style:'font-size:11px'}, 'F2 — Search par jayein, scan ke liye ready')),
-      h('div', {class:'card', style:'padding:10px'}, h('b',null,'F3 / F4'), h('div',{style:'font-size:11px;color:var(--muted)'}, 'Customer select'), h('div',{style:'font-size:11px'}, 'F3 ya F4 — Customer chunein')),
+      h('div', {class:'card', style:'padding:10px'}, h('b',null,'F3 / F4'), h('div',{style:'font-size:11px;color:var(--muted)'}, 'Customer select'), h('div',{style:'font-size:11px'}, T.t('pos.scF3F4','F3 or F4 — pick customer'))),
       h('div', {class:'card', style:'padding:10px'}, h('b',null,'F6'), h('div',{style:'font-size:11px;color:var(--muted)'}, 'Discount'), h('div',{style:'font-size:11px'}, 'F6 — Bill discount lagayein')),
-      h('div', {class:'card', style:'padding:10px'}, h('b',null,'F8'), h('div',{style:'font-size:11px;color:var(--muted)'}, 'Hold bill'), h('div',{style:'font-size:11px'}, 'F8 — Bill hold karein (pending)')),
+      h('div', {class:'card', style:'padding:10px'}, h('b',null,'F8'), h('div',{style:'font-size:11px;color:var(--muted)'}, 'Hold bill'), h('div',{style:'font-size:11px'}, T.t('pos.scF8','F8 — hold bill (pending)'))),
       h('div', {class:'card', style:'padding:10px'}, h('b',null,'F9'), h('div',{style:'font-size:11px;color:var(--muted)'}, 'Cash payment'), h('div',{style:'font-size:11px'}, 'F9 — Cash se payment')),
       h('div', {class:'card', style:'padding:10px'}, h('b',null,'F10'), h('div',{style:'font-size:11px;color:var(--muted)'}, 'Card payment'), h('div',{style:'font-size:11px'}, 'F10 — Card se payment')),
-      h('div', {class:'card', style:'padding:10px'}, h('b',null,'Ctrl+K / Esc'), h('div',{style:'font-size:11px;color:var(--muted)'}, 'Palette / Close'), h('div',{style:'font-size:11px'}, 'Ctrl+K — Command palette, Esc — Band karein'))
+      h('div', {class:'card', style:'padding:10px'}, h('b',null,'Ctrl+K / Esc'), h('div',{style:'font-size:11px;color:var(--muted)'}, 'Palette / Close'), h('div',{style:'font-size:11px'}, T.t('pos.scCtrlK','Ctrl+K — command palette, Esc — close')))
     ),
     h('div', {style:'font-size:11px;color:var(--muted);border-top:1px solid var(--line);padding-top:8px'}, 'WCAG: All F-keys require no modifier, no accidental destructive action. Focus stays on scan field after scan for continuous scanning.')
   );

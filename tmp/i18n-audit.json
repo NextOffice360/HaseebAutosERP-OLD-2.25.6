@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-09-25T10:32:00.577Z",
-  "totalHits": 866,
-  "totalTt": 93,
+  "generatedAt": "2026-09-25T10:46:20.881Z",
+  "totalHits": 732,
+  "totalTt": 199,
   "files": [
     {
       "file": "App_Core.html",
@@ -19,44 +19,6 @@
         {
           "line": 191,
           "text": "`fmt.date()` isi par delegate karta hai, is liye poore app ke 92 call-sites"
-        }
-      ]
-    },
-    {
-      "file": "App_Screens2.html",
-      "tt": 26,
-      "hits": 77,
-      "samples": [
-        {
-          "line": 96,
-          "text": "], rows, emptyText: 'Koi PO nahi', onRow: r => poForm(r)"
-        },
-        {
-          "line": 124,
-          "text": "], rows, emptyText: 'Koi GRN nahi', onRow: r => grnDetail(r)"
-        },
-        {
-          "line": 153,
-          "text": "emptyText: 'Koi purchase return nahi — \"New purchase return\" se banayein'"
-        }
-      ]
-    },
-    {
-      "file": "App_POS2.html",
-      "tt": 30,
-      "hits": 58,
-      "samples": [
-        {
-          "line": 70,
-          "text": "h('p', { style: { margin: '0 0 8px' } }, 'Sale shuru karne se pehle shop khulna zaroori ha"
-        },
-        {
-          "line": 71,
-          "text": "h('p', { class: 'sub', style: { margin: 0 } }, canOpen ? '\"Shop kholein\" dabayen — opening"
-        },
-        {
-          "line": 73,
-          "text": "canOpen ? { label: '🗪 Shop kholein', cls: 'ok', onClick: c => { c(); try { window.shopQui"
         }
       ]
     },
@@ -668,6 +630,17 @@
         {
           "line": 116,
           "text": "h('div',{style:{fontSize:'12px',color:'var(--muted)',marginTop:'4px'}}, 'PWAs mein camera "
+        }
+      ]
+    },
+    {
+      "file": "App_Screens2.html",
+      "tt": 90,
+      "hits": 1,
+      "samples": [
+        {
+          "line": 928,
+          "text": "hint: T.t('sc2.creditNeedsSupplier2','Credit (udhaar) requires a supplier') },"
         }
       ]
     },

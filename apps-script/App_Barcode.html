@@ -233,7 +233,10 @@ const Print = {
     // Try to generate QR dataUrl synchronously if QR2 available (offline)
     let qrImg = '';
     try {
-      const txt = 'INV:'+inv+'|TOTAL:'+fmt.num(sale.total)+'|DUE:'+fmt.num(due)+'|CUST:'+custName;
+      /* D2 (round-10) — QR payload ab HA: standard (resolver-direct); total/due/cust
+         label par text me pehle se mojood — scan to verify = HA:INV. Purane printed
+         labels (INV:..|TOTAL:..|CUST:..) resolver legacy back-compat se khulte hain. */
+      const txt = 'HA:INV:'+inv;
       if (window.QR2 && QR2.dataUrl) { qrImg = '<img src="'+QR2.dataUrl(txt,{size:110,margin:0})+'" width="72" height="72" style="display:block;margin:0 auto" alt="QR"/>'; }
       else if (window.QR && QR.cache) { /* async not possible here - fallback */ qrImg = '<div style="width:72px;height:72px;border:1.5px dashed #999;display:grid;place-items:center;font-size:8px;color:#666;margin:0 auto">QR<br/>'+esc(inv)+'</div>'; }
       else { qrImg = '<div style="width:72px;height:72px;border:1.5px dashed #999;display:grid;place-items:center;font-size:8px;color:#666;margin:0 auto">QR<br/>'+esc(inv)+'</div>'; }
