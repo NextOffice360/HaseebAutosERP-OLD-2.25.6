@@ -120,7 +120,12 @@ async function openDetail(id) {
       h('span', { class: 'badge ' + (d.priority === 'URGENT' ? 'err' : d.priority === 'HIGH' ? 'warn' : 'info') }, d.priority)),
     h('div', { class: 'card-body' },
       h('div', { class: 'f-grid' },
-        h('div', { class: 'f-col' }, h('label', null, 'Customer'), h('b', null, d.customerName || '—'), h('span', { style: { fontSize: '11px', color: 'var(--muted)' } }, d.customerPhone || '')),
+        h('div', { class: 'f-col' }, h('label', null, 'Customer'),
+          /* v2.30.5 (P2) — entity-link: demand se customer record seedha khule */
+          (d.customerId
+            ? UI2.entityLink('parties', { tab: 'customers', open: d.customerId }, d.customerName || 'Customer')
+            : h('b', null, d.customerName || '—')),
+          h('span', { style: { fontSize: '11px', color: 'var(--muted)' } }, d.customerPhone || '')),
         h('div', { class: 'f-col' }, h('label', null, 'Product'), h('b', null, d.itemName || '—'), h('span', { style: { fontSize: '11px', color: 'var(--muted)' } }, (d.itemCode || '') + (d.category ? ' · ' + d.category : '') + (d.brand ? ' · ' + d.brand : ''))),
         h('div', { class: 'f-col' }, h('label', null, 'Qty / Status'), h('b', null, d.qty + ' · ' + d.status), h('span', { style: { fontSize: '11px', color: 'var(--muted)' } }, 'Age ' + (d.daysOpen||0) + 'd' + (d.isOverdue ? ' · overdue ⚠' : ''))),
         h('div', { class: 'f-col' }, h('label', null, 'Dates'), h('span', null, 'Demand: ' + fmt.date(d.date)), h('span', { style: { fontSize: '11px' } }, 'Expected: ' + (d.expectedDate ? fmt.date(d.expectedDate) : '—') + (d.notifiedAt ? ' · Notified: ' + fmt.date(d.notifiedAt) : '') + (d.fulfilledAt ? ' · Fulfilled: ' + fmt.date(d.fulfilledAt) : '')))

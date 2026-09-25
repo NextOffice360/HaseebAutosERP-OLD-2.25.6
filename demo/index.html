@@ -1054,6 +1054,13 @@ table.tbl tbody tr.clickable{cursor:pointer}
 .m-head h3{margin:0;font-size: var(--fs-lg);flex:1}
 .m-sub{font-size: var(--fs-xs);color:var(--muted)}
 .m-body{padding:16px;overflow:auto;flex:1}
+/* v2.30.5 (P2) — entity-link chip: modal/detail dead-ends me record-context link.
+   Reusable class (mandate §7): UI2.entityLink() isi ko render karta hai. */
+.ent-link{background:none;border:0;padding:0;margin:0;color:var(--pri);font:inherit;font-weight:600;
+  cursor:pointer;text-decoration:underline dotted;text-underline-offset:2px;border-radius:4px;
+  min-height:24px}
+.ent-link:hover{ text-decoration-style:solid }
+.ent-link:focus-visible{ outline:2px solid var(--pri);outline-offset:1px }
 .m-foot{display:flex;gap:8px;justify-content:flex-end;padding:12px 18px;border-top:1px solid var(--line);
   background:var(--panel-2);border-radius:0 0 var(--r-xl) var(--r-xl);flex-wrap:wrap}
 /* v2.30.0 (N4/N5) — PAY MODAL: desktop par 2 columns (wide), narrow par single
@@ -16415,6 +16422,32 @@ UI2.modal = function (cfg) {
 };
 
 /* ============================================================================
+ * v2.30.5 (P2) — UI2.closeTop / UI2.entityLink — modal dead-ends ko record-context links
+ * ----------------------------------------------------------------------------
+ * Mandate §3/§6 (entity-centric UX): jab modal/detail kisi customer, supplier
+ * ya order ko sirf plain-text dikhata tha, user ko wahi record dobara dhoondna
+ * parta tha. Ab UI2.entityLink ek chip-link banata hai — click par top overlay
+ * band aur App.go deep-link chalta hai (target screen ka onParams record khud
+ * kholta hai: parties/sales/items sab ka onParams pehle se mojood tha).
+ * Additive-only: koi mojood modal behavior change nahi hota.
+ *   UI2.entityLink('parties', { tab:'customers', open:'CUS_1' }, 'Neelum Store')
+ * ==========================================================================*/
+UI2.closeTop = function () {
+  const top = UI2._overlays[UI2._overlays.length - 1];
+  if (top && typeof top.close === 'function') { try { top.close(); } catch (e) { } return true; }
+  return false;
+};
+UI2.entityLink = function (screen, params, label, extraCls) {
+  const txt = String(label || 'Open');
+  const b = h('button', {
+    class: 'ent-link' + (extraCls ? ' ' + extraCls : ''), type: 'button',
+    title: txt + ' — record kholein (context save hota hai)', 'aria-label': txt + ' kholein'
+  }, txt);
+  b.onclick = () => { UI2.closeTop(); App.go(screen, params || {}); };
+  return b;
+};
+
+/* ============================================================================
  * UI2.itemPicker(cfg) — v2.9.1 §7 — universal product picker.
  * Search + 📋 poori list + single-click add + multi-select (checkbox +
  * qty/item + Add bar) + panel click-outside tak khuli. Har map(row,qty)
@@ -16989,7 +17022,7 @@ UI2.askCode = function (opts) {
         inp),
       actions: [
         { label: 'Cancel', cls: 'ghost', onClick: c => { done(null); c(); } },
-        { label: 'OK', cls: 'ok', onClick: c => { done((inp.value || '').trim() || null); c(); } }
+        { label: o.okLabel || 'OK', cls: 'ok', onClick: c => { done((inp.value || '').trim() || null); c(); } }
       ]
     });
     inp.addEventListener('keydown', e => {
@@ -19149,7 +19182,12 @@ App.registerScreen('sales', {
       const el = h('div');
       el.appendChild(h('div', { style: { textAlign: 'center', marginBottom: '10px' } },
         h('div', { style: { fontSize: 'var(--fs-3xl)', fontWeight: '800' } }, sale.invoiceNo),
-        h('div', { style: { fontSize: 'var(--fs-xs)', color: 'var(--muted)' } }, fmt.date(sale.date, true) + ' · ' + sale.customerName)));
+        h('div', { style: { fontSize: 'var(--fs-xs)', color: 'var(--muted)' } },
+          fmt.date(sale.date, true) + ' · ',
+          /* v2.30.5 (P2) — entity-link: invoice se customer record seedha khule */
+          (sale.customerId
+            ? UI2.entityLink('parties', { tab: 'customers', open: sale.customerId }, sale.customerName || 'Customer')
+            : (sale.customerName || '')))));
       const rows = sale.items.map(i => h('div', { class: 'list-item' },
         h('div', { class: 'li-main' }, h('b', null, i.name), h('span', null, i.code + ' · ' + i.qty + ' × ' + fmt.money(i.price))),
         h('b', null, fmt.money(i.lineTotal))));
@@ -19540,7 +19578,11 @@ App.registerScreen('purchase', {
         h('span', null, 'GRN: ' + (d.grnNo || '')),
         h('span', null, 'Date: ' + fmt.date(d.date, true)),      /* v2.29.0 (W4) — ab date + waqt */
         UI2.stampRow(d) ? h('span', { class: 'muted' }, UI2.stampRow(d).textContent) : '',
-        h('span', null, 'Supplier: ' + (sup.name || supplierName(d.supplierId))),
+        h('span', null, 'Supplier: ',
+          /* v2.30.5 (P2) — entity-link: supplier record GRN se seedha khule */
+          ((d.supplierId || (d.supplier && d.supplier.id))
+            ? UI2.entityLink('parties', { tab: 'suppliers', open: d.supplierId || d.supplier.id }, sup.name || 'Supplier')
+            : (sup.name || supplierName(d.supplierId)))),
         h('span', null, 'Invoice: ' + (d.invoiceNo || '—')),
         d.poNo ? h('span', null, 'Against PO: ' + d.poNo) : ''),
       /* ---- previous balance block (customer invoice jaisa) ---- */
@@ -23995,7 +24037,11 @@ window.POS2 = { S, addToCart, pay, clearCart, pickCustomer, togglePicker, bulkFl
       const host = h('div');
       host.appendChild(h('div', { class: 'po-meta', style: { display: 'flex' } },
         h('div', null, h('div', { class: 'muted', style: { fontSize: 'var(--fs-xs)' } }, 'Order'), h('b', null, o.orderNo)),
-        h('div', null, h('div', { class: 'muted', style: { fontSize: 'var(--fs-xs)' } }, 'Customer'), h('b', null, o.customerName || 'Walk-in')),
+        h('div', null, h('div', { class: 'muted', style: { fontSize: 'var(--fs-xs)' } }, 'Customer'),
+          /* v2.30.5 (P2) — entity-link: customer ka record seedha khule (walk-in plain text hi rahega) */
+          (o.customerId
+            ? UI2.entityLink('parties', { tab: 'customers', open: o.customerId }, o.customerName || 'Customer')
+            : h('b', null, o.customerName || 'Walk-in'))),
         h('div', null, h('div', { class: 'muted', style: { fontSize: 'var(--fs-xs)' } }, 'Status'), statusBadge(o.status)),
         h('div', null, h('div', { class: 'muted', style: { fontSize: 'var(--fs-xs)' } }, 'Total'), h('b', null, fmt.money(o.total)))));
       /* v2.30.5 (T4.2) — record stamps: Created/Updated detail par (Settings dt.showRecords se) */
@@ -29359,7 +29405,12 @@ async function openDetail(id) {
       h('span', { class: 'badge ' + (d.priority === 'URGENT' ? 'err' : d.priority === 'HIGH' ? 'warn' : 'info') }, d.priority)),
     h('div', { class: 'card-body' },
       h('div', { class: 'f-grid' },
-        h('div', { class: 'f-col' }, h('label', null, 'Customer'), h('b', null, d.customerName || '—'), h('span', { style: { fontSize: '11px', color: 'var(--muted)' } }, d.customerPhone || '')),
+        h('div', { class: 'f-col' }, h('label', null, 'Customer'),
+          /* v2.30.5 (P2) — entity-link: demand se customer record seedha khule */
+          (d.customerId
+            ? UI2.entityLink('parties', { tab: 'customers', open: d.customerId }, d.customerName || 'Customer')
+            : h('b', null, d.customerName || '—')),
+          h('span', { style: { fontSize: '11px', color: 'var(--muted)' } }, d.customerPhone || '')),
         h('div', { class: 'f-col' }, h('label', null, 'Product'), h('b', null, d.itemName || '—'), h('span', { style: { fontSize: '11px', color: 'var(--muted)' } }, (d.itemCode || '') + (d.category ? ' · ' + d.category : '') + (d.brand ? ' · ' + d.brand : ''))),
         h('div', { class: 'f-col' }, h('label', null, 'Qty / Status'), h('b', null, d.qty + ' · ' + d.status), h('span', { style: { fontSize: '11px', color: 'var(--muted)' } }, 'Age ' + (d.daysOpen||0) + 'd' + (d.isOverdue ? ' · overdue ⚠' : ''))),
         h('div', { class: 'f-col' }, h('label', null, 'Dates'), h('span', null, 'Demand: ' + fmt.date(d.date)), h('span', { style: { fontSize: '11px' } }, 'Expected: ' + (d.expectedDate ? fmt.date(d.expectedDate) : '—') + (d.notifiedAt ? ' · Notified: ' + fmt.date(d.notifiedAt) : '') + (d.fulfilledAt ? ' · Fulfilled: ' + fmt.date(d.fulfilledAt) : '')))

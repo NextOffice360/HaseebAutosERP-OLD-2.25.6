@@ -32,8 +32,15 @@ regression gates har slice ke baad GREEN hona zaroori.
 - [ ] Focus/hover/active/disabled states audit (accessibility §38)
 
 ## P2 — Modals/off-canvas (spec §25)
-- [ ] Wide/horizontal compositions desktop par (lg/xl size use) — tall-narrow vs content-benefit audit
-- [ ] Modal dead-ends: entity references clickable (Customer/Supplier/PO links) — additive
+- [x] Wide/horizontal compositions desktop par (lg/xl size use) — tall-narrow vs content-benefit audit
+      (audit: 103 UI2.modal sites — sm/md/lg/xl already sahi jagah; koi default-md wide-benefit
+      nahi mila jo tall-narrow phansa ho; mobile full-width/bottom-sheet CSS L1022 qayam)
+- [x] Modal dead-ends: entity references clickable (Customer/Supplier/PO links) — additive
+      (**P2 RESULTS 2026-09-25:** `UI2.entityLink` + `UI2.closeTop` shared helpers;
+      wired: Order modal→customer, GRN modal→supplier, Demand modal→customer, Invoice
+      detail→customer; parties onParams deep-link par detail khud khulti hai;
+      gate `tools/test_entity_links.js` **10/0** — helper+closeTop+real order-flow+
+      offcanvas-returns; UI2.prompt ab `okLabel` bhi qabool karta hai — default 'OK')
 - [ ] Mobile: modal full-width/bottom-sheet behavior qayam (390px gates)
 
 ## P3 — Responsive/PWA (spec: first-class mobile)

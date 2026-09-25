@@ -329,7 +329,12 @@ App.registerScreen('sales', {
       const el = h('div');
       el.appendChild(h('div', { style: { textAlign: 'center', marginBottom: '10px' } },
         h('div', { style: { fontSize: 'var(--fs-3xl)', fontWeight: '800' } }, sale.invoiceNo),
-        h('div', { style: { fontSize: 'var(--fs-xs)', color: 'var(--muted)' } }, fmt.date(sale.date, true) + ' · ' + sale.customerName)));
+        h('div', { style: { fontSize: 'var(--fs-xs)', color: 'var(--muted)' } },
+          fmt.date(sale.date, true) + ' · ',
+          /* v2.30.5 (P2) — entity-link: invoice se customer record seedha khule */
+          (sale.customerId
+            ? UI2.entityLink('parties', { tab: 'customers', open: sale.customerId }, sale.customerName || 'Customer')
+            : (sale.customerName || '')))));
       const rows = sale.items.map(i => h('div', { class: 'list-item' },
         h('div', { class: 'li-main' }, h('b', null, i.name), h('span', null, i.code + ' · ' + i.qty + ' × ' + fmt.money(i.price))),
         h('b', null, fmt.money(i.lineTotal))));

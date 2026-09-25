@@ -317,6 +317,32 @@ UI2.modal = function (cfg) {
 };
 
 /* ============================================================================
+ * v2.30.5 (P2) — UI2.closeTop / UI2.entityLink — modal dead-ends ko record-context links
+ * ----------------------------------------------------------------------------
+ * Mandate §3/§6 (entity-centric UX): jab modal/detail kisi customer, supplier
+ * ya order ko sirf plain-text dikhata tha, user ko wahi record dobara dhoondna
+ * parta tha. Ab UI2.entityLink ek chip-link banata hai — click par top overlay
+ * band aur App.go deep-link chalta hai (target screen ka onParams record khud
+ * kholta hai: parties/sales/items sab ka onParams pehle se mojood tha).
+ * Additive-only: koi mojood modal behavior change nahi hota.
+ *   UI2.entityLink('parties', { tab:'customers', open:'CUS_1' }, 'Neelum Store')
+ * ==========================================================================*/
+UI2.closeTop = function () {
+  const top = UI2._overlays[UI2._overlays.length - 1];
+  if (top && typeof top.close === 'function') { try { top.close(); } catch (e) { } return true; }
+  return false;
+};
+UI2.entityLink = function (screen, params, label, extraCls) {
+  const txt = String(label || 'Open');
+  const b = h('button', {
+    class: 'ent-link' + (extraCls ? ' ' + extraCls : ''), type: 'button',
+    title: txt + ' — record kholein (context save hota hai)', 'aria-label': txt + ' kholein'
+  }, txt);
+  b.onclick = () => { UI2.closeTop(); App.go(screen, params || {}); };
+  return b;
+};
+
+/* ============================================================================
  * UI2.itemPicker(cfg) — v2.9.1 §7 — universal product picker.
  * Search + 📋 poori list + single-click add + multi-select (checkbox +
  * qty/item + Add bar) + panel click-outside tak khuli. Har map(row,qty)
@@ -891,7 +917,7 @@ UI2.askCode = function (opts) {
         inp),
       actions: [
         { label: 'Cancel', cls: 'ghost', onClick: c => { done(null); c(); } },
-        { label: 'OK', cls: 'ok', onClick: c => { done((inp.value || '').trim() || null); c(); } }
+        { label: o.okLabel || 'OK', cls: 'ok', onClick: c => { done((inp.value || '').trim() || null); c(); } }
       ]
     });
     inp.addEventListener('keydown', e => {

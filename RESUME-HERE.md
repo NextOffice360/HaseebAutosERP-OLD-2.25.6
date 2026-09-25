@@ -95,6 +95,11 @@ fixes (desktop → var(--fs-2xs), PWA shells → 11px); action-label audit bhi
 (1 hit); battery GREEN (shop 26/0, modals 91/0, e2e 22/0, pos 23/0,
 field_vis 58/0, table 11/0, datetime 44/0). Sabak: http.server -d RELATIVE
 path stale-inode 404 → bootstrap ab absolute + HTTP-200 check.
+**P2 entity-links (round 4 cont.):** UI2.entityLink/closeTop; Order/GRN/
+Demand/Invoice dead-ends ab record-links (parties onParams deep-link);
+gate test_entity_links 10/0 + battery GREEN. Sabak: parens-depth badalte
+waqt purani line ke closers bhi gino (ek `)` missing → 2 boot pageerrors,
+app partially chalta rehta hai — zero-errors gate hi pakra).
 **TOGGLES/SETTINGS persist fix (v2.30.5 +1):** user ka "toggles not saving"
 ka asli sabab — mock config.save / system.settings.save SETTINGS me assign
 karte the magar PERSIST nahi (reload par sab defaults). Ab dono

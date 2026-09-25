@@ -293,7 +293,11 @@ App.registerScreen('purchase', {
         h('span', null, 'GRN: ' + (d.grnNo || '')),
         h('span', null, 'Date: ' + fmt.date(d.date, true)),      /* v2.29.0 (W4) — ab date + waqt */
         UI2.stampRow(d) ? h('span', { class: 'muted' }, UI2.stampRow(d).textContent) : '',
-        h('span', null, 'Supplier: ' + (sup.name || supplierName(d.supplierId))),
+        h('span', null, 'Supplier: ',
+          /* v2.30.5 (P2) — entity-link: supplier record GRN se seedha khule */
+          ((d.supplierId || (d.supplier && d.supplier.id))
+            ? UI2.entityLink('parties', { tab: 'suppliers', open: d.supplierId || d.supplier.id }, sup.name || 'Supplier')
+            : (sup.name || supplierName(d.supplierId)))),
         h('span', null, 'Invoice: ' + (d.invoiceNo || '—')),
         d.poNo ? h('span', null, 'Against PO: ' + d.poNo) : ''),
       /* ---- previous balance block (customer invoice jaisa) ---- */

@@ -113,7 +113,11 @@
       const host = h('div');
       host.appendChild(h('div', { class: 'po-meta', style: { display: 'flex' } },
         h('div', null, h('div', { class: 'muted', style: { fontSize: 'var(--fs-xs)' } }, 'Order'), h('b', null, o.orderNo)),
-        h('div', null, h('div', { class: 'muted', style: { fontSize: 'var(--fs-xs)' } }, 'Customer'), h('b', null, o.customerName || 'Walk-in')),
+        h('div', null, h('div', { class: 'muted', style: { fontSize: 'var(--fs-xs)' } }, 'Customer'),
+          /* v2.30.5 (P2) — entity-link: customer ka record seedha khule (walk-in plain text hi rahega) */
+          (o.customerId
+            ? UI2.entityLink('parties', { tab: 'customers', open: o.customerId }, o.customerName || 'Customer')
+            : h('b', null, o.customerName || 'Walk-in'))),
         h('div', null, h('div', { class: 'muted', style: { fontSize: 'var(--fs-xs)' } }, 'Status'), statusBadge(o.status)),
         h('div', null, h('div', { class: 'muted', style: { fontSize: 'var(--fs-xs)' } }, 'Total'), h('b', null, fmt.money(o.total)))));
       /* v2.30.5 (T4.2) — record stamps: Created/Updated detail par (Settings dt.showRecords se) */
