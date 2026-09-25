@@ -1489,6 +1489,7 @@ window.MockAPI = {
   },
   'docs.registry.list': p => {
     p = p || {};
+    window.__lastDocsQ = String(p.q || '');
     let rows = DEMO_DOCS.slice();
     const q = String(p.q || '').toLowerCase();
     if (q) rows = rows.filter(r => !q || [r.ref, r.docType, r.entityType, r.module, r.note]
@@ -3134,7 +3135,14 @@ window.MockAPI = {
     : ['logo', 'business', 'businessUr', 'branch', 'phone', 'ntn', 'invoiceNo', 'date', 'customer',
        'customerPhone', 'salesman', 'items', 'subtotal', 'discount', 'tax', 'total', 'payments',
        'prevBalance', 'closingBalance', 'change', 'savings', 'barcode', 'qr', 'footer', 'terms', 'signature'])
-    .map((k, i) => ({ key: k, label: k.replace(/([A-Z])/g, ' $1').replace(/^./, c => c.toUpperCase()), def: i < 20 })),
+    /* v2.30.6 — defs ab Print.gs ke EXACT defaults (pehle blanket i<20 tha —
+       footer def:true asli me, magar demo me false → designer footer/terms
+       preview me gayab). Naya field add ho to yahan bhi def add karein. */
+    .map(k => ({ key: k, label: k.replace(/([A-Z])/g, ' $1').replace(/^./, c => c.toUpperCase()),
+      def: ({ logo: !1, business: !0, businessUr: !1, branch: !0, phone: !0, ntn: !1, invoiceNo: !0,
+        date: !0, customer: !0, customerPhone: !1, salesman: !1, items: !0, subtotal: !0, discount: !0,
+        tax: !0, total: !0, payments: !0, prevBalance: !0, closingBalance: !0, change: !0,
+        savings: !1, barcode: !0, qr: !1, footer: !0, terms: !1, signature: !1 })[k] !== !1 })),
   'print.defaultTemplate': p => ({ id: 'tpl_default', type: p.type || 'RECEIPT',
     name: 'Default ' + (p.paper || '80mm'), active: 'true', paper: p.paper || '80mm',
     json: JSON.stringify({ paper: p.paper || '80mm', copies: 1, fontSize: 12, title: 'SALE RECEIPT',

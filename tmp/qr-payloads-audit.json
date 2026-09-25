@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-25T03:33:57.481Z",
+  "generatedAt": "2026-09-25T10:14:40.093Z",
   "sites": [
     {
       "file": "App_Barcode.html",
@@ -11,20 +11,20 @@
     {
       "file": "App_Barcode.html",
       "line": 434,
-      "payload": "r.qr || ('CODE:' + (r.code || ''",
+      "payload": "r.qr || ('HA:ITM:' + (r.id || r.code || ''",
       "fmt": "kv",
-      "resolvable": false
+      "resolvable": true
     },
     {
       "file": "App_Core.html",
-      "line": 3303,
+      "line": 3327,
       "payload": "txt",
       "fmt": "raw",
       "resolvable": false
     },
     {
       "file": "App_Core.html",
-      "line": 3362,
+      "line": 3391,
       "payload": "r.qr",
       "fmt": "raw",
       "resolvable": false
@@ -37,15 +37,22 @@
       "resolvable": false
     },
     {
-      "file": "App_Print.html",
-      "line": 177,
-      "payload": "JSON.stringify({ inv: sale.invoiceNo",
-      "fmt": "json",
+      "file": "App_Docs.html",
+      "line": 113,
+      "payload": "r.qr",
+      "fmt": "raw",
       "resolvable": false
     },
     {
+      "file": "App_Print.html",
+      "line": 177,
+      "payload": "'HA:INV:' + sale.invoiceNo",
+      "fmt": "kv",
+      "resolvable": true
+    },
+    {
       "file": "App_PwaHub.html",
-      "line": 145,
+      "line": 154,
       "payload": "url",
       "fmt": "raw",
       "resolvable": false

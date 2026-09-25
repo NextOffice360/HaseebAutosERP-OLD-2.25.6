@@ -3321,7 +3321,9 @@ const Print = {
     const due = Number(sale.due!=null? sale.due : Math.max(0, Number(sale.total||0)-paid));
     let qrImg = '';
     try {
-      const txt = 'INV:'+inv+'|TOTAL:'+fmt.num(sale.total)+'|DUE:'+fmt.num(due);
+      /* D2 (round-9) — QR payload ab HA: standard (resolver-direct); total/due
+         receipt par barcode+text me pehle se mojood — scan to verify = HA:INV */
+      const txt = 'HA:INV:'+inv;
       if (window.QR2 && QR2.dataUrl) { qrImg = '<img src="'+QR2.dataUrl(txt,{size:90,margin:0})+'" width="64" height="64" style="display:block;margin:0 auto;max-width:100%;height:auto" alt="QR"/>'; }
       else { qrImg = '<div style="width:64px;height:64px;border:1.5px dashed #999;display:grid;place-items:center;font-size:7px;color:#666;margin:0 auto;max-width:100%">QR<br/>'+esc(inv)+'</div>'; }
     } catch(e){ qrImg=''; }

@@ -621,6 +621,9 @@ App.resolveCode = function (raw) {
   if (v.charAt(0) === '{') {
     try { var o = JSON.parse(v); if (o && o.inv) return App.resolveCode('HA:INV:' + o.inv); } catch (e) { }
   }
+  /* D2 back-compat (round-9) — purane receipt QR (INV:..|TOTAL:..|DUE:..) bhi khulen */
+  m = /^INV:([^|]+)(?:\|.*)?$/i.exec(v);
+  if (m) return App.resolveCode('HA:INV:' + m[1].trim());
   m = /^CODE:([^;]*);SKU:(.+)$/i.exec(v);
   if (m) return Promise.resolve(go('items', { open: m[2].trim() }, 'Item ' + m[2].trim()));
   /* raw code/EAN → items me code/barcode se talash */

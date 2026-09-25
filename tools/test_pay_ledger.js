@@ -270,7 +270,7 @@ async function pickFirstCustomer(page) {
     await clickComplete(page);
     const toasts5 = await page.evaluate(() => (window.__toasts || []).join(' | '));
     const afterBlockCount = await salesCount(page);
-    ok(/Full payment required|poora bill pay karein/i.test(toasts5) && afterBlockCount === beforeBlockCount,
+    ok(/Full payment required|poora bill pay karein|pay the full bill/i.test(toasts5) /* v2.30.6: T.t EN/roman */ && afterBlockCount === beforeBlockCount,
       'adhoora cash bina Udhaar → block + koi sale record nahi (' + beforeBlockCount + ' → ' + afterBlockCount + ')',
       toasts5.slice(0, 150));
     await closeAllModals(page);

@@ -134,3 +134,5 @@ integration + regression + UI/UX-check + error-handling + security-check pass ho
 - [ ] R9-31 full verify 69-gate + package + FTP + push (chain)
 
 **Evidence:** tmp/dh10 (hub 16/0), designer 10/0, i18n floor 3/0 — sab upar logs.
+
+**Round-9 correction (2026-09-25):** commit 8f23d5a ke waqt R9-3/R9-4 (QR HA:INV emitter + legacy resolve) aur mock def-map apply NAHI the — /tmp/r9_patch.txt pending tha; worklog ne over-claim kiya. Ab apply + Print.gs-exact defs (logo/businessUr/ntn/customerPhone/salesman bhi def:false) + rebuild ho chuka. Verify round-1 se 3 RED: doc-designer (mock def-map missing — ab root-fixed), pay-ledger (gate regex frozen Roman — lang-agnostic), modals-close (solo 91/0 — flake). Sab solo GREEN: designer 10/0, pay-ledger 48/0, resolver 13/0, hub 16/0, batch 22/0, registry 10/0, qr-payloads rc=0.
