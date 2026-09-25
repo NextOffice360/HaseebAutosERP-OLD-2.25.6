@@ -3903,6 +3903,7 @@ const MENU_CONFIG = [
   { id: 'm_pos', label: 'Point of Sale', icon: '🧾', parentId: 'm_main', route: 'pos', perm: 'pos.access', sortOrder: 2, active: 'true' },
   { id: 'm_ins', label: 'Dashboards', icon: '📈', parentId: 'm_main', route: 'insights', perm: 'reports.view', sortOrder: 3, active: 'true' },
   { id: 'm_shop', label: 'Shop Open/Close', icon: '🏪', parentId: 'm_main', route: 'shop', perm: 'pos.access', sortOrder: 4, active: 'true' },
+  { id: 'm_docs', label: 'Documents', icon: '📄', parentId: 'm_main', route: 'documents', perm: 'reports.view', sortOrder: 5, active: 'true' },
   { id: 'm_stock', label: 'Catalog & Stock', icon: '', parentId: '', route: '', perm: '', sortOrder: 2, active: 'true' },
   { id: 'm_items', label: 'Items', icon: '📦', parentId: 'm_stock', route: 'items', perm: 'items.view', sortOrder: 1, active: 'true' },
   { id: 'm_inv', label: 'Inventory', icon: '🏬', parentId: 'm_stock', route: 'inventory', perm: 'stock.view', sortOrder: 2, active: 'true' },
@@ -9430,6 +9431,8 @@ App.navConfig = [
   { group: 'Insights & Dashboards', items: [
     { id: 'insights', label: 'Dashboards', icon: '📈', perm: 'reports.view' },
     { id: 'reports', label: 'Reports', icon: '📊', perm: 'reports.view' },
+    /* v2.30.5 (D4, doc-intel §3) — Documents hub (registry/scanner/resolver) */
+    { id: 'documents', label: 'Documents', icon: '📄', perm: 'reports.view' },
     { id: 'shop', label: 'Shop Open/Close', icon: '🏪', perm: 'pos.access' },
     { id: 'users', label: 'Users & Security', icon: '🔐', perm: 'users.view' },
     { id: 'settings', label: 'Settings', icon: '⚙', perm: 'settings.view' }
@@ -18609,6 +18612,166 @@ UI2.bulkAddModal = function (cfg) {
 };
 
 window.UI2 = UI2;
+})();
+</script>
+
+  <script>
+/* ==========================================================================
+   HASEEB AUTOS — DOCUMENTS HUB (v2.30.5 D4, doc-intel spec §1/§3)
+   --------------------------------------------------------------------------
+   Document Registry par enterprise file-manager UX:
+     • KPIs (total / invoices / labels / today)
+     • Search + type-filter + Refresh
+     • Scanner entries: Scan & Resolve (camera/external) + Manual code
+     • Table: docNo · type · ref · entity-link (seedha record khulta hai) ·
+       version · status · created · actions (Open resolve-chain se, Copy)
+     • Row → detail modal: metadata + related documents + actions
+   Data: docs.registry.* (D3). Engines reused — koi naya scan/storage system
+   nahi (spec §13). Fire-and-forget actions; registry sirf index hai.
+   Perm: reports.view (mojood perm — koi naya permission schema nahi).
+   ========================================================================== */
+(function () {
+'use strict';
+
+const TYPE_ICON = { INVOICE: '🧾', RECEIPT: '🧾', LABELS: '🏷', REPORT: '📈', EXPORT: '📤',
+  LEDGER: '📖', PDF: '📕', IMAGE: '🖼', IMPORT: '📥', TESTDOC: '🧪' };
+
+const ENTITY_MAP = {
+  sale: ['sales', {}], invoice: ['sales', {}], item: ['items', {}],
+  customer: ['parties', { tab: 'customers' }], supplier: ['parties', { tab: 'suppliers' }]
+};
+
+function typeChip(t) {
+  return h('span', { class: 'chip', style: { fontWeight: '600' } }, (TYPE_ICON[t] || '📄') + ' ' + t);
+}
+function statusChip(s) {
+  const c = s === 'GENERATED' ? 'var(--ok)' : (s === 'VOID' ? 'var(--err)' : 'var(--warn)');
+  return h('span', { class: 'chip', style: { color: c, borderColor: c } }, s || '—');
+}
+function entityCell(r) {
+  const m = ENTITY_MAP[(r.entityType || '').toLowerCase()];
+  if (m && r.entityId) return UI2.entityLink(m[0], Object.assign({}, m[1], { open: r.entityId }), r.ref || r.entityId);
+  return h('span', null, r.ref || r.entityId || '—');
+}
+function copyText(txt) {
+  const done = () => UI.toast('Copy ho gaya', 'ok', 1800);
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(done, done);
+    else done();
+  } catch (e) { done(); }
+}
+function docSummary(r) {
+  return ['Document: ' + (r.docNo || r.id), 'Type: ' + (r.docType || ''), 'Ref: ' + (r.ref || ''),
+    'Entity: ' + (r.entityType || '') + ' ' + (r.entityId || ''), 'Module: ' + (r.module || ''),
+    'Version: ' + (r.version || 1), 'Status: ' + (r.status || ''), 'Created: ' + fmt.date(r.createdAt, true)]
+    .join('\n');
+}
+
+function docDetail(r, reload) {
+  const host = h('div');
+  const meta = h('div', { class: 'f-grid', style: { marginBottom: '10px' } },
+    h('div', { class: 'f-col' }, h('label', null, 'Document'), h('b', null, r.docNo || r.id), h('span', { class: 'muted' }, r.docType || '')),
+    h('div', { class: 'f-col' }, h('label', null, 'Entity'), entityCell(r)),
+    h('div', { class: 'f-col' }, h('label', null, 'Status'), statusChip(r.status), h('span', { class: 'muted' }, 'v' + (r.version || 1))),
+    h('div', { class: 'f-col' }, h('label', null, 'Created'), h('b', null, fmt.date(r.createdAt, true)), h('span', { class: 'muted' }, r.action || '')));
+  host.appendChild(meta);
+  if (r.qr) host.appendChild(h('div', { class: 'f-hint', style: { marginBottom: '8px' } }, 'QR payload: ' + r.qr));
+  const rel = h('div');
+  host.appendChild(h('div', { class: 'sb-group', style: { padding: '6px 0' } }, 'Related documents'));
+  host.appendChild(rel);
+  Docs.related({ entityId: r.entityId }).then(rows => {
+    const list = (rows || []).filter(x => x.id !== r.id).slice(0, 8);
+    rel.innerHTML = '';
+    if (!list.length) { rel.appendChild(h('div', { class: 'muted' }, 'Koi doosra document nahi')); return; }
+    list.forEach(x => rel.appendChild(h('div', { class: 'list-item' },
+      h('div', { class: 'li-main' }, h('b', null, x.docNo || x.id), h('span', null, (TYPE_ICON[x.docType] || '📄') + ' ' + (x.docType || '') + ' · ' + (x.ref || ''))),
+      UI2.entityLink('documents', { open: x.id }, 'Open'))));
+  }).catch(() => { rel.innerHTML = ''; rel.appendChild(h('div', { class: 'muted' }, 'Related load nahi hue')); });
+  UI2.modal({
+    title: '📄 ' + (r.docNo || r.id), size: 'md', body: host,
+    actions: [
+      { label: 'Close', cls: 'ghost', onClick: c => c() },
+      { label: '📋 Copy text', onClick: c => { copyText(docSummary(r)); } },
+      { label: '↻ Refresh', onClick: c => { c(); if (reload) reload(); } }
+    ]
+  });
+}
+
+App.registerScreen('documents', {
+  title: 'Documents', icon: '📄', perm: 'reports.view',
+  subtitle: () => 'Registry · scan → resolve → history',
+  actions() {
+    return [
+      { label: 'Manual code', icon: '⌨', onClick: () => { if (window.HaScan) HaScan.manual({}); } },
+      { label: 'Scan & Resolve', icon: '📷', cls: 'ok', onClick: () => { if (window.App.scanResolve) App.scanResolve(); else if (window.HaScan) HaScan.manual({}); } },
+      { label: 'Refresh', icon: '↻', onClick: () => App.refresh() }
+    ];
+  },
+  onParams(p) {
+    /* deep link: App.go('documents', { open:'DOC…' }) → detail modal */
+    if (p && p.open) setTimeout(async () => {
+      try { const r = await Docs.get(p.open); if (r) docDetail(r, () => App.refresh()); else UI.toast('Document nahi mila: ' + p.open, 'warn'); } catch (e) { UI.toast(e.message, 'err'); }
+    }, 400);
+  },
+  render(body) {
+    const host = h('div'); body.appendChild(host);
+    const qInput = h('input', { class: 'f-input', placeholder: 'Search doc / ref / module…', type: 'search', 'aria-label': 'Search documents' });
+    const typeSel = h('select', { class: 'f-input', 'aria-label': 'Document type' },
+      h('option', { value: '' }, 'All types'),
+      ['INVOICE', 'RECEIPT', 'LABELS', 'REPORT', 'EXPORT', 'IMPORT', 'LEDGER', 'PDF', 'IMAGE'].map(v => h('option', { value: v }, (TYPE_ICON[v] || '📄') + ' ' + v)));
+    let tmr;
+    [qInput, typeSel].forEach(el => el.addEventListener('input', () => { clearTimeout(tmr); tmr = setTimeout(load, 350); }));
+
+    const bar = h('div', { class: 'f-grid', style: { marginBottom: '8px' } }, qInput, typeSel);
+    const kpis = h('div', { style: { marginBottom: '8px' } });
+    const listHost = h('div');
+    host.append(bar, kpis, listHost);
+
+    function load() {
+      listHost.innerHTML = '';
+      listHost.appendChild(UI.skeleton(4));
+      Docs.list({ q: qInput.value.trim(), docType: typeSel.value, pageSize: 100 }).then(res => {
+        const rows = res.rows || [];
+        const today = new Date().toISOString().slice(0, 10);
+        const cnt = t => rows.filter(r => r.docType === t).length;
+        kpis.innerHTML = '';
+        kpis.appendChild(UI2.kpiGrid([
+          { icon: '📄', label: 'Total documents', value: res.total != null ? res.total : rows.length, cls: 'brand' },
+          { icon: '🧾', label: 'Invoices', value: cnt('INVOICE') },
+          { icon: '🏷', label: 'Labels', value: cnt('LABELS') },
+          { icon: '📅', label: 'Aaj generate', value: rows.filter(r => String(r.createdAt || '').slice(0, 10) === today).length, cls: 'ok' }
+        ]));
+        listHost.innerHTML = '';
+        if (!rows.length) {
+          listHost.appendChild(h('div', { class: 'empty' }, h('span', { class: 'big' }, '📄'),
+            h('div', null, 'Registry me koi document nahi — koi invoice ya labels print karein, ya code scan karein'),
+            h('button', { class: 'btn sm ok', style: { marginTop: '10px' }, onclick: () => App.scanResolve && App.scanResolve() }, '📷 Scan & Resolve')));
+          return;
+        }
+        listHost.appendChild(UI2.table({
+          screen: 'documents', rows: rows, height: '58vh', exportName: 'documents',
+          columns: [
+            { key: 'docNo', label: 'Doc no', render: r => h('b', null, r.docNo || r.id) },
+            { key: 'docType', label: 'Type', render: r => typeChip(r.docType) },
+            { key: 'ref', label: 'Entity', render: r => entityCell(r) },
+            { key: 'module', label: 'Module' },
+            { key: 'version', label: 'Ver', num: true, render: r => 'v' + (r.version || 1) },
+            { key: 'status', label: 'Status', render: r => statusChip(r.status) },
+            { key: 'createdAt', label: 'Created', render: r => fmt.date(r.createdAt, true) },
+            { key: '_act', label: 'Actions', render: r => h('span', { style: { display: 'flex', gap: '6px' } },
+              h('button', { class: 'btn sm ghost', title: 'Resolve + entity kholein', 'aria-label': 'Open ' + (r.docNo || ''), onclick: ev => { ev.stopPropagation(); App.resolveCode(r.qr || ('HA:DOC:' + r.id)); } }, '↗'),
+              h('button', { class: 'btn sm ghost', title: 'Copy document text', 'aria-label': 'Copy ' + (r.docNo || ''), onclick: ev => { ev.stopPropagation(); copyText(docSummary(r)); } }, '📋')) }
+          ],
+          onRow: r => docDetail(r, load)
+        }));
+      }).catch(e => {
+        listHost.innerHTML = '';
+        listHost.appendChild(h('div', { class: 'empty' }, '⚠ ' + e.message));
+      });
+    }
+    load();
+  }
+});
 })();
 </script>
 

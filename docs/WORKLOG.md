@@ -44,4 +44,19 @@ integration + regression + UI/UX-check + error-handling + security-check pass ho
   registry sirf index hai, source-of-truth sales/items sheets hi hain).
 - Next: D4 Documents hub screen (registry data par UI).
 
-## (agle slices yahan add honge — D4..D11, har entry isi format me)
+## 2026-09-25 — Round 6-cont (D4 Documents hub) — COMPLETE
+- Task: doc-intel §3 Documents area — registry data par file-manager UX.
+- Kiya: naya `apps-script/App_Docs.html` (+ Index.html include, App_UI2 ke baad);
+  KPIs + live search/type-filter + Scan&Resolve/Manual actions + table (entity-links
+  P2 reuse) + row detail modal (metadata + related) + {open} deep-link; nav entries
+  (fallback navConfig + mock MENU_CONFIG m_docs).
+- Ghalti pakri gayi gate ne: toolbar inputs append karna bhoola tha (render me
+  mojood magar DOM me nahi) — fix + re-verify. Test-selector bug bhi (pehli row
+  LABELS thi) — test fix, code theek tha.
+- Evidence: gate `test_documents_hub.js` **16/0** (nav→screen, KPIs, search-filter
+  rendered-count, detail modal, deep-link, entity-link→invoice, scanner modal, zero
+  pageerrors) · isolated regression: doc_registry **10/0**, shop **26/0**, entity **10/0**.
+- Next: D5 Drive bootstrap (GAS) ya D6 WhatsApp — D5 pehle (D4 hub ka Drive-location
+  action usi se judta hai).
+
+## (agle slices yahan add honge — D5..D11, har entry isi format me)

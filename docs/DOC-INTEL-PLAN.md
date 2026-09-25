@@ -39,8 +39,13 @@ Comms WhatsApp, App_Print designer, UI2.table). Har slice ke baad: build + gates
       HA:DOC→related-entity; print-hooks (invoice-drawer 🖨 → INVOICE entry, labels batch →
       LABELS entry). Gate `test_doc_registry.js` **10/0** (2026-09-25) — RELOAD persistence +
       print auto-entry (real click) sabit
-- [ ] **D4** Documents hub screen: dashboard counts + table (search/filter/module) + preview
-      actions (View/Print/Share/WhatsApp/Copy/Drive-location) — reuse UI2.table/modal
+- [x] **D4** Documents hub screen: `App_Docs.html` (naya, Index include) — KPIs (total/
+      invoices/labels/today) + search/type-filter + Scan & Resolve + Manual actions +
+      table (docNo/type/entity-link/version/status/created/Open+Copy) + row→detail modal
+      (metadata + related) + deep-link {open:DOCid} onParams; nav: fallback navConfig
+      'Insights & Dashboards' me Documents (perm reports.view) + MENU_CONFIG m_docs.
+      Gate `test_documents_hub.js` **16/0** (2026-09-25); regression doc_registry 10/0 ·
+      shop 26/0 · entity 10/0. WhatsApp/Drive-location actions D5/D6 me judenge
 - [ ] **D5** Drive bootstrap (GAS `DocReg.gs`): root+subfolder create-OR-reuse (IDs config me
       persist), verify report, repeated-run safe; docs: File.gs ▸ func ▸ Run format
 - [ ] **D6** WhatsApp structured share: template per doc-type (invoice/receipt/report) +

@@ -706,6 +706,7 @@ const MENU_CONFIG = [
   { id: 'm_pos', label: 'Point of Sale', icon: '🧾', parentId: 'm_main', route: 'pos', perm: 'pos.access', sortOrder: 2, active: 'true' },
   { id: 'm_ins', label: 'Dashboards', icon: '📈', parentId: 'm_main', route: 'insights', perm: 'reports.view', sortOrder: 3, active: 'true' },
   { id: 'm_shop', label: 'Shop Open/Close', icon: '🏪', parentId: 'm_main', route: 'shop', perm: 'pos.access', sortOrder: 4, active: 'true' },
+  { id: 'm_docs', label: 'Documents', icon: '📄', parentId: 'm_main', route: 'documents', perm: 'reports.view', sortOrder: 5, active: 'true' },
   { id: 'm_stock', label: 'Catalog & Stock', icon: '', parentId: '', route: '', perm: '', sortOrder: 2, active: 'true' },
   { id: 'm_items', label: 'Items', icon: '📦', parentId: 'm_stock', route: 'items', perm: 'items.view', sortOrder: 1, active: 'true' },
   { id: 'm_inv', label: 'Inventory', icon: '🏬', parentId: 'm_stock', route: 'inventory', perm: 'stock.view', sortOrder: 2, active: 'true' },
