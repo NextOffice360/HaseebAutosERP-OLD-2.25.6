@@ -345,6 +345,10 @@ const Print = {
     const style = cfg.style || 'retail';
     const big = style === 'price' || style === 'warehouse';
     const parts = [];
+    /* W2.T4 — bari sheet (48+ labels) par progress card + beech-beech yield
+       (App_Core wali labelsHtml copy ke barabar — dono builds me hoti hai) */
+    const prog = (rows || []).length > 48 ? UI.progress('🏷 Labels', (rows || []).length) : null;
+    let lblN = 0;
     for (const r of (rows || [])) {
       const val = String(r.barcode || r.code || '').trim();
       /* v2.25.0 — symbol ko label ki ASAL chaurai mein fit karein.
@@ -497,7 +501,9 @@ const Print = {
         (customBits.length ? '<div class="lx">' + customBits.join(' \u00b7 ') + '</div>' : '') +
         (footTxt ? '<div class="lfoot">' + footTxt + '</div>' : '') +
         '</div>');
+      if (prog) { prog.step(); if ((++lblN % 24) === 0) await new Promise(x => setTimeout(x, 0)); }
     }
+    if (prog) prog.done();
     return '<div class="label-sheet">' + parts.join('') + '</div>';
   },
 

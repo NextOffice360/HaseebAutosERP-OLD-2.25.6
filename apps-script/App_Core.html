@@ -1025,6 +1025,58 @@ const UI = {
     if (reset) UI._errStats = { classified: 0, retryable: 0, blockedRetry: 0, retryClicked: 0, writeWarned: 0 };
     return s;
   },
+  /* ==========================================================================
+     W2.T4 (v2.30.5) — UI.progress(title, total): lambay client-side kaamon
+     (240 labels print, bari lists banana) par chhota progress card
+     (right-bottom): "x/y + bar". Return handle: set(n) / step() / label(t) /
+     done(msg?) / fail(err). Sirf render — asli chunked-yield runner neeche
+     UI.progress.run hai (fn beech-beech me setTimeout(0) yield deti hai taake
+     main thread block na ho).
+     ========================================================================== */
+  progress(title, total) {
+    total = Number(total) || 0;
+    const card = h('div', { class: 'prog', role: 'progressbar', 'aria-valuemin': '0',
+      'aria-valuemax': String(total), 'aria-valuenow': '0',
+      style: { position: 'fixed', right: '14px', bottom: '64px', zIndex: '9998',
+        background: 'var(--bg-1, #fff)', color: 'var(--tx, #111)', border: '1px solid var(--bd, #ddd)',
+        borderRadius: '10px', padding: '8px 12px', minWidth: '200px', maxWidth: '300px',
+        boxShadow: '0 6px 22px rgba(0,0,0,.18)', fontSize: 'var(--fs-xs, 12px)' } });
+    const tEl = h('div', { style: { fontWeight: '700', marginBottom: '5px' } }, String(title || 'Kaam ho raha hai') + ' 0/' + total);
+    const bar = h('div', { style: { height: '6px', borderRadius: '99px', background: 'var(--bg-2, #eee)', overflow: 'hidden' } });
+    const fill = h('i', { style: { display: 'block', height: '100%', width: '0%', background: 'var(--brand, #2563eb)', transition: 'width .12s' } });
+    bar.appendChild(fill);
+    const sEl = h('div', { style: { marginTop: '4px', color: 'var(--muted, #777)', display: 'none' } }, '');
+    card.appendChild(tEl); card.appendChild(bar); card.appendChild(sEl);
+    (document.body || document.documentElement).appendChild(card);
+    let n = 0, gone = false;
+    const paint = () => {
+      const pc = total ? Math.min(100, Math.round(n * 100 / total)) : (n ? 100 : 0);
+      fill.style.width = pc + '%';
+      card.setAttribute('aria-valuenow', String(n));
+      tEl.textContent = String(title || 'Kaam ho raha hai') + ' ' + n + '/' + total;
+    };
+    const handle = {
+      set(v) { if (gone) return handle; n = Math.max(0, Number(v) || 0); paint(); return handle; },
+      step() { if (gone) return handle; n++; paint(); return handle; },
+      get value() { return n; },
+      label(txt) { if (gone) return handle; sEl.textContent = String(txt || ''); sEl.style.display = txt ? 'block' : 'none'; return handle; },
+      done(msg) {
+        if (gone) return handle; gone = true;
+        n = total || n; fill.style.width = '100%';
+        setTimeout(() => { if (card.parentNode) card.remove(); }, 550);
+        if (msg) UI.toast(String(msg), 'ok');
+        return handle;
+      },
+      fail(err) {
+        if (gone) return handle; gone = true;
+        if (card.parentNode) card.remove();
+        UI.toast(err, 'err');
+        return handle;
+      },
+      get el() { return card; }
+    };
+    return handle;
+  },
   /* kind → title/hint/icon. Pehla match jeet jata hai (order ahem hai). */
   _errKinds: [
     { kind: 'offline', retryable: true, icon: '📶', title: 'Internet nahi hai',
@@ -2388,6 +2440,38 @@ App.setBranch = function (locId, silent) {
   if (!silent) App.renderView();
 };
 
+/* ==========================================================================
+   W2.T4 (v2.30.5) — UI.progress.run(items, fn, opts): chunked + yield.
+   Har `opts.chunk` (default 24) items ke baad setTimeout(0) — main thread ke
+   sync bursts chhote rehte hain (spec: block < 100ms) aur progress card zinda
+   dikhta hai. fn(item, i, handle) sync ya promise dono chal sakte hai.
+   opts: { chunk, title, label, shouldStop } — shouldStop() true → ruk kar
+   { stopped: true } wapas. fn throw kare → card fail + error aage (caller
+   ki UI.fail/errBox usi ka dhyan rakhti hai).
+   ========================================================================== */
+UI.progress.run = async function (items, fn, opts) {
+  opts = opts || {};
+  const arr = Array.isArray(items) ? items : [];
+  const chunk = Math.max(1, Number(opts.chunk) || 24);
+  const p = UI.progress(opts.title || 'Kaam ho raha hai', arr.length);
+  if (opts.label) p.label(opts.label);
+  let stopped = false;
+  try {
+    for (let i = 0; i < arr.length; i += chunk) {
+      const end = Math.min(i + chunk, arr.length);
+      for (let j = i; j < end; j++) {
+        if (opts.shouldStop && opts.shouldStop()) { stopped = true; break; }
+        await fn(arr[j], j, p);
+        p.step();
+      }
+      if (stopped) break;
+      p.set(end);
+      await new Promise(r => setTimeout(r, 0));           /* yield — UI saans le */
+    }
+    p.done(stopped ? 'Rok diya gaya' : null);
+    return { total: arr.length, stopped: stopped, done: arr.length };
+  } catch (e) { p.fail(e); throw e; }
+};
 window.App = App; window.UI = UI; window.API = API; window.Store = Store;
 /* v2.30.0 (N9) — offline sync ke handlers App par bhi (aasaan pukaar; asli API par) */
 App.flushQueue = () => API.flushQueue();
@@ -3236,6 +3320,9 @@ const Print = {
     try { cfg = typeof template.json === 'string' ? JSON.parse(template.json || '{}') : (template.json || {}); } catch (e) { cfg = {}; }
     const wmm = template.width || 50, hmm = template.height || 30;
     const parts = [];
+    /* W2.T4 — bari sheet (48+ labels) par progress card + beech-beech yield */
+    const prog = rows.length > 48 ? UI.progress('🏷 Labels', rows.length) : null;
+    let lblN = 0;
     for (const r of rows) {
       let qr = '';
       if (cfg.qr) {
@@ -3250,7 +3337,9 @@ const Print = {
         (cfg.showPrice !== false ? '<div class="lprice"><b>' + esc(r.currency) + ' ' + fmt.num(r.price) + '</b></div>' : '') +
         (qr ? '<div>' + qr + '</div>' : '') +
         '</div>');
+      if (prog) { prog.step(); if ((++lblN % 24) === 0) await new Promise(x => setTimeout(x, 0)); }
     }
+    if (prog) prog.done();
     return '<div class="label-sheet">' + parts.join('') + '</div>';
   }
 };

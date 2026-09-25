@@ -81,7 +81,12 @@ App_/Pwa_ split) + `docs/ARCHITECTURE.md` (conventions + data flow). Saare waves
 (tbl.reload() rowActions me, Clear filters emptyAction). **Sabak:** UI2.table wrap
 return karta hai — append lazmi (DOM-probe debugging se pakra). Chrome-libs restore:
 fetch_chrome_libs ke atspi/avahi gaps manually .deb se bhare (libnspr/nss/atk/atspi/
-avahi/cairo/pango). Quota: 41.3MB effective (stale display ignore). **ROUND-START RULE (user hukum, 2026-09-25):** har lambe kaam/todo se PEHLE
+avahi/cairo/pango). Quota: 41.3MB effective (stale display ignore). **W2.T4 progress ✔ (v2.30.5):** UI.progress + UI.progress.run (chunked-yield);
+labels dono copies wired (App_Core + App_Barcode — duplicate labelsHtml ka
+dhyan rakhna!). Gates: progress 20/0 · labels_live 30/0 · baqi sab GREEN.
+**Agla: W9.T3.5 data-reactivity sweep (Store.sub) — phir T3.1 UI.bindDeps.
+Live GAS deploy + hardware drills user ke sath pending.**
+**ROUND-START RULE (user hukum, 2026-09-25):** har lambe kaam/todo se PEHLE
 capacity check: python-walk (koi exclusion nahi, .cache bhi dekho) + node_modules/
 .npm mojood hon to pehle safai. Limit 128MB/10k files. **W2.T3 error/retry ✔**
 (tools/test_error_retry.js naya gate 26/0; impl pehle se thi). **Agla: W2.T4
