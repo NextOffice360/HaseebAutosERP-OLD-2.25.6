@@ -184,7 +184,7 @@ const errors = [];
     await new Promise(r => setTimeout(r, 150));
     window.UI.toast = window.__ut;
     return { bulkStopped: __UIH.bulkBadge.hidden && !__UIH.bulkHandle,
-      doneToast: __toasts.some(x => /Bulk scan khatam/.test(x)) };`);
+      doneToast: __toasts.some(x => /Bulk scan (khatam|done)/.test(x)) };`); /* v2.30.6: T.t EN/roman dono */
   const k9 = await ev('bulk: in-app fallback (no liveUrl)', `
     App.state.settings = {};
     document.querySelectorAll('.modal-scrim').forEach(x => x.remove());   // purane overlay saaf

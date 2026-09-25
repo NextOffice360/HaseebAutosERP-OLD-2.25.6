@@ -111,3 +111,26 @@ integration + regression + UI/UX-check + error-handling + security-check pass ho
 - Evidence: tmp/validate-v2.30.6.log — "ALL GATES GREEN ✔ (68 gate)", VERIFY_DONE rc=0.
 
 **Next:** package v2.30.6 → FTP backup → push (b6eb25e → naya HEAD).
+
+## Round-9 — doc-intel remnants + EN-purity slice-1 (2026-09-25)
+
+**Task (32-task plan):** D13-part2 · D14 · QR standard · EN-purity slices · i18n floor · chain.
+
+**State:**
+- [x] **R9-1 D13-part2** hub related-links column (client-side entity-group, click → filter + detail) — additive
+- [x] **R9-2 D14 designer deep-DOM gate** `tools/test_doc_designer.js` 10/0 — RECEIPT+LABEL live-preview RENDERED DOM par (verify me registered: doc-designer). Neela sach: mock `print.fieldSchema` defs Print.gs se drift the (footer def:false vs asli true) → EXACT defs mirror
+- [x] **R9-3 QR-1** receipt emitter `INV:|TOTAL:` → `HA:INV:` (App_Core)
+- [x] **R9-4 QR-2** resolver legacy back-compat `INV:<inv>|…` → HA:INV (App_QR)
+- [x] **R9-5 HUB-SEARCH WIPE FIX** — background store-refresh typing ke doran input wipe karta tha → `Docs._hubQ` state-restore (asli UX bug, race-proven)
+- [x] **R9-6 mock schema defs** = Print.gs exact (footer/terms/signature/qr/savings/barcode)
+- [x] **R9-7..8 EN-purity slice-1** — Screens2 17 toasts + POS2 17 toasts → T.t (34 naye keys, en/roman/ur) — audit: T.t 93 (81→93)
+- [x] **R9-9 i18n regression floor gate** `tools/test_i18n_floor.js` 3/0 (hits<=866, T.t>=93, per-file top-4 floor) — verify me registered
+- [x] **R9-10 gates emoji-agnostic** — batch (Payment), doc_registry (Print) — icon-upgrade emoji→SVG ke baad word-match
+- [x] **R9-11 hub gate self-heal** (mid-type race re-type) + text-aware row count
+- [x] **R9-12 solos GREEN**: documents_hub 16/0 · batch 22/0 · doc_registry 10/0 · resolver 13/0 · pos_multi 23/0 · demands 13/0 · designer 10/0 · i18n floor 3/0
+- [ ] R9-13..20 EN-purity slice-2..5 (Screens2 non-toast 77, POS2 58, Dashboards 47, Config 44, Pwa_Shell 42)
+- [ ] R9-21 QR audit tool (audit_qr_payloads ko resolve-check gate banao)
+- [ ] R9-22..30 Context_Aware spec pending UX items (agle slice)
+- [ ] R9-31 full verify 69-gate + package + FTP + push (chain)
+
+**Evidence:** tmp/dh10 (hub 16/0), designer 10/0, i18n floor 3/0 — sab upar logs.

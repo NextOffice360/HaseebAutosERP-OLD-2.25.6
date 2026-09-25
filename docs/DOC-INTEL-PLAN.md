@@ -88,3 +88,9 @@ Comms WhatsApp, App_Print designer, UI2.table). Har slice ke baad: build + gates
 
 - Build demo+static → targeted gate (naya) + shop_setup_flow + entity_links (min)
 - Battery full sirf tag-par (standing rule); commit+push har slice ke baad
+
+## Round-9 remnants (2026-09-25)
+- [x] **D13-part2** hub related-links column (entity-group count chip → filter+detail)
+- [x] **D14** designer deep-DOM gate (tools/test_doc_designer.js 10/0; verify: doc-designer) — mock schema-defs drift fix bonus
+- [x] **QR emitters**: receipt (App_Core) → HA:INV; resolver legacy INV-kv back-compat (App_QR)
+- [ ] QR emitter switches App_Core:3303/3362 — receipt HO GAYA; baqi sites (App_Barcode labels KV, App_Print JSON, App_Dashboards JSON, App_PwaHub url) agle slice

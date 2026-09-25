@@ -64,7 +64,7 @@
     await sleep(900);
     const clicked = await page.evaluate(() => {
       const btns = [...document.querySelectorAll('button')];
-      const b = btns.find(x => /🖨/.test(x.textContent) && /Print/.test(x.textContent));
+      const b = btns.find(x => /Print/.test(x.textContent)); /* v2.30.6: emoji→SVG upgrade ke baad text-only */
       if (!b) return false; b.click(); return true;
     });
     ok(clicked, 'invoice drawer 🖨 Print button click');

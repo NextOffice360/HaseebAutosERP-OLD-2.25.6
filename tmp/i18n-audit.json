@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-09-25T03:33:57.397Z",
+  "generatedAt": "2026-09-25T09:27:27.899Z",
   "totalHits": 866,
-  "totalTt": 1,
+  "totalTt": 93,
   "files": [
     {
       "file": "App_Core.html",
-      "tt": 0,
-      "hits": 81,
+      "tt": 1,
+      "hits": 80,
       "samples": [
         {
           "line": 103,
@@ -24,13 +24,9 @@
     },
     {
       "file": "App_Screens2.html",
-      "tt": 0,
-      "hits": 80,
+      "tt": 26,
+      "hits": 77,
       "samples": [
-        {
-          "line": 43,
-          "text": "if (!rows || !rows.length) return UI.toast('Reorder ke liye koi item nahi', 'warn');"
-        },
         {
           "line": 96,
           "text": "], rows, emptyText: 'Koi PO nahi', onRow: r => poForm(r)"
@@ -38,13 +34,17 @@
         {
           "line": 124,
           "text": "], rows, emptyText: 'Koi GRN nahi', onRow: r => grnDetail(r)"
+        },
+        {
+          "line": 153,
+          "text": "emptyText: 'Koi purchase return nahi — \"New purchase return\" se banayein'"
         }
       ]
     },
     {
       "file": "App_POS2.html",
-      "tt": 0,
-      "hits": 60,
+      "tt": 30,
+      "hits": 58,
       "samples": [
         {
           "line": 70,
@@ -80,25 +80,6 @@
       ]
     },
     {
-      "file": "App_Dashboards.html",
-      "tt": 0,
-      "hits": 48,
-      "samples": [
-        {
-          "line": 301,
-          "text": "UI.kpi('📒', 'Udhaar (receivable)', fmt.moneyCompact(k.receivables), (k.pendingDue ? 'Due "
-        },
-        {
-          "line": 382,
-          "text": ": h('div', { class: 'tbl-empty' }, 'Is range me koi sale nahi')));"
-        },
-        {
-          "line": 411,
-          "text": "{ pct: recovery, label: 'Udhaar recovery', sub: fmt.money(recvPaid) + ' / ' + fmt.money(re"
-        }
-      ]
-    },
-    {
       "file": "App_UI2.html",
       "tt": 0,
       "hits": 48,
@@ -114,6 +95,25 @@
         {
           "line": 231,
           "text": "if (cfg.noCancel !== true && !acts.some(a => /cancel|close|band|nahi|back/i.test(String(a."
+        }
+      ]
+    },
+    {
+      "file": "App_Dashboards.html",
+      "tt": 6,
+      "hits": 47,
+      "samples": [
+        {
+          "line": 301,
+          "text": "UI.kpi('📒', 'Udhaar (receivable)', fmt.moneyCompact(k.receivables), (k.pendingDue ? 'Due "
+        },
+        {
+          "line": 382,
+          "text": ": h('div', { class: 'tbl-empty' }, 'Is range me koi sale nahi')));"
+        },
+        {
+          "line": 411,
+          "text": "{ pct: recovery, label: 'Udhaar recovery', sub: fmt.money(recvPaid) + ' / ' + fmt.money(re"
         }
       ]
     },
@@ -142,15 +142,15 @@
       "hits": 42,
       "samples": [
         {
-          "line": 512,
+          "line": 515,
           "text": "if (tmo > 0) guard = setTimeout(function () { if (!done) { _runStats.stale++; settle(false"
         },
         {
-          "line": 539,
+          "line": 542,
           "text": "visibility:hidden, opacity 0) to Esc usi ko \"handle\" karta rehta hai aur asli"
         },
         {
-          "line": 597,
+          "line": 600,
           "text": "box + \"Dobara koshish karein\" (sirf jaiz errors par). Validation/auth par"
         }
       ]
@@ -214,27 +214,27 @@
     },
     {
       "file": "App_Demand.html",
-      "tt": 0,
-      "hits": 32,
+      "tt": 5,
+      "hits": 30,
       "samples": [
         {
-          "line": 70,
+          "line": 80,
           "text": "host.appendChild(h('div', { class: 'empty' }, h('span', { class: 'big' }, '😕'), h('div', "
         },
         {
-          "line": 141,
+          "line": 159,
           "text": ": h('div', { class: 'empty', style: { padding: '12px' } }, 'Koi PO link nahi — sourcing pe"
         },
         {
-          "line": 168,
+          "line": 186,
           "text": "UI2.confirm('Demand ' + (d.demandNo || '') + ' cancel karein? Stock/PO par asar nahi hoga,"
         }
       ]
     },
     {
       "file": "App_Masters.html",
-      "tt": 0,
-      "hits": 32,
+      "tt": 5,
+      "hits": 30,
       "samples": [
         {
           "line": 80,
@@ -252,8 +252,8 @@
     },
     {
       "file": "App_Inventory2.html",
-      "tt": 0,
-      "hits": 26,
+      "tt": 6,
+      "hits": 24,
       "samples": [
         {
           "line": 14,
@@ -270,9 +270,28 @@
       ]
     },
     {
-      "file": "App_Boot.html",
+      "file": "App_QR.html",
       "tt": 0,
       "hits": 24,
+      "samples": [
+        {
+          "line": 331,
+          "text": "allow NAHI karti — isliye getUserMedia() \"Permissions policy violation\""
+        },
+        {
+          "line": 389,
+          "text": "var input = h('input', { class: 'f-input', type: 'text', placeholder: 'Code / QR value typ"
+        },
+        {
+          "line": 393,
+          "text": "opts.note || 'Scanner open nahi ho saka — code neeche type karein.'), input),"
+        }
+      ]
+    },
+    {
+      "file": "App_Boot.html",
+      "tt": 8,
+      "hits": 22,
       "samples": [
         {
           "line": 188,
@@ -285,44 +304,6 @@
         {
           "line": 283,
           "text": "const row = h('div', { class: 'notif-row' + (r.readAt ? ' read' : ''), title: 'Mark as rea"
-        }
-      ]
-    },
-    {
-      "file": "App_QR.html",
-      "tt": 0,
-      "hits": 20,
-      "samples": [
-        {
-          "line": 331,
-          "text": "allow NAHI karti — isliye getUserMedia() \"Permissions policy violation\""
-        },
-        {
-          "line": 384,
-          "text": "var input = h('input', { class: 'f-input', type: 'text', placeholder: 'Code / QR value typ"
-        },
-        {
-          "line": 388,
-          "text": "opts.note || 'Scanner open nahi ho saka — code neeche type karein.'), input),"
-        }
-      ]
-    },
-    {
-      "file": "App_Orders.html",
-      "tt": 0,
-      "hits": 16,
-      "samples": [
-        {
-          "line": 24,
-          "text": "subtitle: () => 'Field orders · status · invoice mein badlein',"
-        },
-        {
-          "line": 111,
-          "text": "if (!res) return UI.toast('Order load nahi hui', 'err');"
-        },
-        {
-          "line": 143,
-          "text": "UI2.confirm('Order cancel karein?', ok => {"
         }
       ]
     },
@@ -342,6 +323,25 @@
         {
           "line": 66,
           "text": "freeMode ? 'Free mode: wa.me link khulta hai — WhatsApp app/web me message tayar mil jata "
+        }
+      ]
+    },
+    {
+      "file": "App_Orders.html",
+      "tt": 5,
+      "hits": 14,
+      "samples": [
+        {
+          "line": 24,
+          "text": "subtitle: () => 'Field orders · status · invoice mein badlein',"
+        },
+        {
+          "line": 144,
+          "text": "UI2.confirm('Order cancel karein?', ok => {"
+        },
+        {
+          "line": 162,
+          "text": "subtitle: 'Total ' + fmt.money(order.total) + ' · baqi udhaar ban jayega',"
         }
       ]
     },
@@ -418,6 +418,25 @@
         {
           "line": 264,
           "text": "[PWA.el('option',{value:'CASH'},'Cash'), PWA.el('option',{value:'CREDIT'},'Credit / Udhaar"
+        }
+      ]
+    },
+    {
+      "file": "App_Docs.html",
+      "tt": 0,
+      "hits": 12,
+      "samples": [
+        {
+          "line": 40,
+          "text": "const done = () => UI.toast('Copy ho gaya', 'ok', 1800);"
+        },
+        {
+          "line": 65,
+          "text": "UI.toast('Invoice record nahi mila — text share khul raha hai', 'warn', 2600);"
+        },
+        {
+          "line": 85,
+          "text": "h('div', { class: 'f-hint', style: { marginBottom: '6px' } }, 'Message edit karke bhejein "
         }
       ]
     },
@@ -560,15 +579,15 @@
       "hits": 6,
       "samples": [
         {
-          "line": 159,
+          "line": 161,
           "text": "`min-height:100vh` iframe ko majboor karta hai ke poori screen le."
         },
         {
-          "line": 160,
+          "line": 162,
           "text": "(overflow:hidden jaan boojh kar hai — \"koi bottom scroll nahi\" requirement) */"
         },
         {
-          "line": 448,
+          "line": 450,
           "text": "state mobile par leak nahi karta (user req 14: \"off-canvas behavior should"
         }
       ]
@@ -612,6 +631,21 @@
       ]
     },
     {
+      "file": "App_Icons.html",
+      "tt": 0,
+      "hits": 2,
+      "samples": [
+        {
+          "line": 6,
+          "text": "\"icon realistic nahi hain, icons say idea nahi hota ke ye section"
+        },
+        {
+          "line": 383,
+          "text": "chalta hi nahi tha aur wahan emoji reh jate the (misal: demand '📬 Arrived')."
+        }
+      ]
+    },
+    {
       "file": "App_PayUI.html",
       "tt": 0,
       "hits": 2,
@@ -627,23 +661,12 @@
       ]
     },
     {
-      "file": "App_Icons.html",
-      "tt": 0,
-      "hits": 1,
-      "samples": [
-        {
-          "line": 6,
-          "text": "\"icon realistic nahi hain, icons say idea nahi hota ke ye section"
-        }
-      ]
-    },
-    {
       "file": "App_PwaHub.html",
       "tt": 0,
       "hits": 1,
       "samples": [
         {
-          "line": 107,
+          "line": 116,
           "text": "h('div',{style:{fontSize:'12px',color:'var(--muted)',marginTop:'4px'}}, 'PWAs mein camera "
         }
       ]

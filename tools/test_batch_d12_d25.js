@@ -140,7 +140,7 @@
     const d23r = await page.evaluate(() => { const tr = document.querySelector('tbody tr'); if (tr) tr.click(); return !!tr; });
     await sleep(1200);
     const d23b = await page.evaluate(() => {
-      const pay = [...document.querySelectorAll('button')].find(b => /💸 Payment|Supplier payment/.test(b.textContent));
+      const pay = [...document.querySelectorAll('button')].find(b => /Payment/.test(b.textContent)); /* v2.30.6: emoji upgrade text se emoji hata deta hai — word-match */
       if (pay) { pay.click(); return true; } return false;
     });
     await sleep(1200);

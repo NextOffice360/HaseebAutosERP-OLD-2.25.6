@@ -129,6 +129,10 @@ if [ -d node_modules/puppeteer ]; then
   GATES+=("labels-live:node tools/test_labels_live.js")
   # v2.25.0 (req 1+2) — GRN drawer: naya design + PO/scan/bulk workflow
   GATES+=("grn-drawer:node tools/test_grn_drawer.js")
+  # v2.30.6 (round-9, D14) — designer deep-DOM: live-preview RENDERED DOM par
+  GATES+=("doc-designer:node tools/test_doc_designer.js")
+  # v2.30.6 (round-9) — EN-purity regression floor (D7 batches ka band)
+  GATES+=("i18n-floor:node tools/test_i18n_floor.js")
   # v2.25.0 (req 3) — Customer Demands: list/detail/form logic + duplicate guard + F9
   GATES+=("demands:node tools/test_demand.js")
   # v2.25.0 (req 4) — Salesman Stock: health KPIs, filter, scan, Stock Issue (F9)

@@ -77,10 +77,27 @@
 
     /* ── PART C — search filter ───────────────────────────────────────────── */
     console.log('\x1b[1mPART C — search filter\x1b[0m');
-    await page.type('input[type="search"][aria-label="Search documents"]', 'INV-D4-1');
-    await sleep(1100);
-    const rowsC = await page.evaluate(() => document.querySelectorAll('.screen table tbody tr, main table tbody tr').length);
-    ok(rowsC === 1, 'search "INV-D4-1" → 1 row (rendered ' + rowsC + ')');
+    await sleep(600);   /* register→invalidate ka deferred refresh pehle settle ho */
+    /* v2.30.6: mid-type re-render race — value adhoora reh jaye to EK baar dobara type */
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const cur = await page.evaluate(() => (document.querySelector('input[aria-label="Search documents"]') || {}).value || '');
+      if (cur === 'INV-D4-1') break;
+      await page.evaluate(() => { const i = document.querySelector('input[aria-label="Search documents"]'); if (i) { i.value = ''; i.dispatchEvent(new Event('input', { bubbles: true })); } });
+      await sleep(300);
+      await page.focus('input[type="search"][aria-label="Search documents"]');
+      await page.type('input[type="search"][aria-label="Search documents"]', 'INV-D4-1', { delay: 40 });
+      await sleep(1400);
+    }
+    /* v2.30.6: text-aware count — debounce race par bhi intent sach (filter=INV-D4-1 wali row) */
+    const rowsC = await page.evaluate(() => {
+      const trs = [].slice.call(document.querySelectorAll('.screen table tbody tr, main table tbody tr'));
+      return { n: trs.length, hit: trs.filter(r => (r.textContent || '').indexOf('INV-D4-1') > -1).length };
+    });
+    if (rowsC.n !== 1 || rowsC.hit !== 1) {
+      const dump = await page.evaluate(() => [].slice.call(document.querySelectorAll('.screen table tbody tr, main table tbody tr')).map(r => (r.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 100)));
+      console.log('  ⚑ rows:', JSON.stringify(dump));
+    }
+    ok(rowsC.n === 1 && rowsC.hit === 1, 'search "INV-D4-1" → 1 row (rendered ' + rowsC.n + ', hit ' + rowsC.hit + ')');
     await page.evaluate(() => { const i = document.querySelector('input[aria-label="Search documents"]'); i.value = ''; i.dispatchEvent(new Event('input', { bubbles: true })); });
     await sleep(900);
 

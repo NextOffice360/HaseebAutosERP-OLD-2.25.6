@@ -195,7 +195,12 @@ App.registerScreen('documents', {
   },
   render(body) {
     const host = h('div'); body.appendChild(host);
-    const qInput = h('input', { class: 'f-input', placeholder: 'Search doc / ref / module…', type: 'search', 'aria-label': 'Search documents' });
+    /* v2.30.6 — background store-refresh screen re-render karta hai; search
+       input wipe hota tha (user ka filter kho jata tha). Ab q Docs par state —
+       re-render par bari qInput value wapas. */
+    const qInput = h('input', { class: 'f-input', placeholder: 'Search doc / ref / module…', type: 'search', 'aria-label': 'Search documents',
+      value: (window.Docs && Docs._hubQ) || '',
+      oninput: e => { if (window.Docs) Docs._hubQ = e.target.value; } });
     const typeSel = h('select', { class: 'f-input', 'aria-label': 'Document type' },
       h('option', { value: '' }, 'All types'),
       ['INVOICE', 'RECEIPT', 'LABELS', 'REPORT', 'EXPORT', 'IMPORT', 'LEDGER', 'PDF', 'IMAGE'].map(v => h('option', { value: v }, (TYPE_ICON[v] || '📄') + ' ' + v)));
@@ -250,6 +255,19 @@ App.registerScreen('documents', {
             { key: 'module', label: 'Module' },
             { key: 'version', label: 'Ver', num: true, render: r => 'v' + (r.version || 1) },
             { key: 'status', label: 'Status', render: r => statusChip(r.status) },
+            /* D13-part2 (round-9) — related-links column: isi entity ke doosre docs
+               (client-side group, koi per-row API call nahi). Click = entity filter. */
+            { key: '_rel', label: 'Related', num: true, render: r => {
+              if (!r.entityId) return h('span', { class: 'muted', style: { fontSize: 'var(--fs-xs)' } }, '—');
+              const n = rows.filter(x => x.entityId === r.entityId && x.id !== r.id).length;
+              if (!n) return h('span', { class: 'muted', style: { fontSize: 'var(--fs-xs)' } }, '—');
+              return h('button', { class: 'chip', style: { minHeight: '26px', padding: '3px 9px', fontSize: 'var(--fs-xs)' },
+                title: 'Isi entity ke ' + n + ' doosre documents — hub filter',
+                'aria-label': 'Related documents: ' + n,
+                onclick: ev => { ev.stopPropagation(); qInput.value = r.entityId;
+                  qInput.dispatchEvent(new Event('input', { bubbles: true }));
+                  docDetail(r, load); } }, '🔗 ' + n);
+            } },
             { key: 'createdAt', label: 'Created', render: r => fmt.date(r.createdAt, true) },
             { key: '_act', label: 'Actions', render: r => h('span', { style: { display: 'flex', gap: '6px' } },
               h('button', { class: 'btn sm ghost', title: 'Resolve + entity kholein', 'aria-label': 'Open ' + (r.docNo || ''), onclick: ev => { ev.stopPropagation(); App.resolveCode(r.qr || ('HA:DOC:' + r.id)); } }, '↗'),

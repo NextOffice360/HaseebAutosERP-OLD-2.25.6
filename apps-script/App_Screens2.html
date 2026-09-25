@@ -274,7 +274,7 @@ App.registerScreen('purchase', {
               const ids = ((d && d.items) || []).map(x => x.itemId || x.id).filter(Boolean);
               if (!ids.length) { UI.toast(T.t('pur.grnNoItems','No items in GRN — open the detail first'), 'warn'); return; }
               Print.labelFlow(ids);
-            } catch (e) { UI.toast('Labels fail: ' + (e.message || e), 'err'); }
+            } catch (e) { UI.toast(T.t('sc2.labelsFail','Labels fail: ') + (e.message || e), 'err'); }
           } },
         { label: 'Close', onClick: c => c() }
       ]
@@ -444,7 +444,7 @@ function purchaseReturnForm(onDone) {
       if (!supChk.ok) return;
       try {
         await API.call('purchase.saveReturn', payload);
-        UI.toast('Purchase return post ho gaya ✅', 'ok');
+        UI.toast(T.t('sc2.prPosted','Purchase return post ho gaya ✅'), 'ok');
         c(); onDone && onDone(); API.pullCatalog && API.pullCatalog(true);
       } catch (e) { UI.toast(e.message || 'Return save nahi hua', 'err', 6000); }
     } }]
@@ -827,7 +827,7 @@ function poForm(po, preset) {
               ' (' + fmt.money(mine.reduce((a, x) => a + Number(x.total || 0), 0)) + ')'));
           }).catch(() => { });
         /* v2.6 §4 — print / PDF / duplicate / share */
-        poMeta.appendChild(docActions('po', po.id, { onDone: () => { UI.toast('Nayi copy list mein hai', 'ok'); } }));
+        poMeta.appendChild(docActions('po', po.id, { onDone: () => { UI.toast(T.t('sc2.newCopy','Nayi copy list mein hai'), 'ok'); } }));
         if (d.supplier && d.supplier.name) supBal.refresh(d.supplierId);
       })
       .catch(() => { });
@@ -999,7 +999,7 @@ function grnForm(po) {
     supBal.refresh(d.supplierId);
     fetchPrevBatch(lines, repaint, (fTop && fTop.values ? (fTop.values().supplierId || '') : ''));   /* v2.30.6 scope-fix */
     poBannerPaint(); render();
-    if (!lines.length) UI.toast('Is PO ki saari lines receive ho chuki hain', 'warn');
+    if (!lines.length) UI.toast(T.t('sc2.poAllReceived','Is PO ki saari lines receive ho chuki hain'), 'warn');
     else UI.toast(fresh.length + ' pending lines load ho gayin', 'ok');
   }
 
@@ -1050,10 +1050,10 @@ function grnForm(po) {
       title: '＋ Add custom product (not in store)', size: 'md', body: cf.el,
       actions: [{ label: 'Add to GRN', cls: 'ok', onClick: c => {
         const v = cf.values();
-        if (!v.name) return UI.toast('Product name zaruri hai', 'err');
+        if (!v.name) return UI.toast(T.t('sc2.productNameReq','Product name zaruri hai'), 'err');
         const l = { itemId: '', code: v.code || 'CUSTOM', name: v.name, qty: Number(v.qty) || 1,
           cost: Number(v.cost) || 0, retailPrice: 0, wholesalePrice: 0, prevPrice: 0, prevDate: '', orderedQty: undefined };
-        lines.push(l); render(); UI.toast('Custom item add ho gaya', 'ok'); c();
+        lines.push(l); render(); UI.toast(T.t('sc2.customAdded','Custom item add ho gaya'), 'ok'); c();
       } }, { label: 'Cancel', onClick: c => c() }]
     });
   }
@@ -1117,7 +1117,7 @@ function grnForm(po) {
   };
 
   function receiveAllPending() {
-    if (!lines.length) return UI.toast('Pehle PO load karein ya items add karein', 'warn');
+    if (!lines.length) return UI.toast(T.t('sc2.loadPoFirst','Pehle PO load karein ya items add karein'), 'warn');
     let n = 0;
     lines.forEach(l => {
       if (l.orderedQty !== undefined) {
@@ -1301,7 +1301,7 @@ function grnForm(po) {
         poId: isPO() ? poCtx.id : '',
         freight: Number(v.freight) || 0
       }) });
-      UI.toast('GRN posted — stock update ho gaya', 'ok');
+      UI.toast(T.t('sc2.grnPosted','GRN posted — stock update ho gaya'), 'ok');
       /* v2.30.5 (D24) — GRN = generated purchase document → registry (fire-and-forget) */
       try { if (window.Docs) Docs.register({ docType: 'GRN',
         entityType: 'supplier', entityId: v.supplierId || '', ref: (_g && (_g.grnNo || _g.id)) || '',
@@ -1465,7 +1465,7 @@ function customerForm(c) {
   UI.drawer({
     title: c ? '✏ ' + c.name : '➕ Naya customer', body: f.el,
     actions: [{ label: 'Save', onClick: async (close) => {
-      const v = f.values(); if (!v.name) return UI.toast('Name zaroori hai', 'err');
+      const v = f.values(); if (!v.name) return UI.toast(T.t('sc2.nameReq','Name zaroori hai'), 'err');
       try { await API.call('customers.save', { customer: v }); UI.toast('Saved ✅', 'ok'); close(); App.refresh(); } catch (e) { UI.toast(e.message, 'err'); }
     } }]
   });
@@ -1485,7 +1485,7 @@ function supplierForm(s) {
   UI.drawer({
     title: s ? '✏ ' + s.name : '➕ Naya supplier', body: f.el,
     actions: [{ label: 'Save', onClick: async (close) => {
-      const v = f.values(); if (!v.name) return UI.toast('Name zaroori hai', 'err');
+      const v = f.values(); if (!v.name) return UI.toast(T.t('sc2.nameReq','Name zaroori hai'), 'err');
       try { await API.call('suppliers.save', { supplier: v }); UI.toast('Saved ✅', 'ok'); close(); App.refresh(); SUPPLIERS = await Shared.suppliers({}); } catch (e) { UI.toast(e.message, 'err'); }
     } }]
   });
@@ -1615,7 +1615,7 @@ function expenseForm() {
    ========================================================================== */
 function docPrint(html, title) {
   const w = window.open('', '_blank');
-  if (!w) { UI.toast('Popup blocked — print ke liye popups allow karein', 'warn'); return; }
+  if (!w) { UI.toast(T.t('sc2.popupBlocked','Popup blocked — print ke liye popups allow karein'), 'warn'); return; }
   w.document.write(html); w.document.close();
   setTimeout(() => w.print(), 300);
 }
@@ -1635,14 +1635,14 @@ function docActions(kind, id, extra) {
     try {
       const d = await API.call('purchase.' + kind + '.pdf', { id });
       if (d && d.url) window.open(d.url, '_blank');
-      else UI.toast('PDF ban gayi', 'ok');
+      else UI.toast(T.t('sc2.pdfDone','PDF ban gayi'), 'ok');
     } catch (e) { UI.toast(e.message || 'PDF nahi ban saki', 'err'); }
   });
   if (isPO) {
     btn('📋 Duplicate', 'Is PO ki copy → naya draft', async () => {
       try {
         const d = await API.call('purchase.po.duplicate', { id });
-        UI.toast('Copy ban gayi: ' + (d.poNo || ''), 'ok');
+        UI.toast(T.t('sc2.copyDone','Copy ban gayi: ') + (d.poNo || ''), 'ok');
         if (extra && extra.onDone) extra.onDone(d);
       } catch (e) { UI.toast(e.message || 'Copy nahi ban saki', 'err'); }
     });
@@ -1695,7 +1695,7 @@ App.registerScreen('reports', {
     }
     function zPrint(res) {
       const w = window.open('', '_blank');
-      if (!w) { UI.toast('Popup blocked — print ke liye popups allow karein', 'warn'); return; }
+      if (!w) { UI.toast(T.t('sc2.popupBlocked','Popup blocked — print ke liye popups allow karein'), 'warn'); return; }
       const cell = r => res.cols.map(c =>
         '<td>' + zEsc(c.money ? fmt.money(r[c.key]) : (r[c.key] === undefined || r[c.key] === null ? '' : r[c.key])) + '</td>').join('');
       w.document.write('<html><head><title>' + zEsc(res.meta.name) + '</title><style>' +
@@ -2235,7 +2235,7 @@ function buildPermMatrix(meta) {
     if (badge && !/•/.test(badge.textContent)) badge.textContent += ' • unsaved';
   }
   async function resetAll() {
-    if (!canEdit) return UI.toast('Permission nahi', 'err');
+    if (!canEdit) return UI.toast(T.t('sc2.noPerm','Permission nahi'), 'err');
     if (!(await UI.confirm('Saare roles ko default permissions par wapas karein?'))) return;
     try {
       const fresh = await API.call('users.perms', {});
@@ -2247,12 +2247,12 @@ function buildPermMatrix(meta) {
         });
       });
       Object.keys(dirty).forEach(k => delete dirty[k]);
-      UI.toast('Defaults restore ho gaye (save karein)', 'ok', 2600);
+      UI.toast(T.t('sc2.defaultsRestored','Defaults restore ho gaye (save karein)'), 'ok', 2600);
     } catch (e) { UI.toast(e.message, 'err'); }
   }
   async function save() {
     const rolesToSave = Object.keys(dirty).filter(r => locked.indexOf(r) === -1);
-    if (!rolesToSave.length) return UI.toast('Koi tabdeeli nahi', 'warn');
+    if (!rolesToSave.length) return UI.toast(T.t('sc2.noChanges','Koi tabdeeli nahi'), 'warn');
     /* W7 (v2.26.0) — pehle har role ka apna round-trip (sequential) aur pehli ghalti par
        baqi roles chhoot jate the. Ab parallel batches; sab errors jama ho kar batate hain. */
     const jobs = rolesToSave.map(role => ({
@@ -2266,7 +2266,7 @@ function buildPermMatrix(meta) {
     Object.keys(dirty).forEach(k => delete dirty[k]);
     const badge = wrap.querySelector('.pm-count');
     if (badge) badge.textContent = badge.textContent.replace(' • unsaved', '');
-    UI.toast('Permissions save ho gayeen ✅', 'ok');
+    UI.toast(T.t('sc2.permsSaved','Permissions save ho gayeen ✅'), 'ok');
     App.refresh();
   }
 
@@ -2434,7 +2434,7 @@ function userForm(u) {
     actions: [{ label: 'Save', onClick: async (c) => {
       const v = Object.assign({}, f.values(), rules.values());
       v.locationIds = Array.from(locBox.querySelectorAll('input:checked')).map(i => i.dataset.loc);
-      if (!v.username) return UI.toast('Username zaroori hai', 'err');
+      if (!v.username) return UI.toast(T.t('sc2.usernameReq','Username zaroori hai'), 'err');
       try {
         if (u) await API.call('users.update', { id: u.id, patch: v });
         else await API.call('users.create', { user: v });

@@ -251,7 +251,7 @@ function bulkFlow() {
     if (finished) return; finished = true;
     POS2.bulkHandle = null;
     if (badge) { badge.hidden = true; badge.classList.remove('on'); }
-    UI.toast('Bulk scan khatam — ' + n + ' item' + (n === 1 ? '' : 's') + ' add' +
+    UI.toast(T.t('pos.bulkScanDone','Bulk scan khatam — ') + n + ' item' + (n === 1 ? '' : 's') + ' add' +
       (miss ? ' · unknown: ' + misses.join(', ') + (miss > 6 ? '…' : '') : ''), n ? 'ok' : 'warn', 4200);
   };
   if (!(window.HaScan && HaScan.bulkScan)) {
@@ -540,7 +540,7 @@ App.registerScreen('pos', {
         const hit = findProductByBarcode(code);
         if (hit) { addToCart({ id: hit.id, code: hit.code, name: hit.name, retailPrice: hit.rp, wholesalePrice: hit.wp, costPrice: hit.cp, stock: hit.qty, imageUrl: hit.img }, 1); inp.value = ''; S.q=''; try{renderGrid();}catch(e){} inp.focus(); UI.toast('Added: ' + hit.name+' — Cart updated','ok'); }
         else {
-          UI.toast('Product nahi mila: ' + code + ' — try manual search (F2)','warn'); inp.value=''; inp.focus();
+          UI.toast(T.t('pos.productNotFound','Product nahi mila: ') + code + ' — try manual search (F2)','warn'); inp.value=''; inp.focus();
         }
       };
       inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); doAdd(); } });
@@ -888,7 +888,7 @@ function cardSubParts(name, parts) {
       bar.appendChild(h('b', null, S._bulkGridSel.size+' selected'));
       bar.appendChild(h('button', { class: 'btn sm ghost', onclick: ()=>{ S._bulkGridSel.clear(); renderGrid(); }}, 'Clear'));
       bar.appendChild(h('button', { class: 'btn sm ok', onclick: ()=>{
-        if(!S._bulkGridSel.size) return UI.toast('Koi select nahi','warn');
+        if(!S._bulkGridSel.size) return UI.toast(T.t('pos.nothingSelected','Koi select nahi'),'warn');
         let n=0;
         S._bulkGridSel.forEach(k=>{
           const it=S.catalog.find(x=> String(x.id)===String(k));
@@ -961,7 +961,7 @@ function renderCart() {
     if(!S._bulkCartSel) S._bulkCartSel=new Set();
     const selAll = h('label', { class: 'chk', style: { display: 'flex', gap: '8px', alignItems: 'center', padding: '8px', background: 'var(--panel-2)', border: '1px solid var(--line)', borderRadius: '10px', fontSize: '12px', fontWeight: '800', marginBottom: '8px' } },
       h('input', { type: 'checkbox', checked: S.cart.every((_,i)=> S._bulkCartSel.has(i)), onchange: e=>{ if(e.target.checked) S.cart.forEach((_,i)=> S._bulkCartSel.add(i)); else S._bulkCartSel.clear(); renderCart(); }}), 'Select all ('+S.cart.length+')',
-      h('button', { class: 'btn sm danger', style: { marginLeft: 'auto' }, onclick: ()=>{ if(!S._bulkCartSel.size) return UI.toast('Koi select nahi','warn'); const sel=Array.from(S._bulkCartSel).sort((a,b)=>b-a); sel.forEach(i=> S.cart.splice(i,1)); S._bulkCartSel.clear(); renderCart(); renderTotals(); UI.toast(sel.length+' removed','ok'); }}, '🗑 Delete'),
+      h('button', { class: 'btn sm danger', style: { marginLeft: 'auto' }, onclick: ()=>{ if(!S._bulkCartSel.size) return UI.toast(T.t('pos.nothingSelected','Koi select nahi'),'warn'); const sel=Array.from(S._bulkCartSel).sort((a,b)=>b-a); sel.forEach(i=> S.cart.splice(i,1)); S._bulkCartSel.clear(); renderCart(); renderTotals(); UI.toast(sel.length+' removed','ok'); }}, '🗑 Delete'),
       h('button', { class: 'btn sm ghost', onclick: ()=>{ S.bulkCartMode=false; S._bulkCartSel.clear(); renderCart(); }}, '✕')
     );
     body.appendChild(selAll);
@@ -1175,7 +1175,7 @@ function newCustomer(after) {
     title: 'Naya customer', size: 'sm', body: f.el,
     actions: [{ label: 'Save', cls: 'ok', onClick: async c => {
       const v = f.values();
-      if (!v.name) return UI.toast('Name zaroori hai', 'err');
+      if (!v.name) return UI.toast(T.t('pos.nameReq','Name zaroori hai'), 'err');
       try { const saved = await API.call('customers.save', { customer: v });
         S.customer = saved; updateCustBar(); UI.toast('Saved ✅', 'ok'); c(); after && after(saved);
       } catch (e) { UI.toast(e.message, 'err'); }
@@ -1316,7 +1316,7 @@ function closeCartDrawerSync() {
 /* =============================== PAYMENT ================================== */
 async function pay(method) {
   if (!(await shopOpenOk())) { shopBlockedPopup(); return; }
-  if (!S.cart.length) return UI.toast('Cart khali hai', 'warn');
+  if (!S.cart.length) return UI.toast(T.t('pos.cartEmpty','Cart khali hai'), 'warn');
   // close drawer first so modal is on top (premium: no overlay behind)
   closeCartDrawerSync();
   try { const x = document.querySelector('.offcanvas .oc-x'); if (x) x.click(); } catch (e) { }
@@ -1510,8 +1510,8 @@ async function pay(method) {
           body.appendChild(h('div', { class: 'loy-actions' }, ptsInput,
             h('button', { class: 'btn sm ok', onclick: () => {
               const pts = Number(ptsInput.value || 0);
-              if (pts <= 0) return UI.toast('Points daalein', 'warn');
-              if (pts > (sum.usablePoints || 0)) return UI.toast('Itne points use nahi ho sakte', 'err');
+              if (pts <= 0) return UI.toast(T.t('pos.enterPoints','Points daalein'), 'warn');
+              if (pts > (sum.usablePoints || 0)) return UI.toast(T.t('pos.pointsTooMany','Itne points use nahi ho sakte'), 'err');
               const val = pts * (sum.rate || 1);
               const existing = payments.find(p => p.method === 'LOYALTY');
               if (existing) { existing.points = pts; existing.amount = Math.min(val, total); }
@@ -1624,21 +1624,21 @@ async function pay(method) {
         // cash sale must pay full (when no credit)
         if (!wantsCredit && effectiveDue > 0.5) {
           if (method === 'CASH' || rows.some(p => p.method === 'CASH')) {
-            return UI.toast('Cash sale: poora bill pay karein — baqi ' + fmt.money(effectiveDue) + ' due hai', 'err', 3200);
+            return UI.toast(T.t('pos.cashFull','Cash sale: poora bill pay karein — baqi ') + fmt.money(effectiveDue) + ' due hai', 'err', 3200);
           }
         }
         if (wantsCredit) {
-          if (!S.customer) return UI.toast('Udhaar ke liye customer select karein', 'err');
+          if (!S.customer) return UI.toast(T.t('pos.creditNeedsCustomer','Udhaar ke liye customer select karein'), 'err');
           // active account check
           if (S.customer.active === false || String(S.customer.status || '').toLowerCase() === 'inactive' || String(S.customer.blocked || '').toLowerCase() === 'true') {
-            return UI.toast('Customer account inactive / blocked — udhaar nahi de sakte', 'err', 3500);
+            return UI.toast(T.t('pos.customerBlocked','Customer account inactive / blocked — udhaar nahi de sakte'), 'err', 3500);
           }
           let limit = Number(S.customer.creditLimit ?? S.customer.limit ?? S.customer.credit ?? App.state.settings.customerCreditLimit ?? App.state.settings.defaultCreditLimit ?? 0);
           let bal = Number(S.__prevBalance ?? S.customer.balance ?? S.customer.bal ?? 0);
           if (limit > 0) {
             const avail = Math.max(0, limit - bal);
             if (effectiveDue > avail + 0.5) {
-              return UI.toast('Credit limit exceeded — limit ' + fmt.money(limit) + ', previous ' + fmt.money(bal) + ', available ' + fmt.money(avail) + ', is bill ka udhaar ' + fmt.money(effectiveDue), 'err', 5000);
+              return UI.toast(T.t('pos.limitExceeded','Credit limit exceeded — limit ') + fmt.money(limit) + ', previous ' + fmt.money(bal) + ', available ' + fmt.money(avail) + ', is bill ka udhaar ' + fmt.money(effectiveDue), 'err', 5000);
             }
             // partial payment info: remaining credit after sale
             const remain = Math.max(0, avail - effectiveDue);
@@ -1649,10 +1649,10 @@ async function pay(method) {
         } else {
           // non-credit sale: must be fully paid (no due)
           if (effectiveDue > 0.5) {
-            return UI.toast('Full payment required — baqi ' + fmt.money(effectiveDue) + ' (Cash ya Card se pay karein, ya Udhaar select karein)', 'err', 3200);
+            return UI.toast(T.t('pos.fullPayReq','Full payment required — baqi ') + fmt.money(effectiveDue) + ' (Cash ya Card se pay karein, ya Udhaar select karein)', 'err', 3200);
           }
         }
-        if (!effectiveRows.length && !wantsCredit) return UI.toast('Koi payment nahi dali', 'warn');
+        if (!effectiveRows.length && !wantsCredit) return UI.toast(T.t('pos.noPayment','Koi payment nahi dali'), 'warn');
         const rowsForValidate = effectiveRows.length ? effectiveRows : rows;
         /* method-wise validation (wallet txn id, cheque no/date, limits…) */
         const bad = await PayUI.validate(rowsForValidate.filter(p => Number(p.amount) > 0));
@@ -1683,7 +1683,7 @@ async function pay(method) {
             const cap = loySum ? Number(loySum.usablePoints || 0) : 0;
             const typed = Number(pointsInput.value || 0);
             let pts = typed > 0 ? Math.floor(typed) : Math.floor(Number(loyRow.amount || 0) / rate);
-            if (cap && pts > cap) { UI.toast('Points cap: is bill par max ' + fmt.num(cap), 'warn', 2600); pts = cap; }
+            if (cap && pts > cap) { UI.toast(T.t('pos.pointsCap','Points cap: is bill par max ') + fmt.num(cap), 'warn', 2600); pts = cap; }
             if (pts < 0) pts = 0;
             const others = rowsForValidate.reduce((a, pp) => a + (String(pp.method).toUpperCase() === 'LOYALTY' ? 0 : Number(pp.amount || 0)), 0);
             const value = Math.max(0, Math.min(Math.round(pts * rate * 100) / 100, Math.max(0, total - Math.min(others, total))));
@@ -1784,7 +1784,7 @@ function showInvoiceConfirmation(sale) {
           const mail = (sale.customerEmail || S.customer && S.customer.email || '');
           if (mail) window.open('mailto:' + mail + '?subject=' + subj + '&body=' + bodyTxt);
           else if (navigator.share) navigator.share({ title: 'Invoice ' + invNo, text: 'Total ' + total });
-          else UI.toast('Send: WhatsApp / Email se share karein (' + invNo + ')', 'ok');
+          else UI.toast(T.t('pos.sendVia','Send: WhatsApp / Email se share karein (') + invNo + ')', 'ok');
         } catch (e) { UI.toast(e.message, 'err'); }
       } },
     { label: '💾 Save (PDF)', onClick: c => {
@@ -1838,7 +1838,7 @@ async function submit(payments, note) {
   if (!navigator.onLine) payload.offlineId = uid('bill');
   try {
     const sale = await API.call('sales.create', { sale: payload });
-    if (sale && sale.queued) { UI.toast('Offline bill queue ho gaya', 'warn'); clearCart(true); return; }
+    if (sale && sale.queued) { UI.toast(T.t('pos.offlineQueued','Offline bill queue ho gaya'), 'warn'); clearCart(true); return; }
     // v2.16 performance: measure bill generation
     const ms = Math.round(performance.now() - t0);
     UI.toast('Sale complete ✅ ' + (sale.invoiceNo || '') + (ms > 200 ? ' · ' + ms + 'ms' : ''), 'ok');
@@ -1853,12 +1853,12 @@ async function submit(payments, note) {
 
 /* ============================ HOLD / CLEAR ================================ */
 async function holdBill() {
-  if (!S.cart.length) return UI.toast('Cart khali hai', 'warn');
+  if (!S.cart.length) return UI.toast(T.t('pos.cartEmpty','Cart khali hai'), 'warn');
   try {
     await API.call('sales.hold', { ref: 'HOLD-' + Date.now().toString().slice(-5),
       cart: { items: S.cart, total: grandTotal(), discount: S.discount },
       customerId: S.customer ? S.customer.id : '' });
-    UI.toast('Bill hold ho gaya ⏸', 'ok'); clearCart(true);
+    UI.toast(T.t('pos.billHeld','Bill hold ho gaya ⏸'), 'ok'); clearCart(true);
   } catch (e) { UI.toast(e.message, 'err'); }
 }
 
@@ -1908,7 +1908,7 @@ function openCartOffcanvas() {
     const hit = findProductByBarcode(code) || S.catalog.find(i => U_norm(i.name).includes(U_norm(code)));
     if (hit) { addToCart({ id: hit.id, code: hit.code, name: hit.name, retailPrice: hit.rp, wholesalePrice: hit.wp, costPrice: hit.cp, stock: hit.qty, imageUrl: hit.img }, 1); inlineInp.value = ''; inlineInp.focus(); UI.toast('Added: ' + hit.name+' ('+code+') — Cart updated','ok'); }
     else {
-      UI.toast('Product nahi mila: ' + code + ' — Add items me search karein', 'warn'); inlineInp.value=''; inlineInp.focus();
+      UI.toast(T.t('pos.productNotFound','Product nahi mila: ') + code + ' — Add items me search karein', 'warn'); inlineInp.value=''; inlineInp.focus();
     }
   };
   inlineInp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); doInlineAdd(); } });
@@ -1965,7 +1965,7 @@ function quickAdd(name) {
     title: '➕ Naya item', size: 'md', body: f.el,
     actions: [{ label: 'Save & add', cls: 'ok', onClick: async c => {
       const v = f.values();
-      if (!v.name) return UI.toast('Name zaroori hai', 'err');
+      if (!v.name) return UI.toast(T.t('pos.nameReq','Name zaroori hai'), 'err');
       try {
         const saved = await API.call('items.save', { item: v });
         UI.toast('Item saved ✅', 'ok'); c();
