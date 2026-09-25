@@ -320,7 +320,7 @@ win.alert = () => { }; win.confirm = () => true;
       /async validate\(payments\)/.test(payui) && /API\.parallel\(active\.map/.test(payui));
     const scr2 = src('App_Screens2.html');
     ok('④ Screen2 perms save: parallel batches + error summary',
-      /const res = await API\.parallel\(jobs\.map/.test(scr2) && /save nahi ho sake/.test(scr2));
+      /const res = await API\.parallel\(jobs\.map/.test(scr2) && /save nahi ho sake|could not be saved/.test(scr2) /* v2.30.8: T.t */);
     ok('④ Screen2 insights: 4 sequential po.get → API.parallel', /_det\s*=\s*await API\.parallel/.test(scr2));
     const code = src('Code.gs');
     ok('④ router: expenses.approveBatch route registered', /'expenses\.approveBatch'/.test(code));

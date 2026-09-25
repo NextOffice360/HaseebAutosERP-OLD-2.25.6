@@ -113,7 +113,7 @@ const ok = (n, c, d) => c ? (pass++, console.log('  ✔ ' + n + (d ? '  → ' + 
     pk.present && pk.scanAware && pk.hasListBtn && /POS jaisa|Scan/.test(pk.hint), JSON.stringify(pk));
 
   const emptyTxt = await page.evaluate(() => (document.querySelector('.drawer .grn-empty') || {}).innerText || '');
-  ok('khali state ka wazeh message', /koi line nahi/i.test(emptyTxt), emptyTxt.replace(/\n/g, ' · ').slice(0, 70));
+  ok('khali state ka wazeh message', /koi line nahi|No lines yet/i.test(emptyTxt) /* v2.30.8: T.t */, emptyTxt.replace(/\n/g, ' · ').slice(0, 70));
 
   /* ---------------- direct mode: sirf 5 columns ---------------- */
   const direct = await page.evaluate(() => ({
@@ -364,7 +364,7 @@ const ok = (n, c, d) => c ? (pass++, console.log('  ✔ ' + n + (d ? '  → ' + 
     await new Promise(r => setTimeout(r, 500));
     return { toasts: (window.__toasts || []).join(' | '), n: document.querySelectorAll('.grn-lines .grn-line').length };
   });
-  ok('validation: 0 lines ke saath Post block', /items add karein/i.test(zero.toasts), JSON.stringify(zero));
+  ok('validation: 0 lines ke saath Post block', /items add karein|add items first/i.test(zero.toasts) /* v2.30.8: T.t */ /* v2.30.8: T.t */, JSON.stringify(zero));
 
   const posted = await page.evaluate(async () => {
     const q = document.querySelector('.drawer .ipk-q');

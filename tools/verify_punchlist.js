@@ -98,7 +98,7 @@ function staticChecks() {
   out[4] = has('apps-script/App_POS2.html', ['Previous balance', 'Closing balance', '__prevBalance'])
     .concat(has('apps-script/Parties.gs', ['PARTY SUMMARY', 'summary: function (partyType, partyId)',
       'opening: U.round(opening, 2)', 'balance: U.round(balance, 2)']))
-    .concat(has('apps-script/App_Screens2.html', ['Pichhla baqaya (prev)']))
+    .concat(has('apps-script/App_Screens2.html', ['Previous balance (prev)'] /* v2.30.8: T.t EN fallback (roman dict me) */))
     .map(r => ({ name: 'prev balance: ' + r.p, ok: r.ok, extra: 'missing' }));
   out[5] = has('apps-script/Parties.gs', ['SUPPLIER', 'payable'])
     .concat(has('apps-script/App_Screens2.html', ['Supplier-wise payable']))

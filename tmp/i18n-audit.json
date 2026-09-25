@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-25T10:46:20.881Z",
+  "generatedAt": "2026-09-25T11:08:58.878Z",
   "totalHits": 732,
   "totalTt": 199,
   "files": [
@@ -526,11 +526,11 @@
           "text": "if (!w) { UI.toast('Popup block ho gaya — browser ki setting allow karein', 'warn'); retur"
         },
         {
-          "line": 303,
+          "line": 306,
           "text": "(due>0? '<tr style=\"font-weight:800;background:#fef2f2\"><td></td><td style=\"text-align:rig"
         },
         {
-          "line": 444,
+          "line": 447,
           "text": "se neeche nahi jaati. Jo label tab bhi na fit ho uspar data-lw=\"1\" mark hota"
         }
       ]
