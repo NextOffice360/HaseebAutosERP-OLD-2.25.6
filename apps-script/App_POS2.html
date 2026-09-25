@@ -46,8 +46,39 @@ function estProfit() {
   return S.cart.reduce((a, l) => a + (l.price - (l.cost || 0)) * l.qty - (l.discount || 0), 0);
 }
 
+/* --------------------------- shop gate (W7 v2.30.5) ------------------------
+   User-report: POS pehle action (cart add) par rok nahi lagta. Ab: pehla sale
+   action par hi check (30s cache) — band ho to popup + banner, cart me kuch
+   nahi jata. window.__shopSession loadShopState sab users ke liye set karta hai. */
+let _posShopChk = { at: 0, open: true };
+async function shopOpenOk() {
+  try { if (String((App.state.settings || {})['shop.requireOpen']) === 'false') return true; } catch (e) { }
+  if (window.__shopSession && window.__shopSession.id) return true;
+  if (Date.now() - _posShopChk.at < 30000) return _posShopChk.open;
+  try {
+    const st = await API.call('shop.status', {}, { offlineFallback: () => null });
+    _posShopChk = { at: Date.now(), open: !(st && st.open === false) };
+  } catch (e) { _posShopChk = { at: Date.now(), open: true }; }
+  return _posShopChk.open;
+}
+function shopBlockedPopup() {
+  const canOpen = App.can('pos.cash.manage');
+  try {
+    UI2.modal({
+      title: '🔒 Shop band hai', size: 'sm',
+      body: h('div', null,
+        h('p', { style: { margin: '0 0 8px' } }, 'Sale shuru karne se pehle shop khulna zaroori hai — pehla action (item add) rok diya gaya.'),
+        h('p', { class: 'sub', style: { margin: 0 } }, canOpen ? '"Shop kholein" dabayen — opening cash ke sath din shuru hoga.' : 'Barah-e-karam manager/cashier se shop khulwayein.')),
+      actions: [ { label: 'Close', onClick: c => c() },
+        canOpen ? { label: '🗪 Shop kholein', cls: 'ok', onClick: c => { c(); try { window.shopQuickDialog(); } catch (e) { UI.toast('Shop dialog nahi khula', 'err'); } } } : null
+      ].filter(Boolean)
+    });
+  } catch (e) { }
+  try { ShopUI.show('Shop band hai — sale ke kaam rok diye gaye. Pehle shop kholein.', 'block', { shop: canOpen }); } catch (e) { }
+}
 /* ------------------------------ add to cart ------------------------------- */
-function addToCart(item, qty) {
+async function addToCart(item, qty) {
+  if (!(await shopOpenOk())) { shopBlockedPopup(); return; }
   qty = qty || 1;
   const wholesale = S.customer && S.customer.typeId && /wholesale|corporate/i.test(S.customer.typeName || '');
   const price = wholesale && item.wholesalePrice ? item.wholesalePrice : item.retailPrice;
@@ -1068,7 +1099,9 @@ function discountModal() {
 }
 
 /* ============================== QTY PAD =================================== */
-function qtyPad(item) {
+async function qtyPad(item) {
+  /* W7 v2.30.5 — allowDirectQty path par bhi wahi shop rok (pehla action) */
+  if (!(await shopOpenOk())) { shopBlockedPopup(); return; }
   let qty = '1';
   const display = h('div', { style: { fontSize: 'var(--fs-4xl)', fontWeight: '800', textAlign: 'center', padding: '6px 0' } }, '1');
   const pad = h('div', { class: 'qty-pad' });
@@ -1281,7 +1314,8 @@ function closeCartDrawerSync() {
 }
 
 /* =============================== PAYMENT ================================== */
-function pay(method) {
+async function pay(method) {
+  if (!(await shopOpenOk())) { shopBlockedPopup(); return; }
   if (!S.cart.length) return UI.toast('Cart khali hai', 'warn');
   // close drawer first so modal is on top (premium: no overlay behind)
   closeCartDrawerSync();

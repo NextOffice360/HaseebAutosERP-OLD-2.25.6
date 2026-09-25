@@ -81,7 +81,20 @@ App_/Pwa_ split) + `docs/ARCHITECTURE.md` (conventions + data flow). Saare waves
 (tbl.reload() rowActions me, Clear filters emptyAction). **Sabak:** UI2.table wrap
 return karta hai — append lazmi (DOM-probe debugging se pakra). Chrome-libs restore:
 fetch_chrome_libs ke atspi/avahi gaps manually .deb se bhare (libnspr/nss/atk/atspi/
-avahi/cairo/pango). Quota: 41.3MB effective (stale display ignore). **W9.T3.5 data-reactivity ✔ (v2.30.5):** Store.sub/emit engine + API.call
+avahi/cairo/pango). Quota: 41.3MB effective (stale display ignore). **USER-BUG CLUSTER FIX (v2.30.5, 2026-09-25) — shop/wizard/POS/prints:**
+(1) demo shop-state 3 sources me bikhrha tha (pill hard-coded OPEN vs banner
+CLOSED) — ab demoShopSync se EK sachai; (2) POS pehle action par block:
+addToCart + qtyPad gate + 'Shop band hai' popup/banner (PWA.POS me bhi pay);
+(3) wizard: Skip (persisted) + Discard changes + done par banner-hide +
+persistence (mock SETTINGS localStorage overlay — reload par wizard nag band);
+(4) shop screen par 'wizard dobara chalayen' (reset+open, settings.manage);
+(5) invoice me 'Printed at' timestamp; (6) loadShopState ab sab users ke liye
+session parhta hai (pill sirf UI-hide). GATE: test_shop_setup_flow.js 21/0.
+pos_multi/e2e me shop-open preamble (nayi POS reality). **Note: agar koi
+SPECIFIC save button ab bhi fail ho to screen ka naam batayein — wizard-save,
+settings Save-all, orders/items sab DOM-verified GREEN hain.**
+**Agla: T3.1 UI.bindDeps ya W1.T1 API audit; items.list cap-100 slice.**
+**W9.T3.5 data-reactivity ✔ (v2.30.5):** Store.sub/emit engine + API.call
 write-emit + UI2.table live auto-reload (debounce, live:false opt-out); mock
 customers.save persist bug fix. Gate sweep 13/0. fetch_chrome_libs.py ab
 khud-kaafi (atspi/avahi static map — reset par ek-command env recovery).

@@ -242,6 +242,9 @@ try {
   /* ⑮ POS cart + Save All */
   const pos = await page.evaluate(async () => {
     App._noDirtyGuard = true; App.go('pos'); await new Promise(r => setTimeout(r, 1200)); App._noDirtyGuard = false;
+    /* v2.30.5 (POS shop-gate) — cart add se pehle shop OPEN */
+    try { await API.call('cash.session.open', { openingCash: 5000 }); } catch (e) { }
+    try { window.loadShopState && await window.loadShopState(); } catch (e) { }
     const cat = await API.call('offline.pull', {});
     const hit = ((cat || {}).items || []).filter(x => Number(x.rp) > 0)[0];
     if (!hit) return { err: 'catalog khaali' };

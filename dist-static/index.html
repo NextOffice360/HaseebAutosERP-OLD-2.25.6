@@ -7270,6 +7270,8 @@ const P = {
     const metaRows = [];
     if (vis('invoiceNo', true)) metaRows.push(['Invoice No.', esc(sale.invoiceNo || '—')]);
     if (vis('date', true)) metaRows.push(['Date', esc(dt)]);
+    /* v2.30.5 (user-report) — print par mukammal timestamp (settings-driven DT) */
+    metaRows.push(['Printed at', esc((typeof DT !== 'undefined' && DT.format) ? DT.format(new Date(), 'stamp') : dt)]);
     if (vis('salesman', false) && sale.salespersonName) metaRows.push(['Salesman', esc(sale.salespersonName)]);
     if (sale.reference) metaRows.push(['Reference / PO', esc(sale.reference)]);
     if (sale.paymentTerms) metaRows.push(['Payment terms', esc(sale.paymentTerms)]);
@@ -17700,8 +17702,39 @@ function estProfit() {
   return S.cart.reduce((a, l) => a + (l.price - (l.cost || 0)) * l.qty - (l.discount || 0), 0);
 }
 
+/* --------------------------- shop gate (W7 v2.30.5) ------------------------
+   User-report: POS pehle action (cart add) par rok nahi lagta. Ab: pehla sale
+   action par hi check (30s cache) — band ho to popup + banner, cart me kuch
+   nahi jata. window.__shopSession loadShopState sab users ke liye set karta hai. */
+let _posShopChk = { at: 0, open: true };
+async function shopOpenOk() {
+  try { if (String((App.state.settings || {})['shop.requireOpen']) === 'false') return true; } catch (e) { }
+  if (window.__shopSession && window.__shopSession.id) return true;
+  if (Date.now() - _posShopChk.at < 30000) return _posShopChk.open;
+  try {
+    const st = await API.call('shop.status', {}, { offlineFallback: () => null });
+    _posShopChk = { at: Date.now(), open: !(st && st.open === false) };
+  } catch (e) { _posShopChk = { at: Date.now(), open: true }; }
+  return _posShopChk.open;
+}
+function shopBlockedPopup() {
+  const canOpen = App.can('pos.cash.manage');
+  try {
+    UI2.modal({
+      title: '🔒 Shop band hai', size: 'sm',
+      body: h('div', null,
+        h('p', { style: { margin: '0 0 8px' } }, 'Sale shuru karne se pehle shop khulna zaroori hai — pehla action (item add) rok diya gaya.'),
+        h('p', { class: 'sub', style: { margin: 0 } }, canOpen ? '"Shop kholein" dabayen — opening cash ke sath din shuru hoga.' : 'Barah-e-karam manager/cashier se shop khulwayein.')),
+      actions: [ { label: 'Close', onClick: c => c() },
+        canOpen ? { label: '🗪 Shop kholein', cls: 'ok', onClick: c => { c(); try { window.shopQuickDialog(); } catch (e) { UI.toast('Shop dialog nahi khula', 'err'); } } } : null
+      ].filter(Boolean)
+    });
+  } catch (e) { }
+  try { ShopUI.show('Shop band hai — sale ke kaam rok diye gaye. Pehle shop kholein.', 'block', { shop: canOpen }); } catch (e) { }
+}
 /* ------------------------------ add to cart ------------------------------- */
-function addToCart(item, qty) {
+async function addToCart(item, qty) {
+  if (!(await shopOpenOk())) { shopBlockedPopup(); return; }
   qty = qty || 1;
   const wholesale = S.customer && S.customer.typeId && /wholesale|corporate/i.test(S.customer.typeName || '');
   const price = wholesale && item.wholesalePrice ? item.wholesalePrice : item.retailPrice;
@@ -18722,7 +18755,9 @@ function discountModal() {
 }
 
 /* ============================== QTY PAD =================================== */
-function qtyPad(item) {
+async function qtyPad(item) {
+  /* W7 v2.30.5 — allowDirectQty path par bhi wahi shop rok (pehla action) */
+  if (!(await shopOpenOk())) { shopBlockedPopup(); return; }
   let qty = '1';
   const display = h('div', { style: { fontSize: 'var(--fs-4xl)', fontWeight: '800', textAlign: 'center', padding: '6px 0' } }, '1');
   const pad = h('div', { class: 'qty-pad' });
@@ -18935,7 +18970,8 @@ function closeCartDrawerSync() {
 }
 
 /* =============================== PAYMENT ================================== */
-function pay(method) {
+async function pay(method) {
+  if (!(await shopOpenOk())) { shopBlockedPopup(); return; }
   if (!S.cart.length) return UI.toast('Cart khali hai', 'warn');
   // close drawer first so modal is on top (premium: no overlay behind)
   closeCartDrawerSync();
@@ -24410,6 +24446,20 @@ App.registerScreen('shop', {
     const host = h('div', { class: 'shop-wrap' }); body.appendChild(host);
     host.appendChild(UI2.skeleton ? UI2.skeleton(4) : h('div', { class: 'empty' }, 'Load ho raha hai…'));
     renderShopScreen(host);
+    const wizHost = h('div'); body.appendChild(wizHost);   /* screen-root: renderShopScreen host ko replace na kare */
+    /* v2.30.5 (user-report) — wizard dobara chalana: app configured ho to wizard/
+       banner khud chhupte hai; yahan se owner dobara chala sakta hai (reset+open). */
+    if (App.can('settings.manage')) {
+      const wc = h('div', { class: 'card', style: { marginTop: '10px' } },
+        h('div', { class: 'card-body tight' },
+          h('div', { class: 'muted', style: { fontSize: 'var(--fs-xs)', marginBottom: '8px' } },
+            'Application pehle se configured ho to Setup Wizard aur banner khud chhup jate hai · العیون متعین ہونے پر ویزرڈ چھپ جاتا ہے'),
+          h('button', { class: 'btn sm', onclick: async () => {
+            try { await API.call('system.wizardSave', { reset: true }); } catch (e) { }
+            try { ShopUI.wizard(ShopUI.wizardStatus || {}); } catch (e) { UI.toast(e.message || 'Wizard nahi khula', 'err'); }
+          } }, '🧭 Setup wizard dobara chalayen · دوبارہ سیٹ اپ')));
+      wizHost.appendChild(wc);
+    }
   }
 });
 
@@ -28552,8 +28602,8 @@ function wireShell() {
   async function loadShopState() {
     const btn = $('#btnShop'); if (!btn) return;
     const txt = $('#shopStateTxt');
-    if (!App.can('pos.cash.manage')) { btn.hidden = true; return; }
-    btn.hidden = false;
+    const priv = App.can('pos.cash.manage');
+    btn.hidden = !priv;   /* v2.30.5 — session sab ke liye parhe (POS gate isi se) */
     try {
       const ses = await API.call('cash.session.current', {}, { offlineFallback: () => null });
       const open = !!(ses && ses.id);
@@ -28577,7 +28627,7 @@ function wireShell() {
   async function shopQuickDialog() {
     let ses = null;
     try { ses = await API.call('cash.session.summary', {}, { offlineFallback: () => null }); } catch (e) { ses = null; }
-    const after = () => { loadShopState(); if (App.current === 'shop') App.refresh(); };
+    const after = () => { loadShopState(); try { ShopUI.hide(); } catch (e) { } if (App.current === 'shop') App.refresh(); };
 
     if (!ses) {
       /* ---------- OPEN THE DAY ---------- */
@@ -28838,7 +28888,14 @@ const ShopUI = {
     const m = UI2.modal({
       title: '🧭 Setup Wizard — pehla din', size: 'lg', sticky: true, body,
       actions: [
-        { label: '⏭ Baad mein', cls: 'ghost', onClick: c => c() },
+        { label: '↩ Discard changes', cls: 'ghost', onClick: c => c() },
+        { label: '⏭ Skip (abhi nahi)', cls: 'ghost', onClick: async c => {
+            /* v2.30.5 — skip flag persist: banner/wizard dobara nahi nag karega */
+            try { await API.call('system.wizardSave', { skipped: true }); } catch (e) { }
+            try { ShopUI.hide(); } catch (e) { }
+            UI.toast('Setup skip hua — Settings \u25b8 Shop screen se dobara chala sakte hain', 'ok', 4200);
+            c();
+          } },
         { label: '✅ Mukammal karein', cls: 'ok', onClick: async c => {
             const out = { businessName: bus.value.trim(), 'shop.name': shopName.value.trim(),
               'shop.phone': phone.value.trim(), 'shop.address': addr.value.trim(),
@@ -28863,6 +28920,7 @@ const ShopUI = {
             } catch (e) { }
             UI.toast('Setup mukammal ✅', 'ok');
             try { loadShopState(); } catch (e) { }
+            try { ShopUI.hide(); } catch (e) { }
             c();
           } }
       ]

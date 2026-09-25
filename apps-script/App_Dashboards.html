@@ -830,6 +830,20 @@ App.registerScreen('shop', {
     const host = h('div', { class: 'shop-wrap' }); body.appendChild(host);
     host.appendChild(UI2.skeleton ? UI2.skeleton(4) : h('div', { class: 'empty' }, 'Load ho raha hai…'));
     renderShopScreen(host);
+    const wizHost = h('div'); body.appendChild(wizHost);   /* screen-root: renderShopScreen host ko replace na kare */
+    /* v2.30.5 (user-report) — wizard dobara chalana: app configured ho to wizard/
+       banner khud chhupte hai; yahan se owner dobara chala sakta hai (reset+open). */
+    if (App.can('settings.manage')) {
+      const wc = h('div', { class: 'card', style: { marginTop: '10px' } },
+        h('div', { class: 'card-body tight' },
+          h('div', { class: 'muted', style: { fontSize: 'var(--fs-xs)', marginBottom: '8px' } },
+            'Application pehle se configured ho to Setup Wizard aur banner khud chhup jate hai · العیون متعین ہونے پر ویزرڈ چھپ جاتا ہے'),
+          h('button', { class: 'btn sm', onclick: async () => {
+            try { await API.call('system.wizardSave', { reset: true }); } catch (e) { }
+            try { ShopUI.wizard(ShopUI.wizardStatus || {}); } catch (e) { UI.toast(e.message || 'Wizard nahi khula', 'err'); }
+          } }, '🧭 Setup wizard dobara chalayen · دوبارہ سیٹ اپ')));
+      wizHost.appendChild(wc);
+    }
   }
 });
 

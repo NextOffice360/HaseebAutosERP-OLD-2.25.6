@@ -735,6 +735,32 @@ let SESSION_HISTORY = [
     closedAt: new Date(Date.now() - 46 * 3600e3).toISOString(), status: 'CLOSED',
     openingCash: 4000, expectedCash: 61200, closingCash: 61200, variance: 0, userId: 'USR7' }
 ];
+/* v2.30.5 (user-report) — SETTINGS persistence (demo): wizardSave ke baad reload
+   par bhi setup.wizardDone qayam rahe (warna wizard/banner har reload par wapas). */
+try { const _SOV = JSON.parse(localStorage.getItem('ha_mock_set_ov') || '{}');
+  Object.keys(_SOV).forEach(k => { SETTINGS[k] = _SOV[k]; }); } catch (e) { }
+function mockPersistSettings() {
+  try { localStorage.setItem('ha_mock_set_ov', JSON.stringify(SETTINGS)); } catch (e) { }
+}
+/* v2.30.5 (user-report) — demo shop-state EK jagah: shop.* (window.__demoSessionOpen)
+   aur cash.* (CASH_SESSION) ko sync rakhta hai — pehle pill OPEN keh raha tha aur
+   banner CLOSED (do alag sources) isi liye. */
+function demoShopSync() {
+  if (window.__demoSessionOpen) {
+    const ses = window.__demoSessionOpen;
+    if (!CASH_SESSION || CASH_SESSION.status !== 'OPEN') {
+      CASH_SESSION = { id: ses.id || 'SES1', sessionNo: ses.sessionNo || 'SES-SDQ-00042', locationId: 'LOC-SDQ',
+        openedAt: ses.openedAt || new Date().toISOString(), openingCash: Number(ses.openingCash) || 0,
+        status: 'OPEN', notes: '',
+        totals: { cashIn: 0, cashOut: 0, expenses: 0, card: 0, netCash: 0, txns: 0 } };
+      CASH_SESSION.expectedCash = CASH_SESSION.openingCash;
+    }
+  } else if (CASH_SESSION && CASH_SESSION.status === 'OPEN') {
+    CASH_SESSION.status = 'CLOSED';
+    CASH_SESSION.closedAt = new Date().toISOString();
+  }
+  return CASH_SESSION;
+}
 let CASH_SESSION = {
   id: 'SES1', sessionNo: 'SES-SDQ-00042', locationId: 'LOC-SDQ',
   openedAt: new Date(Date.now() - 5.4 * 3600e3).toISOString(),
@@ -1266,14 +1292,20 @@ window.MockAPI = {
         summary: { openingCash: Number(ses.openingCash || 0), expectedCash: 0, closingCash: Number((p || {}).closingCash || 0), variance: 0, cashSales: 0, creditSales: 0, refunds: 0, netSales: 0, expenseTotal: 0, invoices: 0, sessionNo: ses.sessionNo } },
       share: 'SHOP CLOSE REPORT' };
   },
-  'system.setupStatus': () => ({ version: 'demo', needsWizard: String(SETTINGS['setup.wizardDone']) !== 'true',
-    steps: { business: true, admin: true, shopOpen: !!window.__demoSessionOpen, demo: true, done: String(SETTINGS['setup.wizardDone']) === 'true' },
+  'system.setupStatus': () => ({ version: 'demo',
+    needsWizard: String(SETTINGS['setup.wizardDone']) !== 'true' && String(SETTINGS['setup.wizardSkipped']) !== 'true',
+    steps: { business: true, admin: true, shopOpen: !!window.__demoSessionOpen, demo: true,
+      skipped: String(SETTINGS['setup.wizardSkipped']) === 'true', done: String(SETTINGS['setup.wizardDone']) === 'true' },
     seeded: { users: 9, items: (window.ITEMS || []).length, customers: 2, suppliers: 1, settings: 61, locations: 3, sales: 0, stock: 0 },
     shop: { open: !!window.__demoSessionOpen }, demoVisible: String(SETTINGS['data.showDemo']) !== 'false',
     businessName: SETTINGS.businessName, shopName: '', message: 'demo' }),
   'system.wizardSave': p => { const v = (p || {}); if (v['businessName']) SETTINGS.businessName = v['businessName'];
     if (v['shop.name']) SETTINGS['shop.name'] = v['shop.name']; if (v.demoDecision) SETTINGS['data.showDemo'] = String(v.demoDecision) !== 'false' ? 'true' : 'false';
-    if (v.done) SETTINGS['setup.wizardDone'] = 'true'; return { saved: Object.keys(v) }; },
+    if (v.done) SETTINGS['setup.wizardDone'] = 'true';
+    if (v.skipped) SETTINGS['setup.wizardSkipped'] = 'true';
+    if (v.reset) { SETTINGS['setup.wizardDone'] = ''; SETTINGS['setup.wizardSkipped'] = ''; }
+    mockPersistSettings();
+    return { saved: Object.keys(v) }; },
   'system.wizardAdminPassword': p => ({ ok: true, username: 'owner' }),
   'admin.demoStats': () => ({ visible: String(SETTINGS['data.showDemo']) !== 'false',
     counts: { Items: 10, Customers: 2, Suppliers: 1, Stock: 30, Sales: 0, Users: 1 }, total: 44 }),
@@ -1988,12 +2020,15 @@ window.MockAPI = {
     };
   },
   'exports.pdf': p => ({ id: 'PDF' + Date.now(), url: '#', name: (p.name || 'document') + '.pdf', format: 'PDF', size: 0 }),
-  'cash.session.current': () => ({
-    id: 'SES1', sessionNo: 'CS-SDQ-01001', locationId: 'LOC-SDQ', openedAt: new Date(Date.now() - 5 * 3600e3).toISOString(),
-    openingCash: 5000, status: 'OPEN', totals: { cashIn: 84500, cashOut: 0, expenses: 3200, card: 22000, netCash: 81300, txns: 34 },
-    expectedCash: 86300
-  }),
+  'cash.session.current': () => {
+    /* v2.30.5 — ab shop.status wali hi sachai se (band shop → null) */
+    const cs = demoShopSync();
+    if (!window.__demoSessionOpen || !cs || cs.status !== 'OPEN') return null;
+    return { id: cs.id, sessionNo: cs.sessionNo, locationId: cs.locationId, openedAt: cs.openedAt,
+      openingCash: cs.openingCash, status: 'OPEN', totals: cs.totals, expectedCash: cs.expectedCash };
+  },
   'cash.session.summary': function (p) {
+    demoShopSync();
     if (!CASH_SESSION || CASH_SESSION.status !== 'OPEN') return null;
     const ses = CASH_SESSION;
     const moves = CASH_MOVES.map(function (m) {
@@ -2021,6 +2056,7 @@ window.MockAPI = {
     };
   },
   'cash.move': function (p) {
+    demoShopSync();
     if (!CASH_SESSION || CASH_SESSION.status !== 'OPEN') throw new Error('Pehle shop open karein.');
     const type = String(p.type || '').toUpperCase();
     if (['CASH_IN', 'CASH_OUT', 'DROP'].indexOf(type) < 0) throw new Error('Ghalat type.');
@@ -2035,7 +2071,18 @@ window.MockAPI = {
     CASH_SESSION.expectedCash = CASH_SESSION.openingCash + t.netCash;
     return MockAPI['cash.session.summary']({});
   },
-  'cash.session.open': () => ({ id: 'SES1', status: 'OPEN' }),
+  'cash.session.open': p => {
+    /* v2.30.5 — shop.open ke sath EK hi sachai (pehle CASH_SESSION azaad tha) */
+    const r = MockAPI['shop.open']({ openingCash: Number((p || {}).openingCash || 0) });
+    demoShopSync();
+    return { id: r.session.id, status: 'OPEN' };
+  },
+  'cash.session.close': p => {
+    const exp = (CASH_SESSION && CASH_SESSION.expectedCash) || 0;
+    MockAPI['shop.close']({ closingCash: Number((p || {}).closingCash || 0) });
+    demoShopSync();
+    return { variance: Number((p || {}).closingCash || 0) - exp };
+  },
   'cash.session.close': p => ({ variance: Number(p.closingCash || 0) - 86300 }),
 
   'reports.dashboard': () => {
@@ -2742,30 +2789,26 @@ window.MockAPI = {
   },
   'notifications.clear': () => { const n = NOTIFICATIONS.length; NOTIFICATIONS.length = 0; return { cleared: n }; },
 
+  /* v2.30.5 — LAST definition jeet-ti hai: yahin shop-status sync (demoShopSync) */
   'cash.session.current': () => {
-    if (!CASH_SESSION || CASH_SESSION.status !== 'OPEN') return null;
+    demoShopSync();
+    if (!window.__demoSessionOpen || !CASH_SESSION || CASH_SESSION.status !== 'OPEN') return null;
     return Object.assign({}, CASH_SESSION, { expectedCash: CASH_SESSION.expectedCash });
   },
   'cash.session.open': p => {
-    if (CASH_SESSION && CASH_SESSION.status === 'OPEN') return CASH_SESSION;
-    CASH_SESSION = {
-      id: 'SES' + (Date.now() % 10000), sessionNo: 'SES-SDQ-00043', locationId: 'LOC-SDQ',
-      openedAt: new Date().toISOString(), openingCash: Number(p.openingCash || 0), status: 'OPEN',
-      notes: p.notes || '',
-      totals: { cashIn: 0, cashOut: 0, expenses: 0, card: 0, netCash: 0, txns: 0 }
-    };
-    CASH_SESSION.expectedCash = CASH_SESSION.openingCash;
+    MockAPI['shop.open']({ openingCash: Number((p || {}).openingCash || 0) });
+    demoShopSync();
     CASH_MOVES = [];
     return CASH_SESSION;
   },
   'cash.session.close': p => {
+    demoShopSync();
     if (!CASH_SESSION || CASH_SESSION.status !== 'OPEN') throw new Error('Koi open session nahi mili.');
-    CASH_SESSION.status = 'CLOSED';
+    const expected = CASH_SESSION.expectedCash || 0;
+    MockAPI['shop.close']({ closingCash: Number(p.closingCash || 0) });
+    demoShopSync();
     CASH_SESSION.closingCash = Number(p.closingCash || 0);
-    CASH_SESSION.expectedCash = CASH_SESSION.expectedCash;
-    CASH_SESSION.variance = Math.round((Number(p.closingCash || 0) - CASH_SESSION.expectedCash) * 100) / 100;
-    CASH_SESSION.closedAt = new Date().toISOString();
-    CASH_SESSION.notes = p.notes || CASH_SESSION.notes || '';
+    CASH_SESSION.variance = Math.round((Number(p.closingCash || 0) - expected) * 100) / 100;
     SESSION_HISTORY.unshift(Object.assign({}, CASH_SESSION));
     return CASH_SESSION;
   },

@@ -748,11 +748,12 @@ Setup.wizardStatus = function (p, s) {
     admin: !!(owner && U.str(st['setup.adminPasswordSet']) === 'true'),
     shopOpen: !!(shop && shop.open),
     demo: U.str(st['setup.demoDecision']) !== '',       /* decide: rakhna ya hatana */
+    skipped: U.str(st['setup.wizardSkipped']) === 'true',
     done: U.str(st['setup.wizardDone']) === 'true'
   };
   return {
     version: CONFIG.VERSION,
-    needsWizard: !steps.done,
+    needsWizard: !steps.done && !steps.skipped,
     steps: steps,
     seeded: counts,
     shop: shop,
@@ -776,6 +777,9 @@ Setup.wizardSave = function (p, s) {
     vals['setup.demoDecision'] = String(p.demoDecision) !== 'false' ? 'keep' : 'remove';
   }
   if (p.done) vals['setup.wizardDone'] = 'true';
+  /* v2.30.5 (user-report) — Skip + Reset (Settings se dobara chalana) */
+  if (p.skipped) vals['setup.wizardSkipped'] = 'true';
+  if (p.reset) { vals['setup.wizardDone'] = ''; vals['setup.wizardSkipped'] = ''; }
   if (Object.keys(vals).length) DB.setSettings(vals, s);
   var out = { saved: Object.keys(vals), status: Setup.wizardStatus({}, s) };
   if (p.demoDecision !== undefined && String(p.demoDecision) === 'false') {

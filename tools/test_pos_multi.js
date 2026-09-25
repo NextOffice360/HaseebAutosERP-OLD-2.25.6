@@ -84,6 +84,10 @@ const errors = [];
   const sleep = ms => new Promise(r => setTimeout(r, ms));
   /* demo is auth-gated (same as smoke.js): poll + login (shared harness) */
   await loginDom(doc, win);
+  /* v2.30.5 (POS shop-gate) — tests ab bhi cart add karein to pehle shop OPEN */
+  try { await win.API.call('cash.session.open', { openingCash: 5000 }); } catch (e) { }
+  try { win.loadShopState && win.loadShopState(); } catch (e) { }
+  await new Promise(r => setTimeout(r, 300));
   await sleep(400);
   win.App.go('pos');
   { let tries = 0; while (tries++ < 40 && !(await win.eval('!!(window.POS2 && POS2.ui && POS2.ui.pkHost && POS2.S.catalog.length)'))) await sleep(150); }

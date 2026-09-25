@@ -113,6 +113,8 @@ const P = {
     const metaRows = [];
     if (vis('invoiceNo', true)) metaRows.push(['Invoice No.', esc(sale.invoiceNo || '—')]);
     if (vis('date', true)) metaRows.push(['Date', esc(dt)]);
+    /* v2.30.5 (user-report) — print par mukammal timestamp (settings-driven DT) */
+    metaRows.push(['Printed at', esc((typeof DT !== 'undefined' && DT.format) ? DT.format(new Date(), 'stamp') : dt)]);
     if (vis('salesman', false) && sale.salespersonName) metaRows.push(['Salesman', esc(sale.salespersonName)]);
     if (sale.reference) metaRows.push(['Reference / PO', esc(sale.reference)]);
     if (sale.paymentTerms) metaRows.push(['Payment terms', esc(sale.paymentTerms)]);

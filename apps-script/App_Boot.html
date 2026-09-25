@@ -493,8 +493,8 @@ function wireShell() {
   async function loadShopState() {
     const btn = $('#btnShop'); if (!btn) return;
     const txt = $('#shopStateTxt');
-    if (!App.can('pos.cash.manage')) { btn.hidden = true; return; }
-    btn.hidden = false;
+    const priv = App.can('pos.cash.manage');
+    btn.hidden = !priv;   /* v2.30.5 — session sab ke liye parhe (POS gate isi se) */
     try {
       const ses = await API.call('cash.session.current', {}, { offlineFallback: () => null });
       const open = !!(ses && ses.id);
@@ -518,7 +518,7 @@ function wireShell() {
   async function shopQuickDialog() {
     let ses = null;
     try { ses = await API.call('cash.session.summary', {}, { offlineFallback: () => null }); } catch (e) { ses = null; }
-    const after = () => { loadShopState(); if (App.current === 'shop') App.refresh(); };
+    const after = () => { loadShopState(); try { ShopUI.hide(); } catch (e) { } if (App.current === 'shop') App.refresh(); };
 
     if (!ses) {
       /* ---------- OPEN THE DAY ---------- */
@@ -779,7 +779,14 @@ const ShopUI = {
     const m = UI2.modal({
       title: '🧭 Setup Wizard — pehla din', size: 'lg', sticky: true, body,
       actions: [
-        { label: '⏭ Baad mein', cls: 'ghost', onClick: c => c() },
+        { label: '↩ Discard changes', cls: 'ghost', onClick: c => c() },
+        { label: '⏭ Skip (abhi nahi)', cls: 'ghost', onClick: async c => {
+            /* v2.30.5 — skip flag persist: banner/wizard dobara nahi nag karega */
+            try { await API.call('system.wizardSave', { skipped: true }); } catch (e) { }
+            try { ShopUI.hide(); } catch (e) { }
+            UI.toast('Setup skip hua — Settings \u25b8 Shop screen se dobara chala sakte hain', 'ok', 4200);
+            c();
+          } },
         { label: '✅ Mukammal karein', cls: 'ok', onClick: async c => {
             const out = { businessName: bus.value.trim(), 'shop.name': shopName.value.trim(),
               'shop.phone': phone.value.trim(), 'shop.address': addr.value.trim(),
@@ -804,6 +811,7 @@ const ShopUI = {
             } catch (e) { }
             UI.toast('Setup mukammal ✅', 'ok');
             try { loadShopState(); } catch (e) { }
+            try { ShopUI.hide(); } catch (e) { }
             c();
           } }
       ]
