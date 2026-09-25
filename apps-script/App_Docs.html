@@ -94,7 +94,21 @@ function docDetail(r, reload) {
     h('div', { class: 'f-col' }, h('label', null, 'Status'), statusChip(r.status), h('span', { class: 'muted' }, 'v' + (r.version || 1))),
     h('div', { class: 'f-col' }, h('label', null, 'Created'), h('b', null, fmt.date(r.createdAt, true)), h('span', { class: 'muted' }, r.action || '')));
   host.appendChild(meta);
-  if (r.qr) host.appendChild(h('div', { class: 'f-hint', style: { marginBottom: '8px' } }, 'QR payload: ' + r.qr));
+  /* v2.30.5 (D10, doc-intel §10) — QR INSPECTION VIEW: bara QR + encoded value +
+     scannability note (print se pehle parhne-qogal check) */
+  if (r.qr) {
+    const insp = h('div', { style: { display: 'flex', gap: '14px', alignItems: 'center', flexWrap: 'wrap',
+      border: '1px solid var(--line)', borderRadius: '12px', padding: '12px', marginBottom: '10px', background: 'var(--panel-2)' } });
+    const img = h('img', { 'data-qr-inspect': '1', alt: 'QR inspection — ' + (r.docNo || ''), width: '160', height: '160',
+      style: { width: '160px', height: '160px', maxWidth: '100%', background: '#fff', padding: '8px', borderRadius: '8px' } });
+    Promise.resolve(QR.dataUrl(r.qr, 220)).then(d => { if (d) img.src = d; }).catch(() => { });
+    insp.append(img, h('div', { style: { flex: '1', minWidth: '200px' } },
+      h('div', { class: 'f-hint', style: { marginBottom: '4px' } }, 'Encoded value:'),
+      h('code', { style: { fontSize: 'var(--fs-xs)', wordBreak: 'break-all', display: 'block', marginBottom: '6px' } }, r.qr),
+      h('div', { style: { fontSize: 'var(--fs-xs)', color: (r.qr.length > 900 ? 'var(--warn)' : 'var(--ok)'), fontWeight: '600' } },
+        r.qr.length > 900 ? '⚠ Lambi value — QR version bara lagega, test-scan karein' : '✓ Scan-safe size (compact value + margin)')));
+    host.appendChild(insp);
+  }
   const rel = h('div');
   host.appendChild(h('div', { class: 'sb-group', style: { padding: '6px 0' } }, 'Related documents'));
   host.appendChild(rel);

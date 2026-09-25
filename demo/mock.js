@@ -822,7 +822,16 @@ Object.assign(TRANSLATIONS, {
   'boot.shop.cashOut': { key: 'boot.shop.cashOut', en: '\u2B06 Cash out', roman: '\u2B06 Cash kharch', ur: '\u2B06 نقد اخراجات' },
   'boot.shop.openingCash': { key: 'boot.shop.openingCash', en: 'Opening cash', roman: 'Shuruaati cash', ur: 'ابتدائی نقد' },
   'boot.shop.cashInSales': { key: 'boot.shop.cashInSales', en: 'Cash in (sales)', roman: 'Cash aaya (sales)', ur: 'نقد آمد (فروخت)' },
-  'core.noAccess': { key: 'core.noAccess', en: 'No access to this screen', roman: 'Is screen ka access nahi hai', ur: 'اس اسکرین کی اجازت نہیں' }
+  'core.noAccess': { key: 'core.noAccess', en: 'No access to this screen', roman: 'Is screen ka access nahi hai', ur: 'اس اسکرین کی اجازت نہیں' },
+  'pos.scanned': { key: 'pos.scanned', en: 'Scanned', roman: 'Scan hua', ur: 'اسکین ہوا' },
+  'pos.addedCart': { key: 'pos.addedCart', en: 'Added to cart', roman: 'Cart me add ho gaya', ur: 'کارٹ میں شامل ہو گیا' },
+  'pos.codeNotFound': { key: 'pos.codeNotFound', en: 'Code not found', roman: 'Code nahi mila', ur: 'کوڈ نہیں ملا' },
+  'pos.tryManual': { key: 'pos.tryManual', en: 'try manual search (F2)', roman: 'manual search try karein (F2)', ur: 'دستی تلاش آزمائیں (F2)' },
+  'pos.pickerFail': { key: 'pos.pickerFail', en: 'Product picker did not load', roman: 'Product picker load nahi hua', ur: 'پروڈکٹ پکر لوڈ نہیں ہوا' },
+  'pos.noSelect': { key: 'pos.noSelect', en: 'No item selected — scan or tick checkboxes', roman: 'Koi item select nahi — scan karein ya checkbox tick karein', ur: 'کوئی آئٹم منتخب نہیں — اسکین کریں یا باکس ٹک کریں' },
+  'pos.bulkError': { key: 'pos.bulkError', en: 'Bulk modal error', roman: 'Bulk modal error', ur: 'بلک موڈل کی خرابی' },
+  'pos.bulkNeedsBridge': { key: 'pos.bulkNeedsBridge', en: 'Scanner bridge required for bulk (run with App_QR partial)', roman: 'Bulk ke liye scanner bridge chahiye (App_QR partial ke sath)', ur: 'بلک کے لیے اسکینر برج درکار ہے' },
+  'pos.shopDialogFail': { key: 'pos.shopDialogFail', en: 'Shop dialog did not open', roman: 'Shop dialog nahi khula', ur: 'شاپ ڈائیلاگ نہیں کھلا' }
 });
 
 

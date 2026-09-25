@@ -70,7 +70,7 @@ function shopBlockedPopup() {
         h('p', { style: { margin: '0 0 8px' } }, 'Sale shuru karne se pehle shop khulna zaroori hai — pehla action (item add) rok diya gaya.'),
         h('p', { class: 'sub', style: { margin: 0 } }, canOpen ? '"Shop kholein" dabayen — opening cash ke sath din shuru hoga.' : 'Barah-e-karam manager/cashier se shop khulwayein.')),
       actions: [ { label: 'Close', onClick: c => c() },
-        canOpen ? { label: '🗪 Shop kholein', cls: 'ok', onClick: c => { c(); try { window.shopQuickDialog(); } catch (e) { UI.toast('Shop dialog nahi khula', 'err'); } } } : null
+        canOpen ? { label: '🗪 Shop kholein', cls: 'ok', onClick: c => { c(); try { window.shopQuickDialog(); } catch (e) { UI.toast(T.t('pos.shopDialogFail','Shop dialog did not open'), 'err'); } } } : null
       ].filter(Boolean)
     });
   } catch (e) { }
@@ -149,11 +149,11 @@ function handleScanInput(rawValue, inputEl){
   if(hit){
     addToCart({ id: hit.id, code: hit.code, name: hit.name, retailPrice: hit.rp, wholesalePrice: hit.wp, costPrice: hit.cp, stock: hit.qty, imageUrl: hit.img }, 1);
     if(String(App.state.settings['pos.scanSound'])!=='false') try{beep();}catch(e){}
-    UI.toast('Scanned: '+hit.name+' ('+code+') — Added to cart','ok');
+    UI.toast(T.t('pos.scanned','Scanned') + ': ' + hit.name + ' (' + code + ') — ' + T.t('pos.addedCart','Added to cart'),'ok');
     if(inputEl){ inputEl.value=''; S.q=''; if(typeof renderGrid==='function') try{renderGrid();}catch(e){} try{inputEl.focus();}catch(e){} }
     return true;
   } else {
-    UI.toast('Code not found: '+code+' — try manual search (F2)','warn');
+    UI.toast(T.t('pos.codeNotFound','Code not found') + ': ' + code + ' — ' + T.t('pos.tryManual','try manual search (F2)'),'warn');
     if(inputEl){ inputEl.value=''; S.q=''; if(typeof renderGrid==='function') try{renderGrid();}catch(e){} try{inputEl.focus();}catch(e){} }
     return false;
   }
@@ -171,7 +171,7 @@ function handleScanInput(rawValue, inputEl){
 // Bulk Mode → dedicated modal with scan + search + checkboxes + bulk list
 function openBulkAddModal(){
   try{
-    if (typeof UI2 === 'undefined' || !UI2.itemPicker) { UI.toast('Product picker load nahi hua', 'err'); return; }
+    if (typeof UI2 === 'undefined' || !UI2.itemPicker) { UI.toast(T.t('pos.pickerFail','Product picker did not load'), 'err'); return; }
     /* v2.24.0 — picker ab khud scan-first hai: mode:'multi' se scan block +
        checkboxes + Bulk List foran taiyar. DOM ko poke karne ki zarurat nahi. */
     const picker = UI2.itemPicker({
@@ -205,7 +205,7 @@ function openBulkAddModal(){
         { label: 'Cancel', cls: 'ghost', onClick: c=> c() },
         { label: 'Add Selected to Cart', cls: 'ok', onClick: c=>{
             if(!(picker.api && picker.api.hasSel && picker.api.hasSel()))
-              return UI.toast('Koi item select nahi — scan karein ya checkbox tick karein','warn');
+              return UI.toast(T.t('pos.noSelect','No item selected — scan or tick checkboxes'),'warn');
             picker.api.commit();
             c();
           }
@@ -219,7 +219,7 @@ function openBulkAddModal(){
       if (e.target && e.target.closest && e.target.closest('.btn.ok')) setTimeout(() => { try { modal.close(); } catch (err) {} }, 30);
     });
     return modal;
-  }catch(e){ UI.toast('Bulk modal error: '+(e.message||e),'err'); }
+  }catch(e){ UI.toast(T.t('pos.bulkError','Bulk modal error') + ': ' + (e.message||e),'err'); }
 }
 function togglePicker() {
   // Now opens dedicated modal instead of inline toggle (per spec, prevents dropdown conflict)
@@ -255,7 +255,7 @@ function bulkFlow() {
       (miss ? ' · unknown: ' + misses.join(', ') + (miss > 6 ? '…' : '') : ''), n ? 'ok' : 'warn', 4200);
   };
   if (!(window.HaScan && HaScan.bulkScan)) {
-    UI.toast('Bulk ke liye scanner bridge chahiye (App_QR partial ke sath chalayein)', 'warn'); return;
+    UI.toast(T.t('pos.bulkNeedsBridge','Scanner bridge required for bulk (run with App_QR partial)'), 'warn'); return;
   }
   if (badge) { badge.hidden = false; badge.classList.add('on'); mark(); }
   POS2.bulkHandle = HaScan.bulkScan({ onDetect: onDetect, onDone: onDone, allFormats: true }) || { cancel: onDone };

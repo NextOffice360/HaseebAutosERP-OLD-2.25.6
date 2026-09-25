@@ -13391,6 +13391,32 @@ UI2.table = function (cfg) {
       tb.appendChild(row);
     });
     tbl.appendChild(tb);
+    /* v2.30.5 (D11, doc-intel §11) — opt-in totals footer: num-columns ka SUM
+       (filtered data ka, page nahi). Additive: sirf cfg.totals diya jaye to. */
+    if (cfg.totals && slice.length) {
+      const tcols = cols.filter(c => c.num);
+      if (tcols.length) {
+        const tf = h('tfoot', { class: 'tbl-totals' });
+        const tr = h('tr');
+        const idxOf = c => cols.indexOf(c);
+        const first = tcols[0];
+        cols.forEach((c, i) => {
+          if (i < idxOf(first)) return;
+          if (tcols.some(t => t.key === c.key)) {
+            const sum = slice.reduce((a, r) => a + (Number(r[c.key]) || 0), 0);
+            tr.appendChild(h('td', { class: 'num', style: { fontWeight: '700' } },
+              i === idxOf(first)
+                ? ((typeof cfg.totals === 'object' && cfg.totals.label) || 'Total') + ': ' + (c.render ? c.render({ [c.key]: sum }) : String(Math.round(sum * 100) / 100))
+                : (c.render ? c.render({ [c.key]: sum }) : String(Math.round(sum * 100) / 100))));
+          } else {
+            tr.appendChild(h('td'));
+          }
+        });
+        if (cfg.rowActions) tr.appendChild(h('td'));
+        tf.appendChild(tr);
+        tbl.appendChild(tf);
+      }
+    }
     body.appendChild(tbl);
 
     foot.innerHTML = '';
@@ -14630,7 +14656,21 @@ function docDetail(r, reload) {
     h('div', { class: 'f-col' }, h('label', null, 'Status'), statusChip(r.status), h('span', { class: 'muted' }, 'v' + (r.version || 1))),
     h('div', { class: 'f-col' }, h('label', null, 'Created'), h('b', null, fmt.date(r.createdAt, true)), h('span', { class: 'muted' }, r.action || '')));
   host.appendChild(meta);
-  if (r.qr) host.appendChild(h('div', { class: 'f-hint', style: { marginBottom: '8px' } }, 'QR payload: ' + r.qr));
+  /* v2.30.5 (D10, doc-intel §10) — QR INSPECTION VIEW: bara QR + encoded value +
+     scannability note (print se pehle parhne-qogal check) */
+  if (r.qr) {
+    const insp = h('div', { style: { display: 'flex', gap: '14px', alignItems: 'center', flexWrap: 'wrap',
+      border: '1px solid var(--line)', borderRadius: '12px', padding: '12px', marginBottom: '10px', background: 'var(--panel-2)' } });
+    const img = h('img', { 'data-qr-inspect': '1', alt: 'QR inspection — ' + (r.docNo || ''), width: '160', height: '160',
+      style: { width: '160px', height: '160px', maxWidth: '100%', background: '#fff', padding: '8px', borderRadius: '8px' } });
+    Promise.resolve(QR.dataUrl(r.qr, 220)).then(d => { if (d) img.src = d; }).catch(() => { });
+    insp.append(img, h('div', { style: { flex: '1', minWidth: '200px' } },
+      h('div', { class: 'f-hint', style: { marginBottom: '4px' } }, 'Encoded value:'),
+      h('code', { style: { fontSize: 'var(--fs-xs)', wordBreak: 'break-all', display: 'block', marginBottom: '6px' } }, r.qr),
+      h('div', { style: { fontSize: 'var(--fs-xs)', color: (r.qr.length > 900 ? 'var(--warn)' : 'var(--ok)'), fontWeight: '600' } },
+        r.qr.length > 900 ? '⚠ Lambi value — QR version bara lagega, test-scan karein' : '✓ Scan-safe size (compact value + margin)')));
+    host.appendChild(insp);
+  }
   const rel = h('div');
   host.appendChild(h('div', { class: 'sb-group', style: { padding: '6px 0' } }, 'Related documents'));
   host.appendChild(rel);
@@ -18113,7 +18153,7 @@ function shopBlockedPopup() {
         h('p', { style: { margin: '0 0 8px' } }, 'Sale shuru karne se pehle shop khulna zaroori hai — pehla action (item add) rok diya gaya.'),
         h('p', { class: 'sub', style: { margin: 0 } }, canOpen ? '"Shop kholein" dabayen — opening cash ke sath din shuru hoga.' : 'Barah-e-karam manager/cashier se shop khulwayein.')),
       actions: [ { label: 'Close', onClick: c => c() },
-        canOpen ? { label: '🗪 Shop kholein', cls: 'ok', onClick: c => { c(); try { window.shopQuickDialog(); } catch (e) { UI.toast('Shop dialog nahi khula', 'err'); } } } : null
+        canOpen ? { label: '🗪 Shop kholein', cls: 'ok', onClick: c => { c(); try { window.shopQuickDialog(); } catch (e) { UI.toast(T.t('pos.shopDialogFail','Shop dialog did not open'), 'err'); } } } : null
       ].filter(Boolean)
     });
   } catch (e) { }
@@ -18192,11 +18232,11 @@ function handleScanInput(rawValue, inputEl){
   if(hit){
     addToCart({ id: hit.id, code: hit.code, name: hit.name, retailPrice: hit.rp, wholesalePrice: hit.wp, costPrice: hit.cp, stock: hit.qty, imageUrl: hit.img }, 1);
     if(String(App.state.settings['pos.scanSound'])!=='false') try{beep();}catch(e){}
-    UI.toast('Scanned: '+hit.name+' ('+code+') — Added to cart','ok');
+    UI.toast(T.t('pos.scanned','Scanned') + ': ' + hit.name + ' (' + code + ') — ' + T.t('pos.addedCart','Added to cart'),'ok');
     if(inputEl){ inputEl.value=''; S.q=''; if(typeof renderGrid==='function') try{renderGrid();}catch(e){} try{inputEl.focus();}catch(e){} }
     return true;
   } else {
-    UI.toast('Code not found: '+code+' — try manual search (F2)','warn');
+    UI.toast(T.t('pos.codeNotFound','Code not found') + ': ' + code + ' — ' + T.t('pos.tryManual','try manual search (F2)'),'warn');
     if(inputEl){ inputEl.value=''; S.q=''; if(typeof renderGrid==='function') try{renderGrid();}catch(e){} try{inputEl.focus();}catch(e){} }
     return false;
   }
@@ -18214,7 +18254,7 @@ function handleScanInput(rawValue, inputEl){
 // Bulk Mode → dedicated modal with scan + search + checkboxes + bulk list
 function openBulkAddModal(){
   try{
-    if (typeof UI2 === 'undefined' || !UI2.itemPicker) { UI.toast('Product picker load nahi hua', 'err'); return; }
+    if (typeof UI2 === 'undefined' || !UI2.itemPicker) { UI.toast(T.t('pos.pickerFail','Product picker did not load'), 'err'); return; }
     /* v2.24.0 — picker ab khud scan-first hai: mode:'multi' se scan block +
        checkboxes + Bulk List foran taiyar. DOM ko poke karne ki zarurat nahi. */
     const picker = UI2.itemPicker({
@@ -18248,7 +18288,7 @@ function openBulkAddModal(){
         { label: 'Cancel', cls: 'ghost', onClick: c=> c() },
         { label: 'Add Selected to Cart', cls: 'ok', onClick: c=>{
             if(!(picker.api && picker.api.hasSel && picker.api.hasSel()))
-              return UI.toast('Koi item select nahi — scan karein ya checkbox tick karein','warn');
+              return UI.toast(T.t('pos.noSelect','No item selected — scan or tick checkboxes'),'warn');
             picker.api.commit();
             c();
           }
@@ -18262,7 +18302,7 @@ function openBulkAddModal(){
       if (e.target && e.target.closest && e.target.closest('.btn.ok')) setTimeout(() => { try { modal.close(); } catch (err) {} }, 30);
     });
     return modal;
-  }catch(e){ UI.toast('Bulk modal error: '+(e.message||e),'err'); }
+  }catch(e){ UI.toast(T.t('pos.bulkError','Bulk modal error') + ': ' + (e.message||e),'err'); }
 }
 function togglePicker() {
   // Now opens dedicated modal instead of inline toggle (per spec, prevents dropdown conflict)
@@ -18298,7 +18338,7 @@ function bulkFlow() {
       (miss ? ' · unknown: ' + misses.join(', ') + (miss > 6 ? '…' : '') : ''), n ? 'ok' : 'warn', 4200);
   };
   if (!(window.HaScan && HaScan.bulkScan)) {
-    UI.toast('Bulk ke liye scanner bridge chahiye (App_QR partial ke sath chalayein)', 'warn'); return;
+    UI.toast(T.t('pos.bulkNeedsBridge','Scanner bridge required for bulk (run with App_QR partial)'), 'warn'); return;
   }
   if (badge) { badge.hidden = false; badge.classList.add('on'); mark(); }
   POS2.bulkHandle = HaScan.bulkScan({ onDetect: onDetect, onDone: onDone, allFormats: true }) || { cancel: onDone };
@@ -20296,6 +20336,7 @@ window.POS2 = { S, addToCart, pay, clearCart, pickCustomer, togglePicker, bulkFl
             style: { color: Number(r.balance) > 0 ? 'var(--err)' : 'var(--ok)' } }, fmt.money(r.balance)) },
           { key: 'status', label: 'Status', render: r => statusBadge(r.status) }
         ],
+        totals: { label: 'Total' }, /* v2.30.5 (D11) — filtered orders ke sums footer */
         rowActions: r => [
           { icon: '\ud83d\udc41', label: 'Open', onClick: () => orderDetail(r.id, () => tbl.reload()) },
           r.status !== 'INVOICED' ? { icon: '\ud83e\ude9a', label: 'Invoice', onClick: () => convertOrder(r, () => tbl.reload()) } : ''
@@ -29306,7 +29347,7 @@ const ShopUI = {
               const stx = await API.call('shop.status', {}, { offlineFallback: () => null });
               if (stx && stx.open === false) {
                 const r = await API.call('shop.open', { openingCash: Number(cash.value) || 0 });
-                if (r && r.report) setTimeout(() => dayReportModal(r.session.id), 400);
+                if (r && r.report) setTimeout(() => { try { dayReportModal(r.session.id); } catch (e) { } }, 400); /* D7-round fix: cross-scope call guarded (L551 pattern) */
               }
             } catch (e) { UI.toast(e.message, 'warn', 4200); }
             try {

@@ -71,4 +71,19 @@ integration + regression + UI/UX-check + error-handling + security-check pass ho
   Ghaltiyan pakri+fix: invalid \U escapes; TDZ (block TRANSLATIONS-decl ke baad reloc).
 - Next: D8 print-layout audit → D9 designer preview-audit → D10 QR inspect → D11 table totals.
 
-## (agle slices yahan add honge — D8..D11, har entry isi format me)
+## 2026-09-25 — Round 7-cont (D8+D9+D10+D11+D7b2, 10-task batch) — COMPLETE
+- **D8 print-audit:** 11/11 PASS (sab pehle se theek — koi fix nahi) · **D9 designer
+  live-preview audit:** already-implemented sabit (har control→paint()).
+- **D10 QR inspection view:** docDetail me large-QR + encoded value + scan-note.
+  Ghalti+fix: QR.dataUrl sync-path → Promise.resolve wrap.
+- **D11 table totals:** UI2.table opt-in tfoot; Orders me live-wired ✓.
+  Root-cause seekh: sales screen LEGACY UI.table — wiring wahan dead thi, revert karke
+  UI2-orders me lagayi; legacy-engine totals D12 backlog me.
+- **D7 batch-2:** 8 POS toasts T.t + dict — EN-pure ✓.
+- **Shop-gate root-cause fix:** gate ka RU-title assertion D7 se stale tha (dialog me
+  'Open shop (day start)') → lang-agnostic matcher; sath L804 latent unguarded
+  cross-scope dayReportModal call ko try/catch (L551 pattern). Ab 26/0 GREEN.
+- Evidence: documents_hub 16/0 · shop 26/0 · entity 10/0 · pos 23/0 · D8 11/11 ·
+  D10/D11 inline GREEN · 0 pageerrors. Batch total: 10 tasks — push (policy).
+
+## (agle slices yahan add honge — D12+, har entry isi format me)

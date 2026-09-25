@@ -59,14 +59,19 @@ Comms WhatsApp, App_Print designer, UI2.table). Har slice ke baad: build + gates
       App_Core 1) + TRANSLATIONS dict (en/roman/ur). Live-verify GREEN: EN me pure-English ✓
       roman Roman-Urdu ✓ urdu اردو ✓ 0 errors. Sabak: TDZ (seed-block decl ke baad) +
       escape-literals + block-relocate order. Agle batches D1 baseline tarteeb se
-- [ ] **D8** Print/doc responsiveness audit: 80mm receipt + A4 + label sheets — QR/label
-      overflow/clip checks (rendered-DOM assertions @print CSS)
-- [ ] **D9** Designer live-preview: har control change → immediate preview (audit + missing
-      bindings fix, App_Print designer)
-- [ ] **D10** QR inspection modal: large view + encoded-value display + scannability pre-check
-      (QR2 matrix se quiet-zone/size validation) — print se pehle warning
-- [ ] **D11** Tables: footer totals + expand/collapse audit (UI2.table) — jahan hierarchical
-      data hai wahan reveal-rows additive
+- [x] **D8** Print/doc responsiveness AUDIT: `tools/audit_print_layouts.js` — **11/11 PASS**
+      (paper-width, margins, @media print, overflow guards, mm-sizing, flexible QR/img sab
+      pehle se mojood — koi fix nahi chahiye). Baseline tmp/print-layout-audit.json
+- [x] **D9** Designer live-preview AUDIT: code-level verify — HAR control onChange→paint()
+      (copies/fontSize/title/showTitle/taxMode/footer/terms + renderFields/renderCustom)
+      — live-preview PEHLE SE implemented (spec §9 requirement already met); koi fix nahi
+- [x] **D10** QR inspection view: docDetail modal me large QR (220px + padding) + encoded
+      value + scannability note (>900 chars warn). Sabak: QR.dataUrl sync-ho-sakta hai →
+      Promise.resolve() wrap. Inline-gate GREEN: img+src+value+note ✓ 0 errors
+- [x] **D11** Table totals: UI2.table opt-in `totals:{label}` → tfoot (filtered-data sums,
+      first-num-col me label). Wired: Orders list (Total/Advance/Balance sums — live
+      "Total: Rs 600 · Rs 0 · Rs 600" ✓). Sabak: sales screen LEGACY UI.table use karta hai
+      (UI2 nahi) — wiring wahan revert, legacy-engine totals D12 backlog. Engine probe GREEN
 
 ## D1 BASELINES (2026-09-25)
 

@@ -72,6 +72,7 @@
             style: { color: Number(r.balance) > 0 ? 'var(--err)' : 'var(--ok)' } }, fmt.money(r.balance)) },
           { key: 'status', label: 'Status', render: r => statusBadge(r.status) }
         ],
+        totals: { label: 'Total' }, /* v2.30.5 (D11) — filtered orders ke sums footer */
         rowActions: r => [
           { icon: '\ud83d\udc41', label: 'Open', onClick: () => orderDetail(r.id, () => tbl.reload()) },
           r.status !== 'INVOICED' ? { icon: '\ud83e\ude9a', label: 'Invoice', onClick: () => convertOrder(r, () => tbl.reload()) } : ''

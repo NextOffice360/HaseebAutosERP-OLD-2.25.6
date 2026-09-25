@@ -801,7 +801,7 @@ const ShopUI = {
               const stx = await API.call('shop.status', {}, { offlineFallback: () => null });
               if (stx && stx.open === false) {
                 const r = await API.call('shop.open', { openingCash: Number(cash.value) || 0 });
-                if (r && r.report) setTimeout(() => dayReportModal(r.session.id), 400);
+                if (r && r.report) setTimeout(() => { try { dayReportModal(r.session.id); } catch (e) { } }, 400); /* D7-round fix: cross-scope call guarded (L551 pattern) */
               }
             } catch (e) { UI.toast(e.message, 'warn', 4200); }
             try {

@@ -1225,6 +1225,32 @@ UI2.table = function (cfg) {
       tb.appendChild(row);
     });
     tbl.appendChild(tb);
+    /* v2.30.5 (D11, doc-intel §11) — opt-in totals footer: num-columns ka SUM
+       (filtered data ka, page nahi). Additive: sirf cfg.totals diya jaye to. */
+    if (cfg.totals && slice.length) {
+      const tcols = cols.filter(c => c.num);
+      if (tcols.length) {
+        const tf = h('tfoot', { class: 'tbl-totals' });
+        const tr = h('tr');
+        const idxOf = c => cols.indexOf(c);
+        const first = tcols[0];
+        cols.forEach((c, i) => {
+          if (i < idxOf(first)) return;
+          if (tcols.some(t => t.key === c.key)) {
+            const sum = slice.reduce((a, r) => a + (Number(r[c.key]) || 0), 0);
+            tr.appendChild(h('td', { class: 'num', style: { fontWeight: '700' } },
+              i === idxOf(first)
+                ? ((typeof cfg.totals === 'object' && cfg.totals.label) || 'Total') + ': ' + (c.render ? c.render({ [c.key]: sum }) : String(Math.round(sum * 100) / 100))
+                : (c.render ? c.render({ [c.key]: sum }) : String(Math.round(sum * 100) / 100))));
+          } else {
+            tr.appendChild(h('td'));
+          }
+        });
+        if (cfg.rowActions) tr.appendChild(h('td'));
+        tf.appendChild(tr);
+        tbl.appendChild(tf);
+      }
+    }
     body.appendChild(tbl);
 
     foot.innerHTML = '';

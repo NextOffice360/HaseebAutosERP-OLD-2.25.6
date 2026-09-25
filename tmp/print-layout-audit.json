@@ -1,0 +1,60 @@
+{
+  "generatedAt": "2026-09-25T04:31:51.587Z",
+  "checks": [
+    {
+      "id": "receipt.paperWidth",
+      "ok": true,
+      "detail": "receipt paper-size handling"
+    },
+    {
+      "id": "receipt.margins",
+      "ok": true,
+      "detail": "print CSS margins"
+    },
+    {
+      "id": "print.hasMediaPrint",
+      "ok": true,
+      "detail": "@media print block"
+    },
+    {
+      "id": "qr.noFixedOverflow",
+      "ok": true,
+      "detail": "qr/print img flexible"
+    },
+    {
+      "id": "label.boxSizing",
+      "ok": true,
+      "detail": "label overflow guard"
+    },
+    {
+      "id": "label.sheetGrid",
+      "ok": true,
+      "detail": "sheet columns layout"
+    },
+    {
+      "id": "barcode.svgFlexible",
+      "ok": true,
+      "detail": "barcode flexible"
+    },
+    {
+      "id": "labels.imgFixedSize",
+      "ok": true,
+      "detail": "label img explicit px (print-safe)"
+    },
+    {
+      "id": "labels.mmSizing",
+      "ok": true,
+      "detail": "mm-based label size"
+    },
+    {
+      "id": "styles.printBlock",
+      "ok": true,
+      "detail": "@media print in Styles"
+    },
+    {
+      "id": "styles.imgMax",
+      "ok": true,
+      "detail": "global img max-width"
+    }
+  ]
+}
