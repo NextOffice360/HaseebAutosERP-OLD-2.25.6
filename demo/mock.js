@@ -211,6 +211,10 @@ const REPORT_ROWS = { sales: [], stock: [], profit: [], lowstock: [] };
 
 /* generate 45 days of sales */
 const SALES = [];
+/* v2.30.5 (D3, doc-intel §2) — DOCUMENT REGISTRY: har generated doc ka index
+   (docId/type/entity/module/version/qr/status) — scanner→registry→entity chain */
+const DEMO_DOCS = [];
+let DOC_SEQ = 0;
 let seq = 1001;
 for (let d = 44; d >= 0; d--) {
   const date = new Date(Date.now() - d * 864e5);
@@ -818,7 +822,7 @@ function mockPersistConfig() {
     localStorage.setItem(MOCK_CFG_KEY, JSON.stringify({
       categories: CATEGORIES, brands: BRANDS, units: UNITS, taxes: TAXES,
       warehouses: WAREHOUSES, fields: CUSTOM_FIELDS, templates: TEMPLATES,
-      menu: MENU_CONFIG, translations: TRANSLATIONS,
+      menu: MENU_CONFIG, translations: TRANSLATIONS, docs: DEMO_DOCS,
       prefs: (typeof SESSION !== 'undefined' && SESSION && SESSION.prefs) || {}
     }));
   } catch (e) { }
@@ -830,7 +834,7 @@ function mockPersistConfig() {
     const ra = (t, src) => { if (Array.isArray(src)) { t.length = 0; src.forEach(x => t.push(x)); } };
     ra(CATEGORIES, d.categories); ra(BRANDS, d.brands); ra(UNITS, d.units);
     ra(TAXES, d.taxes); ra(WAREHOUSES, d.warehouses); ra(CUSTOM_FIELDS, d.fields);
-    ra(TEMPLATES, d.templates); ra(MENU_CONFIG, d.menu);
+    ra(TEMPLATES, d.templates); ra(MENU_CONFIG, d.menu); ra(DEMO_DOCS, d.docs);
     if (d.translations) Object.keys(d.translations).forEach(k => { TRANSLATIONS[k] = d.translations[k]; });
     if (typeof SESSION !== 'undefined' && SESSION && d.prefs) SESSION.prefs = Object.assign({}, d.prefs);
   } catch (e) { }
@@ -1345,6 +1349,37 @@ window.MockAPI = {
   'admin.removeDemoData': () => ({ removed: { Items: 10, Customers: 2, Suppliers: 1, Stock: 30, Sales: 0, Users: 1 },
     message: 'Demo data hata diya gaya (demo).' }),
   'setup.diag': () => ({ version: 'demo', linked: true, problems: [], counts: { Users: 10, Items: 25, Customers: 7, Sales: 12 }, shop: { open: !!window.__demoSessionOpen } }),
+  /* ---- v2.30.5 (D3) DOCUMENT REGISTRY routes (doc-intel §2) ---- */
+  'docs.registry.save': p => {
+    const d = p.doc || p || {};
+    if (d.id) {
+      const i = DEMO_DOCS.findIndex(x => x.id === d.id);
+      if (i > -1) { DEMO_DOCS[i] = Object.assign({}, DEMO_DOCS[i], d, { updatedAt: new Date().toISOString() }); return DEMO_DOCS[i]; }
+    }
+    const rec = Object.assign({
+      id: 'DOC' + (++DOC_SEQ), docNo: 'DOC-' + String(DOC_SEQ).padStart(5, '0'),
+      version: 1, status: 'GENERATED', createdBy: 'demo',
+      createdAt: new Date().toISOString()
+    }, d);
+    DEMO_DOCS.unshift(rec);
+    if (DEMO_DOCS.length > 500) DEMO_DOCS.length = 500;
+    mockPersistConfig();
+    return rec;
+  },
+  'docs.registry.list': p => {
+    p = p || {};
+    let rows = DEMO_DOCS.slice();
+    const q = String(p.q || '').toLowerCase();
+    if (q) rows = rows.filter(r => !q || [r.ref, r.docType, r.entityType, r.module, r.note]
+      .some(v => String(v || '').toLowerCase().indexOf(q) > -1));
+    if (p.docType) rows = rows.filter(r => r.docType === p.docType);
+    if (p.entityId) rows = rows.filter(r => r.entityId === p.entityId);
+    if (p.module) rows = rows.filter(r => r.module === p.module);
+    return { rows: rows.slice(0, p.pageSize || 100), total: rows.length };
+  },
+  'docs.registry.get': p => DEMO_DOCS.find(x => x.id === p.id || x.docNo === p.id) || null,
+  'docs.registry.related': p => DEMO_DOCS.filter(x => x.entityId === p.entityId || x.ref === p.ref),
+
   'system.settings.save': p => { Object.assign(SETTINGS, p.values || {}); mockPersistSettings();
     return { saved: Object.keys(p.values || {}).length }; },
 

@@ -34,8 +34,11 @@ Comms WhatsApp, App_Print designer, UI2.table). Har slice ke baad: build + gates
       back-compat resolve. Gate `test_doc_resolver.js` **13/0** (2026-09-25) · battery
       shop 26/0 · entity 10/0 · pos 23/0 · e2e 22/0 · modals 91/0 GREEN
       (DOC/PAY payloads → D3 registry ke baad, graceful warn abhi)
-- [ ] **D3** Document Registry core: mock `docs.registry.*` (save/list/get/related); invoice-
-      print + label-print + export par registry entries (additive hooks); history/version field
+- [x] **D3** Document Registry core: mock `DEMO_DOCS` + `docs.registry.save/list/get/related`
+      (config-snapshot persist/restore); `window.Docs` helper (fire-and-forget); resolver
+      HA:DOC→related-entity; print-hooks (invoice-drawer 🖨 → INVOICE entry, labels batch →
+      LABELS entry). Gate `test_doc_registry.js` **10/0** (2026-09-25) — RELOAD persistence +
+      print auto-entry (real click) sabit
 - [ ] **D4** Documents hub screen: dashboard counts + table (search/filter/module) + preview
       actions (View/Print/Share/WhatsApp/Copy/Drive-location) — reuse UI2.table/modal
 - [ ] **D5** Drive bootstrap (GAS `DocReg.gs`): root+subfolder create-OR-reuse (IDs config me

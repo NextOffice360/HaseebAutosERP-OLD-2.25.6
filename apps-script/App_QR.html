@@ -592,6 +592,19 @@ App.resolveCode = function (raw) {
     if (kind === 'ITM') return Promise.resolve(go('items', { open: val }, 'Item ' + val));
     if (kind === 'CUS') return Promise.resolve(go('parties', { tab: 'customers', open: val }, 'Customer ' + val));
     if (kind === 'SUP') return Promise.resolve(go('parties', { tab: 'suppliers', open: val }, 'Supplier ' + val));
+    /* v2.30.5 (D3) — HA:DOC → registry lookup → related entity khule */
+    if (kind === 'DOC' && window.Docs) {
+      return Docs.get(val).then(function (rec) {
+        if (!rec) { UI.toast('Document registry me nahi mila: ' + val, 'warn', 3200); return { ok: false, kind: kind, val: val }; }
+        var map = { sale: ['sales', { open: rec.entityId }], invoice: ['sales', { open: rec.entityId }],
+          item: ['items', { open: rec.entityId }], customer: ['parties', { tab: 'customers', open: rec.entityId }],
+          supplier: ['parties', { tab: 'suppliers', open: rec.entityId }] };
+        var t = map[(rec.entityType || '').toLowerCase()];
+        if (t) return go(t[0], t[1], 'Doc ' + (rec.docNo || rec.id) + ' → ' + (rec.ref || rec.entityType));
+        UI.toast('Doc mila (' + (rec.docType || '?') + ') — is entity ka screen link abhi nahi', 'warn', 3200);
+        return { ok: false, kind: kind, doc: rec };
+      }).catch(function (e) { UI.toast(e.message, 'err'); return { ok: false, kind: kind, err: String(e.message) }; });
+    }
     UI.toast('Yeh code document registry ke baad khulega (D3): ' + kind, 'warn', 3200);
     return Promise.resolve({ ok: false, kind: kind });
   }
@@ -615,5 +628,22 @@ App.resolveCode = function (raw) {
 App.scanResolve = function (opts) {
   opts = opts || {};
   return window.HaScan && HaScan.scan(Object.assign({}, opts, { onDetect: function (v) { App.resolveCode(v); } }));
+};
+
+/* ============================================================================
+ * v2.30.5 (D3) — Docs helper: DOCUMENT REGISTRY write/read (doc-intel §2)
+ * Har generated document (invoice print, labels batch, exports) apni registry
+ * entry banata hai — scan/resolver isi se record tak wapas pahunchta hai.
+ * Fire-and-forget (print/share flows kabhi registry-fail se na rukein).
+ * ==========================================================================*/
+window.Docs = {
+  register: function (entry) {
+    if (!window.API) return Promise.resolve(null);
+    return API.call('docs.registry.save', { doc: entry || {} }, { offlineFallback: function () { return null; } })
+      .catch(function () { return null; });
+  },
+  list: function (p) { return API.call('docs.registry.list', p || {}, { offlineFallback: function () { return { rows: [], total: 0 }; } }); },
+  get: function (id) { return API.call('docs.registry.get', { id: id }, { offlineFallback: function () { return null; } }); },
+  related: function (p) { return API.call('docs.registry.related', p || {}, { offlineFallback: function () { return []; } }); }
 };
 </script>

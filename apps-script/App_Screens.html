@@ -350,6 +350,10 @@ App.registerScreen('sales', {
         actions: [
           { label: '📤 Share', cls: 'sec', onClick: () => window.Share && Share.invoice(sale) },
           { label: '🖨 Print', cls: 'sec', onClick: async () => {
+            /* v2.30.5 (D3) — print = document generate → registry entry (fire-and-forget) */
+            if (window.Docs) Docs.register({ docType: 'INVOICE', entityType: 'sale', entityId: sale.id,
+              ref: sale.invoiceNo, module: 'sales', action: 'print', qr: 'HA:INV:' + sale.invoiceNo,
+              meta: { total: sale.total, customerName: sale.customerName } });
             try { if (window.Print2) { await Print2.dialog(sale); return; } } catch (e) { }
             Print.open(Print.receiptHtml(sale, App.state.settings, App.state.branchName), 'Receipt', (App.state.settings || {})['pos.receiptPaper'] || '80mm');
           } },

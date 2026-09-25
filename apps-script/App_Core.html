@@ -3356,6 +3356,11 @@ const Print = {
     /* W2.T4 — bari sheet (48+ labels) par progress card + beech-beech yield */
     const prog = rows.length > 48 ? UI.progress('🏷 Labels', rows.length) : null;
     let lblN = 0;
+    /* v2.30.5 (D3) — labels batch = generated document set → registry (fire-and-forget) */
+    if (window.Docs && rows.length) Docs.register({ docType: 'LABELS', entityType: 'item',
+      entityId: rows[0] && rows[0].id, ref: 'labels:' + rows.length, module: 'items',
+      action: 'labels.print', qr: rows[0] && rows[0].qr ? String(rows[0].qr) : '',
+      meta: { count: rows.length, template: template && template.name } });
     for (const r of rows) {
       let qr = '';
       if (cfg.qr) {
