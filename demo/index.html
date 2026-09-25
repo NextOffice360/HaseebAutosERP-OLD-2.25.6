@@ -4502,7 +4502,8 @@ window.MockAPI = {
   'admin.removeDemoData': () => ({ removed: { Items: 10, Customers: 2, Suppliers: 1, Stock: 30, Sales: 0, Users: 1 },
     message: 'Demo data hata diya gaya (demo).' }),
   'setup.diag': () => ({ version: 'demo', linked: true, problems: [], counts: { Users: 10, Items: 25, Customers: 7, Sales: 12 }, shop: { open: !!window.__demoSessionOpen } }),
-  'system.settings.save': p => Object.assign(SETTINGS, p.values || {}),
+  'system.settings.save': p => { Object.assign(SETTINGS, p.values || {}); mockPersistSettings();
+    return { saved: Object.keys(p.values || {}).length }; },
 
   'auth.login': p => {
     if (!p.username || !p.password) throw new Error('Username aur password zaroori hain.');
@@ -5850,8 +5851,9 @@ window.MockAPI = {
   /* ===================== v2: CONFIG / WAREHOUSE / NOTIFICATIONS ===================== */
   'config.all': () => SETTINGS,
   'config.get': p => (SETTINGS[p.key] !== undefined ? SETTINGS[p.key] : p.def),
-  'config.save': p => { Object.assign(SETTINGS, p.values || {}); return { saved: Object.keys(p.values || {}).length }; },
-  'config.resetGroup': p => ({ reset: p.group || 'all' }),
+  'config.save': p => { Object.assign(SETTINGS, p.values || {}); mockPersistSettings();
+    return { saved: Object.keys(p.values || {}).length }; },
+  'config.resetGroup': p => ({ reset: p.group || 'all', note: 'demo: group defaults session-level' }),
   'config.defs': () => CONFIG_DEFS_DEMO,
 
   'config.list': p => {

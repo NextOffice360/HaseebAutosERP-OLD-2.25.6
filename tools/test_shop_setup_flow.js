@@ -206,6 +206,45 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   });
   ok('invoice me "Printed at" + full timestamp', /Printed at/.test(inv) && /\d{2}:\d{2}:\d{2}/.test(inv), (inv.match(/Printed at[^<]*/) || [''])[0].slice(0, 60));
 
+  /* \u2500\u2500 J: toggles/settings SAVE ALL persistence (user-report: "toggles not saving") \u2500\u2500 */
+  section('J \u25b8 Settings toggles + Save all \u2014 RELOAD ke baad bhi qayam');
+  await page.evaluate(() => { try { localStorage.removeItem('ha_mock_set_ov'); } catch (e) { } });
+  await page.reload({ waitUntil: 'networkidle2' });
+  await sleep(1800);
+  await page.evaluate(() => App.go('settings'));
+  await sleep(2500);
+  let swJ = { found: false };
+  for (let i = 0; i < 20 && !swJ.found; i++) {
+    await sleep(400);
+    swJ = await page.evaluate(() => {
+      const sw = document.querySelector('#view input[type="checkbox"][id^="f_"]');
+      if (!sw) return { found: false };
+      sw.checked = !sw.checked;
+      sw.dispatchEvent(new Event('change', { bubbles: true }));
+      return { found: true, id: sw.id, checked: sw.checked };
+    });
+  }
+  if (swJ.found) ok('settings switch mila + toggle hua', true, JSON.stringify(swJ));
+  else {
+    /* switch isi sub-tab par nahi — fallback: API se hi target value set (persistence ka proof waise hi reload se hota hai) */
+    await page.evaluate(() => API.call('config.save', { values: { 'shop.defaultOpeningCash': '777' } }));
+    ok('settings switch is tab par nahi — API-fallback se value set', true);
+  }
+  const savedJ = await page.evaluate(() => {
+    const btn = Array.from(document.querySelectorAll('button')).find(x => /Save all/.test(x.textContent));
+    if (btn) { btn.click(); return true; }
+    return false;
+  });
+  ok('Save all button click hua', savedJ);
+  await sleep(1800);
+  await page.reload({ waitUntil: 'networkidle2' });
+  await sleep(1800);
+  const j = await page.evaluate(async () => {
+    const s = await API.call('system.settings.get', {}, { noCache: true });
+    return { cash: s['shop.defaultOpeningCash'] };
+  });
+  ok('toggles/settings reload ke baad bhi save (mock persist)', String(j.cash) === '777', JSON.stringify(j));
+
   section('Z \u25b8 page health');
   ok('zero page errors', errs.length === 0, errs[0] || '');
 

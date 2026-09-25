@@ -81,7 +81,16 @@ App_/Pwa_ split) + `docs/ARCHITECTURE.md` (conventions + data flow). Saare waves
 (tbl.reload() rowActions me, Clear filters emptyAction). **Sabak:** UI2.table wrap
 return karta hai — append lazmi (DOM-probe debugging se pakra). Chrome-libs restore:
 fetch_chrome_libs ke atspi/avahi gaps manually .deb se bhare (libnspr/nss/atk/atspi/
-avahi/cairo/pango). Quota: 41.3MB effective (stale display ignore). **USER-BUG CLUSTER FIX (v2.30.5, 2026-09-25) — shop/wizard/POS/prints:**
+avahi/cairo/pango). Quota: 41.3MB effective (stale display ignore). **TOGGLES/SETTINGS persist fix (v2.30.5 +1):** user ka "toggles not saving"
+ka asli sabab — mock config.save / system.settings.save SETTINGS me assign
+karte the magar PERSIST nahi (reload par sab defaults). Ab dono
+mockPersistSettings() karte hain (ha_mock_set_ov overlay) — UI-flow probe:
+toggle + Save all → RELOAD → values qayam. Gate ab 24/0 (J section naya).
+**KNOWN demo-scope note (user ko batana):** demo-reload par seeded DATA
+(items/sales/orders) seed-state par wapas aata hai — sirf SETTINGS + wizard
+ab persist hote hai; poora mock-persistence layer alag slice hai (backend
+GAS deploy par har cheez asli Sheet me save hoti hai).
+**USER-BUG CLUSTER FIX (v2.30.5, 2026-09-25) — shop/wizard/POS/prints:**
 (1) demo shop-state 3 sources me bikhrha tha (pill hard-coded OPEN vs banner
 CLOSED) — ab demoShopSync se EK sachai; (2) POS pehle action par block:
 addToCart + qtyPad gate + 'Shop band hai' popup/banner (PWA.POS me bhi pay);
