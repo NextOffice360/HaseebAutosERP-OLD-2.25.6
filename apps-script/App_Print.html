@@ -174,7 +174,7 @@ const P = {
     }
     if (vis('qr', false)) {
       try {
-        const d = window.QR2 ? window.QR2.svg(JSON.stringify({ inv: sale.invoiceNo, total: sale.total }), { size: 90 }) : '';
+        const d = window.QR2 ? window.QR2.svg('HA:INV:' + sale.invoiceNo, { size: 90 }) /* D2: resolvable payload (legacy JSON prints bhi resolve hote hain) */ : '';
         if (d) code += '<div class="qr">' + d + '</div>';
       } catch (e) { }
     }

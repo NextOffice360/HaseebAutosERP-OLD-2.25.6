@@ -100,6 +100,13 @@ Demand/Invoice dead-ends ab record-links (parties onParams deep-link);
 gate test_entity_links 10/0 + battery GREEN. Sabak: parens-depth badalte
 waqt purani line ke closers bhi gino (ek `)` missing → 2 boot pageerrors,
 app partially chalta rehta hai — zero-errors gate hi pakra).
+**DOC-INTEL (round 5, 2026-09-25):** naya spec attachment (§1–13) parha,
+gap-analysis + D-series todos: docs/DOC-INTEL-PLAN.md. D1 audits done
+(i18n: 866 hard-coded RU hits/36 files, T.t sirf 1 — EN-leak root-cause;
+QR: 7 sites/0 resolvable). D2 done: App.resolveCode/scanResolve (HA:*
+standard + legacy back-compat), manual universal path, naye payloads
+HA:INV/HA:ITM — gate 13/0 + battery GREEN. Agla: D3 registry → D4 hub
+screen → D5 Drive bootstrap → D6 WhatsApp → D7 EN-purity batches.
 **TOGGLES/SETTINGS persist fix (v2.30.5 +1):** user ka "toggles not saving"
 ka asli sabab — mock config.save / system.settings.save SETTINGS me assign
 karte the magar PERSIST nahi (reload par sab defaults). Ab dono

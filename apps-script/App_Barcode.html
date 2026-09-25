@@ -431,7 +431,7 @@ const Print = {
          (50x30 par QR + bars + text ek doosre ko bahar dhakel dete thay) */
       let symOut = '', qr = '';
       if (wantQR) {
-        const d = await QR.dataUrl(r.qr || ('CODE:' + (r.code || '') + ';SKU:' + (r.id || '')), 90);
+        const d = await QR.dataUrl(r.qr || ('HA:ITM:' + (r.id || r.code || '')) /* D2: resolvable payload */, 90);
         if (d) qr = d;
       }
       if (wantBars) {

@@ -1,0 +1,54 @@
+{
+  "generatedAt": "2026-09-25T03:33:57.481Z",
+  "sites": [
+    {
+      "file": "App_Barcode.html",
+      "line": 237,
+      "payload": "txt",
+      "fmt": "raw",
+      "resolvable": false
+    },
+    {
+      "file": "App_Barcode.html",
+      "line": 434,
+      "payload": "r.qr || ('CODE:' + (r.code || ''",
+      "fmt": "kv",
+      "resolvable": false
+    },
+    {
+      "file": "App_Core.html",
+      "line": 3303,
+      "payload": "txt",
+      "fmt": "raw",
+      "resolvable": false
+    },
+    {
+      "file": "App_Core.html",
+      "line": 3362,
+      "payload": "r.qr",
+      "fmt": "raw",
+      "resolvable": false
+    },
+    {
+      "file": "App_Dashboards.html",
+      "line": 1405,
+      "payload": "JSON.stringify({",
+      "fmt": "json",
+      "resolvable": false
+    },
+    {
+      "file": "App_Print.html",
+      "line": 177,
+      "payload": "JSON.stringify({ inv: sale.invoiceNo",
+      "fmt": "json",
+      "resolvable": false
+    },
+    {
+      "file": "App_PwaHub.html",
+      "line": 145,
+      "payload": "url",
+      "fmt": "raw",
+      "resolvable": false
+    }
+  ]
+}

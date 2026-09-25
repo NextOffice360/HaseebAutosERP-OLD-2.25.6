@@ -6966,7 +6966,7 @@ const Print = {
          (50x30 par QR + bars + text ek doosre ko bahar dhakel dete thay) */
       let symOut = '', qr = '';
       if (wantQR) {
-        const d = await QR.dataUrl(r.qr || ('CODE:' + (r.code || '') + ';SKU:' + (r.id || '')), 90);
+        const d = await QR.dataUrl(r.qr || ('HA:ITM:' + (r.id || r.code || '')) /* D2: resolvable payload */, 90);
         if (d) qr = d;
       }
       if (wantBars) {
@@ -7338,7 +7338,7 @@ const P = {
     }
     if (vis('qr', false)) {
       try {
-        const d = window.QR2 ? window.QR2.svg(JSON.stringify({ inv: sale.invoiceNo, total: sale.total }), { size: 90 }) : '';
+        const d = window.QR2 ? window.QR2.svg('HA:INV:' + sale.invoiceNo, { size: 90 }) /* D2: resolvable payload (legacy JSON prints bhi resolve hote hain) */ : '';
         if (d) code += '<div class="qr">' + d + '</div>';
       } catch (e) { }
     }
@@ -11891,6 +11891,11 @@ window.HaScan = (function () {
 
   function manual(opts) {
     opts = opts || {};
+    /* v2.30.5 (D2) — onDetect na ho to universal resolver (additive fallback) */
+    var handle = function (val) {
+      if (opts.onDetect) opts.onDetect(val);
+      else if (window.App && App.resolveCode) App.resolveCode(val);
+    };
     var input = h('input', { class: 'f-input', type: 'text', placeholder: 'Code / QR value type karke Enter dabayein', autocomplete: 'off', autofocus: true });
     var m = UI2.modal({
       title: '⌨ Manual code entry', size: 'sm',
@@ -11902,7 +11907,7 @@ window.HaScan = (function () {
       ]
     });
     input.addEventListener('keydown', function (e) {
-      if (e.key === 'Enter' && input.value.trim()) { var v = input.value.trim(); m.close(); if (opts.onDetect) opts.onDetect(v); }
+      if (e.key === 'Enter' && input.value.trim()) { var v = input.value.trim(); m.close(); if (v) handle(v); }
     });
     try { input.focus(); } catch (e) { }
     return m;
@@ -12057,6 +12062,70 @@ window.HaScan = (function () {
   function bulkScan(opts) { opts = opts || {}; opts.bulk = true; return scan(opts); }
   return { scan: scan, bulkScan: bulkScan, manual: manual, inApp: inApp, liveConfigured: function () { return !!liveOrigin(); }, MSG_TYPE: MSG_TYPE };
 })();
+
+/* ============================================================================
+ * v2.30.5 (D2) — UNIVERSAL CODE RESOLVER (doc-intel spec §1)
+ * ----------------------------------------------------------------------------
+ * QR/barcode ab sirf decorative output nahi — bidirectional navigation keys.
+ * Har scan/manual code resolve hota hai → entity → screen deep-link:
+ *   HA:INV:<invoiceNo|id> → sales invoice drawer
+ *   HA:ITM:<itemId>       → items detail offcanvas
+ *   HA:CUS:<customerId>   → parties (customers tab) detail
+ *   HA:SUP:<supplierId>   → parties (suppliers tab) detail
+ *   HA:DOC:… / HA:PAY:…   → document registry (D3) — abhi graceful warn
+ * Legacy payloads bhi resolve hote hain (purane printed QRs kaam karte rahen):
+ *   {"inv":"INV-…","total":…} (App_Print purana JSON) · CODE:<code>;SKU:<id>
+ *   (App_Barcode labels) · raw code/EAN → items.list code-search
+ * Additive: koi mojood scan-caller (onDetect walay) change nahi hota.
+ * ==========================================================================*/
+App.resolveCode = function (raw) {
+  var v = String(raw || '').trim();
+  if (!v) return Promise.resolve(null);
+  var go = function (screen, params, label) {
+    UI.toast('Khul raha hai: ' + label, 'ok', 2200);
+    App.go(screen, params);
+    return { ok: true, screen: screen, params: params, label: label };
+  };
+  var m = /^HA:(INV|ITM|CUS|SUP|DOC|PAY):(.+)$/i.exec(v);
+  if (m) {
+    var kind = m[1].toUpperCase(), val = m[2].trim();
+    if (kind === 'INV') {
+      return API.call('sales.list', { q: val, pageSize: 50 }, { offlineFallback: function () { return { rows: [] }; } })
+        .then(function (r) {
+          var row = (r.rows || []).find(function (x) { return x.invoiceNo === val || x.id === val; });
+          if (row) return go('sales', { open: row.id }, 'Invoice ' + (row.invoiceNo || val));
+          UI.toast('Invoice nahi mili: ' + val, 'warn', 3200);
+          return { ok: false, kind: kind, val: val };
+        })
+        .catch(function (e) { UI.toast(e.message, 'err'); return { ok: false, kind: kind, err: String(e.message) }; });
+    }
+    if (kind === 'ITM') return Promise.resolve(go('items', { open: val }, 'Item ' + val));
+    if (kind === 'CUS') return Promise.resolve(go('parties', { tab: 'customers', open: val }, 'Customer ' + val));
+    if (kind === 'SUP') return Promise.resolve(go('parties', { tab: 'suppliers', open: val }, 'Supplier ' + val));
+    UI.toast('Yeh code document registry ke baad khulega (D3): ' + kind, 'warn', 3200);
+    return Promise.resolve({ ok: false, kind: kind });
+  }
+  if (v.charAt(0) === '{') {
+    try { var o = JSON.parse(v); if (o && o.inv) return App.resolveCode('HA:INV:' + o.inv); } catch (e) { }
+  }
+  m = /^CODE:([^;]*);SKU:(.+)$/i.exec(v);
+  if (m) return Promise.resolve(go('items', { open: m[2].trim() }, 'Item ' + m[2].trim()));
+  /* raw code/EAN → items me code/barcode se talash */
+  return API.call('items.list', { q: v, pageSize: 25 }, { offlineFallback: function () { return { rows: [] }; } })
+    .then(function (r) {
+      var rows = r.rows || r || [];
+      var row = rows.find(function (x) { return String(x.code || '').toLowerCase() === v.toLowerCase() || String(x.barcode || '') === v; });
+      if (row) return go('items', { open: row.id }, 'Item ' + row.code);
+      UI.toast('Code resolve nahi hua: ' + v.slice(0, 40), 'warn', 3200);
+      return { ok: false, raw: v };
+    })
+    .catch(function (e) { UI.toast(e.message, 'err'); return { ok: false, err: String(e.message) }; });
+};
+/* universal scan entry: onDetect ke bagair — result seedha resolve hota hai */
+App.scanResolve = function (opts) {
+  opts = opts || {};
+  return window.HaScan && HaScan.scan(Object.assign({}, opts, { onDetect: function (v) { App.resolveCode(v); } }));
+};
 </script>
   <script>
 /* ==========================================================================

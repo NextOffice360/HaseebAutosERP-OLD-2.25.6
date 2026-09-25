@@ -1,0 +1,663 @@
+{
+  "generatedAt": "2026-09-25T03:33:57.397Z",
+  "totalHits": 866,
+  "totalTt": 1,
+  "files": [
+    {
+      "file": "App_Core.html",
+      "tt": 0,
+      "hits": 81,
+      "samples": [
+        {
+          "line": 103,
+          "text": "const t = setTimeout(()=>{ cleanup(); reject(new Error('Timeout — URL reachable nahi ya GA"
+        },
+        {
+          "line": 107,
+          "text": "s.onerror=()=>{ cleanup(); reject(new Error('Network error — CORS / deploy check karein.')"
+        },
+        {
+          "line": 191,
+          "text": "`fmt.date()` isi par delegate karta hai, is liye poore app ke 92 call-sites"
+        }
+      ]
+    },
+    {
+      "file": "App_Screens2.html",
+      "tt": 0,
+      "hits": 80,
+      "samples": [
+        {
+          "line": 43,
+          "text": "if (!rows || !rows.length) return UI.toast('Reorder ke liye koi item nahi', 'warn');"
+        },
+        {
+          "line": 96,
+          "text": "], rows, emptyText: 'Koi PO nahi', onRow: r => poForm(r)"
+        },
+        {
+          "line": 124,
+          "text": "], rows, emptyText: 'Koi GRN nahi', onRow: r => grnDetail(r)"
+        }
+      ]
+    },
+    {
+      "file": "App_POS2.html",
+      "tt": 0,
+      "hits": 60,
+      "samples": [
+        {
+          "line": 70,
+          "text": "h('p', { style: { margin: '0 0 8px' } }, 'Sale shuru karne se pehle shop khulna zaroori ha"
+        },
+        {
+          "line": 71,
+          "text": "h('p', { class: 'sub', style: { margin: 0 } }, canOpen ? '\"Shop kholein\" dabayen — opening"
+        },
+        {
+          "line": 73,
+          "text": "canOpen ? { label: '🗪 Shop kholein', cls: 'ok', onClick: c => { c(); try { window.shopQui"
+        }
+      ]
+    },
+    {
+      "file": "App_AIConfig.html",
+      "tt": 0,
+      "hits": 50,
+      "samples": [
+        {
+          "line": 49,
+          "text": "if (dot) dot.textContent = 'Gair-mehfooz tabdeeliyan';"
+        },
+        {
+          "line": 132,
+          "text": "h('button', { class: 'btn sm', onclick: () => { ST.loaded = false; ST.err = ''; App.refres"
+        },
+        {
+          "line": 143,
+          "text": "if (!r) { ST.err = 'AI config nahi mil saka (backend offline?).'; return null; }"
+        }
+      ]
+    },
+    {
+      "file": "App_Dashboards.html",
+      "tt": 0,
+      "hits": 48,
+      "samples": [
+        {
+          "line": 301,
+          "text": "UI.kpi('📒', 'Udhaar (receivable)', fmt.moneyCompact(k.receivables), (k.pendingDue ? 'Due "
+        },
+        {
+          "line": 382,
+          "text": ": h('div', { class: 'tbl-empty' }, 'Is range me koi sale nahi')));"
+        },
+        {
+          "line": 411,
+          "text": "{ pct: recovery, label: 'Udhaar recovery', sub: fmt.money(recvPaid) + ' / ' + fmt.money(re"
+        }
+      ]
+    },
+    {
+      "file": "App_UI2.html",
+      "tt": 0,
+      "hits": 48,
+      "samples": [
+        {
+          "line": 118,
+          "text": "(wo \"toggle\" nahi, \"selection\" hain) — sirf on/off isi helper se."
+        },
+        {
+          "line": 172,
+          "text": "node DOM mein reh jaye to Esc HAMESHA usi ko \"handle\" karta rehta tha aur modal"
+        },
+        {
+          "line": 231,
+          "text": "if (cfg.noCancel !== true && !acts.some(a => /cancel|close|band|nahi|back/i.test(String(a."
+        }
+      ]
+    },
+    {
+      "file": "App_Config.html",
+      "tt": 0,
+      "hits": 44,
+      "samples": [
+        {
+          "line": 22,
+          "text": "if (!pack.count) { UI.toast('Koi unsaved tabdeeli nahi — sab mehfooz hai', 'warn'); return"
+        },
+        {
+          "line": 101,
+          "text": "Rang backend se (Config.gs group ka `tint`) — yahan koi duplicate list nahi. */"
+        },
+        {
+          "line": 114,
+          "text": "LOGO UPLOAD (v2.6 QA) — \"shop ka Logo add karnay ki bhi option nahi hay\""
+        }
+      ]
+    },
+    {
+      "file": "Pwa_Shell.html",
+      "tt": 0,
+      "hits": 42,
+      "samples": [
+        {
+          "line": 512,
+          "text": "if (tmo > 0) guard = setTimeout(function () { if (!done) { _runStats.stale++; settle(false"
+        },
+        {
+          "line": 539,
+          "text": "visibility:hidden, opacity 0) to Esc usi ko \"handle\" karta rehta hai aur asli"
+        },
+        {
+          "line": 597,
+          "text": "box + \"Dobara koshish karein\" (sirf jaiz errors par). Validation/auth par"
+        }
+      ]
+    },
+    {
+      "file": "Pwa_Warehouse.html",
+      "tt": 0,
+      "hits": 40,
+      "samples": [
+        {
+          "line": 92,
+          "text": "type: 'search', placeholder: '🔎 Scan karein ya naam / code likhein…',"
+        },
+        {
+          "line": 101,
+          "text": "onMulti: function(list, code){ PWA.toast(list.length + ' matches — list se chunein', 'warn"
+        },
+        {
+          "line": 110,
+          "text": "else if(lst.length>1){ PWA.toast(lst.length+' matches — list se chunein','warn'); input.fo"
+        }
+      ]
+    },
+    {
+      "file": "App_Accounting.html",
+      "tt": 0,
+      "hits": 39,
+      "samples": [
+        {
+          "line": 41,
+          "text": "c.appendChild(h('div', { class: 'empty' }, 'Wallet component load nahi hua')); return;"
+        },
+        {
+          "line": 76,
+          "text": "function accEmpty(msg) { return h('div', { class: 'empty' }, msg || 'Koi data nahi'); }"
+        },
+        {
+          "line": 99,
+          "text": "if (!d) { c.innerHTML = ''; c.appendChild(accEmpty('Accounting dashboard load nahi hua'));"
+        }
+      ]
+    },
+    {
+      "file": "App_Salesman.html",
+      "tt": 0,
+      "hits": 34,
+      "samples": [
+        {
+          "line": 108,
+          "text": "var selSm=h('select',{class:'f-input', 'aria-label':'Salesman — salesman select karein', t"
+        },
+        {
+          "line": 112,
+          "text": "selSm.appendChild(h('option',{value:''},'— Salesman select karein —'));"
+        },
+        {
+          "line": 154,
+          "text": "h('b',null,'👤 Salesman select karna zaruri hai'),"
+        }
+      ]
+    },
+    {
+      "file": "App_Demand.html",
+      "tt": 0,
+      "hits": 32,
+      "samples": [
+        {
+          "line": 70,
+          "text": "host.appendChild(h('div', { class: 'empty' }, h('span', { class: 'big' }, '😕'), h('div', "
+        },
+        {
+          "line": 141,
+          "text": ": h('div', { class: 'empty', style: { padding: '12px' } }, 'Koi PO link nahi — sourcing pe"
+        },
+        {
+          "line": 168,
+          "text": "UI2.confirm('Demand ' + (d.demandNo || '') + ' cancel karein? Stock/PO par asar nahi hoga,"
+        }
+      ]
+    },
+    {
+      "file": "App_Masters.html",
+      "tt": 0,
+      "hits": 32,
+      "samples": [
+        {
+          "line": 80,
+          "text": "return Shared.paint(host, { kind: 'error', error: fr.error, title: 'Items load nahi ho sak"
+        },
+        {
+          "line": 86,
+          "text": "kind: 'empty', icon: '📦', title: 'Koi item nahi mila',"
+        },
+        {
+          "line": 87,
+          "text": "hint: 'Naya item add karein ya Excel/CSV se import karein (Items ▸ Import).',"
+        }
+      ]
+    },
+    {
+      "file": "App_Inventory2.html",
+      "tt": 0,
+      "hits": 26,
+      "samples": [
+        {
+          "line": 14,
+          "text": "serialize nahi kar pata tha → \"illegal value in property: locationId\"."
+        },
+        {
+          "line": 73,
+          "text": "kind: 'empty', icon: '📦', title: 'Abhi koi item nahi',"
+        },
+        {
+          "line": 74,
+          "text": "hint: 'Items screen se products add karein — stock ke baghair bhi yahan nazar aayenge (0 s"
+        }
+      ]
+    },
+    {
+      "file": "App_Boot.html",
+      "tt": 0,
+      "hits": 24,
+      "samples": [
+        {
+          "line": 188,
+          "text": "(upar `include: 'ai'`). Sirf tab alag call karein jab boot se na mile"
+        },
+        {
+          "line": 275,
+          "text": "h('div', null, all.length ? 'Is filter me koi alert nahi — filter badlein' : 'All clear — "
+        },
+        {
+          "line": 283,
+          "text": "const row = h('div', { class: 'notif-row' + (r.readAt ? ' read' : ''), title: 'Mark as rea"
+        }
+      ]
+    },
+    {
+      "file": "App_QR.html",
+      "tt": 0,
+      "hits": 20,
+      "samples": [
+        {
+          "line": 331,
+          "text": "allow NAHI karti — isliye getUserMedia() \"Permissions policy violation\""
+        },
+        {
+          "line": 384,
+          "text": "var input = h('input', { class: 'f-input', type: 'text', placeholder: 'Code / QR value typ"
+        },
+        {
+          "line": 388,
+          "text": "opts.note || 'Scanner open nahi ho saka — code neeche type karein.'), input),"
+        }
+      ]
+    },
+    {
+      "file": "App_Orders.html",
+      "tt": 0,
+      "hits": 16,
+      "samples": [
+        {
+          "line": 24,
+          "text": "subtitle: () => 'Field orders · status · invoice mein badlein',"
+        },
+        {
+          "line": 111,
+          "text": "if (!res) return UI.toast('Order load nahi hui', 'err');"
+        },
+        {
+          "line": 143,
+          "text": "UI2.confirm('Order cancel karein?', ok => {"
+        }
+      ]
+    },
+    {
+      "file": "App_Comms.html",
+      "tt": 0,
+      "hits": 15,
+      "samples": [
+        {
+          "line": 44,
+          "text": "h('label', { class: 'f-col' }, h('span', null, 'Bhejein (phone ya email)'), toInput),"
+        },
+        {
+          "line": 51,
+          "text": "h('button', { class: 'btn ghost', onclick: () => { navigator.clipboard && navigator.clipbo"
+        },
+        {
+          "line": 66,
+          "text": "freeMode ? 'Free mode: wa.me link khulta hai — WhatsApp app/web me message tayar mil jata "
+        }
+      ]
+    },
+    {
+      "file": "App_Reorder.html",
+      "tt": 0,
+      "hits": 14,
+      "samples": [
+        {
+          "line": 51,
+          "text": "'Auto-reorder review: ' + (sig.map(x => x.txt).join('; ') || 'koi signal nahi') +"
+        },
+        {
+          "line": 52,
+          "text": "' — kya ye quantities theek hain? Kon se items pehle order karein aur kyun?'"
+        },
+        {
+          "line": 56,
+          "text": ": h('div', { class: 'tbl-empty' }, 'Abhi koi khaas signal nahi — stock theek chal raha hai"
+        }
+      ]
+    },
+    {
+      "file": "App_POS.html",
+      "tt": 0,
+      "hits": 13,
+      "samples": [
+        {
+          "line": 96,
+          "text": "UI.toast('Min price ' + fmt.money(l.minPrice) + ' se kam nahi kar saktay', 'err'); v = l.m"
+        },
+        {
+          "line": 143,
+          "text": "h('button', { class: 'btn sec', onclick: () => pay('CREDIT') }, '📒 Udhaar'))));"
+        },
+        {
+          "line": 174,
+          "text": "if (!rows.length) listEl.appendChild(h('div', { class: 'tbl-empty' }, 'Koi customer nahi m"
+        }
+      ]
+    },
+    {
+      "file": "App_Wallet.html",
+      "tt": 0,
+      "hits": 13,
+      "samples": [
+        {
+          "line": 60,
+          "text": "PAID: ['ok', 'Paisa mil gaya'],"
+        },
+        {
+          "line": 62,
+          "text": "EXPIRED: ['err', 'Expire ho gaya'],"
+        },
+        {
+          "line": 63,
+          "text": "REVERSED: ['err', 'Reverse ho gaya'],"
+        }
+      ]
+    },
+    {
+      "file": "Pwa_Salesman.html",
+      "tt": 0,
+      "hits": 13,
+      "samples": [
+        {
+          "line": 210,
+          "text": "if (!list.length) { box.appendChild(PWA.el('div', { class: 'empty' }, 'Koi item nahi mila'"
+        },
+        {
+          "line": 234,
+          "text": "if (!S.cart.length) c.appendChild(PWA.el('div', { class: 'empty' }, [PWA.el('span',{class:"
+        },
+        {
+          "line": 264,
+          "text": "[PWA.el('option',{value:'CASH'},'Cash'), PWA.el('option',{value:'CREDIT'},'Credit / Udhaar"
+        }
+      ]
+    },
+    {
+      "file": "App_Charts.html",
+      "tt": 0,
+      "hits": 11,
+      "samples": [
+        {
+          "line": 151,
+          "text": "return h('div', { class: 'chart-empty' }, msg || 'Data nahi hai');"
+        },
+        {
+          "line": 158,
+          "text": "if (!data.length) return empty(opts.emptyText || 'Is range me koi data nahi');"
+        },
+        {
+          "line": 220,
+          "text": "if (!data.length) return empty(opts.emptyText || 'Koi data nahi');"
+        }
+      ]
+    },
+    {
+      "file": "Pwa_Field.html",
+      "tt": 0,
+      "hits": 11,
+      "samples": [
+        {
+          "line": 138,
+          "text": "else if(hint){ hint.textContent = typed ? 'Naya customer — \\\"'+typed+'\\\"' : 'Naya naam lik"
+        },
+        {
+          "line": 177,
+          "text": "onMulti: function(list, code){ PWA.toast(list.length + ' matches — list se chunein', 'warn"
+        },
+        {
+          "line": 186,
+          "text": "else if(l.length>1){ PWA.toast(l.length+' matches — list se chunein','warn'); input.focus("
+        }
+      ]
+    },
+    {
+      "file": "App_Screens.html",
+      "tt": 0,
+      "hits": 9,
+      "samples": [
+        {
+          "line": 36,
+          "text": "'aria-label': 'Branch', title: 'Branch select karein' });"
+        },
+        {
+          "line": 116,
+          "text": "if (!v.name) return UI.toast('Name zaroori hai', 'err');"
+        },
+        {
+          "line": 137,
+          "text": "'Google Sheet se copy kar ke paste karein (tab-separated bhi chalay ga). Existing codes up"
+        }
+      ]
+    },
+    {
+      "file": "App_Warehouse.html",
+      "tt": 0,
+      "hits": 9,
+      "samples": [
+        {
+          "line": 102,
+          "text": "subtitle: 'System qty ' + fmt.num(row.qty) + ' · farq auto adjust ho jayega',"
+        },
+        {
+          "line": 154,
+          "text": "UI2.confirm('Sheet ' + r.sheetNo + ' cancel karein?', ok => {"
+        },
+        {
+          "line": 200,
+          "text": "title: '🧮 Nayi count sheet', subtitle: 'Scope chunein — system qty freeze ho jayegi',"
+        }
+      ]
+    },
+    {
+      "file": "Pwa_POS.html",
+      "tt": 0,
+      "hits": 9,
+      "samples": [
+        {
+          "line": 193,
+          "text": "<div class=\"muted\" id=\"paySettlementHint\" style=\"font-size:11px;color:var(--muted)\">Koi fe"
+        },
+        {
+          "line": 203,
+          "text": "<span class=\"due\">Current Due (udhaar) <b id=\"payDueVal\">Rs 0</b></span>"
+        },
+        {
+          "line": 479,
+          "text": "hint.textContent='Koi fee nahi - settlement '+(dv || '2026-09-21')+(totStr?' · '+totStr:''"
+        }
+      ]
+    },
+    {
+      "file": "App_Lang.html",
+      "tt": 1,
+      "hits": 7,
+      "samples": [
+        {
+          "line": 149,
+          "text": "const pers = UI2.toggle({ label: '🔒 Sirf mere liye save karein',"
+        },
+        {
+          "line": 150,
+          "text": "hint: 'personal override — doosre users par asar nahi',"
+        },
+        {
+          "line": 210,
+          "text": "'btn.save': 'Save karein', 'btn.cancel': 'Cancel', 'btn.close': 'Band karein',"
+        }
+      ]
+    },
+    {
+      "file": "App_Barcode.html",
+      "tt": 0,
+      "hits": 6,
+      "samples": [
+        {
+          "line": 199,
+          "text": "if (!w) { UI.toast('Popup block ho gaya — browser ki setting allow karein', 'warn'); retur"
+        },
+        {
+          "line": 303,
+          "text": "(due>0? '<tr style=\"font-weight:800;background:#fef2f2\"><td></td><td style=\"text-align:rig"
+        },
+        {
+          "line": 444,
+          "text": "se neeche nahi jaati. Jo label tab bhi na fit ho uspar data-lw=\"1\" mark hota"
+        }
+      ]
+    },
+    {
+      "file": "Styles.html",
+      "tt": 0,
+      "hits": 6,
+      "samples": [
+        {
+          "line": 159,
+          "text": "`min-height:100vh` iframe ko majboor karta hai ke poori screen le."
+        },
+        {
+          "line": 160,
+          "text": "(overflow:hidden jaan boojh kar hai — \"koi bottom scroll nahi\" requirement) */"
+        },
+        {
+          "line": 448,
+          "text": "state mobile par leak nahi karta (user req 14: \"off-canvas behavior should"
+        }
+      ]
+    },
+    {
+      "file": "App_Print.html",
+      "tt": 0,
+      "hits": 5,
+      "samples": [
+        {
+          "line": 276,
+          "text": "if (!w) { UI.toast('Popup block hai — browser setting allow karein', 'warn'); return; }"
+        },
+        {
+          "line": 289,
+          "text": "if (!r || !r.base64) throw new Error('ESC/POS generate nahi hua');"
+        },
+        {
+          "line": 296,
+          "text": "UI.toast('ESC/POS file download ho gayi (' + r.bytes + ' bytes) — thermal printer par bhej"
+        }
+      ]
+    },
+    {
+      "file": "App_AI.html",
+      "tt": 0,
+      "hits": 4,
+      "samples": [
+        {
+          "line": 23,
+          "text": "return c.usable === false ? 'Setup zaroori — AI Agent tab kholein'"
+        },
+        {
+          "line": 31,
+          "text": "'Assalam-o-Alaikum! 👋 Main aapka business agent hoon.\\n\\nPooch saktay hain:\\n• \"Aaj ki sa"
+        },
+        {
+          "line": 72,
+          "text": "{ offlineFallback: () => ({ reply: '📴 Offline hoon — internet aane par dobara poochiye. ("
+        }
+      ]
+    },
+    {
+      "file": "App_PayUI.html",
+      "tt": 0,
+      "hits": 2,
+      "samples": [
+        {
+          "line": 74,
+          "text": "title: f.label + (f.required ? ' (lazmi)' : ''),"
+        },
+        {
+          "line": 99,
+          "text": ": 'Koi fee nahi';"
+        }
+      ]
+    },
+    {
+      "file": "App_Icons.html",
+      "tt": 0,
+      "hits": 1,
+      "samples": [
+        {
+          "line": 6,
+          "text": "\"icon realistic nahi hain, icons say idea nahi hota ke ye section"
+        }
+      ]
+    },
+    {
+      "file": "App_PwaHub.html",
+      "tt": 0,
+      "hits": 1,
+      "samples": [
+        {
+          "line": 107,
+          "text": "h('div',{style:{fontSize:'12px',color:'var(--muted)',marginTop:'4px'}}, 'PWAs mein camera "
+        }
+      ]
+    },
+    {
+      "file": "Index.html",
+      "tt": 0,
+      "hits": 1,
+      "samples": [
+        {
+          "line": 101,
+          "text": "aria-label=\"Offline queue — abhi sync karein\" title=\"Offline queue\">⇅<span id=\"syncChipN\" "
+        }
+      ]
+    }
+  ]
+}
