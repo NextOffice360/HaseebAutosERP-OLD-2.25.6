@@ -155,3 +155,20 @@ integration + regression + UI/UX-check + error-handling + security-check pass ho
 - Natija: Screens2 POS2 = 0/1 hits (sirf 1 domain-term 'udhaar'); EN mode ab production-safe (fallback=EN)
 
 **Remnants (r11+):** EN-purity slice-3 (App_Core 80 — zyada tar regex/error-matchers, App_AIConfig 50, App_UI2 48, App_Dashboards 47, App_Config 44, Pwa_Shell 42, Pwa_Warehouse 40, App_Accounting 39) · Phase-C Context_Aware UX items · audit_qr_payloads ko resolve-check gate banana.
+
+## Round-11 — EN-purity slice-3 + QR payload gate (2026-09-25) — SHIPPED v2.30.9
+
+**Batch (32 todos):** slice-3 (Dashboards/Config/Accounting) + QR gate + hardening.
+- [x] T1 PWA runtime check: PWA pages sirf Pwa_Shell include karte hain — T available NAHI → Pwa_* files slice-3 se NIKALE (r12 = PWA micro-T design). Galat migrate karke PWA pages dead hone se bacha gaya
+- [x] T2–T15 App_Dashboards: 42 literals → T.t (dash.*) — udhaar KPIs/reports/day-close/wizard/CSV/share/popup
+- [x] T16–T27 App_Config: 35 literals → T.t (cfg.*) — save/copy/logo/schema/templates/menu/JSON/repair
+- [x] T28–T31 App_Accounting: 34 literals → T.t (acc.*) — vouchers/ledger/bank/TB/BS/cash-book/vouchers-from-docs
+- [x] T32 dash L1239 HTML-string inline concat (noEntriesHtml) + acc residuals (noVouchersYet/noStmtImport)
+- [x] T33 mock dict +111 rows (en/roman/ur) — Cyrillic/dupes saaf
+- [x] T34 comment-hygiene: Config pe naive depth-counter ne JS toda (block 0 token error) → revert + sirf migration dobara; hygiene ab tool-safe design ka remnant (r12)
+- [x] T35 floor baselines: hits 732→615, T.t 199→317, per-file top-4 = Core/AIConfig/UI2/Pwa_Shell
+- [x] T36 perf-batch gate lang-agnostic (Sab approve karein | Approve all)
+- [x] T37–T40 QR payload GATE: audit_qr_payloads ab exit-code gate — var look-back (txt → HA:INV), documented exceptions (registry r.qr ×2, PwaHub link-url, DAYREP session-JSON), legacy 'INV:'+ emitter ban; verify me registered (71 gates)
+- [x] T41 verify 71/71 GREEN (tmp/validate-v2.30.9.log) → package v2.30.9.zip → push 0d6798f
+
+**Remnants (r12+):** PWA i18n micro-T (Pwa_Shell me window.T fallback + dict plumbing) · comment-hygiene as a safe tool (naive counter Config toda tha) · DAYREP session-QR resolvable banana · App_Core 80 / AIConfig 50 / UI2 48 (zyada tar error-matcher regexes — sirf UI strings) · Phase-C Context_Aware UX items.
