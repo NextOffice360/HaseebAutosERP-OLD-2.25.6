@@ -103,7 +103,9 @@
 .page-head h2{font-size:clamp(20px,2.2vw,24px); font-weight:800; line-height:1.25; letter-spacing:-0.02em;}
 .page-head .sub{font-size:var(--fs-sm); font-weight:500; line-height:1.5; color:var(--muted); }
 .card-head h3{font-size:clamp(14px,1.6vw,16px); font-weight:700; line-height:1.35; letter-spacing:0.01em;}
-.card-head .actions .btn{font-size:var(--fs-sm); font-weight:600;}
+.card-head .actions .btn{font-size:var(--fs-sm); font-weight:600;min-height:36px}
+/* v2.30.5 (P3-a) — coarse pointers (mobile/tablet): tap targets ≥44px */
+@media (pointer:coarse){.btn,.btn.sm{min-height:44px}}
 .sec-title,.sec-head h3{font-size:var(--fs-xl); font-weight:700; line-height:1.35;}
 .kpi .k-value{font-size:var(--fs-3xl); font-weight:800; line-height:1.2; letter-spacing:-0.02em; font-variant-numeric:tabular-nums;}
 .kpi .k-label{font-size:var(--fs-xs); font-weight:700; letter-spacing:0.08em; text-transform:uppercase; line-height:1.4;}

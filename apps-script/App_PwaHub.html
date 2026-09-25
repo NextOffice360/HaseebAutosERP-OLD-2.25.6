@@ -7,6 +7,15 @@
    Links: ?app=wh | ?app=fo | ?app=sm | ?app=pos
    Also shows QR for phone scanning + Install hint + status (enabled/perm).
    ========================================================================== */
+/* v2.30.5 (P3-d) — notch/safe-area guards (hub screen) */
+(function(){
+  try {
+    var st = document.createElement('style');
+    st.textContent = '.hub-safe{padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right);padding-bottom:env(safe-area-inset-bottom)}' +
+      'body{padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right);padding-bottom:env(safe-area-inset-bottom)}';
+    document.head.appendChild(st);
+  } catch (e) { }
+})();
 (function(){
 'use strict';
 

@@ -314,6 +314,7 @@ App.registerScreen('sales', {
               r.status !== 'VOID' && App.can('pos.return') ? h('button', { class: 'btn sm sec', onclick: e => { e.stopPropagation(); returnForm(r); } }, 'Return') : '') }
           ],
           rows: res.rows, emptyText: 'Koi sale nahi mili',
+          totals: { label: 'Total' }, /* v2.30.5 (D12b) — legacy UI.table sums */
           onRow: r => open(r.id)
         , _expose: (window.__openSale = open)
         }));
@@ -336,7 +337,10 @@ App.registerScreen('sales', {
             ? UI2.entityLink('parties', { tab: 'customers', open: sale.customerId }, sale.customerName || 'Customer')
             : (sale.customerName || '')))));
       const rows = sale.items.map(i => h('div', { class: 'list-item' },
-        h('div', { class: 'li-main' }, h('b', null, i.name), h('span', null, i.code + ' · ' + i.qty + ' × ' + fmt.money(i.price))),
+        h('div', { class: 'li-main' },
+          /* v2.30.5 (D22) — line item → item detail (entity-link) */
+          (i.id ? UI2.entityLink('items', { open: i.id }, i.name) : h('b', null, i.name)),
+          h('span', null, i.code + ' · ' + i.qty + ' × ' + fmt.money(i.price))),
         h('b', null, fmt.money(i.lineTotal))));
       el.append(...rows);
       el.appendChild(h('div', { style: { marginTop: '10px' } },

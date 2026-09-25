@@ -65,7 +65,16 @@ async function docShare(r) {
       UI.toast('Invoice record nahi mila — text share khul raha hai', 'warn', 2600);
     } catch (e) { /* fall through to text share */ }
   }
-  const msg = ['*' + (App.state.branchName || 'Haseeb Autos') + '* — ' + (r.docType || 'Document'),
+  /* v2.30.5 (D19) — per-docType template (SETTINGS comms.docTemplate.<TYPE>) */
+  const F = { docNo: r.docNo || r.id, ref: r.ref || '', type: r.docType || '', entityType: r.entityType || '',
+    entityId: r.entityId || '', module: r.module || '', version: r.version || 1, status: r.status || '',
+    created: fmt.date(r.createdAt, true), qr: r.qr || '', business: App.state.branchName || 'Haseeb Autos' };
+  let _st = App.state.settings || {};
+  try { _st = Object.assign({}, _st, await API.call('system.settings.get', {}, { offlineFallback: () => _st }) || {}); } catch (e) { }
+  const tpl = _st['comms.docTemplate.' + (r.docType || '')];
+  let msg;
+  if (tpl) msg = '*' + F.business + '*\n' + String(tpl).replace(/\{\{?(\w+)\}?\}/g, (m, k) => (F[k] !== undefined ? String(F[k]) : m)); /* D19-fix: {{x}} dono braces */
+  else msg = ['*' + F.business + '* — ' + (r.docType || 'Document'),
     docSummary(r), r.qr ? ('Scan code: ' + r.qr) : ''].filter(Boolean).join('\n');
   const box = h('textarea', { rows: 8, class: 'f-input', style: { width: '100%' } });
   box.value = msg;
@@ -194,9 +203,22 @@ App.registerScreen('documents', {
     [qInput, typeSel].forEach(el => el.addEventListener('input', () => { clearTimeout(tmr); tmr = setTimeout(load, 350); }));
 
     const bar = h('div', { class: 'f-grid', style: { marginBottom: '8px' } }, qInput, typeSel);
+    const scans = h('div', { class: 'chips', style: { marginBottom: '8px' } });
     const kpis = h('div', { style: { marginBottom: '8px' } });
     const listHost = h('div');
-    host.append(bar, kpis, listHost);
+    host.append(scans, bar, kpis, listHost);
+    /* v2.30.5 (D18) — recent scans chips: click → dobara resolve */
+    function paintScans() {
+      scans.innerHTML = '';
+      let hist = []; try { hist = Store.get('ha_scans', []) || []; } catch (e) { }
+      if (!hist.length) return;
+      scans.appendChild(h('span', { class: 'muted', style: { fontSize: 'var(--fs-xs)' } }, 'Recent scans:'));
+      hist.slice(0, 5).forEach(x => scans.appendChild(h('button', {
+        class: 'chip', title: 'Dobara resolve karein: ' + x.code,
+        onclick: () => App.resolveCode(x.code)
+      }, x.code.length > 22 ? x.code.slice(0, 22) + '…' : x.code)));
+    }
+    paintScans();
 
     function load() {
       listHost.innerHTML = '';

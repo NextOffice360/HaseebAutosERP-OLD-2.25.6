@@ -40,7 +40,7 @@ App.registerScreen('purchase', {
     setTimeout(async () => {
       try {
         const rows = await API.call('items.reorderSuggest', {}, { offlineFallback: () => [] });
-        if (!rows || !rows.length) return UI.toast('Reorder ke liye koi item nahi', 'warn');
+        if (!rows || !rows.length) return UI.toast(T.t('pur.noReorder','No items to reorder'), 'warn');
         poForm(null, rows.map(r => ({ itemId: r.id, code: r.code, name: r.name,
           qty: Math.max(1, (Number(r.reorderLevel) || Number(r.minStock) || 10) - Number(r.stock || 0)),
           rate: Number(r.costPrice) || 0 })));
@@ -259,7 +259,7 @@ App.registerScreen('purchase', {
         }
       } catch (e) { host.innerHTML = ''; host.appendChild(h('div', { class: 'empty' }, '⚠ ' + e.message)); }
     }
-    async function approve(id) { await API.call('purchase.po.approve', { id }); UI.toast('Approved', 'ok'); load(); }
+    async function approve(id) { await API.call('purchase.po.approve', { id }); UI.toast(T.t('pur.approved','Approved'), 'ok'); load(); }
 
   /* v2.6 §4 — GRN ke liye print / PDF / share (row ke 🖨 button se) */
   function grnDocActions(r) {
@@ -272,7 +272,7 @@ App.registerScreen('purchase', {
             try {
               const d = await API.call('purchase.grn.get', { id: r.id }, { offlineFallback: () => null });
               const ids = ((d && d.items) || []).map(x => x.itemId || x.id).filter(Boolean);
-              if (!ids.length) { UI.toast('GRN me items nahi mile — pehle detail kholein', 'warn'); return; }
+              if (!ids.length) { UI.toast(T.t('pur.grnNoItems','No items in GRN — open the detail first'), 'warn'); return; }
               Print.labelFlow(ids);
             } catch (e) { UI.toast('Labels fail: ' + (e.message || e), 'err'); }
           } },
@@ -286,7 +286,7 @@ App.registerScreen('purchase', {
     let d = null;
     try { d = await API.call('purchase.grn.get', { id: row.id }, { offlineFallback: () => null }); }
     catch (e) { UI.toast(e.message, 'err'); return; }
-    if (!d) { UI.toast('Detail load nahi hui (offline)', 'warn'); return; }
+    if (!d) { UI.toast(T.t('pur.detailOffline','Detail not loaded (offline)'), 'warn'); return; }
     const sup = d.supplier || {};
     const body = h('div', null,
       h('div', { class: 'po-meta' },
@@ -345,20 +345,23 @@ App.registerScreen('purchase', {
         { key: 'notes', label: 'Note', full: true }
       ]
     });
+    const _supId = d.supplierId || (d.supplier && d.supplier.id);
     UI2.modal({
       title: '💸 Supplier payment — ' + (d.supplier && d.supplier.name ? d.supplier.name : ''),
+      subtitle: _supId ? UI2.entityLink('parties', { tab: 'suppliers', open: _supId },
+        (d.supplier && d.supplier.name) || 'Supplier record kholein') : '', /* v2.30.5 (D23) */
       size: 'sm', body: f2.el,
       actions: [{
         label: 'Pay', cls: 'ok', onClick: async c => {
           const v = f2.values();
-          if (!(Number(v.amount) > 0)) return UI.toast('Amount darj karein', 'err');
+          if (!(Number(v.amount) > 0)) return UI.toast(T.t('pur.enterAmount','Enter the amount'), 'err');
           try {
             await API.call('payments.create', {
               type: 'SUPPLIER_PAYMENT', partyType: 'SUPPLIER', partyId: d.supplierId,
               method: v.method, amount: Number(v.amount), date: v.date,
               purchaseId: d.id, reference: v.reference || '', notes: v.notes || 'GRN ' + (d.grnNo || '')
             });
-            UI.toast('Payment recorded ✅', 'ok'); c(); App.refresh();
+            UI.toast(T.t('pur.paymentDone','Payment recorded ✅'), 'ok'); c(); App.refresh();
           } catch (e) { UI.toast(e.message, 'err'); }
         }
       }, { label: 'Cancel', onClick: c => c() }]
@@ -1285,12 +1288,16 @@ function grnForm(po) {
     ], { getValue: () => v, form: fTop, toastKey: 'grn' });
     if (!chk.ok) return;
     try {
-      await API.call('purchase.grn.save', { grn: Object.assign({}, v, {
+      const _g = await API.call('purchase.grn.save', { grn: Object.assign({}, v, {
         items: lines.map(l => ({ itemId: l.itemId, qty: Number(l.qty), cost: Number(l.cost) })),
         poId: isPO() ? poCtx.id : '',
         freight: Number(v.freight) || 0
       }) });
       UI.toast('GRN posted — stock update ho gaya', 'ok');
+      /* v2.30.5 (D24) — GRN = generated purchase document → registry (fire-and-forget) */
+      try { if (window.Docs) Docs.register({ docType: 'GRN',
+        entityType: 'supplier', entityId: v.supplierId || '', ref: (_g && (_g.grnNo || _g.id)) || '',
+        module: 'purchase', action: 'save', qr: '' }); } catch (e) { }
       if (c) c();
       App.refresh(); API.pullCatalog(true);
     } catch (e) { UI.toast(e.message, 'err'); }
@@ -1428,7 +1435,7 @@ function paySupplier(supplier) {
       const v = f.values();
       try {
         await API.call('payments.create', { payment: { ...v, type: 'SUPPLIER_PAYMENT', partyType: 'SUPPLIER', partyId: supplier.id, locationId: App.state.locationId } });
-        UI.toast('Payment recorded ✅', 'ok'); c(); App.refresh();
+        UI.toast(T.t('pur.paymentDone','Payment recorded ✅'), 'ok'); c(); App.refresh();
       } catch (e) { UI.toast(e.message, 'err'); }
     } }]
   });

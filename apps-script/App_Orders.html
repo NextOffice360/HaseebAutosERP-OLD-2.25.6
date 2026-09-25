@@ -109,7 +109,7 @@
 
   function orderDetail(id, after) {
     API.call('orders.get', { id: id }, { offlineFallback: () => null }).then(res => {
-      if (!res) return UI.toast('Order load nahi hui', 'err');
+      if (!res) return UI.toast(T.t('ord.loadFail','Order failed to load'), 'err');
       const o = res.order;
       const host = h('div');
       host.appendChild(h('div', { class: 'po-meta', style: { display: 'flex' } },
@@ -144,7 +144,7 @@
             UI2.confirm('Order cancel karein?', ok => {
               if (!ok) return;
               API.call('orders.status', { id: o.id, status: 'CANCELLED' })
-                .then(() => { UI.toast('Cancelled', 'ok'); c(); if (after) after(); })
+                .then(() => { UI.toast(T.t('ord.cancelled','Cancelled'), 'ok'); c(); if (after) after(); })
                 .catch(e => UI.toast(e.message, 'err'));
             });
           } } : null
@@ -235,7 +235,7 @@
           };
           host.appendChild(btn);
           var collBtn=h('button',{class:'btn sm ghost', style:'margin-top:6px;width:100%'}, '💰 Collect payment');
-          collBtn.onclick=function(){ if(window.OrdersUI && window.OrdersUI.receivePay) window.OrdersUI.receivePay(c); else UI.toast('Collect: POS → Customers → Receive','ok'); };
+          collBtn.onclick=function(){ if(window.OrdersUI && window.OrdersUI.receivePay) window.OrdersUI.receivePay(c); else UI.toast(T.t('ord.collectHint','Collect: POS → Customers → Receive'),'ok'); };
           host.appendChild(collBtn);
         };
         render(stale);
@@ -261,10 +261,10 @@
           UI2.modal({title:'📦 Bulk Add — Take Order', subtitle:'Scan → auto-add to Bulk List → field clears → next scan ready · or search + tick', size:'lg', body:picker,
             actions:[ {label:'Cancel', cls:'ghost', onClick:function(c){c();}},
               {label:'Add Selected to Order', cls:'ok', onClick:function(c){
-                if(!(picker.api && picker.api.hasSel && picker.api.hasSel())){ return UI.toast('Koi item select nahi — scan ya tick karein','warn'); }
+                if(!(picker.api && picker.api.hasSel && picker.api.hasSel())){ return UI.toast(T.t('ord.noSelect','No item selected — scan or tick items'),'warn'); }
                 picker.api.commit(); c();
               } } ]});
-        } else { UI.toast('Bulk picker not available','warn'); }
+        } else { UI.toast(T.t('ord.pickerNA','Bulk picker not available'),'warn'); }
       }}, '☑ Bulk');
       const search = h('input', { class: 'mo-search', type: 'search',
         placeholder: '🔎 Item dhoondain (name / code / barcode)', 'aria-label': 'Search item' });

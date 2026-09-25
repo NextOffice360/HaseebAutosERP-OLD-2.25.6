@@ -546,7 +546,7 @@ App.registerScreen('insights', {
   subtitle: 'Customers · receivables · payables · P&L · inventory',
   actions() {
     return [{ label: 'Refresh', icon: '↻', onClick: () => App.refresh() },
-    { label: 'Export CSV', icon: '⬇', onClick: () => UI.toast('Har table par CSV button hai', 'warn') }];
+    { label: 'Export CSV', icon: '⬇', onClick: () => UI.toast(T.t('dash.csvHint','Every table has a CSV button'), 'warn') }];
   },
   render(body) {
     const host = h('div'); body.appendChild(host);
@@ -795,7 +795,7 @@ function renderAlertsDash(c) {
         UI.toast((r.created || 0) + ' naye alerts', 'ok'); App.refresh();
       } }, '⚡ Generate'),
       h('button', { class: 'btn sm sec', onclick: async () => {
-        await API.call('notifications.readAll', {}); UI.toast('Sab read', 'ok'); App.refresh();
+        await API.call('notifications.readAll', {}); UI.toast(T.t('dash.allRead','All marked as read'), 'ok'); App.refresh();
       } }, '✓ Mark all read')
     ]));
     const sev = { ERR: 0, WARN: 0, INFO: 0 };
@@ -882,7 +882,7 @@ function shopDayReportCard() {
         onclick: async () => {
           try {
             await API.call('dayreport.generate', { kind: 'CLOSE' });
-            UI.toast('Report ban gayi ✅', 'ok');
+            UI.toast(T.t('dash.reportDone','Report generated ✅'), 'ok');
             shopDayReportRefresh(bodyEl);
           } catch (e) { UI.toast(e.message || 'Report nahi ban saki', 'err'); }
         }
@@ -956,7 +956,7 @@ async function shopDayReportRefresh(bodyEl) {
                 '\nClosing cash: ' + fmt.money(r.closingCash || 0) +
                 '\nVariance: ' + fmt.money(Number(r.variance || 0));
               if (typeof Share !== 'undefined' && Share.text) Share.text(txt, r.reportNo || 'Day report');
-              else UI.toast('Share unavailable', 'warn');
+              else UI.toast(T.t('dash.shareNA','Share unavailable'), 'warn');
             } catch (e) { UI.toast(e.message || 'Share nahi ho saka', 'err'); }
           }
         }, '📤'))));
@@ -967,7 +967,7 @@ async function shopDayReportRefresh(bodyEl) {
 async function openDayReportOutput(id, mode) {
   let tab;
   try { tab=window.open('', '_blank'); } catch(e) { tab=null; }
-  if(!tab){UI.toast('Allow popups for this app, then click the report button again.', 'warn');return;}
+  if(!tab){UI.toast(T.t('dash.allowPopups','Allow popups for this app, then click the report button again.'), 'warn');return;}
   try {
     tab.opener=null;
     tab.document.write('<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><title>Preparing report</title><p style="font:16px system-ui;padding:24px">Preparing your report…</p>');
@@ -1011,7 +1011,7 @@ function shopClosedCard(onDone) {
         const v = f.values();
         try {
           const op = await API.call('cash.session.open', { openingCash: Number(v.openingCash) || 0, notes: v.notes || '' });
-          UI.toast('Shop open ho gayi ✅', 'ok'); loadShopState(); onDone();
+          UI.toast(T.t('dash.shopOpen','Shop is open ✅'), 'ok'); loadShopState(); onDone();
           /* v2.30.0 — opening report bhi foran (auto report setting ke sath) */
           if (String(App.state.settings.dayReportAutoOpen) !== 'false') {
             const sid = (op && op.sessionId) || (op && op.id) || '';

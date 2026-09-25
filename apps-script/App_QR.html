@@ -571,6 +571,14 @@ window.HaScan = (function () {
 App.resolveCode = function (raw) {
   var v = String(raw || '').trim();
   if (!v) return Promise.resolve(null);
+  /* v2.30.5 (D18) — recent-scan history (last 5, localStorage) */
+  try { var _sc = Store.get('ha_scans', []); _sc.unshift({ code: v.slice(0, 80), at: new Date().toISOString() });
+    Store.set('ha_scans', _sc.slice(0, 5)); } catch (e) { }
+  /* v2.30.5 (D21) — URL payloads: sirf http(s), safe open (javascript: kabhi nahi) */
+  if (/^https?:\/\//i.test(v)) {
+    try { window.open(v, '_blank', 'noopener'); UI.toast('Link khul gaya', 'ok', 1800); } catch (e) { }
+    return Promise.resolve({ ok: true, url: v });
+  }
   var go = function (screen, params, label) {
     UI.toast('Khul raha hai: ' + label, 'ok', 2200);
     App.go(screen, params);
@@ -592,6 +600,8 @@ App.resolveCode = function (raw) {
     if (kind === 'ITM') return Promise.resolve(go('items', { open: val }, 'Item ' + val));
     if (kind === 'CUS') return Promise.resolve(go('parties', { tab: 'customers', open: val }, 'Customer ' + val));
     if (kind === 'SUP') return Promise.resolve(go('parties', { tab: 'suppliers', open: val }, 'Supplier ' + val));
+    /* v2.30.5 (D20) — HA:PAY → Payments & Cash screen */
+    if (kind === 'PAY') return Promise.resolve(go('money', {}, 'Payment ' + val));
     /* v2.30.5 (D3) — HA:DOC → registry lookup → related entity khule */
     if (kind === 'DOC' && window.Docs) {
       return Docs.get(val).then(function (rec) {

@@ -1,0 +1,50 @@
+{
+  "generatedAt": "2026-09-25T05:16:07.457Z",
+  "checks": [
+    {
+      "id": "btn.hasSize",
+      "ok": true,
+      "detail": ".btn{font-size:var(--fs-sm); font-weight:600;min-height:36px"
+    },
+    {
+      "id": "btn.sm.exists",
+      "ok": true,
+      "detail": ".btn.sm{min-height:44px}"
+    },
+    {
+      "id": "touch.mediaCoarse",
+      "ok": true,
+      "detail": "mobile media queries"
+    },
+    {
+      "id": "tabbar.touch",
+      "ok": true,
+      "detail": "tabbar{display:none}"
+    },
+    {
+      "id": "safearea.Pwa_Shell.html",
+      "ok": true,
+      "detail": "safe-area/viewport-fit"
+    },
+    {
+      "id": "safearea.App_PwaHub.html",
+      "ok": true,
+      "detail": "safe-area/viewport-fit"
+    },
+    {
+      "id": "safearea.Pwa_POS.html",
+      "ok": true,
+      "detail": "safe-area/viewport-fit"
+    },
+    {
+      "id": "manifest.themeDisplay",
+      "ok": true,
+      "detail": "manifest standalone+theme"
+    },
+    {
+      "id": "btn.sm.heightKnown",
+      "ok": true,
+      "detail": "height=44px"
+    }
+  ]
+}

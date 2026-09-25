@@ -831,7 +831,40 @@ Object.assign(TRANSLATIONS, {
   'pos.noSelect': { key: 'pos.noSelect', en: 'No item selected — scan or tick checkboxes', roman: 'Koi item select nahi — scan karein ya checkbox tick karein', ur: 'کوئی آئٹم منتخب نہیں — اسکین کریں یا باکس ٹک کریں' },
   'pos.bulkError': { key: 'pos.bulkError', en: 'Bulk modal error', roman: 'Bulk modal error', ur: 'بلک موڈل کی خرابی' },
   'pos.bulkNeedsBridge': { key: 'pos.bulkNeedsBridge', en: 'Scanner bridge required for bulk (run with App_QR partial)', roman: 'Bulk ke liye scanner bridge chahiye (App_QR partial ke sath)', ur: 'بلک کے لیے اسکینر برج درکار ہے' },
-  'pos.shopDialogFail': { key: 'pos.shopDialogFail', en: 'Shop dialog did not open', roman: 'Shop dialog nahi khula', ur: 'شاپ ڈائیلاگ نہیں کھلا' }
+  'pos.shopDialogFail': { key: 'pos.shopDialogFail', en: 'Shop dialog did not open', roman: 'Shop dialog nahi khula', ur: 'شاپ ڈائیلاگ نہیں کھلا' },
+  'dash.csvHint': { key: 'dash.csvHint', en: 'Every table has a CSV button', roman: 'Har table par CSV button hai', ur: 'ہر ٹیبل پر CSV بٹن ہے' },
+  'dash.allRead': { key: 'dash.allRead', en: 'All marked as read', roman: 'Sab read', ur: 'سب پڑھا ہوا' },
+  'dash.reportDone': { key: 'dash.reportDone', en: 'Report generated ✅', roman: 'Report ban gayi ✅', ur: 'رپورٹ بن گئی ✅' },
+  'dash.shareNA': { key: 'dash.shareNA', en: 'Share unavailable', roman: 'Share mojood nahi', ur: 'شیئر دستیاب نہیں' },
+  'dash.allowPopups': { key: 'dash.allowPopups', en: 'Allow popups for this app, then click the report button again.', roman: 'Is app ke liye popups allow karein, phir report button dobara dabayein.', ur: 'اس ایپ کے لیے پاپ اپس کی اجازت دیں، پھر رپورٹ بٹن دوبارہ دبائیں۔' },
+  'dash.shopOpen': { key: 'dash.shopOpen', en: 'Shop is open ✅', roman: 'Shop open ho gayi ✅', ur: 'دکان کھل گئی ✅' },
+  'pur.noReorder': { key: 'pur.noReorder', en: 'No items to reorder', roman: 'Reorder ke liye koi item nahi', ur: 'دوبارہ آرڈر کے لیے کوئی آئٹم نہیں' },
+  'pur.grnNoItems': { key: 'pur.grnNoItems', en: 'No items in GRN — open the detail first', roman: 'GRN me items nahi mile — pehle detail kholein', ur: 'GRN میں آئٹمز نہیں — پہلے تفصیل کھولیں' },
+  'pur.detailOffline': { key: 'pur.detailOffline', en: 'Detail not loaded (offline)', roman: 'Detail load nahi hui (offline)', ur: 'تفصیل لوڈ نہیں ہوئی (آف لائن)' },
+  'pur.enterAmount': { key: 'pur.enterAmount', en: 'Enter the amount', roman: 'Amount darj karein', ur: 'رقم درج کریں' },
+  'pur.paymentDone': { key: 'pur.paymentDone', en: 'Payment recorded ✅', roman: 'Payment record ho gayi ✅', ur: 'ادائیگی ریکارڈ ہو گئی ✅' },
+  'pur.approved': { key: 'pur.approved', en: 'Approved', roman: 'Approve ho gaya', ur: 'منظور ہو گیا' },
+  'mast.imgUploaded': { key: 'mast.imgUploaded', en: 'Image uploaded ✅ — refreshing', roman: 'Image upload ho gayi ✅ — refreshing', ur: 'تصویر اپ لوڈ ہو گئی ✅ — ریفریش' },
+  'mast.imgUploaded2': { key: 'mast.imgUploaded2', en: 'Image uploaded ✅', roman: 'Image upload ho gayi ✅', ur: 'تصویر اپ لوڈ ہو گئی ✅' },
+  'mast.printFail': { key: 'mast.printFail', en: 'Print failed', roman: 'Print fail', ur: 'پرنٹ ناکام' },
+  'mast.codeCopied': { key: 'mast.codeCopied', en: 'Code copied — ', roman: 'Code copy ho gaya — ', ur: 'کوڈ کاپی ہو گیا — ' },
+  'mast.barcodeNew': { key: 'mast.barcodeNew', en: 'New barcode assigned: ', roman: 'Naya barcode assign hua: ', ur: 'نیا بارکوڈ تفویض ہوا: ' },
+  'inv2.reversed': { key: 'inv2.reversed', en: 'Reversed', roman: 'Reverse ho gaya', ur: 'ریورس ہو گیا' },
+  'inv2.received': { key: 'inv2.received', en: 'Received ✅', roman: 'Mil gaya ✅', ur: 'موصول ہو گیا ✅' },
+  'inv2.noDiff': { key: 'inv2.noDiff', en: 'No differences found', roman: 'Koi farq nahi mila', ur: 'کوئی فرق نہیں ملا' },
+  'inv2.stockUpdated': { key: 'inv2.stockUpdated', en: 'Stock updated ✅', roman: 'Stock update ho gaya ✅', ur: 'اسٹاک اپ ڈیٹ ہو گیا ✅' },
+  'inv2.transferDone': { key: 'inv2.transferDone', en: 'Transfer created ✅', roman: 'Transfer ban gaya ✅', ur: 'ٹرانسفر بنا دیا گیا ✅' },
+  'inv2.addItems': { key: 'inv2.addItems', en: 'Add items', roman: 'Items add karein', ur: 'آئٹمز شامل کریں' },
+  'ord.loadFail': { key: 'ord.loadFail', en: 'Order failed to load', roman: 'Order load nahi hui', ur: 'آرڈر لوڈ نہیں ہوئی' },
+  'ord.cancelled': { key: 'ord.cancelled', en: 'Cancelled', roman: 'Cancel ho gayi', ur: 'منسوخ ہو گیا' },
+  'ord.noSelect': { key: 'ord.noSelect', en: 'No item selected — scan or tick items', roman: 'Koi item select nahi — scan ya tick karein', ur: 'کوئی آئٹم منتخب نہیں — اسکین یا ٹک کریں' },
+  'ord.pickerNA': { key: 'ord.pickerNA', en: 'Bulk picker not available', roman: 'Bulk picker mojood nahi', ur: 'بلک پکر دستیاب نہیں' },
+  'ord.collectHint': { key: 'ord.collectHint', en: 'Collect: POS → Customers → Receive', roman: 'Wasooli: POS → Customers → Receive', ur: 'وصولی: POS → گاہک → وصول' },
+  'dem.updated': { key: 'dem.updated', en: 'Updated ✅', roman: 'Update ho gaya ✅', ur: 'اپ ڈیٹ ہو گیا ✅' },
+  'dem.pickCustomer': { key: 'dem.pickCustomer', en: 'Select a customer or type the walk-in name', roman: 'Customer select karein ya walk-in ka naam likhein', ur: 'گاہک منتخب کریں یا واک-ان کا نام لکھیں' },
+  'dem.nameNeeded': { key: 'dem.nameNeeded', en: 'Product name is required — pick from catalog or type', roman: 'Product name zaroori hai — catalog se pick karein ya type karein', ur: 'پروڈکٹ کا نام ضروری ہے — کیٹلاگ سے چنیں یا لکھیں' },
+  'dem.qtyMin': { key: 'dem.qtyMin', en: 'Quantity must be 1 or more', roman: 'Qty 1 ya zyada honi chahiye', ur: 'تعداد 1 یا اس سے زیادہ ہو' },
+  'dem.custCreated': { key: 'dem.custCreated', en: 'New customer created: ', roman: 'Naya customer ban gaya: ', ur: 'نیا گاہک بنا: ' }
 });
 
 
@@ -1399,9 +1432,20 @@ window.MockAPI = {
       const i = DEMO_DOCS.findIndex(x => x.id === d.id);
       if (i > -1) { DEMO_DOCS[i] = Object.assign({}, DEMO_DOCS[i], d, { updatedAt: new Date().toISOString() }); return DEMO_DOCS[i]; }
     }
+    /* v2.30.5 (D13) — same ref+docType+entityId = NAYA VERSION (naya row nahi) */
+    const dup = d.ref ? DEMO_DOCS.find(x => x.ref === d.ref && x.docType === d.docType && x.entityId === d.entityId) : null;
+    if (dup) {
+      dup.history = (dup.history || []).concat([{ version: dup.version || 1, at: dup.updatedAt || dup.createdAt, action: d.action || dup.action }]);
+      dup.version = (dup.version || 1) + 1;
+      dup.action = d.action || dup.action;
+      dup.status = d.status || dup.status;
+      dup.updatedAt = new Date().toISOString();
+      mockPersistConfig();
+      return dup;
+    }
     const rec = Object.assign({
       id: 'DOC' + (++DOC_SEQ), docNo: 'DOC-' + String(DOC_SEQ).padStart(5, '0'),
-      version: 1, status: 'GENERATED', createdBy: 'demo',
+      version: 1, status: 'GENERATED', createdBy: 'demo', history: [],
       createdAt: new Date().toISOString()
     }, d);
     DEMO_DOCS.unshift(rec);

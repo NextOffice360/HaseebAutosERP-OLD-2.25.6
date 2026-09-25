@@ -216,7 +216,7 @@ function renderAdjust(c, loc) {
       ],
       rowActions: r => [
         r.status === 'DRAFT' && App.can('stock.audit.post') ? { icon: '✅', label: 'Post', onClick: async () => { await API.call('stock.adjust.post', { id: r.id }); UI.toast('Posted', 'ok'); App.refresh(); API.pullCatalog(true); } } : null,
-        r.status === 'POSTED' && App.can('stock.audit.post') ? { icon: '↩', label: 'Reverse', onClick: () => UI2.confirm('Reverse karein? Stock ulta ho jaye ga.', async () => { await API.call('stock.adjust.reverse', { id: r.id }); UI.toast('Reversed', 'ok'); App.refresh(); }, true) } : null
+        r.status === 'POSTED' && App.can('stock.audit.post') ? { icon: '↩', label: 'Reverse', onClick: () => UI2.confirm('Reverse karein? Stock ulta ho jaye ga.', async () => { await API.call('stock.adjust.reverse', { id: r.id }); UI.toast(T.t('inv2.reversed','Reversed'), 'ok'); App.refresh(); }, true) } : null
       ].filter(Boolean)
     }));
   }).catch(e => host.appendChild(h('div', { class: 'empty' }, e.message)));
@@ -236,7 +236,7 @@ function renderTransfers(c, loc) {
         { key: 'status', label: 'Status', render: r => h('span', { class: 'badge ' + (r.status === 'RECEIVED' ? 'ok' : 'warn') }, r.status) }
       ],
       rowActions: r => r.status === 'IN_TRANSIT' ? [{ icon: '📥', label: 'Receive', onClick: async () => {
-        await API.call('stock.transfer.receive', { id: r.id }); UI.toast('Received ✅', 'ok'); App.refresh(); API.pullCatalog(true);
+        await API.call('stock.transfer.receive', { id: r.id }); UI.toast(T.t('inv2.received','Received ✅'), 'ok'); App.refresh(); API.pullCatalog(true);
       } }] : null
     }));
   }).catch(e => host.appendChild(h('div', { class: 'empty' }, e.message)));
@@ -271,7 +271,7 @@ function renderCountSheet(c, loc) {
     }));
     host.appendChild(h('button', { class: 'btn ok', style: { marginTop: '10px' }, onclick: async () => {
       const lines = (sheet.rows || []).filter(r => r.countedQty !== '' && Number(r.countedQty) !== Number(r.systemQty));
-      if (!lines.length) return UI.toast('Koi farq nahi mila', 'warn');
+      if (!lines.length) return UI.toast(T.t('inv2.noDiff','No differences found'), 'warn');
       await API.call('stock.adjust.save', { adjustment: { locationId: locId(loc) || App.state.locationId, reason: 'PHYSICAL_COUNT',
         notes: 'From count sheet', post: true,
         items: lines.map(r => ({ itemId: r.itemId, countedQty: Number(r.countedQty), cost: r.avgCost })) } });
@@ -320,7 +320,7 @@ function quickCount(row) {
     title: '⚖ Quick count — ' + row.name, size: 'sm', body: f.el,
     actions: [{ label: 'Save', cls: 'ok', onClick: async c => {
       await API.call('stock.count', { itemId: row.itemId, locationId: row.locationId, countedQty: f.values().countedQty, notes: f.values().notes });
-      UI.toast('Stock updated ✅', 'ok'); c(); App.refresh(); API.pullCatalog(true);
+      UI.toast(T.t('inv2.stockUpdated','Stock updated ✅'), 'ok'); c(); App.refresh(); API.pullCatalog(true);
     } }]
   });
 }
@@ -373,7 +373,7 @@ function transferForm() {
       ], { getValue: () => Object.assign({}, v), form: f, toastKey: 'transfer' });
       if (!chk.ok) return;
       try { await API.call('stock.transfer.save', { transfer: Object.assign(v, { items }) });
-        UI.toast('Transfer created ✅', 'ok');
+        UI.toast(T.t('inv2.transferDone','Transfer created ✅'), 'ok');
         document.querySelectorAll('.offcanvas').forEach(o => o.remove());
         document.querySelectorAll('.oc-scrim').forEach(o => o.remove());
         App.refresh();
@@ -424,7 +424,7 @@ function adjustmentForm() {
       } }, '💾 Save draft'),
       App.can('stock.audit.post') ? h('button', { class: 'btn ok', onclick: async () => {
         const v = f.values();
-        if (!items.length) return UI.toast('Items add karein', 'warn');
+        if (!items.length) return UI.toast(T.t('inv2.addItems','Add items'), 'warn');
         await API.call('stock.adjust.save', { adjustment: Object.assign(v, { items, post: true }) });
         UI.toast('Posted ✅', 'ok');
         document.querySelectorAll('.offcanvas').forEach(o => o.remove());

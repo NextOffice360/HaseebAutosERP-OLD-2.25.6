@@ -1945,6 +1945,26 @@ const UI = {
       tb.appendChild(row);
     });
     tbl.appendChild(tb);
+    /* v2.30.5 (D12a) — legacy UI.table opt-in totals (UI2.table jaisa) */
+    if (cfg.totals && rows.length) {
+      const tcols = columns.filter(c => c.num);
+      if (tcols.length) {
+        const tf = h('tfoot', { class: 'tbl-totals' });
+        const ftr = h('tr');
+        const firstIdx = columns.indexOf(tcols[0]);
+        columns.forEach((c, i) => {
+          if (i < firstIdx) { ftr.appendChild(h('td')); return; }
+          if (tcols.some(t => t.key === c.key)) {
+            const sum = rows.reduce((a, r) => a + (Number(r[c.key]) || 0), 0);
+            const val = c.render ? c.render({ [c.key]: sum }) : String(Math.round(sum * 100) / 100);
+            ftr.appendChild(h('td', { class: 'num', style: { fontWeight: '700' } },
+              i === firstIdx ? ((typeof cfg.totals === 'object' && cfg.totals.label) || 'Total') + ': ' : '',
+              val));
+          } else ftr.appendChild(h('td'));
+        });
+        tf.appendChild(ftr); tbl.appendChild(tf);
+      }
+    }
     return h('div', { class: 'table-wrap' }, tbl);
   },
 

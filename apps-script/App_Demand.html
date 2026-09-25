@@ -58,14 +58,24 @@ function renderList(c) {
       // KPIs
       const t = res.totals || {};
       const byS = t.byStatus || {};
-      host.appendChild(UI2.kpiGrid([
+      const kgrid = UI2.kpiGrid([
         { icon: '📝', label: 'Total', value: t.total || 0, cls: 'brand' },
         { icon: '⏳', label: 'Outstanding', value: t.outstanding || ((byS.OPEN||0)+(byS.SOURCED||0)+(byS.ORDERED||0)+(byS.ARRIVED||0)+(byS.NOTIFIED||0)), cls: 'warn' },
         { icon: '✅', label: 'Fulfilled', value: byS.FULFILLED || 0, cls: 'ok' },
         { icon: '🚚', label: 'Ordered', value: byS.ORDERED || 0 },
         { icon: '📬', label: 'Arrived', value: byS.ARRIVED || 0, cls: 'info' },
         { icon: '🔔', label: 'Notified', value: byS.NOTIFIED || 0 }
-      ]));
+      ]);
+      host.appendChild(kgrid);
+      /* v2.30.5 (P4-a) — KPI drill-down: card click → status filter (spec §8) */
+      try {
+        const fmap = ['', 'OPEN', 'FULFILLED', 'ORDERED', 'ARRIVED', 'NOTIFIED'];
+        kgrid.querySelectorAll('.kpi').forEach((k, i) => {
+          if (fmap[i] === undefined) return;
+          k.style.cursor = 'pointer'; k.title = 'Filter: ' + (fmap[i] || 'All');
+          k.onclick = () => { statusSel.value = fmap[i]; loadList(); };
+        });
+      } catch (e) { }
       if (!DM.rows.length) {
         host.appendChild(h('div', { class: 'empty' }, h('span', { class: 'big' }, '😕'), h('div', null, 'Koi demand nahi mili'),
           App.can('demand.create') ? h('button', { class: 'btn sm ok', style: { marginTop: '10px' }, onclick: openCreate }, '➕ New Demand') : ''));
@@ -91,12 +101,20 @@ function renderList(c) {
           { key: 'daysOpen', label: 'Age', num: true, render: r => (r.daysOpen || 0) + 'd' + (r.isOverdue ? ' ⚠' : '') },
           { key: 'expectedDate', label: 'Expected', render: r => r.expectedDate ? fmt.date(r.expectedDate) : '—' }
         ],
-        rowActions: r => [
-          { icon: '👁', label: 'View', onClick: () => openDetail(r.id) },
+        rowActions: r => {
+          /* v2.30.5 (P4-b) — state-aware next-step action (spec §12/13) */
+          const NEXT = { OPEN: ['🏭', 'Source', 'SOURCED'], SOURCED: ['📦', 'Order', 'ORDERED'],
+            ORDERED: ['📬', 'Arrived', 'ARRIVED'], ARRIVED: ['🔔', 'Notify', 'NOTIFIED'],
+            NOTIFIED: ['✅', 'Fulfill', 'FULFILLED'] };
+          const nx = NEXT[r.status];
+          return [
+            { icon: '👁', label: 'View', onClick: () => openDetail(r.id) },
+            ...(nx && App.can('demand.manage') ? [{ icon: nx[0], label: nx[1], onClick: () => openStatus(r, nx[2]) }] : []),
           ...(App.can('demand.create') ? [{ icon: '🔁', label: 'Repeat', onClick: () => openRepeat(r) }] : []),
           ...(r.status !== 'FULFILLED' && r.status !== 'CANCELLED' && App.can('demand.manage') ? [{ icon: '✎', label: 'Status', onClick: () => openStatus(r) }] : []),
-          ...(App.can('demand.manage') ? [{ icon: '🏭', label: 'Vendors', onClick: () => vendorSuggest(r) }] : [])
-        ],
+            ...(App.can('demand.manage') ? [{ icon: '🏭', label: 'Vendors', onClick: () => vendorSuggest(r) }] : [])
+          ];
+        },
         onRow: r => openDetail(r.id),
         emptyAction: { label: '➕ New Demand', onClick: openCreate }
       }));
@@ -208,7 +226,7 @@ function openStatus(row) {
     actions: [
       { label: 'Cancel', cls: 'ghost', onClick: c => c() },
       { label: 'Update', cls: 'ok', onClick: c => {
-        API.call('demand.setStatus', { id: row.id, status: sel.value, note: noteI.value.trim() }).then(() => { UI.toast('Updated ✅', 'ok'); c(); App.refresh(); }).catch(e => UI.toast(e.message, 'err'));
+        API.call('demand.setStatus', { id: row.id, status: sel.value, note: noteI.value.trim() }).then(() => { UI.toast(T.t('dem.updated','Updated ✅'), 'ok'); c(); App.refresh(); }).catch(e => UI.toast(e.message, 'err'));
       }}
     ]
   });
@@ -485,10 +503,10 @@ function demandForm(existing) {
     const v = F.values();
     const name = String(v.itemName || '').trim();
     const cname = String(v.customerName || '').trim();
-    if (!v.customerId && !cname) return UI.toast('Customer select karein ya walk-in ka naam likhein', 'err', 4000), false;
-    if (!name) return UI.toast('Product name zaroori hai — catalog se pick karein ya type karein', 'err', 4000), false;
+    if (!v.customerId && !cname) return UI.toast(T.t('dem.pickCustomer','Select a customer or type the walk-in name'), 'err', 4000), false;
+    if (!name) return UI.toast(T.t('dem.nameNeeded','Product name is required — pick from catalog or type'), 'err', 4000), false;
     const qty = Number(v.qty) || 0;
-    if (qty <= 0) return UI.toast('Qty 1 ya zyada honi chahiye', 'err'), false;
+    if (qty <= 0) return UI.toast(T.t('dem.qtyMin','Quantity must be 1 or more'), 'err'), false;
     if (dupHit) return UI.toast('Ye demand pehle se open hai (' + dupHit.demandNo + ') — pehle us ko complete/cancel karein', 'warn', 5200), false;
     const live = await findDupLive(v, name);
     if (live) {
@@ -511,7 +529,7 @@ function demandForm(existing) {
         const saved = await API.call('customers.save', { customer: { name: cname, phone: v.customerPhone || '' } });
         custId = (saved && (saved.id || (saved.customer && saved.customer.id))) || '';
         if (!custId) throw new Error('Customer id nahi mili');
-        UI.toast('Naya customer ban gaya: ' + cname, 'ok');
+        UI.toast(T.t('dem.custCreated','New customer created: ') + cname, 'ok');
       } catch (e) { return UI.toast('Customer add nahi ho saka: ' + e.message, 'err', 5200), false; }
     }
     const patch = {

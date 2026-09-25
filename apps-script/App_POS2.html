@@ -1763,6 +1763,10 @@ function showInvoiceConfirmation(sale) {
           // fast print — pre-rendered receipt, no dialog delay
           const html = Print.receiptHtml(sale, App.state.settings, App.state.branchName);
           Print.open(html, 'Receipt ' + invNo, (App.state.settings || {})['pos.receiptPaper'] || '80mm');
+          /* v2.30.5 (D25) — receipt = generated document → registry (fire-and-forget) */
+          try { if (window.Docs) Docs.register({ docType: 'RECEIPT', entityType: 'sale',
+            entityId: sale && sale.id, ref: invNo, module: 'pos', action: 'print',
+            qr: 'HA:INV:' + invNo, meta: { total: total } }); } catch (e) { }
           UI.toast('Printing…', 'ok');
         } catch (e) { UI.toast(e.message, 'err'); }
       } },

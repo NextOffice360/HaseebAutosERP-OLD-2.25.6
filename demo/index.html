@@ -151,7 +151,9 @@
 .page-head h2{font-size:clamp(20px,2.2vw,24px); font-weight:800; line-height:1.25; letter-spacing:-0.02em;}
 .page-head .sub{font-size:var(--fs-sm); font-weight:500; line-height:1.5; color:var(--muted); }
 .card-head h3{font-size:clamp(14px,1.6vw,16px); font-weight:700; line-height:1.35; letter-spacing:0.01em;}
-.card-head .actions .btn{font-size:var(--fs-sm); font-weight:600;}
+.card-head .actions .btn{font-size:var(--fs-sm); font-weight:600;min-height:36px}
+/* v2.30.5 (P3-a) — coarse pointers (mobile/tablet): tap targets ≥44px */
+@media (pointer:coarse){.btn,.btn.sm{min-height:44px}}
 .sec-title,.sec-head h3{font-size:var(--fs-xl); font-weight:700; line-height:1.35;}
 .kpi .k-value{font-size:var(--fs-3xl); font-weight:800; line-height:1.2; letter-spacing:-0.02em; font-variant-numeric:tabular-nums;}
 .kpi .k-label{font-size:var(--fs-xs); font-weight:700; letter-spacing:0.08em; text-transform:uppercase; line-height:1.4;}
@@ -4028,7 +4030,40 @@ Object.assign(TRANSLATIONS, {
   'pos.noSelect': { key: 'pos.noSelect', en: 'No item selected — scan or tick checkboxes', roman: 'Koi item select nahi — scan karein ya checkbox tick karein', ur: 'کوئی آئٹم منتخب نہیں — اسکین کریں یا باکس ٹک کریں' },
   'pos.bulkError': { key: 'pos.bulkError', en: 'Bulk modal error', roman: 'Bulk modal error', ur: 'بلک موڈل کی خرابی' },
   'pos.bulkNeedsBridge': { key: 'pos.bulkNeedsBridge', en: 'Scanner bridge required for bulk (run with App_QR partial)', roman: 'Bulk ke liye scanner bridge chahiye (App_QR partial ke sath)', ur: 'بلک کے لیے اسکینر برج درکار ہے' },
-  'pos.shopDialogFail': { key: 'pos.shopDialogFail', en: 'Shop dialog did not open', roman: 'Shop dialog nahi khula', ur: 'شاپ ڈائیلاگ نہیں کھلا' }
+  'pos.shopDialogFail': { key: 'pos.shopDialogFail', en: 'Shop dialog did not open', roman: 'Shop dialog nahi khula', ur: 'شاپ ڈائیلاگ نہیں کھلا' },
+  'dash.csvHint': { key: 'dash.csvHint', en: 'Every table has a CSV button', roman: 'Har table par CSV button hai', ur: 'ہر ٹیبل پر CSV بٹن ہے' },
+  'dash.allRead': { key: 'dash.allRead', en: 'All marked as read', roman: 'Sab read', ur: 'سب پڑھا ہوا' },
+  'dash.reportDone': { key: 'dash.reportDone', en: 'Report generated ✅', roman: 'Report ban gayi ✅', ur: 'رپورٹ بن گئی ✅' },
+  'dash.shareNA': { key: 'dash.shareNA', en: 'Share unavailable', roman: 'Share mojood nahi', ur: 'شیئر دستیاب نہیں' },
+  'dash.allowPopups': { key: 'dash.allowPopups', en: 'Allow popups for this app, then click the report button again.', roman: 'Is app ke liye popups allow karein, phir report button dobara dabayein.', ur: 'اس ایپ کے لیے پاپ اپس کی اجازت دیں، پھر رپورٹ بٹن دوبارہ دبائیں۔' },
+  'dash.shopOpen': { key: 'dash.shopOpen', en: 'Shop is open ✅', roman: 'Shop open ho gayi ✅', ur: 'دکان کھل گئی ✅' },
+  'pur.noReorder': { key: 'pur.noReorder', en: 'No items to reorder', roman: 'Reorder ke liye koi item nahi', ur: 'دوبارہ آرڈر کے لیے کوئی آئٹم نہیں' },
+  'pur.grnNoItems': { key: 'pur.grnNoItems', en: 'No items in GRN — open the detail first', roman: 'GRN me items nahi mile — pehle detail kholein', ur: 'GRN میں آئٹمز نہیں — پہلے تفصیل کھولیں' },
+  'pur.detailOffline': { key: 'pur.detailOffline', en: 'Detail not loaded (offline)', roman: 'Detail load nahi hui (offline)', ur: 'تفصیل لوڈ نہیں ہوئی (آف لائن)' },
+  'pur.enterAmount': { key: 'pur.enterAmount', en: 'Enter the amount', roman: 'Amount darj karein', ur: 'رقم درج کریں' },
+  'pur.paymentDone': { key: 'pur.paymentDone', en: 'Payment recorded ✅', roman: 'Payment record ho gayi ✅', ur: 'ادائیگی ریکارڈ ہو گئی ✅' },
+  'pur.approved': { key: 'pur.approved', en: 'Approved', roman: 'Approve ho gaya', ur: 'منظور ہو گیا' },
+  'mast.imgUploaded': { key: 'mast.imgUploaded', en: 'Image uploaded ✅ — refreshing', roman: 'Image upload ho gayi ✅ — refreshing', ur: 'تصویر اپ لوڈ ہو گئی ✅ — ریفریش' },
+  'mast.imgUploaded2': { key: 'mast.imgUploaded2', en: 'Image uploaded ✅', roman: 'Image upload ho gayi ✅', ur: 'تصویر اپ لوڈ ہو گئی ✅' },
+  'mast.printFail': { key: 'mast.printFail', en: 'Print failed', roman: 'Print fail', ur: 'پرنٹ ناکام' },
+  'mast.codeCopied': { key: 'mast.codeCopied', en: 'Code copied — ', roman: 'Code copy ho gaya — ', ur: 'کوڈ کاپی ہو گیا — ' },
+  'mast.barcodeNew': { key: 'mast.barcodeNew', en: 'New barcode assigned: ', roman: 'Naya barcode assign hua: ', ur: 'نیا بارکوڈ تفویض ہوا: ' },
+  'inv2.reversed': { key: 'inv2.reversed', en: 'Reversed', roman: 'Reverse ho gaya', ur: 'ریورس ہو گیا' },
+  'inv2.received': { key: 'inv2.received', en: 'Received ✅', roman: 'Mil gaya ✅', ur: 'موصول ہو گیا ✅' },
+  'inv2.noDiff': { key: 'inv2.noDiff', en: 'No differences found', roman: 'Koi farq nahi mila', ur: 'کوئی فرق نہیں ملا' },
+  'inv2.stockUpdated': { key: 'inv2.stockUpdated', en: 'Stock updated ✅', roman: 'Stock update ho gaya ✅', ur: 'اسٹاک اپ ڈیٹ ہو گیا ✅' },
+  'inv2.transferDone': { key: 'inv2.transferDone', en: 'Transfer created ✅', roman: 'Transfer ban gaya ✅', ur: 'ٹرانسفر بنا دیا گیا ✅' },
+  'inv2.addItems': { key: 'inv2.addItems', en: 'Add items', roman: 'Items add karein', ur: 'آئٹمز شامل کریں' },
+  'ord.loadFail': { key: 'ord.loadFail', en: 'Order failed to load', roman: 'Order load nahi hui', ur: 'آرڈر لوڈ نہیں ہوئی' },
+  'ord.cancelled': { key: 'ord.cancelled', en: 'Cancelled', roman: 'Cancel ho gayi', ur: 'منسوخ ہو گیا' },
+  'ord.noSelect': { key: 'ord.noSelect', en: 'No item selected — scan or tick items', roman: 'Koi item select nahi — scan ya tick karein', ur: 'کوئی آئٹم منتخب نہیں — اسکین یا ٹک کریں' },
+  'ord.pickerNA': { key: 'ord.pickerNA', en: 'Bulk picker not available', roman: 'Bulk picker mojood nahi', ur: 'بلک پکر دستیاب نہیں' },
+  'ord.collectHint': { key: 'ord.collectHint', en: 'Collect: POS → Customers → Receive', roman: 'Wasooli: POS → Customers → Receive', ur: 'وصولی: POS → گاہک → وصول' },
+  'dem.updated': { key: 'dem.updated', en: 'Updated ✅', roman: 'Update ho gaya ✅', ur: 'اپ ڈیٹ ہو گیا ✅' },
+  'dem.pickCustomer': { key: 'dem.pickCustomer', en: 'Select a customer or type the walk-in name', roman: 'Customer select karein ya walk-in ka naam likhein', ur: 'گاہک منتخب کریں یا واک-ان کا نام لکھیں' },
+  'dem.nameNeeded': { key: 'dem.nameNeeded', en: 'Product name is required — pick from catalog or type', roman: 'Product name zaroori hai — catalog se pick karein ya type karein', ur: 'پروڈکٹ کا نام ضروری ہے — کیٹلاگ سے چنیں یا لکھیں' },
+  'dem.qtyMin': { key: 'dem.qtyMin', en: 'Quantity must be 1 or more', roman: 'Qty 1 ya zyada honi chahiye', ur: 'تعداد 1 یا اس سے زیادہ ہو' },
+  'dem.custCreated': { key: 'dem.custCreated', en: 'New customer created: ', roman: 'Naya customer ban gaya: ', ur: 'نیا گاہک بنا: ' }
 });
 
 
@@ -4596,9 +4631,20 @@ window.MockAPI = {
       const i = DEMO_DOCS.findIndex(x => x.id === d.id);
       if (i > -1) { DEMO_DOCS[i] = Object.assign({}, DEMO_DOCS[i], d, { updatedAt: new Date().toISOString() }); return DEMO_DOCS[i]; }
     }
+    /* v2.30.5 (D13) — same ref+docType+entityId = NAYA VERSION (naya row nahi) */
+    const dup = d.ref ? DEMO_DOCS.find(x => x.ref === d.ref && x.docType === d.docType && x.entityId === d.entityId) : null;
+    if (dup) {
+      dup.history = (dup.history || []).concat([{ version: dup.version || 1, at: dup.updatedAt || dup.createdAt, action: d.action || dup.action }]);
+      dup.version = (dup.version || 1) + 1;
+      dup.action = d.action || dup.action;
+      dup.status = d.status || dup.status;
+      dup.updatedAt = new Date().toISOString();
+      mockPersistConfig();
+      return dup;
+    }
     const rec = Object.assign({
       id: 'DOC' + (++DOC_SEQ), docNo: 'DOC-' + String(DOC_SEQ).padStart(5, '0'),
-      version: 1, status: 'GENERATED', createdBy: 'demo',
+      version: 1, status: 'GENERATED', createdBy: 'demo', history: [],
       createdAt: new Date().toISOString()
     }, d);
     DEMO_DOCS.unshift(rec);
@@ -6889,7 +6935,7 @@ window.MockAPI = {
 
 <script>
     /* Injected by server template */
-    window.APP_BUILD   = '2.30.5-demo';
+    window.APP_BUILD   = '2.30.6-demo';
     window.SERVE_MODE  = 'demo';   // 'apps-script' | 'static'
     window.API_URL     = '';      // filled only for static hosting
   </script>
@@ -9220,6 +9266,26 @@ const UI = {
       tb.appendChild(row);
     });
     tbl.appendChild(tb);
+    /* v2.30.5 (D12a) — legacy UI.table opt-in totals (UI2.table jaisa) */
+    if (cfg.totals && rows.length) {
+      const tcols = columns.filter(c => c.num);
+      if (tcols.length) {
+        const tf = h('tfoot', { class: 'tbl-totals' });
+        const ftr = h('tr');
+        const firstIdx = columns.indexOf(tcols[0]);
+        columns.forEach((c, i) => {
+          if (i < firstIdx) { ftr.appendChild(h('td')); return; }
+          if (tcols.some(t => t.key === c.key)) {
+            const sum = rows.reduce((a, r) => a + (Number(r[c.key]) || 0), 0);
+            const val = c.render ? c.render({ [c.key]: sum }) : String(Math.round(sum * 100) / 100);
+            ftr.appendChild(h('td', { class: 'num', style: { fontWeight: '700' } },
+              i === firstIdx ? ((typeof cfg.totals === 'object' && cfg.totals.label) || 'Total') + ': ' : '',
+              val));
+          } else ftr.appendChild(h('td'));
+        });
+        tf.appendChild(ftr); tbl.appendChild(tf);
+      }
+    }
     return h('div', { class: 'table-wrap' }, tbl);
   },
 
@@ -16211,6 +16277,14 @@ window.HaScan = (function () {
 App.resolveCode = function (raw) {
   var v = String(raw || '').trim();
   if (!v) return Promise.resolve(null);
+  /* v2.30.5 (D18) — recent-scan history (last 5, localStorage) */
+  try { var _sc = Store.get('ha_scans', []); _sc.unshift({ code: v.slice(0, 80), at: new Date().toISOString() });
+    Store.set('ha_scans', _sc.slice(0, 5)); } catch (e) { }
+  /* v2.30.5 (D21) — URL payloads: sirf http(s), safe open (javascript: kabhi nahi) */
+  if (/^https?:\/\//i.test(v)) {
+    try { window.open(v, '_blank', 'noopener'); UI.toast('Link khul gaya', 'ok', 1800); } catch (e) { }
+    return Promise.resolve({ ok: true, url: v });
+  }
   var go = function (screen, params, label) {
     UI.toast('Khul raha hai: ' + label, 'ok', 2200);
     App.go(screen, params);
@@ -16232,6 +16306,8 @@ App.resolveCode = function (raw) {
     if (kind === 'ITM') return Promise.resolve(go('items', { open: val }, 'Item ' + val));
     if (kind === 'CUS') return Promise.resolve(go('parties', { tab: 'customers', open: val }, 'Customer ' + val));
     if (kind === 'SUP') return Promise.resolve(go('parties', { tab: 'suppliers', open: val }, 'Supplier ' + val));
+    /* v2.30.5 (D20) — HA:PAY → Payments & Cash screen */
+    if (kind === 'PAY') return Promise.resolve(go('money', {}, 'Payment ' + val));
     /* v2.30.5 (D3) — HA:DOC → registry lookup → related entity khule */
     if (kind === 'DOC' && window.Docs) {
       return Docs.get(val).then(function (rec) {
@@ -18750,7 +18826,16 @@ async function docShare(r) {
       UI.toast('Invoice record nahi mila — text share khul raha hai', 'warn', 2600);
     } catch (e) { /* fall through to text share */ }
   }
-  const msg = ['*' + (App.state.branchName || 'Haseeb Autos') + '* — ' + (r.docType || 'Document'),
+  /* v2.30.5 (D19) — per-docType template (SETTINGS comms.docTemplate.<TYPE>) */
+  const F = { docNo: r.docNo || r.id, ref: r.ref || '', type: r.docType || '', entityType: r.entityType || '',
+    entityId: r.entityId || '', module: r.module || '', version: r.version || 1, status: r.status || '',
+    created: fmt.date(r.createdAt, true), qr: r.qr || '', business: App.state.branchName || 'Haseeb Autos' };
+  let _st = App.state.settings || {};
+  try { _st = Object.assign({}, _st, await API.call('system.settings.get', {}, { offlineFallback: () => _st }) || {}); } catch (e) { }
+  const tpl = _st['comms.docTemplate.' + (r.docType || '')];
+  let msg;
+  if (tpl) msg = '*' + F.business + '*\n' + String(tpl).replace(/\{\{?(\w+)\}?\}/g, (m, k) => (F[k] !== undefined ? String(F[k]) : m)); /* D19-fix: {{x}} dono braces */
+  else msg = ['*' + F.business + '* — ' + (r.docType || 'Document'),
     docSummary(r), r.qr ? ('Scan code: ' + r.qr) : ''].filter(Boolean).join('\n');
   const box = h('textarea', { rows: 8, class: 'f-input', style: { width: '100%' } });
   box.value = msg;
@@ -18879,9 +18964,22 @@ App.registerScreen('documents', {
     [qInput, typeSel].forEach(el => el.addEventListener('input', () => { clearTimeout(tmr); tmr = setTimeout(load, 350); }));
 
     const bar = h('div', { class: 'f-grid', style: { marginBottom: '8px' } }, qInput, typeSel);
+    const scans = h('div', { class: 'chips', style: { marginBottom: '8px' } });
     const kpis = h('div', { style: { marginBottom: '8px' } });
     const listHost = h('div');
-    host.append(bar, kpis, listHost);
+    host.append(scans, bar, kpis, listHost);
+    /* v2.30.5 (D18) — recent scans chips: click → dobara resolve */
+    function paintScans() {
+      scans.innerHTML = '';
+      let hist = []; try { hist = Store.get('ha_scans', []) || []; } catch (e) { }
+      if (!hist.length) return;
+      scans.appendChild(h('span', { class: 'muted', style: { fontSize: 'var(--fs-xs)' } }, 'Recent scans:'));
+      hist.slice(0, 5).forEach(x => scans.appendChild(h('button', {
+        class: 'chip', title: 'Dobara resolve karein: ' + x.code,
+        onclick: () => App.resolveCode(x.code)
+      }, x.code.length > 22 ? x.code.slice(0, 22) + '…' : x.code)));
+    }
+    paintScans();
 
     function load() {
       listHost.innerHTML = '';
@@ -19626,6 +19724,7 @@ App.registerScreen('sales', {
               r.status !== 'VOID' && App.can('pos.return') ? h('button', { class: 'btn sm sec', onclick: e => { e.stopPropagation(); returnForm(r); } }, 'Return') : '') }
           ],
           rows: res.rows, emptyText: 'Koi sale nahi mili',
+          totals: { label: 'Total' }, /* v2.30.5 (D12b) — legacy UI.table sums */
           onRow: r => open(r.id)
         , _expose: (window.__openSale = open)
         }));
@@ -19648,7 +19747,10 @@ App.registerScreen('sales', {
             ? UI2.entityLink('parties', { tab: 'customers', open: sale.customerId }, sale.customerName || 'Customer')
             : (sale.customerName || '')))));
       const rows = sale.items.map(i => h('div', { class: 'list-item' },
-        h('div', { class: 'li-main' }, h('b', null, i.name), h('span', null, i.code + ' · ' + i.qty + ' × ' + fmt.money(i.price))),
+        h('div', { class: 'li-main' },
+          /* v2.30.5 (D22) — line item → item detail (entity-link) */
+          (i.id ? UI2.entityLink('items', { open: i.id }, i.name) : h('b', null, i.name)),
+          h('span', null, i.code + ' · ' + i.qty + ' × ' + fmt.money(i.price))),
         h('b', null, fmt.money(i.lineTotal))));
       el.append(...rows);
       el.appendChild(h('div', { style: { marginTop: '10px' } },
@@ -19788,7 +19890,7 @@ App.registerScreen('purchase', {
     setTimeout(async () => {
       try {
         const rows = await API.call('items.reorderSuggest', {}, { offlineFallback: () => [] });
-        if (!rows || !rows.length) return UI.toast('Reorder ke liye koi item nahi', 'warn');
+        if (!rows || !rows.length) return UI.toast(T.t('pur.noReorder','No items to reorder'), 'warn');
         poForm(null, rows.map(r => ({ itemId: r.id, code: r.code, name: r.name,
           qty: Math.max(1, (Number(r.reorderLevel) || Number(r.minStock) || 10) - Number(r.stock || 0)),
           rate: Number(r.costPrice) || 0 })));
@@ -20007,7 +20109,7 @@ App.registerScreen('purchase', {
         }
       } catch (e) { host.innerHTML = ''; host.appendChild(h('div', { class: 'empty' }, '⚠ ' + e.message)); }
     }
-    async function approve(id) { await API.call('purchase.po.approve', { id }); UI.toast('Approved', 'ok'); load(); }
+    async function approve(id) { await API.call('purchase.po.approve', { id }); UI.toast(T.t('pur.approved','Approved'), 'ok'); load(); }
 
   /* v2.6 §4 — GRN ke liye print / PDF / share (row ke 🖨 button se) */
   function grnDocActions(r) {
@@ -20020,7 +20122,7 @@ App.registerScreen('purchase', {
             try {
               const d = await API.call('purchase.grn.get', { id: r.id }, { offlineFallback: () => null });
               const ids = ((d && d.items) || []).map(x => x.itemId || x.id).filter(Boolean);
-              if (!ids.length) { UI.toast('GRN me items nahi mile — pehle detail kholein', 'warn'); return; }
+              if (!ids.length) { UI.toast(T.t('pur.grnNoItems','No items in GRN — open the detail first'), 'warn'); return; }
               Print.labelFlow(ids);
             } catch (e) { UI.toast('Labels fail: ' + (e.message || e), 'err'); }
           } },
@@ -20034,7 +20136,7 @@ App.registerScreen('purchase', {
     let d = null;
     try { d = await API.call('purchase.grn.get', { id: row.id }, { offlineFallback: () => null }); }
     catch (e) { UI.toast(e.message, 'err'); return; }
-    if (!d) { UI.toast('Detail load nahi hui (offline)', 'warn'); return; }
+    if (!d) { UI.toast(T.t('pur.detailOffline','Detail not loaded (offline)'), 'warn'); return; }
     const sup = d.supplier || {};
     const body = h('div', null,
       h('div', { class: 'po-meta' },
@@ -20093,20 +20195,23 @@ App.registerScreen('purchase', {
         { key: 'notes', label: 'Note', full: true }
       ]
     });
+    const _supId = d.supplierId || (d.supplier && d.supplier.id);
     UI2.modal({
       title: '💸 Supplier payment — ' + (d.supplier && d.supplier.name ? d.supplier.name : ''),
+      subtitle: _supId ? UI2.entityLink('parties', { tab: 'suppliers', open: _supId },
+        (d.supplier && d.supplier.name) || 'Supplier record kholein') : '', /* v2.30.5 (D23) */
       size: 'sm', body: f2.el,
       actions: [{
         label: 'Pay', cls: 'ok', onClick: async c => {
           const v = f2.values();
-          if (!(Number(v.amount) > 0)) return UI.toast('Amount darj karein', 'err');
+          if (!(Number(v.amount) > 0)) return UI.toast(T.t('pur.enterAmount','Enter the amount'), 'err');
           try {
             await API.call('payments.create', {
               type: 'SUPPLIER_PAYMENT', partyType: 'SUPPLIER', partyId: d.supplierId,
               method: v.method, amount: Number(v.amount), date: v.date,
               purchaseId: d.id, reference: v.reference || '', notes: v.notes || 'GRN ' + (d.grnNo || '')
             });
-            UI.toast('Payment recorded ✅', 'ok'); c(); App.refresh();
+            UI.toast(T.t('pur.paymentDone','Payment recorded ✅'), 'ok'); c(); App.refresh();
           } catch (e) { UI.toast(e.message, 'err'); }
         }
       }, { label: 'Cancel', onClick: c => c() }]
@@ -21033,12 +21138,16 @@ function grnForm(po) {
     ], { getValue: () => v, form: fTop, toastKey: 'grn' });
     if (!chk.ok) return;
     try {
-      await API.call('purchase.grn.save', { grn: Object.assign({}, v, {
+      const _g = await API.call('purchase.grn.save', { grn: Object.assign({}, v, {
         items: lines.map(l => ({ itemId: l.itemId, qty: Number(l.qty), cost: Number(l.cost) })),
         poId: isPO() ? poCtx.id : '',
         freight: Number(v.freight) || 0
       }) });
       UI.toast('GRN posted — stock update ho gaya', 'ok');
+      /* v2.30.5 (D24) — GRN = generated purchase document → registry (fire-and-forget) */
+      try { if (window.Docs) Docs.register({ docType: 'GRN',
+        entityType: 'supplier', entityId: v.supplierId || '', ref: (_g && (_g.grnNo || _g.id)) || '',
+        module: 'purchase', action: 'save', qr: '' }); } catch (e) { }
       if (c) c();
       App.refresh(); API.pullCatalog(true);
     } catch (e) { UI.toast(e.message, 'err'); }
@@ -21176,7 +21285,7 @@ function paySupplier(supplier) {
       const v = f.values();
       try {
         await API.call('payments.create', { payment: { ...v, type: 'SUPPLIER_PAYMENT', partyType: 'SUPPLIER', partyId: supplier.id, locationId: App.state.locationId } });
-        UI.toast('Payment recorded ✅', 'ok'); c(); App.refresh();
+        UI.toast(T.t('pur.paymentDone','Payment recorded ✅'), 'ok'); c(); App.refresh();
       } catch (e) { UI.toast(e.message, 'err'); }
     } }]
   });
@@ -23969,6 +24078,10 @@ function showInvoiceConfirmation(sale) {
           // fast print — pre-rendered receipt, no dialog delay
           const html = Print.receiptHtml(sale, App.state.settings, App.state.branchName);
           Print.open(html, 'Receipt ' + invNo, (App.state.settings || {})['pos.receiptPaper'] || '80mm');
+          /* v2.30.5 (D25) — receipt = generated document → registry (fire-and-forget) */
+          try { if (window.Docs) Docs.register({ docType: 'RECEIPT', entityType: 'sale',
+            entityId: sale && sale.id, ref: invNo, module: 'pos', action: 'print',
+            qr: 'HA:INV:' + invNo, meta: { total: total } }); } catch (e) { }
           UI.toast('Printing…', 'ok');
         } catch (e) { UI.toast(e.message, 'err'); }
       } },
@@ -24496,7 +24609,7 @@ window.POS2 = { S, addToCart, pay, clearCart, pickCustomer, togglePicker, bulkFl
 
   function orderDetail(id, after) {
     API.call('orders.get', { id: id }, { offlineFallback: () => null }).then(res => {
-      if (!res) return UI.toast('Order load nahi hui', 'err');
+      if (!res) return UI.toast(T.t('ord.loadFail','Order failed to load'), 'err');
       const o = res.order;
       const host = h('div');
       host.appendChild(h('div', { class: 'po-meta', style: { display: 'flex' } },
@@ -24531,7 +24644,7 @@ window.POS2 = { S, addToCart, pay, clearCart, pickCustomer, togglePicker, bulkFl
             UI2.confirm('Order cancel karein?', ok => {
               if (!ok) return;
               API.call('orders.status', { id: o.id, status: 'CANCELLED' })
-                .then(() => { UI.toast('Cancelled', 'ok'); c(); if (after) after(); })
+                .then(() => { UI.toast(T.t('ord.cancelled','Cancelled'), 'ok'); c(); if (after) after(); })
                 .catch(e => UI.toast(e.message, 'err'));
             });
           } } : null
@@ -24622,7 +24735,7 @@ window.POS2 = { S, addToCart, pay, clearCart, pickCustomer, togglePicker, bulkFl
           };
           host.appendChild(btn);
           var collBtn=h('button',{class:'btn sm ghost', style:'margin-top:6px;width:100%'}, '💰 Collect payment');
-          collBtn.onclick=function(){ if(window.OrdersUI && window.OrdersUI.receivePay) window.OrdersUI.receivePay(c); else UI.toast('Collect: POS → Customers → Receive','ok'); };
+          collBtn.onclick=function(){ if(window.OrdersUI && window.OrdersUI.receivePay) window.OrdersUI.receivePay(c); else UI.toast(T.t('ord.collectHint','Collect: POS → Customers → Receive'),'ok'); };
           host.appendChild(collBtn);
         };
         render(stale);
@@ -24648,10 +24761,10 @@ window.POS2 = { S, addToCart, pay, clearCart, pickCustomer, togglePicker, bulkFl
           UI2.modal({title:'📦 Bulk Add — Take Order', subtitle:'Scan → auto-add to Bulk List → field clears → next scan ready · or search + tick', size:'lg', body:picker,
             actions:[ {label:'Cancel', cls:'ghost', onClick:function(c){c();}},
               {label:'Add Selected to Order', cls:'ok', onClick:function(c){
-                if(!(picker.api && picker.api.hasSel && picker.api.hasSel())){ return UI.toast('Koi item select nahi — scan ya tick karein','warn'); }
+                if(!(picker.api && picker.api.hasSel && picker.api.hasSel())){ return UI.toast(T.t('ord.noSelect','No item selected — scan or tick items'),'warn'); }
                 picker.api.commit(); c();
               } } ]});
-        } else { UI.toast('Bulk picker not available','warn'); }
+        } else { UI.toast(T.t('ord.pickerNA','Bulk picker not available'),'warn'); }
       }}, '☑ Bulk');
       const search = h('input', { class: 'mo-search', type: 'search',
         placeholder: '🔎 Item dhoondain (name / code / barcode)', 'aria-label': 'Search item' });
@@ -25029,7 +25142,7 @@ function renderGeneral(c, it) {
     try {
       const dataUrl = await _shrinkImage(f, 900);
       await API.call('items.uploadImage', { itemId: it.id, data: dataUrl, mime: 'image/jpeg', slot: 'main' });
-      UI.toast('Image upload ho gayi ✅ — refreshing', 'ok');
+      UI.toast(T.t('mast.imgUploaded','Image uploaded ✅ — refreshing'), 'ok');
       const fresh = await API.call('items.get', { id: it.id, withStock: true });
       c.innerHTML = ''; renderGeneral(c, fresh);
     } catch (e) { UI.toast(e.message || 'Upload fail', 'err'); }
@@ -25048,9 +25161,9 @@ function renderGeneral(c, it) {
         (r.barcode && r.barcode !== it.code) ? h('span', { class: 'badge', title: 'Barcode' }, 'BC ' + r.barcode) : ''),
       h('div', { class: 'gi-hero-actions' },
         App.can('items.edit') ? h('button', { class: 'btn sm sec', onclick: () => itemForm(it, () => App.refresh()) }, '✎ Edit') : '',
-        h('button', { class: 'btn sm sec', title: 'Print barcode label', onclick: () => { try { printLabels([it.id]); } catch (e) { UI.toast('Print fail', 'err'); } } }, '🏷 Label'),
+        h('button', { class: 'btn sm sec', title: 'Print barcode label', onclick: () => { try { printLabels([it.id]); } catch (e) { UI.toast(T.t('mast.printFail','Print failed'), 'err'); } } }, '🏷 Label'),
         h('button', { class: 'btn sm ghost', title: 'Copy product code', onclick: async () => {
-          try { await navigator.clipboard.writeText(it.code || ''); UI.toast('Code copied — ' + it.code, 'ok'); } catch (e) { UI.toast(it.code || '', 'ok'); }
+          try { await navigator.clipboard.writeText(it.code || ''); UI.toast(T.t('mast.codeCopied','Code copied — ') + it.code, 'ok'); } catch (e) { UI.toast(it.code || '', 'ok'); }
         } }, '⧉ Code'))));
   c.appendChild(hero);
 
@@ -25171,7 +25284,7 @@ function renderBarcode(c, it) {
       h('button', { class: 'chip2', onclick: async () => {
         const g = await API.call('barcode.generate', { value: '', type: 'CODE39' });
         await API.call('items.save', { item: { id: it.id, barcode: g.value } });
-        UI.toast('New barcode assigned: ' + g.value, 'ok'); App.refresh();
+        UI.toast(T.t('mast.barcodeNew','New barcode assigned: ') + g.value, 'ok'); App.refresh();
       } }, '🎲 Generate new'),
       h('button', { class: 'chip2', onclick: () => {
         const w = window.open('', '_blank');
@@ -25215,7 +25328,7 @@ async function _uploadItemImage(it, slot, file, statusEl) {
     const dataUrl = await _shrinkImage(file, 900);
     const r = await API.call('items.uploadImage', { itemId: it.id, data: dataUrl, mime: 'image/jpeg', slot: slot });
     statusEl.textContent = '✅ Upload ho gayi';
-    UI.toast('Image upload ho gayi ✅', 'ok');
+    UI.toast(T.t('mast.imgUploaded2','Image uploaded ✅'), 'ok');
     return r;
   } catch (e) {
     statusEl.textContent = '❌ ' + (e.message || 'Upload fail');
@@ -26031,7 +26144,7 @@ function renderAdjust(c, loc) {
       ],
       rowActions: r => [
         r.status === 'DRAFT' && App.can('stock.audit.post') ? { icon: '✅', label: 'Post', onClick: async () => { await API.call('stock.adjust.post', { id: r.id }); UI.toast('Posted', 'ok'); App.refresh(); API.pullCatalog(true); } } : null,
-        r.status === 'POSTED' && App.can('stock.audit.post') ? { icon: '↩', label: 'Reverse', onClick: () => UI2.confirm('Reverse karein? Stock ulta ho jaye ga.', async () => { await API.call('stock.adjust.reverse', { id: r.id }); UI.toast('Reversed', 'ok'); App.refresh(); }, true) } : null
+        r.status === 'POSTED' && App.can('stock.audit.post') ? { icon: '↩', label: 'Reverse', onClick: () => UI2.confirm('Reverse karein? Stock ulta ho jaye ga.', async () => { await API.call('stock.adjust.reverse', { id: r.id }); UI.toast(T.t('inv2.reversed','Reversed'), 'ok'); App.refresh(); }, true) } : null
       ].filter(Boolean)
     }));
   }).catch(e => host.appendChild(h('div', { class: 'empty' }, e.message)));
@@ -26051,7 +26164,7 @@ function renderTransfers(c, loc) {
         { key: 'status', label: 'Status', render: r => h('span', { class: 'badge ' + (r.status === 'RECEIVED' ? 'ok' : 'warn') }, r.status) }
       ],
       rowActions: r => r.status === 'IN_TRANSIT' ? [{ icon: '📥', label: 'Receive', onClick: async () => {
-        await API.call('stock.transfer.receive', { id: r.id }); UI.toast('Received ✅', 'ok'); App.refresh(); API.pullCatalog(true);
+        await API.call('stock.transfer.receive', { id: r.id }); UI.toast(T.t('inv2.received','Received ✅'), 'ok'); App.refresh(); API.pullCatalog(true);
       } }] : null
     }));
   }).catch(e => host.appendChild(h('div', { class: 'empty' }, e.message)));
@@ -26086,7 +26199,7 @@ function renderCountSheet(c, loc) {
     }));
     host.appendChild(h('button', { class: 'btn ok', style: { marginTop: '10px' }, onclick: async () => {
       const lines = (sheet.rows || []).filter(r => r.countedQty !== '' && Number(r.countedQty) !== Number(r.systemQty));
-      if (!lines.length) return UI.toast('Koi farq nahi mila', 'warn');
+      if (!lines.length) return UI.toast(T.t('inv2.noDiff','No differences found'), 'warn');
       await API.call('stock.adjust.save', { adjustment: { locationId: locId(loc) || App.state.locationId, reason: 'PHYSICAL_COUNT',
         notes: 'From count sheet', post: true,
         items: lines.map(r => ({ itemId: r.itemId, countedQty: Number(r.countedQty), cost: r.avgCost })) } });
@@ -26135,7 +26248,7 @@ function quickCount(row) {
     title: '⚖ Quick count — ' + row.name, size: 'sm', body: f.el,
     actions: [{ label: 'Save', cls: 'ok', onClick: async c => {
       await API.call('stock.count', { itemId: row.itemId, locationId: row.locationId, countedQty: f.values().countedQty, notes: f.values().notes });
-      UI.toast('Stock updated ✅', 'ok'); c(); App.refresh(); API.pullCatalog(true);
+      UI.toast(T.t('inv2.stockUpdated','Stock updated ✅'), 'ok'); c(); App.refresh(); API.pullCatalog(true);
     } }]
   });
 }
@@ -26188,7 +26301,7 @@ function transferForm() {
       ], { getValue: () => Object.assign({}, v), form: f, toastKey: 'transfer' });
       if (!chk.ok) return;
       try { await API.call('stock.transfer.save', { transfer: Object.assign(v, { items }) });
-        UI.toast('Transfer created ✅', 'ok');
+        UI.toast(T.t('inv2.transferDone','Transfer created ✅'), 'ok');
         document.querySelectorAll('.offcanvas').forEach(o => o.remove());
         document.querySelectorAll('.oc-scrim').forEach(o => o.remove());
         App.refresh();
@@ -26239,7 +26352,7 @@ function adjustmentForm() {
       } }, '💾 Save draft'),
       App.can('stock.audit.post') ? h('button', { class: 'btn ok', onclick: async () => {
         const v = f.values();
-        if (!items.length) return UI.toast('Items add karein', 'warn');
+        if (!items.length) return UI.toast(T.t('inv2.addItems','Add items'), 'warn');
         await API.call('stock.adjust.save', { adjustment: Object.assign(v, { items, post: true }) });
         UI.toast('Posted ✅', 'ok');
         document.querySelectorAll('.offcanvas').forEach(o => o.remove());
@@ -28717,7 +28830,7 @@ App.registerScreen('insights', {
   subtitle: 'Customers · receivables · payables · P&L · inventory',
   actions() {
     return [{ label: 'Refresh', icon: '↻', onClick: () => App.refresh() },
-    { label: 'Export CSV', icon: '⬇', onClick: () => UI.toast('Har table par CSV button hai', 'warn') }];
+    { label: 'Export CSV', icon: '⬇', onClick: () => UI.toast(T.t('dash.csvHint','Every table has a CSV button'), 'warn') }];
   },
   render(body) {
     const host = h('div'); body.appendChild(host);
@@ -28966,7 +29079,7 @@ function renderAlertsDash(c) {
         UI.toast((r.created || 0) + ' naye alerts', 'ok'); App.refresh();
       } }, '⚡ Generate'),
       h('button', { class: 'btn sm sec', onclick: async () => {
-        await API.call('notifications.readAll', {}); UI.toast('Sab read', 'ok'); App.refresh();
+        await API.call('notifications.readAll', {}); UI.toast(T.t('dash.allRead','All marked as read'), 'ok'); App.refresh();
       } }, '✓ Mark all read')
     ]));
     const sev = { ERR: 0, WARN: 0, INFO: 0 };
@@ -29053,7 +29166,7 @@ function shopDayReportCard() {
         onclick: async () => {
           try {
             await API.call('dayreport.generate', { kind: 'CLOSE' });
-            UI.toast('Report ban gayi ✅', 'ok');
+            UI.toast(T.t('dash.reportDone','Report generated ✅'), 'ok');
             shopDayReportRefresh(bodyEl);
           } catch (e) { UI.toast(e.message || 'Report nahi ban saki', 'err'); }
         }
@@ -29127,7 +29240,7 @@ async function shopDayReportRefresh(bodyEl) {
                 '\nClosing cash: ' + fmt.money(r.closingCash || 0) +
                 '\nVariance: ' + fmt.money(Number(r.variance || 0));
               if (typeof Share !== 'undefined' && Share.text) Share.text(txt, r.reportNo || 'Day report');
-              else UI.toast('Share unavailable', 'warn');
+              else UI.toast(T.t('dash.shareNA','Share unavailable'), 'warn');
             } catch (e) { UI.toast(e.message || 'Share nahi ho saka', 'err'); }
           }
         }, '📤'))));
@@ -29138,7 +29251,7 @@ async function shopDayReportRefresh(bodyEl) {
 async function openDayReportOutput(id, mode) {
   let tab;
   try { tab=window.open('', '_blank'); } catch(e) { tab=null; }
-  if(!tab){UI.toast('Allow popups for this app, then click the report button again.', 'warn');return;}
+  if(!tab){UI.toast(T.t('dash.allowPopups','Allow popups for this app, then click the report button again.'), 'warn');return;}
   try {
     tab.opener=null;
     tab.document.write('<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><title>Preparing report</title><p style="font:16px system-ui;padding:24px">Preparing your report…</p>');
@@ -29182,7 +29295,7 @@ function shopClosedCard(onDone) {
         const v = f.values();
         try {
           const op = await API.call('cash.session.open', { openingCash: Number(v.openingCash) || 0, notes: v.notes || '' });
-          UI.toast('Shop open ho gayi ✅', 'ok'); loadShopState(); onDone();
+          UI.toast(T.t('dash.shopOpen','Shop is open ✅'), 'ok'); loadShopState(); onDone();
           /* v2.30.0 — opening report bhi foran (auto report setting ke sath) */
           if (String(App.state.settings.dayReportAutoOpen) !== 'false') {
             const sid = (op && op.sessionId) || (op && op.id) || '';
@@ -29807,14 +29920,24 @@ function renderList(c) {
       // KPIs
       const t = res.totals || {};
       const byS = t.byStatus || {};
-      host.appendChild(UI2.kpiGrid([
+      const kgrid = UI2.kpiGrid([
         { icon: '📝', label: 'Total', value: t.total || 0, cls: 'brand' },
         { icon: '⏳', label: 'Outstanding', value: t.outstanding || ((byS.OPEN||0)+(byS.SOURCED||0)+(byS.ORDERED||0)+(byS.ARRIVED||0)+(byS.NOTIFIED||0)), cls: 'warn' },
         { icon: '✅', label: 'Fulfilled', value: byS.FULFILLED || 0, cls: 'ok' },
         { icon: '🚚', label: 'Ordered', value: byS.ORDERED || 0 },
         { icon: '📬', label: 'Arrived', value: byS.ARRIVED || 0, cls: 'info' },
         { icon: '🔔', label: 'Notified', value: byS.NOTIFIED || 0 }
-      ]));
+      ]);
+      host.appendChild(kgrid);
+      /* v2.30.5 (P4-a) — KPI drill-down: card click → status filter (spec §8) */
+      try {
+        const fmap = ['', 'OPEN', 'FULFILLED', 'ORDERED', 'ARRIVED', 'NOTIFIED'];
+        kgrid.querySelectorAll('.kpi').forEach((k, i) => {
+          if (fmap[i] === undefined) return;
+          k.style.cursor = 'pointer'; k.title = 'Filter: ' + (fmap[i] || 'All');
+          k.onclick = () => { statusSel.value = fmap[i]; loadList(); };
+        });
+      } catch (e) { }
       if (!DM.rows.length) {
         host.appendChild(h('div', { class: 'empty' }, h('span', { class: 'big' }, '😕'), h('div', null, 'Koi demand nahi mili'),
           App.can('demand.create') ? h('button', { class: 'btn sm ok', style: { marginTop: '10px' }, onclick: openCreate }, '➕ New Demand') : ''));
@@ -29840,12 +29963,20 @@ function renderList(c) {
           { key: 'daysOpen', label: 'Age', num: true, render: r => (r.daysOpen || 0) + 'd' + (r.isOverdue ? ' ⚠' : '') },
           { key: 'expectedDate', label: 'Expected', render: r => r.expectedDate ? fmt.date(r.expectedDate) : '—' }
         ],
-        rowActions: r => [
-          { icon: '👁', label: 'View', onClick: () => openDetail(r.id) },
+        rowActions: r => {
+          /* v2.30.5 (P4-b) — state-aware next-step action (spec §12/13) */
+          const NEXT = { OPEN: ['🏭', 'Source', 'SOURCED'], SOURCED: ['📦', 'Order', 'ORDERED'],
+            ORDERED: ['📬', 'Arrived', 'ARRIVED'], ARRIVED: ['🔔', 'Notify', 'NOTIFIED'],
+            NOTIFIED: ['✅', 'Fulfill', 'FULFILLED'] };
+          const nx = NEXT[r.status];
+          return [
+            { icon: '👁', label: 'View', onClick: () => openDetail(r.id) },
+            ...(nx && App.can('demand.manage') ? [{ icon: nx[0], label: nx[1], onClick: () => openStatus(r, nx[2]) }] : []),
           ...(App.can('demand.create') ? [{ icon: '🔁', label: 'Repeat', onClick: () => openRepeat(r) }] : []),
           ...(r.status !== 'FULFILLED' && r.status !== 'CANCELLED' && App.can('demand.manage') ? [{ icon: '✎', label: 'Status', onClick: () => openStatus(r) }] : []),
-          ...(App.can('demand.manage') ? [{ icon: '🏭', label: 'Vendors', onClick: () => vendorSuggest(r) }] : [])
-        ],
+            ...(App.can('demand.manage') ? [{ icon: '🏭', label: 'Vendors', onClick: () => vendorSuggest(r) }] : [])
+          ];
+        },
         onRow: r => openDetail(r.id),
         emptyAction: { label: '➕ New Demand', onClick: openCreate }
       }));
@@ -29957,7 +30088,7 @@ function openStatus(row) {
     actions: [
       { label: 'Cancel', cls: 'ghost', onClick: c => c() },
       { label: 'Update', cls: 'ok', onClick: c => {
-        API.call('demand.setStatus', { id: row.id, status: sel.value, note: noteI.value.trim() }).then(() => { UI.toast('Updated ✅', 'ok'); c(); App.refresh(); }).catch(e => UI.toast(e.message, 'err'));
+        API.call('demand.setStatus', { id: row.id, status: sel.value, note: noteI.value.trim() }).then(() => { UI.toast(T.t('dem.updated','Updated ✅'), 'ok'); c(); App.refresh(); }).catch(e => UI.toast(e.message, 'err'));
       }}
     ]
   });
@@ -30234,10 +30365,10 @@ function demandForm(existing) {
     const v = F.values();
     const name = String(v.itemName || '').trim();
     const cname = String(v.customerName || '').trim();
-    if (!v.customerId && !cname) return UI.toast('Customer select karein ya walk-in ka naam likhein', 'err', 4000), false;
-    if (!name) return UI.toast('Product name zaroori hai — catalog se pick karein ya type karein', 'err', 4000), false;
+    if (!v.customerId && !cname) return UI.toast(T.t('dem.pickCustomer','Select a customer or type the walk-in name'), 'err', 4000), false;
+    if (!name) return UI.toast(T.t('dem.nameNeeded','Product name is required — pick from catalog or type'), 'err', 4000), false;
     const qty = Number(v.qty) || 0;
-    if (qty <= 0) return UI.toast('Qty 1 ya zyada honi chahiye', 'err'), false;
+    if (qty <= 0) return UI.toast(T.t('dem.qtyMin','Quantity must be 1 or more'), 'err'), false;
     if (dupHit) return UI.toast('Ye demand pehle se open hai (' + dupHit.demandNo + ') — pehle us ko complete/cancel karein', 'warn', 5200), false;
     const live = await findDupLive(v, name);
     if (live) {
@@ -30260,7 +30391,7 @@ function demandForm(existing) {
         const saved = await API.call('customers.save', { customer: { name: cname, phone: v.customerPhone || '' } });
         custId = (saved && (saved.id || (saved.customer && saved.customer.id))) || '';
         if (!custId) throw new Error('Customer id nahi mili');
-        UI.toast('Naya customer ban gaya: ' + cname, 'ok');
+        UI.toast(T.t('dem.custCreated','New customer created: ') + cname, 'ok');
       } catch (e) { return UI.toast('Customer add nahi ho saka: ' + e.message, 'err', 5200), false; }
     }
     const patch = {
@@ -32416,6 +32547,15 @@ App.registerScreen('salesman',{
    Links: ?app=wh | ?app=fo | ?app=sm | ?app=pos
    Also shows QR for phone scanning + Install hint + status (enabled/perm).
    ========================================================================== */
+/* v2.30.5 (P3-d) — notch/safe-area guards (hub screen) */
+(function(){
+  try {
+    var st = document.createElement('style');
+    st.textContent = '.hub-safe{padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right);padding-bottom:env(safe-area-inset-bottom)}' +
+      'body{padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right);padding-bottom:env(safe-area-inset-bottom)}';
+    document.head.appendChild(st);
+  } catch (e) { }
+})();
 (function(){
 'use strict';
 

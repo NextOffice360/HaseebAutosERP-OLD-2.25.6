@@ -195,7 +195,7 @@ function renderGeneral(c, it) {
     try {
       const dataUrl = await _shrinkImage(f, 900);
       await API.call('items.uploadImage', { itemId: it.id, data: dataUrl, mime: 'image/jpeg', slot: 'main' });
-      UI.toast('Image upload ho gayi ✅ — refreshing', 'ok');
+      UI.toast(T.t('mast.imgUploaded','Image uploaded ✅ — refreshing'), 'ok');
       const fresh = await API.call('items.get', { id: it.id, withStock: true });
       c.innerHTML = ''; renderGeneral(c, fresh);
     } catch (e) { UI.toast(e.message || 'Upload fail', 'err'); }
@@ -214,9 +214,9 @@ function renderGeneral(c, it) {
         (r.barcode && r.barcode !== it.code) ? h('span', { class: 'badge', title: 'Barcode' }, 'BC ' + r.barcode) : ''),
       h('div', { class: 'gi-hero-actions' },
         App.can('items.edit') ? h('button', { class: 'btn sm sec', onclick: () => itemForm(it, () => App.refresh()) }, '✎ Edit') : '',
-        h('button', { class: 'btn sm sec', title: 'Print barcode label', onclick: () => { try { printLabels([it.id]); } catch (e) { UI.toast('Print fail', 'err'); } } }, '🏷 Label'),
+        h('button', { class: 'btn sm sec', title: 'Print barcode label', onclick: () => { try { printLabels([it.id]); } catch (e) { UI.toast(T.t('mast.printFail','Print failed'), 'err'); } } }, '🏷 Label'),
         h('button', { class: 'btn sm ghost', title: 'Copy product code', onclick: async () => {
-          try { await navigator.clipboard.writeText(it.code || ''); UI.toast('Code copied — ' + it.code, 'ok'); } catch (e) { UI.toast(it.code || '', 'ok'); }
+          try { await navigator.clipboard.writeText(it.code || ''); UI.toast(T.t('mast.codeCopied','Code copied — ') + it.code, 'ok'); } catch (e) { UI.toast(it.code || '', 'ok'); }
         } }, '⧉ Code'))));
   c.appendChild(hero);
 
@@ -337,7 +337,7 @@ function renderBarcode(c, it) {
       h('button', { class: 'chip2', onclick: async () => {
         const g = await API.call('barcode.generate', { value: '', type: 'CODE39' });
         await API.call('items.save', { item: { id: it.id, barcode: g.value } });
-        UI.toast('New barcode assigned: ' + g.value, 'ok'); App.refresh();
+        UI.toast(T.t('mast.barcodeNew','New barcode assigned: ') + g.value, 'ok'); App.refresh();
       } }, '🎲 Generate new'),
       h('button', { class: 'chip2', onclick: () => {
         const w = window.open('', '_blank');
@@ -381,7 +381,7 @@ async function _uploadItemImage(it, slot, file, statusEl) {
     const dataUrl = await _shrinkImage(file, 900);
     const r = await API.call('items.uploadImage', { itemId: it.id, data: dataUrl, mime: 'image/jpeg', slot: slot });
     statusEl.textContent = '✅ Upload ho gayi';
-    UI.toast('Image upload ho gayi ✅', 'ok');
+    UI.toast(T.t('mast.imgUploaded2','Image uploaded ✅'), 'ok');
     return r;
   } catch (e) {
     statusEl.textContent = '❌ ' + (e.message || 'Upload fail');

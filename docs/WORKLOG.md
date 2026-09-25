@@ -86,4 +86,17 @@ integration + regression + UI/UX-check + error-handling + security-check pass ho
 - Evidence: documents_hub 16/0 · shop 26/0 · entity 10/0 · pos 23/0 · D8 11/11 ·
   D10/D11 inline GREEN · 0 pageerrors. Batch total: 10 tasks — push (policy).
 
-## (agle slices yahan add honge — D12+, har entry isi format me)
+## 2026-09-25 — Round 8 (30-task mega-batch) — COMPLETE
+- D12a/b legacy UI.table totals + sales footer ✓ · D13 version-bump+history ✓ ·
+- D14-25: batch gate **22/0** (recent-scans, share-templates, PAY/URL resolve, line-links,
+  supplier-link, GRN/RECEIPT registry, KPI drill-down, state-aware demand actions, i18n b3-b6) ✓
+- P3-a/d touch+safe-area audit **9/9** (btn ≥44 coarse, PwaHub safe-area, manifest) ✓ ·
+  P3-b/c responsive sweep **17/0** (8 screens × light+dark @390 no-overflow) ✓ ·
+  QA-a console-sweep (16 views zero errors) ✓ · QA-b capacity_check.js tool ✓ ·
+  QA-c USER-GUIDE-DOCINTEL.md ✓
+- Seekh (debug se): __openSale screen-render par set hota hai; modal-action buttons
+  ICON text render karte hain (title/aria check karo); {{x}}-regex double-brace;
+  aliased-object reads gate me structuredClone/JSON-parse karo; purchase tabs .seg me.
+- Final battery: neeche (task-30) — push + tag v2.30.6 attempt.
+
+## (agle slices yahan add honge — D26+, har entry isi format me)
