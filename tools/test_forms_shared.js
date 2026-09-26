@@ -93,7 +93,7 @@ console.log('\x1b[1mPART 1 — source contract\x1b[0m');
   });
   ok(!r3.err && r3.mark && r3.aria && r3.focus && !r3.savedWhenEmpty,
     '③ item form: khaali naam → highlight + aria-invalid + focus + NO save', JSON.stringify(r3).slice(0, 140));
-  ok(/Name zaroori hai/.test(r3.toast || ''), '③b toast "Name zaroori hai"', (r3.toast || '').slice(0, 80));
+  ok(/Name zaroori hai|Name is required/.test(r3.toast || '') /* v2.31.5 EN */, '③b toast "Name zaroori hai"', (r3.toast || '').slice(0, 80));
 
   const r3b = await page.evaluate(async () => {
     const nameEl = document.getElementById('f_name');
@@ -132,7 +132,7 @@ console.log('\x1b[1mPART 1 — source contract\x1b[0m');
   });
   ok(!r4.err && r4.mark && r4.focus && !r4.savedEmpty,
     '④ customer form: khaali naam → highlight + focus + NO save', JSON.stringify(r4).slice(0, 140));
-  ok(/Name zaroori hai/.test(r4.toast || ''), '④b toast "Name zaroori hai"');
+  ok(/Name zaroori hai|Name is required/.test(r4.toast || '') /* v2.31.5 EN */, '④b toast "Name zaroori hai"');
 
   /* ⑤ transfer */
   const r5 = await page.evaluate(async () => {
