@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-09-26T09:59:00.818Z",
-  "totalHits": 450,
-  "totalTt": 502,
+  "generatedAt": "2026-09-26T10:02:58.272Z",
+  "totalHits": 416,
+  "totalTt": 538,
   "files": [
     {
       "file": "App_Core.html",
@@ -19,25 +19,6 @@
         {
           "line": 203,
           "text": "`fmt.date()` isi par delegate karta hai, is liye poore app ke 92 call-si* `fmt.date()` isi"
-        }
-      ]
-    },
-    {
-      "file": "App_Salesman.html",
-      "tt": 0,
-      "hits": 34,
-      "samples": [
-        {
-          "line": 108,
-          "text": "var selSm=h('select',{class:'f-input', 'aria-label':'Salesman — salesman select karein', t"
-        },
-        {
-          "line": 112,
-          "text": "selSm.appendChild(h('option',{value:''},'— Salesman select karein —'));"
-        },
-        {
-          "line": 154,
-          "text": "h('b',null,'👤 Salesman select karna zaruri hai'),"
         }
       ]
     },

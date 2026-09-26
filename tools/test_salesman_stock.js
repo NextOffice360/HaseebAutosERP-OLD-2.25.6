@@ -85,7 +85,7 @@ const ok = (n, c, d) => c ? (pass++, console.log('  ✔ ' + n + (d ? '  → ' + 
     outK.click();
     await new Promise(r => setTimeout(r, 700));
     const msg = (document.querySelector('.st2-body') || {}).innerText || '';
-    const hit = /filter par kuch nahi mila/i.test(msg);
+    const hit = /filter par kuch nahi mila|matches this filter/i.test(msg) /* v2.31.4 EN */;
     outK.click();
     await new Promise(r => setTimeout(r, 500));
     return { msg: msg.replace(/\n/g, ' ').slice(0, 80), hit: hit };
@@ -142,9 +142,9 @@ const ok = (n, c, d) => c ? (pass++, console.log('  ✔ ' + n + (d ? '  → ' + 
   });
   ok('Stock Issue modal — sections + shared scan picker (POS jaisa)',
     issue.secs && issue.secs.length >= 2 && issue.scanAware === true, JSON.stringify(issue.secs));
-  ok('validation — 0 items par Issue block', /items add karein/i.test(issue.v0 || ''), issue.v0);
+  ok('validation — 0 items par Issue block', (/items add karein|Add items first/i.test(issue.v0 || '')), issue.v0);
   ok('scan → line add → F9 = Issue Stock → save + modal band',
-    issue.lines >= 1 && /Issue ho gaya/i.test(issue.save || '') && issue.closed === true,
+    issue.lines >= 1 && (/Issue ho gaya|Issue done/i.test(issue.save || '')) && issue.closed === true,
     'lines=' + issue.lines + ' | ' + issue.save);
 
   /* ---- v2.25.2 (req 4) — poore feature ka sweep: har tab render ho, error na ho ---- */
