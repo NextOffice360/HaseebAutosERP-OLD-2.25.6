@@ -30,9 +30,9 @@
 <h1>Haseeb Autos — Punch-list verification</h1>
 <p class="sub">Har requirement ke liye static (source) + live (demo app) checks · 2.5.2 · 2026-09-26</p>
 <div class="sum">
- <div class="kpi"><b>16/16</b><span>requirements pass</span></div>
- <div class="kpi"><b>117/117</b><span>checks pass</span></div>
- <div class="kpi"><b>0</b><span>failures</span></div>
+ <div class="kpi"><b>15/16</b><span>requirements pass</span></div>
+ <div class="kpi"><b>116/117</b><span>checks pass</span></div>
+ <div class="kpi"><b>1</b><span>failures</span></div>
 </div>
 <table><tbody>
     <tr class="ok">
@@ -77,12 +77,12 @@
       </td>
       <td class="st">✅ PASS<div class="cnt">13/13</div></td>
     </tr>
-    <tr class="ok">
+    <tr class="bad">
       <td class="num">7</td>
       <td><b>Cart payment — EasyPaisa/JazzCash REAL integration (cell from/to, hashing, inquiry)</b><div class="why">Official docs ke mutabiq: HMAC-SHA256 hash, payer/receiver mobile, initiate + status polling.</div>
-          <div class="checks"><span class="chip chip-ok">✔ wallet: hmacHex</span><span class="chip chip-ok">✔ wallet: hmacB64</span><span class="chip chip-ok">✔ wallet: ppmpf_1</span><span class="chip chip-ok">✔ wallet: sandbox.jazzcash.com.pk</span><span class="chip chip-ok">✔ wallet: easypaystg.easypaisa.com.pk</span><span class="chip chip-ok">✔ wallet: epStatus</span><span class="chip chip-ok">✔ wallet: jcStatus</span><span class="chip chip-ok">✔ wallet: mobileAccountNo</span><span class="chip chip-ok">✔ wallet: payerMobile</span><span class="chip chip-ok">✔ wallet: receiverMobile</span><span class="chip chip-ok">✔ wallet: txnId</span><span class="chip chip-ok">✔ settings ▸ Wallets (EasyPaisa / JazzCash) credentials fields</span></div>
+          <div class="checks"><span class="chip chip-ok">✔ wallet: hmacHex</span><span class="chip chip-ok">✔ wallet: hmacB64</span><span class="chip chip-ok">✔ wallet: ppmpf_1</span><span class="chip chip-ok">✔ wallet: sandbox.jazzcash.com.pk</span><span class="chip chip-ok">✔ wallet: easypaystg.easypaisa.com.pk</span><span class="chip chip-ok">✔ wallet: epStatus</span><span class="chip chip-ok">✔ wallet: jcStatus</span><span class="chip chip-ok">✔ wallet: mobileAccountNo</span><span class="chip chip-ok">✔ wallet: payerMobile</span><span class="chip chip-ok">✔ wallet: receiverMobile</span><span class="chip chip-ok">✔ wallet: txnId</span><span class="chip chip-bad">✖ settings ▸ Wallets (EasyPaisa / JazzCash) credentials fields — Settings &amp; ConfigurationApp ka har feature yahan se control hota haiSave all↻ ReloadSave all BusinessPOSPwaInventory💱TradeModulesAutomationSecurityBackendCustom fieldsMenu builderPrint templatesLists</span></div>
       </td>
-      <td class="st">✅ PASS<div class="cnt">12/12</div></td>
+      <td class="st">❌ FAIL<div class="cnt">11/12</div></td>
     </tr>
     <tr class="ok">
       <td class="num">8</td>

@@ -1653,7 +1653,7 @@ async function pay(method) {
                  ke aage barh sakta hai (backend phir bhi guard + Audit karta hai) */
               let _ov = false;
               if (App.can && App.can('pos.credit.override')) {
-                try { _ov = await UI2.confirm(T.t('pos.overrideAsk','Credit limit exceeded — override kar ke sale karein?'), null, true); } catch (e) { _ov = false; }
+                try { _ov = await UI2.confirm(T.t('pos.overrideAsk','Credit limit exceeded — override and complete this sale?'), null, true); } catch (e) { _ov = false; }
               }
               if (!_ov) {
                 return UI.toast(T.t('pos.limitExceeded','Credit limit exceeded — limit ') + fmt.money(limit) + ', previous ' + fmt.money(bal) + ', available ' + fmt.money(avail) + T.t('pos.billCreditTail',', this bill credit ') + fmt.money(effectiveDue), 'err', 5000);

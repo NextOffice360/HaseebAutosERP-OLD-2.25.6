@@ -1,0 +1,719 @@
+  (chrome libs: /home/user/.cache/chrome-libs/usr/lib/x86_64-linux-gnu)
+  (demo server 8021 pehle se chal raha hai)
+
+==============================================================
+ HASEEB AUTOS — FULL VERIFICATION
+==============================================================
+
+[1m▶ check[0m  (bash tools/check.sh)
+== Partial files: <style>/<script> leak check ==
+  ✔ 31 partials — koi CSS/JS block ke bahar nahi
+
+== Test harness: login-race lint ==
+  checked 133 tools   (RULE 1 hits: 2, RULE 2 hits: 0)
+  ✔ koi login-race pattern nahi (sab shared harness par)
+  [31m✖ gate failed: check[0m  [2m(2s)[0m
+
+[1m▶ schema[0m  (node tools/audit_schema.js)
+
+  ✔ koi masla nahi — har DB call declared columns ke andar hai
+
+==============================================================
+ PROBLEMS: 0
+==============================================================
+  [32m✔ gate passed: schema[0m  [2m(0s)[0m
+
+[1m▶ logic[0m  (node tools/test_logic.js)
+    at Module.load (node:internal/modules/cjs/loader:1266:32)
+    at Module._load (node:internal/modules/cjs/loader:1091:12)
+    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:164:12)
+    at node:internal/main/run_main_module:28:49
+
+Node.js v20.20.2
+  [31m✖ gate failed: logic[0m  [2m(0s)[0m
+
+[1m▶ e2e[0m  (node tools/test_e2e.js)
+    at Module.load (node:internal/modules/cjs/loader:1266:32)
+    at Module._load (node:internal/modules/cjs/loader:1091:12)
+    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:164:12)
+    at node:internal/main/run_main_module:28:49
+
+Node.js v20.20.2
+  [31m✖ gate failed: e2e[0m  [2m(0s)[0m
+
+[1m▶ routes[0m  (node tools/test_routes.js)
+    at Module.load (node:internal/modules/cjs/loader:1266:32)
+    at Module._load (node:internal/modules/cjs/loader:1091:12)
+    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:164:12)
+    at node:internal/main/run_main_module:28:49
+
+Node.js v20.20.2
+  [31m✖ gate failed: routes[0m  [2m(0s)[0m
+
+[1m▶ route-audit[0m  (node tools/route_audit.js)
+    at Module.load (node:internal/modules/cjs/loader:1266:32)
+    at Module._load (node:internal/modules/cjs/loader:1091:12)
+    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:164:12)
+    at node:internal/main/run_main_module:28:49
+
+Node.js v20.20.2
+  [31m✖ gate failed: route-audit[0m  [2m(0s)[0m
+
+[1m▶ settings-ui[0m  (node tools/test_settings_ui.js)
+   ✖ AI assistant: 4 colour-coded section blocks bante hain
+   ✖ AI assistant: har block ka alag rang hai (tone)
+   ✖ AI assistant: har block ki left colour bar alag rang ki hai
+   ✖ AI assistant: "Enable AI" aik hi dafa hai (pehle 2 baar — duplicate fields)
+   ✖ AI assistant: 24 fields 4 sections me bate hain
+══════════════════════════════════════════════════════════════════
+  [31m✖ gate failed: settings-ui[0m  [2m(8s)[0m
+
+[1m▶ settings-defs[0m  (node tools/audit_settings_defs.js)
+✖ Config.defs() load nahi hua: Load error in Utils.gs: Invalid or unexpected token
+  [31m✖ gate failed: settings-defs[0m  [2m(0s)[0m
+
+[1m▶ ui-polish[0m  (node tools/test_ui_polish.js)
+   ✖ Settings ke tamam tabs/sub-tabs SVG icon dikhatay hain
+   ✖ Settings: har field par TOOLTIP
+   ✖ Settings: hints dono zabanon mein (Urdu + English)
+   ✖ Settings: headings English mein
+   ✖ Settings: asli (Urdu) heading tooltip me mehfooz
+══════════════════════════════════════════════════════════════════
+  [31m✖ gate failed: ui-polish[0m  [2m(120s)[0m
+
+[1m▶ typography[0m  (node tools/audit_typography.js 1440 900)
+════════════════════════════════════════════════════════════
+ ok (>= floor)         : 450
+ exempt (print/SVG)    : 49
+ VIOLATIONS (< floor)  : 0
+
+ → tmp/typography-audit.json
+  [32m✔ gate passed: typography[0m  [2m(0s)[0m
+
+[1m▶ charts-edge[0m  (node tools/test_charts_edge.js 1440 900)
+  ✔ progress · long label                   → 0 svg
+  ✔ kpiRing · 100%                          → 1 svg
+
+══════════════════════════════════════════════════════════════════
+  CHART EDGE-CASES   PASS: 21   FAIL: 0   (problems: 0)
+══════════════════════════════════════════════════════════════════
+  [32m✔ gate passed: charts-edge[0m  [2m(6s)[0m
+
+[1m▶ backend-perf[0m  (node tools/test_backend_perf.js)
+    at Module.load (node:internal/modules/cjs/loader:1266:32)
+    at Module._load (node:internal/modules/cjs/loader:1091:12)
+    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:164:12)
+    at node:internal/main/run_main_module:28:49
+
+Node.js v20.20.2
+  [31m✖ gate failed: backend-perf[0m  [2m(0s)[0m
+
+[1m▶ settings-perf[0m  (node tools/test_settings_perf.js)
+    at Module.load (node:internal/modules/cjs/loader:1266:32)
+    at Module._load (node:internal/modules/cjs/loader:1091:12)
+    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:164:12)
+    at node:internal/main/run_main_module:28:49
+
+Node.js v20.20.2
+  [31m✖ gate failed: settings-perf[0m  [2m(0s)[0m
+
+[1m▶ seed-recovery[0m  (node tools/test_seed_recovery.js)
+    at Module._extensions..js (node:internal/modules/cjs/loader:1623:10)
+    at Module.load (node:internal/modules/cjs/loader:1266:32)
+    at Module._load (node:internal/modules/cjs/loader:1091:12)
+    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:164:12)
+
+Node.js v20.20.2
+  [31m✖ gate failed: seed-recovery[0m  [2m(0s)[0m
+
+[1m▶ report-dates[0m  (node tools/test_report_dates.js)
+    at Module.load (node:internal/modules/cjs/loader:1266:32)
+    at Module._load (node:internal/modules/cjs/loader:1091:12)
+    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:164:12)
+    at node:internal/main/run_main_module:28:49
+
+Node.js v20.20.2
+  [31m✖ gate failed: report-dates[0m  [2m(0s)[0m
+
+[1m▶ report-actions[0m  (node tools/test_report_actions.js)
+PASS PDF navigates reserved tab to returned Drive file
+PASS CSV button delivers data and filename
+PASS blocked popup gives visible advice without a server request
+PASS server failure closes placeholder and displays error
+PASS missing PDF URL is not falsely reported as success
+REPORT ACTIONS: 12 PASS, 0 FAIL
+  [32m✔ gate passed: report-actions[0m  [2m(1s)[0m
+
+[1m▶ cache-warm[0m  (node tools/test_cache_warm.js)
+    at Module.load (node:internal/modules/cjs/loader:1266:32)
+    at Module._load (node:internal/modules/cjs/loader:1091:12)
+    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:164:12)
+    at node:internal/main/run_main_module:28:49
+
+Node.js v20.20.2
+  [31m✖ gate failed: cache-warm[0m  [2m(0s)[0m
+
+[1m▶ qr-thermal[0m  (node tools/test_scanner_thermal.js)
+    at Module.load (node:internal/modules/cjs/loader:1266:32)
+    at Module._load (node:internal/modules/cjs/loader:1091:12)
+    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:164:12)
+    at node:internal/main/run_main_module:28:49
+
+Node.js v20.20.2
+  [31m✖ gate failed: qr-thermal[0m  [2m(0s)[0m
+
+[1m▶ pos-multi[0m  (node tools/test_pos_multi.js)
+PASS demo render: without liveUrl bulk degrades to in-app modal; Close ends cleanly
+PASS demo render: zero console/jsdom errors across the whole flow
+
+══════════════════════════════════════════════════════════════════
+  POS MULTI-ADD + BULK   PASS: 24   FAIL: 0
+══════════════════════════════════════════════════════════════════
+  [32m✔ gate passed: pos-multi[0m  [2m(7s)[0m
+
+[1m▶ raw-writes[0m  (node tools/test_raw_writes.js)
+  [32m✔[0m   ↳ Setup.gs:144 mehfooz  [2m→ DB.touch() maujood[0m
+  [32m✔[0m   ↳ Setup.gs:155 mehfooz  [2m→ DB.touch() maujood[0m
+
+════════════════════════════════════════════════════════════════
+  RAW WRITE GUARD   PASS: 9   FAIL: 0
+════════════════════════════════════════════════════════════════
+  [32m✔ gate passed: raw-writes[0m  [2m(0s)[0m
+
+[1m▶ metatags[0m  (node tools/test_metatags.js)
+    at Module._extensions..js (node:internal/modules/cjs/loader:1623:10)
+    at Module.load (node:internal/modules/cjs/loader:1266:32)
+    at Module._load (node:internal/modules/cjs/loader:1091:12)
+    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:164:12)
+
+Node.js v20.20.2
+  [31m✖ gate failed: metatags[0m  [2m(0s)[0m
+
+[1m▶ diagnose[0m  (node tools/test_diagnose.js)
+    at Module.load (node:internal/modules/cjs/loader:1266:32)
+    at Module._load (node:internal/modules/cjs/loader:1091:12)
+    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:164:12)
+    at node:internal/main/run_main_module:28:49
+
+Node.js v20.20.2
+  [31m✖ gate failed: diagnose[0m  [2m(0s)[0m
+
+[1m▶ ai[0m  (node tools/test_ai.js)
+    at Module.load (node:internal/modules/cjs/loader:1266:32)
+    at Module._load (node:internal/modules/cjs/loader:1091:12)
+    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:164:12)
+    at node:internal/main/run_main_module:28:49
+
+Node.js v20.20.2
+  [31m✖ gate failed: ai[0m  [2m(0s)[0m
+
+[1m▶ ai-hub[0m  (node tools/test_ai_hub.js)
+    at Module.load (node:internal/modules/cjs/loader:1266:32)
+    at Module._load (node:internal/modules/cjs/loader:1091:12)
+    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:164:12)
+    at node:internal/main/run_main_module:28:49
+
+Node.js v20.20.2
+  [31m✖ gate failed: ai-hub[0m  [2m(0s)[0m
+
+[1m▶ ai-load-order[0m  (node tools/test_ai_load_order.js)
+    at Module.load (node:internal/modules/cjs/loader:1266:32)
+    at Module._load (node:internal/modules/cjs/loader:1091:12)
+    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:164:12)
+    at node:internal/main/run_main_module:28:49
+
+Node.js v20.20.2
+  [31m✖ gate failed: ai-load-order[0m  [2m(0s)[0m
+
+[1m▶ session[0m  (node tools/test_session.js)
+    at Module.load (node:internal/modules/cjs/loader:1266:32)
+    at Module._load (node:internal/modules/cjs/loader:1091:12)
+    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:164:12)
+    at node:internal/main/run_main_module:28:49
+
+Node.js v20.20.2
+  [31m✖ gate failed: session[0m  [2m(0s)[0m
+
+[1m▶ cache[0m  (node tools/test_cache.js)
+    at Module.load (node:internal/modules/cjs/loader:1266:32)
+    at Module._load (node:internal/modules/cjs/loader:1091:12)
+    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:164:12)
+    at node:internal/main/run_main_module:28:49
+
+Node.js v20.20.2
+  [31m✖ gate failed: cache[0m  [2m(0s)[0m
+
+[1m▶ scale[0m  (node tools/test_scale.js)
+  ✔ 5000: koi API failure nahi  → clean
+
+══════════════════════════════════════════════════════════════════
+  §16 SCALE TEST   PASS: 15   FAIL: 0
+  page errors: none
+══════════════════════════════════════════════════════════════════
+  [32m✔ gate passed: scale[0m  [2m(24s)[0m
+
+[1m▶ icons[0m  (node tools/audit_icons.js)
+  ✔ ③ har icon aik hi codepoint ka hai  → 614 icons saf
+  ✔ ④ har nav item ka icon hai (koi "⚙business" jaisa nahi)  → 22 items, 0 bina icon
+
+══════════════════════════════════════════════════════════════════
+  ICONS   PASS: 5   FAIL: 0
+══════════════════════════════════════════════════════════════════
+  [32m✔ gate passed: icons[0m  [2m(0s)[0m
+
+[1m▶ static[0m  (node tools/test_static.js)
+  ✔ App boot hua (UI.toast ya App.state)  → App ok
+  ✔ app boot par JSONP call karta hai (backend se baat ho rahi hai)  → 2 call(s)
+  ✔ har JSONP URL sahi shape ka hai (?t=jsonp&cb=&a=&p=)  → https://script.google.com/macros/s/AKfycb_DEMO_TEST_EXAMPLE/exec?t=jsonp&cb=hacb_krbniqx5ly&a=system.loginConf
+  ✔ API.jsonp() se banaya gaya URL bhi maujood hai  → https://script.google.com/macros/s/AKfycb_DEMO_TEST_EXAMPLE/exec?t=jsonp&cb=hacb_rta9oy8zpyd&a=items.list&p=%7
+
+  STATIC BUILD RENDER (dist-static): PASS 8  FAIL 0
+  [32m✔ gate passed: static[0m  [2m(3s)[0m
+
+[1m▶ pwa[0m  (node tools/check_pwa.js)
+== Mobile ergonomics ==
+  ✔ tap targets: inputs/buttons >=48px, bottom bar >=56px
+  ✔ inputs 16px — iOS auto-zoom nahi hoga
+  ✔ safe-area insets (notch wale phones)
+
+  ✔ PWA checks: sab theek
+  [32m✔ gate passed: pwa[0m  [2m(0s)[0m
+
+[1m▶ pwa-ui[0m  (bash tools/run_pwa_ui.sh)
+  ✔ Offline: queue count barh gaya  → count=1
+  ✔ Offline: net badge "Offline" dikhata hai  → ⌛ 1 queued
+
+══════════════════════════════════════════════════════════════════
+  PASS: 66   FAIL: 0
+══════════════════════════════════════════════════════════════════
+  [32m✔ gate passed: pwa-ui[0m  [2m(11s)[0m
+
+[1m▶ ui[0m  (node tools/ui_audit.js)
+
+-- label/title problems (0) --
+
+-- empty/undefined content (0) --
+
+-- jsdom errors (0) --
+  [32m✔ gate passed: ui[0m  [2m(23s)[0m
+
+[1m▶ smoke[0m  (node tools/smoke.js)
+  ✔ parties click → Customers
+  ✔ parties click → Suppliers
+
+==============================================================
+CHECKS: 324   FAILED: 6
+==============================================================
+  [31m✖ gate failed: smoke[0m  [2m(127s)[0m
+
+[1m▶ tabs[0m  (node tools/audit_tabs.js)
+==============================================================
+AUDIT CHECKS: 456   FAILED: 1
+==============================================================
+
+Failures:
+ - settings ▸ automation ▸ AI sub-tab exists → not found
+  [31m✖ gate failed: tabs[0m  [2m(59s)[0m
+
+[1m▶ align[0m  (node tools/audit_align.js)
+[1mSTATIC CSS RULES[0m
+
+==============================================================
+ALIGNMENT CHECKS: 35   FAILED: 0
+==============================================================
+  [32m✔ gate passed: align[0m  [2m(15s)[0m
+
+[1m▶ punch[0m  (node tools/verify_punchlist.js)
+  ✅ 16. 🔐 Users & Security — allow / disallow rules (checkboxes)  [6/6]
+
+==============================================================
+ REQUIREMENTS: 15/16   CHECKS: 116/117   FAILED: 1
+ Report: release/punchlist-report.html
+==============================================================
+  [31m✖ gate failed: punch[0m  [2m(52s)[0m
+
+[1m▶ scan-coverage[0m  (node tools/audit_scan_coverage.js)
+  ✔ PWA Warehouse — hardware scan → item pick + field clear  → {"v":"","detached":true,"has":true,"toast":"📷 FL00000 — FLAMINGO DASHBOARD POLISH 450ML"}
+
+═══════════════════════════════════════════════════════════
+  SCAN COVERAGE   PASS: 21   FAIL: 0   SKIP: 0
+  Report: release/scan-coverage-report.html
+═══════════════════════════════════════════════════════════
+  [32m✔ gate passed: scan-coverage[0m  [2m(83s)[0m
+
+[1m▶ api-instrument[0m  (node tools/test_api_instrument.js)
+✔ fail path count hoti hai (unknown action → 1 fail)
+✔ zero page errors
+
+═══════════════════════════════════════════════════════════
+  API INSTRUMENT   PASS: 14   FAIL: 0
+═══════════════════════════════════════════════════════════
+  [32m✔ gate passed: api-instrument[0m  [2m(3s)[0m
+
+[1m▶ sidebar-states[0m  (node tools/test_sidebar_states.js)
+✔ T6.3 rail@1024: icons-only + 0 overflow + tap ≥48
+✔ zero page errors
+
+═══════════════════════════════════════════════════════════
+  SIDEBAR STATES   PASS: 52   FAIL: 0
+═══════════════════════════════════════════════════════════
+  [32m✔ gate passed: sidebar-states[0m  [2m(37s)[0m
+
+[1m▶ busy-coverage[0m  (node tools/test_busy_coverage.js)
+✔ auto-busy stats: attach/done counters chal rahe hain
+✔ I. zero page errors
+
+═══════════════════════════════════════════════════════════
+  BUSY COVERAGE   PASS: 17   FAIL: 0
+═══════════════════════════════════════════════════════════
+  [32m✔ gate passed: busy-coverage[0m  [2m(39s)[0m
+
+[1m▶ api-core[0m  (node tools/test_api_core.js)
+✔ API.parallel: sach mein parallel chala (inflight ≥ 2)
+✔ zero page errors
+
+═══════════════════════════════════════════════════════════
+  API CORE (assert)   PASS: 16   FAIL: 0
+═══════════════════════════════════════════════════════════
+  [32m✔ gate passed: api-core[0m  [2m(6s)[0m
+
+[1m▶ session-guard[0m  (node tools/test_session_guard.js)
+  ✔ shop dialog se page-error nahi aaya
+  ✔ account menu null session par khula  → Account✕U—— · Change passwordSettingsLogoutClose
+  ✔ account menu mein undefined leak nahi
+  ✔ account menu se page-error nahi aaya
+
+SESSION GUARD  →  PASS: 15   FAIL: 0
+  [32m✔ gate passed: session-guard[0m  [2m(5s)[0m
+
+[1m▶ ui-run[0m  (node tools/test_ui_run.js)
+  ✔ ⑩ GRN post par shared busyLabel lagi hui hai
+  ✔ ⑩ PO save ka manual "Saving…" hack gaya
+  ✔ ⑩ Settings save manual hack gaya (UI.run par)
+  ✔ ⑩ is run mein zero page errors
+
+UI.RUN   →  PASS: 34   FAIL: 0
+  [32m✔ gate passed: ui-run[0m  [2m(9s)[0m
+
+[1m▶ ui-err[0m  (node tools/test_ui_err.js)
+  ✔ ⑥ POS pay write flag ke sath (double-sale warning)
+  ✔ ⑦ shared policy mojood (errKind + errBox + fail + write warning)
+  ✔ ⑦ toast err path classified ho raha hai
+  ✔ ⑦ is run mein zero page errors
+
+UI.ERR   →  PASS: 30   FAIL: 0
+  [32m✔ gate passed: ui-err[0m  [2m(5s)[0m
+
+[1m▶ perf-batch[0m  (node tools/test_perf_batch.js)
+  ✔ ⑤ perf audit: frontend GENUINE N+1 = 0
+  ✔ ⑤ perf audit: backend per-row writes = 0
+  ✔ ⑥ zero page errors
+
+[31mW7 GATE: 27 pass / 1 fail[0m
+  FAIL: ② backend batch block chala
+  [31m✖ gate failed: perf-batch[0m  [2m(5s)[0m
+
+[1m▶ dyn-deps[0m  (node tools/test_dyn_deps.js)
+  ✔ ⑤ Deps ke contract keys maujood (define/load/shared/bindSelect/when/wire/refresh/hardRefresh)
+  ✔ ⑤ kill-switch maujood (tests/SENS ke liye)
+  ✔ ⑤ HTML bundle mein Deps aya (demo build)
+  ✔ ⑥ zero page errors
+
+[32mW3 DYN-DEPS GATE: 51 pass / 0 fail[0m
+  [32m✔ gate passed: dyn-deps[0m  [2m(11s)[0m
+
+[1m▶ layout-desktop[0m  (node tools/audit_layout.js 1440 900)
+
+✔ AI  (0 problems)
+
+==============================================================
+ PROBLEMS: 0
+==============================================================
+  [32m✔ gate passed: layout-desktop[0m  [2m(27s)[0m
+
+[1m▶ layout-mobile[0m  (node tools/audit_layout.js 390 844)
+
+✔ AI  (0 problems)
+
+==============================================================
+ PROBLEMS: 0
+==============================================================
+  [32m✔ gate passed: layout-mobile[0m  [2m(27s)[0m
+
+[1m▶ layout-dark[0m  (node tools/audit_layout.js 1440 900 --dark)
+
+✔ AI  (0 problems)
+
+==============================================================
+ PROBLEMS: 0
+==============================================================
+  [32m✔ gate passed: layout-dark[0m  [2m(27s)[0m
+
+[1m▶ layout-overlays[0m  (node tools/audit_layout.js 1440 900 --overlays)
+
+✔ GRN DRAWER  (0 problems)
+
+==============================================================
+ PROBLEMS: 0
+==============================================================
+  [32m✔ gate passed: layout-overlays[0m  [2m(56s)[0m
+
+[1m▶ layout-overlays-m[0m  (node tools/audit_layout.js 390 844 --overlays)
+
+✔ GRN DRAWER  (0 problems)
+
+==============================================================
+ PROBLEMS: 0
+==============================================================
+  [32m✔ gate passed: layout-overlays-m[0m  [2m(56s)[0m
+
+[1m▶ pwa-layout[0m  (node tools/audit_layout.js 390 844 --pwa)
+
+✔ SALESMAN PWA ▸ Settle  (0 problems)
+
+==============================================================
+ PROBLEMS: 0
+==============================================================
+  [32m✔ gate passed: pwa-layout[0m  [2m(16s)[0m
+
+[1m▶ pwa-layout-dark[0m  (node tools/audit_layout.js 390 844 --pwa --dark)
+
+✔ SALESMAN PWA ▸ Settle  (0 problems)
+
+==============================================================
+ PROBLEMS: 0
+==============================================================
+  [32m✔ gate passed: pwa-layout-dark[0m  [2m(16s)[0m
+
+[1m▶ ai-ui[0m  (node tools/test_ai_ui.js)
+  [32m✔[0m Credentials blocked from JSONP URLs and persistent offline queue
+  [32m✔[0m Zero page/console errors poore flow mein
+
+==============================================================
+  AI AGENT UI (rendered)   PASS: 55   FAIL: 0
+==============================================================
+  [32m✔ gate passed: ai-ui[0m  [2m(19s)[0m
+
+[1m▶ auth-startup[0m  (node tools/test_auth_startup.js)
+PASS late old-session response cannot log out a new session
+PASS current-session expiration still triggers logout
+PASS logout clears personalized language and supplier cache
+PASS after logout no protected background loads resume
+PASS no uncaught browser errors
+AUTH STARTUP: 21 PASS, 0 FAIL
+  [32m✔ gate passed: auth-startup[0m  [2m(3s)[0m
+
+[1m▶ labels-live[0m  (node tools/test_labels_live.js)
+  ✔ raster cases: koi element frame se bahar nahi (bars + QR dono, 0 overflow)  → ["short-50x30:0/0","ean13-50x30:0/0","ean13+qr-50x30:0/0","price-40x25:0/0","long18-60x40:0/0","wh+qr-70x50:0/0","compact-30x20:0/0","price-50x25-ean13:0/0","inv-60x40-ean13:0/0","tiny-25x15-short:0/0","tiny-25x15-long:0/0"]
+  ✔ designer run mein zero page errors  → []
+
+═══════════════════════════════════════════════════════════
+  LABELS (live preview)   PASS: 30   FAIL: 0
+═══════════════════════════════════════════════════════════
+  [32m✔ gate passed: labels-live[0m  [2m(32s)[0m
+
+[1m▶ grn-drawer[0m  (node tools/test_grn_drawer.js)
+  ✔ F9 = Post GRN → success + drawer band  → {"toasts":"GRN posted — stock updated | GRN posted — stock updated","drawerGone":true}
+  ✔ is run mein zero page errors  → []
+
+═══════════════════════════════════════════════════════════
+  GRN DRAWER   PASS: 23   FAIL: 0
+═══════════════════════════════════════════════════════════
+  [32m✔ gate passed: grn-drawer[0m  [2m(24s)[0m
+
+[1m▶ doc-designer[0m  (node tools/test_doc_designer.js)
+  ✔ LABELS designer modal khula
+  ✔ Label preview me SAMPLE ITEM render (deep DOM)
+  ✔ Preset click ke baad preview zinda (paper render)  → {"open":true,"hasSample":true,"previewAlive":true,"paper":true}
+  ✔ zero page errors designer flows me
+
+  D14 DESIGNER   PASS: 10   FAIL: 0
+  [32m✔ gate passed: doc-designer[0m  [2m(12s)[0m
+
+[1m▶ i18n-floor[0m  (node tools/test_i18n_floor.js)
+[1mI18N REGRESSION FLOOR (EN-purity D7)[0m
+  ✖ Roman-Urdu hits <= baseline 486  → hits=487
+  ✔ T.t call-sites >= baseline 459  → T.t=460
+  ✔ top-4 files apne per-file floor par  → sab OK
+
+  I18N FLOOR   PASS: 2   FAIL: 1
+  [31m✖ gate failed: i18n-floor[0m  [2m(0s)[0m
+
+[1m▶ qr-payloads[0m  (node tools/audit_qr_payloads.js)
+   App_Print.html:178  [kv] ✓HA  'HA:INV:' + sale.invoiceNo
+   App_PwaHub.html:154  [raw] ✗  url
+
+ Standard (D2): HA:INV:<no> · HA:ITM:<id> · HA:CUS:<id> · HA:SUP:<id> · HA:DOC:<uuid>
+ → tmp/qr-payloads-audit.json
+ QR GATE   PASS — 8 sites (5 HA, baqi documented exceptions)
+  [32m✔ gate passed: qr-payloads[0m  [2m(0s)[0m
+
+[1m▶ demands[0m  (node tools/test_demand.js)
+  ✔ walk-in customer save — naya customer + catalog item pick kar ke demand save ho jati hai (list +1)  → {"before":6,"after":7,"icode":"FL00000","cname":"","toast":"New customer created: Walk-in Test 655 | Demand save ho gayi ✅","confirms":"","closed":true}
+  ✔ is run mein zero page errors  → []
+
+═══════════════════════════════════════════════════════════
+  DEMANDS   PASS: 13   FAIL: 0
+═══════════════════════════════════════════════════════════
+  [32m✔ gate passed: demands[0m  [2m(33s)[0m
+
+[1m▶ salesman-stock[0m  (node tools/test_salesman_stock.js)
+  ✔ aathon Salesman tabs render hote hain (rows ya saaf empty-state, koi blank/broken tab nahi)  → {"missing":[],"broken":[],"noState":[],"perTab":["Stock Is=1","Current =4","Tours / =empty","Cust / A=empty","Sales / =empty","Returns=empty","Ledger=empty","Performa=empty"]}
+  ✔ is run mein zero page errors  → []
+
+═══════════════════════════════════════════════════════════
+  SALESMAN STOCK   PASS: 10   FAIL: 0
+═══════════════════════════════════════════════════════════
+  [32m✔ gate passed: salesman-stock[0m  [2m(30s)[0m
+
+[1m▶ scan-parity[0m  (node tools/test_scan_parity.js)
+  ✔ footer mein commit + Cancel — teenon mein (POS: Cancel/Add Selected to Cart · PO: Save PO/Cancel · GRN: Post GRN (F9)/Cancel)
+  ✔ is run mein zero page errors
+
+═══════════════════════════════════════════════════════════
+  SCAN PARITY (PO/GRN = POS)   PASS: 29   FAIL: 0
+═══════════════════════════════════════════════════════════
+  [32m✔ gate passed: scan-parity[0m  [2m(28s)[0m
+
+[1m▶ pay-ledger[0m  (node tools/test_pay_ledger.js)
+  ✔ G8c Pwa_POS posTopLayer: stale (invisible-open) layer ko skip karta hai
+  ✔ G8d Pwa_POS: teeno layers ke open/close par sweepStale (10 call-sites)
+
+═══════════════════════════════════════════════════════════
+  PAY LEDGER   PASS: 49   FAIL: 0
+═══════════════════════════════════════════════════════════
+  [32m✔ gate passed: pay-ledger[0m  [2m(51s)[0m
+
+[1m▶ fields[0m  (node tools/test_field_visibility.js)
+    at Module.load (node:internal/modules/cjs/loader:1266:32)
+    at Module._load (node:internal/modules/cjs/loader:1091:12)
+    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:164:12)
+    at node:internal/main/run_main_module:28:49
+
+Node.js v20.20.2
+  [31m✖ gate failed: fields[0m  [2m(0s)[0m
+
+[1m▶ datetime[0m  (node tools/test_datetime.js)
+    at Module.load (node:internal/modules/cjs/loader:1266:32)
+    at Module._load (node:internal/modules/cjs/loader:1091:12)
+    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:164:12)
+    at node:internal/main/run_main_module:28:49
+
+Node.js v20.20.2
+  [31m✖ gate failed: datetime[0m  [2m(0s)[0m
+
+[1m▶ pwa-shared[0m  (node tools/test_pwa_shared.js)
+  ✔ ⑥ pwa-fo.html boot + PWA.shared aa gaya  → []
+  ✔ ① zero page errors (poore run mein)  → []
+
+═══════════════════════════════════════════════════════════
+  PWA SHARED CACHE   PASS: 16   FAIL: 0
+═══════════════════════════════════════════════════════════
+  [32m✔ gate passed: pwa-shared[0m  [2m(11s)[0m
+
+[1m▶ pwa-overlays[0m  (node tools/test_pwa_overlays_close.js)
+  ✔ pwa-wh.html ▸ Bulk Add modal → Scrim se band hua
+  ✔ pwa-wh.html — zero page errors
+
+═══════════════════════════════════════════════════════════
+  PWA OVERLAYS CLOSE   PASS: 124   FAIL: 0
+═══════════════════════════════════════════════════════════
+  [32m✔ gate passed: pwa-overlays[0m  [2m(66s)[0m
+
+[1m▶ modals-close[0m  (node tools/test_modals_close.js)
+  ✘ doosra Esc: legacy modal bhi band — {"scrims":2,"ui2":1,"drawers":0}
+  ✘ stack setup: drawer ke upar UI2 modal — {"scrims":3,"ui2":2,"drawers":1}
+  ✘ ek Esc: modal band, drawer khula (top-most contract) — {"scrims":3,"ui2":2,"drawers":1}
+  ✘ doosra Esc: drawer band — {"scrims":3,"ui2":2,"drawers":1}
+  ✘ stale entry (bina close hataya gaya scrim) Esc ko block nahi karti — visible modal band hua — {"scrims":4,"ui2":3,"drawers":1}
+  ✘ invisible/stale node hone par bhi Esc modal band karta hai (root-cause fix) — closed=false · esc events=0
+  [31m✖ gate failed: modals-close[0m  [2m(355s)[0m
+
+[1m▶ timeouts[0m  (node tools/test_timeouts.js)
+    at Object.<anonymous> (/home/user/haseeb-autos/tools/test_timeouts.js:154:1)
+    at Module._compile (node:internal/modules/cjs/loader:1521:14)
+    at Module._extensions..js (node:internal/modules/cjs/loader:1623:10)
+    at Module.load (node:internal/modules/cjs/loader:1266:32)
+    at Module._load (node:internal/modules/cjs/loader:1091:12)
+    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:164:12)
+  [31m✖ gate failed: timeouts[0m  [2m(0s)[0m
+
+--- waqt (sab se dheema pehle) -----------------------------------------
+    355s  modals-close
+    127s  smoke
+    120s  ui-polish
+     83s  scan-coverage
+     66s  pwa-overlays
+     59s  tabs
+     56s  layout-overlays
+     56s  layout-overlays-m
+     52s  punch
+     51s  pay-ledger
+     39s  busy-coverage
+     37s  sidebar-states
+     33s  demands
+     32s  labels-live
+     30s  salesman-stock
+     28s  scan-parity
+     27s  layout-dark
+     27s  layout-mobile
+     27s  layout-desktop
+     24s  scale
+     24s  grn-drawer
+     23s  ui
+     19s  ai-ui
+     16s  pwa-layout-dark
+     16s  pwa-layout
+     15s  align
+     12s  doc-designer
+     11s  pwa-shared
+     11s  pwa-ui
+     11s  dyn-deps
+      9s  ui-run
+      8s  settings-ui
+      7s  pos-multi
+      6s  charts-edge
+      6s  api-core
+      5s  ui-err
+      5s  perf-batch
+      5s  session-guard
+      3s  api-instrument
+      3s  auth-startup
+      3s  static
+      2s  check
+      1s  report-actions
+      0s  pwa
+      0s  timeouts
+      0s  i18n-floor
+      0s  raw-writes
+      0s  metatags
+      0s  route-audit
+      0s  qr-payloads
+      0s  icons
+      0s  typography
+      0s  ai-load-order
+      0s  schema
+      0s  logic
+      0s  session
+      0s  ai-hub
+      0s  fields
+      0s  ai
+      0s  datetime
+      0s  backend-perf
+      0s  qr-thermal
+      0s  diagnose
+      0s  settings-perf
+      0s  cache-warm
+      0s  cache
+      0s  settings-defs
+      0s  seed-recovery
+      0s  routes
+      0s  report-dates
+      0s  e2e
+  ----------------------------------------------------------------------
+   1553s  KUL (71 gate)
+  (ye waqt isi machine ke hain; --fast set isi tarah tune kiya gaya tha)
+
+==============================================================
+ GATE FAILED: check logic e2e routes route-audit settings-ui settings-defs ui-polish backend-perf settings-perf seed-recovery report-dates cache-warm qr-thermal metatags diagnose ai ai-hub ai-load-order session cache smoke tabs punch perf-batch i18n-floor fields datetime modals-close timeouts
+==============================================================

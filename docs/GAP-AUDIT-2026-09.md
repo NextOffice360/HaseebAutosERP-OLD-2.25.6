@@ -21,8 +21,8 @@ HS-code (`hsn`), warranty, batch/expiry lots (`StockLots.expiry`), UoM conversio
 - Suppliers paymentTerms ✓ · NTN/CNIC ✓ · Item hsn/warranty/barcode-type ✓ · UoM+conversions ✓ · price tiers/lists ✓ · cheque/Raast ✓ · expense approvals ✓ · audit logs ✓ · consignment ✓ · count sheets + variance ✓ · transfers ✓
 
 ## Future candidates (NOT this round — records only)
-- **F1 Full FOC engine**: FOC line par price 0 + tax handling + GRN-side promo lots (abhi flag-informational)
+- **F1 Full FOC engine** ✅ DONE v2.31.3 (r15): FOC line lineTotal 0 (price reference), stock+cost deducted, guards FOC-aware, POS 🎁 toggle (pos.discount gated), print FREE badge
 - **F2 Fiscal period lock** (accounting close)
 - **F3 Batch/expiry AT SALE capture** (pharma-style; autos me kam zaroori — StockLots already GRN-side)
-- **F4 Credit-limit override approval flow** (owner OTP/approval jab limit cross ho — ab hard block hai)
+- **F4 Credit-limit override** ✅ DONE v2.31.3 (r15): perm `pos.credit.override` (OWNER+MANAGER), POS confirm flow, backend guard + Audit CREDIT_OVERRIDE
 - **F5 PWA salesman "mere customers"** UI filter — backend salesmanId ab hai; PWA list filter next round

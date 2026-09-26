@@ -89,15 +89,15 @@
    "par": 0
   },
   {
-   "file": "App_Dashboards.html",
-   "awaits": 20,
-   "pals": 5,
+   "file": "App_POS2.html",
+   "awaits": 21,
+   "pals": 0,
    "par": 0
   },
   {
-   "file": "App_POS2.html",
+   "file": "App_Dashboards.html",
    "awaits": 20,
-   "pals": 0,
+   "pals": 5,
    "par": 0
   },
   {

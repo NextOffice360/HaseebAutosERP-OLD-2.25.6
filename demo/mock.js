@@ -945,6 +945,8 @@ Object.assign(TRANSLATIONS, {
   'sc2.noChanges': { key: 'sc2.noChanges', en: 'No changes', roman: 'Koi tabdeeli nahi', ur: 'کوئی تبدیلی نہیں' },
   'sc2.pendingLoaded': { key: 'sc2.pendingLoaded', en: ' pending lines loaded', roman: ' pending lines load ho gayin', ur: ' زیرِ التوا لائنیں لوڈ ہو گئیں' },
 
+  'pos.overrideAsk': { key: 'pos.overrideAsk', en: 'Credit limit exceeded — override and complete this sale?', roman: 'Credit limit exceeded — override kar ke sale karein?', ur: 'کریڈٹ حد سے تجاوز — تبدیل کر کے سیل مکمل کریں؟' },
+
   'core.errAuthHint': { key: 'core.errAuthHint', en: 'This action is not permitted for your role, or the session has expired. Log in again or ask the admin.', roman: 'Ye kaam aap ke role ke liye ijazat-yafta nahi, ya session expire ho gaya. Dobara login karein ya admin se poochein.', ur: 'یہ کام آپ کے رول کے لیے اجازت یافتہ نہیں، یا سیشن ایکسپائر ہو گیا۔ دوبارہ لاگ ان کریں یا ایڈمن سے پوچھیں۔' },
   'core.errOfflineHint': { key: 'core.errOfflineHint', en: 'Try again when the connection returns. The offline queue will keep your work safe.', roman: 'Connection wapas aane par dobara koshish karein. Kaam mehfooz karne ke liye offline queue khud istemal hogi.', ur: 'کنکشن واپس آئے تو دوبارہ کوشش کریں۔ آف لائن قطار آپ کا کام محفوظ رکھے گی۔' },
   'core.errTimeoutHint': { key: 'core.errTimeoutHint', en: 'No timely response from the server. Try again — a second attempt usually goes through.', roman: 'Server se jawab waqt par nahi mila. Dobara koshish karein — aam taur par doosri koshish chal jati hai.', ur: 'سرور سے جواب وقت پر نہیں ملا۔ دوبارہ کوشش کریں — دوسری کوشش عام طور پر چل جاتی ہے۔' },
