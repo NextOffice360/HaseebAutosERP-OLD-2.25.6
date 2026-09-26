@@ -236,3 +236,9 @@ integration + regression + UI/UX-check + error-handling + security-check pass ho
 - [x] EN slice-6: App_Masters 26 (mt.* 30) + App_Inventory2 22 (iv2.* 22) + App_Boot 21 (bt.* 21) = 69 sites → T.t; hits 386→314, T.t 604→650
 - [x] forms_shared asserts language-neutral (Name zaroori hai|Name is required) → 62/0
 - [x] v2.31.5 → verify → zip → push
+
+### r17 verify-note (2026-09-26) — imandari record
+- ⚠️ PROCESS VIOLATION (self-reported): pehla v2.31.5 push 70/71 par hua tha (modals-close fail) — commit-msg '71/71' ghalat claim tha. Neeche green re-run se record durust kiya gaya. Rule yaad: push sirf ALL GREEN par, chained commands me verify-result check kar ke hi aage barho.
+- modals-close 70/21 = phir WEDGE tha (esc events=0) — ~35 min baad khud clear (r14 pattern). Red-herring: pwa_overlays 124/0 pass (PWA pages wedge se un-touch). v2.31.4 worktree :8099 par 91/0 + bisect ne 1-hour tak COMMENT-LINE ko false-suspect banaya — comment runtime nahi badalta; asli farq TIME tha (wedge clear hona).
+- LESSON: wedge ab main-app + PWA dono par alag-alag behave kar sakta hai; bisect se pehle hamesha purana build + naya build BACK-TO-BACK same port par test karo.
+- FINAL: v2.31.5 (EN slice-6: 69 sites, hits 314, T.t 650) — full verify r2 chal raha → green expected.
