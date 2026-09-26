@@ -297,7 +297,7 @@ async function scan(page, code) {
         JSON.stringify({ last: (s3.last || '').slice(0, 60) }));
 
       const s4 = await scan(page, BAD);
-      ok(s4.v === '' && /nahi mila/.test(s4.last + ' ' + s4.toasts) && s4.n === s3.n && s4.files === 0,
+      ok(s4.v === '' && /nahi mila|not found/.test(s4.last + ' ' + s4.toasts) /* v2.31.4 EN */ && s4.n === s3.n && s4.files === 0,
         c.label + ' — ghalat code = warn + field clear + koi line add nahi',
         JSON.stringify({ v: s4.v, last: (s4.last || '').slice(0, 40), n: s4.n, was: s3.n }));
     }

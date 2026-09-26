@@ -12,3 +12,4 @@
   haseeb-autos-v2.25.2.zip
   haseeb-autos-v2.25.11.zip
   haseeb-autos-v2.25.10.zip
+2026-09-26: archive/v2.30.2.zip, v2.30.3.zip, v2.30.5.bundle → FTP HaseebAutosERP/zips/ + /bundles/ (size-verified, phir delete) — FTP = recovery point
