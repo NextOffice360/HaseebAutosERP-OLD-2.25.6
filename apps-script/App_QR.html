@@ -619,7 +619,15 @@ App.resolveCode = function (raw) {
     return Promise.resolve({ ok: false, kind: kind });
   }
   if (v.charAt(0) === '{') {
-    try { var o = JSON.parse(v); if (o && o.inv) return App.resolveCode('HA:INV:' + o.inv); } catch (e) { }
+    try {
+      var o = JSON.parse(v);
+      if (o && o.inv) return App.resolveCode('HA:INV:' + o.inv);
+      /* v2.31.0 (r12) — DAYREP session-QR (Dashboards day-report) ab resolvable:
+         session no ke sath dashboards screen kholta hai (day report wahan hai) */
+      if (o && o.doc === 'DAYREP' && o.session) {
+        return Promise.resolve(go('insights', { dayrep: o.session }, 'Day report ' + o.session)); /* screen id 'insights' = Dashboards */
+      }
+    } catch (e) { }
   }
   /* D2 back-compat (round-9) — purane receipt QR (INV:..|TOTAL:..|DUE:..) bhi khulen */
   m = /^INV:([^|]+)(?:\|.*)?$/i.exec(v);

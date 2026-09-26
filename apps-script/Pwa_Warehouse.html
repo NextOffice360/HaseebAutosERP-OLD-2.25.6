@@ -89,7 +89,7 @@
   /* ----------------------------- shared pieces ---------------------------- */
   function scannerBox(onPick) {
     var input = PWA.el('input', {
-      type: 'search', placeholder: '🔎 Scan karein ya naam / code likhein…',
+      type: 'search', placeholder: T.t('pwh.scanPh','🔎 Scan or type name / code…'),
       'aria-label':'Item search',
       oninput: function () { S.q = input.value; renderHits(onPick); }
     });
@@ -98,7 +98,7 @@
       label: 'Item',
       find: function(code){ return find(code); },
       onHit: function(it, code){ onPick(it); input.value=''; S.q=''; try{ hits.innerHTML=''; }catch(e){} input.focus(); PWA.toast('📷 ' + it.code + ' — ' + it.name, 'ok'); },
-      onMulti: function(list, code){ PWA.toast(list.length + ' matches — list se chunein', 'warn'); }
+      onMulti: function(list, code){ PWA.toast(list.length + T.t('pwh.multiMatchesTail',' matches — pick from the list'), 'warn'); }
     });
     var scanBtn = PWA.el('button', { class:'btn sm', type:'button', onclick:function(){
       if(PWA.scanWithCamera) PWA.scanWithCamera(function(code){
@@ -107,17 +107,17 @@
         input.value=clean; S.q=clean; renderHits(onPick);
         var lst=find(clean);
         if(lst.length===1){ onPick(lst[0]); input.value=''; S.q=''; hits.innerHTML=''; input.focus(); }
-        else if(lst.length>1){ PWA.toast(lst.length+' matches — list se chunein','warn'); input.focus(); input.select(); }
+        else if(lst.length>1){ PWA.toast(lst.length+T.t('pwh.multiMatchesTail',' matches — pick from the list'),'warn'); input.focus(); input.select(); }
         else { PWA.toast('Code not found: '+clean,'warn'); input.value=''; S.q=''; hits.innerHTML=''; input.focus(); }
       });
       else {
-        var c=prompt('Barcode / code scan karein',''); if(c){ input.value=c; S.q=c; renderHits(onPick); }
+        var c=prompt(T.t('pwh.scanBarcode','Scan barcode / code'),''); if(c){ input.value=c; S.q=c; renderHits(onPick); }
       }
     }}, '📷 Scan');
     var bulkBtn = PWA.el('button', { class:'btn sm ghost', type:'button', onclick:function(){
       if(PWA.openBulkPicker) PWA.openBulkPicker({ items: items(), title:'Bulk add — Warehouse', onAdd:function(picks){
-        if(PWA.state.tab==='putaway' && !S.binId) return PWA.toast('Pehle bin chunein','warn');
-        if(PWA.state.tab==='transfer' && (!S.fromBin||!S.toBin)) return PWA.toast('Pehle dono bins chunein','warn');
+        if(PWA.state.tab==='putaway' && !S.binId) return PWA.toast(T.t('pwh.pickBinFirst','Pick a bin first'),'warn');
+        if(PWA.state.tab==='transfer' && (!S.fromBin||!S.toBin)) return PWA.toast(T.t('pwh.pickBothBins','Pick both bins first'),'warn');
         picks.forEach(function(p){
           var ex=S.cart.filter(function(l){return l.itemId===p.item.id;})[0];
           if(ex) ex.qty += p.qty; else S.cart.push({ itemId:p.item.id, code:p.item.code, name:p.item.name, qty:p.qty, cost:p.item.cost, barcode:p.item.barcode });
@@ -130,7 +130,7 @@
       hits.innerHTML = '';
       var list = find(S.q);
       if (!S.q) return;
-      if (!list.length) { hits.appendChild(PWA.el('div', { class: 'empty' }, 'Koi item nahi mila — code ya naam check karein')); return; }
+      if (!list.length) { hits.appendChild(PWA.el('div', { class: 'empty' }, T.t('pwh.noItem','No item found — check the code or name'))); return; }
       list.forEach(function (i) {
         hits.appendChild(PWA.el('div', {
           class: 'task', onclick: function () { cb(i); input.value = ''; S.q = ''; hits.innerHTML = ''; }
@@ -154,7 +154,7 @@
   function cartView(editableCost) {
     var host = PWA.el('div', { class: 'card' });
     host.appendChild(PWA.el('h3', { text: 'GRN Lines (' + S.cart.length + ')' }));
-    if (!S.cart.length) { host.appendChild(PWA.el('div', { class: 'empty' }, [PWA.el('span',{class:'big',text:'📭'}), PWA.el('div',{text:'Abhi kuch nahi — PO load karein ya scan karein'}) ])); return host; }
+    if (!S.cart.length) { host.appendChild(PWA.el('div', { class: 'empty' }, [PWA.el('span',{class:'big',text:'📭'}), PWA.el('div',{text:T.t('pwh.emptyYet','Nothing yet — load a PO or scan')}) ])); return host; }
     var totalQty=0, totalVal=0;
     S.cart.forEach(function (l, idx) {
       totalQty+=Number(l.qty||0); totalVal+=Number(l.qty||0)*Number(l.cost||0);
@@ -166,9 +166,9 @@
           PWA.el('small', { text: l.code + (editableCost ? ' · cost ' + money(l.cost) : '') + poQty + pending + (l.barcode?' · '+l.barcode:'') })
         ]),
         PWA.el('div', { class: 'qty' }, [
-          PWA.el('button', { text: '−', 'aria-label':'Kam karein', onclick: function () { l.qty = Math.max(0, l.qty - 1); if (!l.qty) S.cart.splice(idx, 1); redraw(); } }),
+          PWA.el('button', { text: '−', 'aria-label':T.t('pwh.decrease','Decrease'), onclick: function () { l.qty = Math.max(0, l.qty - 1); if (!l.qty) S.cart.splice(idx, 1); redraw(); } }),
           PWA.el('span', { text: String(l.qty) }),
-          PWA.el('button', { text: '＋', 'aria-label':'Zyada karein', onclick: function () { l.qty += 1; redraw(); } }),
+          PWA.el('button', { text: '＋', 'aria-label':T.t('pwh.increase','Increase'), onclick: function () { l.qty += 1; redraw(); } }),
           PWA.el('button', { class:'btn sm ghost', text:'✕', onclick:function(){ S.cart.splice(idx,1); redraw(); } })
         ])
       ]));
@@ -211,8 +211,8 @@
     // PO selector card
     if (tasks.length) {
       var c = PWA.el('div', { class: 'card' });
-      c.appendChild(PWA.el('h3', { text: 'PO select karein — auto-load for GRN' }));
-      c.appendChild(PWA.el('div',{class:'muted', style:'font-size:11px;margin-bottom:8px'}, 'PO chunein → expected items GRN cart mein auto-load. Phir actual counted qty match karke GRN confirm karein.'));
+      c.appendChild(PWA.el('h3', { text: T.t('pwh.pickPoAuto','Select PO — auto-load for GRN') }));
+      c.appendChild(PWA.el('div',{class:'muted', style:'font-size:11px;margin-bottom:8px'}, T.t('pwh.poAutoHint','Pick a PO → expected items auto-load into the GRN cart. Then match actual counted qty and confirm the GRN.')));
       tasks.slice(0, 8).forEach(function (t) {
         var isSel = S.selectedPoId===t.refId;
         var row = PWA.el('div', { class: 'task'+(isSel?' on':''), style: isSel? 'border-color:var(--accent);background:rgba(245,158,11,.10)':'' });
@@ -237,7 +237,7 @@
       }
       body.appendChild(c);
     } else {
-      body.appendChild(PWA.el('div',{class:'card'},[PWA.el('div',{class:'empty'},[PWA.el('span',{class:'big',text:'📥'}),PWA.el('div',{text:'Koi pending PO nahi'}),PWA.el('small',{text:'ERP ▸ Purchase ▸ PO se naya PO banayein'})])]));
+      body.appendChild(PWA.el('div',{class:'card'},[PWA.el('div',{class:'empty'},[PWA.el('span',{class:'big',text:'📥'}),PWA.el('div',{text:T.t('pwh.noPendingPo','No pending POs')}),PWA.el('small',{text:T.t('pwh.makePoHint','Create a new PO in ERP ▸ Purchase ▸ PO')})])]));
     }
 
     // PO detail preview if selected
@@ -266,7 +266,7 @@
           var addBtn = PWA.el('button',{class:'btn sm '+(isInCart?'ghost':'primary'), text: isInCart?'✓':'Add'});
           addBtn.onclick = function(){
             var q = Math.max(0, Number(qtyIn.value)||0);
-            if(q<=0) return PWA.toast('Qty >0 karein','warn');
+            if(q<=0) return PWA.toast(T.t('pwh.qtyPositive','Make qty >0'),'warn');
             var ex=S.cart.filter(function(l){return l.itemId===it.itemId;})[0];
             if(ex) ex.qty = q;
             else S.cart.push({ itemId:it.itemId, code:it.code, name:it.name, qty:q, cost:Number(it.rate||it.cost||0), poQty:Number(it.qty), pendingQty:pend, barcode: '' });
@@ -294,7 +294,7 @@
         var po = getPoDetail(S.selectedPoId);
         var inPo = po && (po.items||[]).some(function(it){ return it.itemId===i.id; });
         if(!inPo){
-          PWA.toast('Ye item PO mein nahi — phir bhi add kar rahe hain','warn');
+          PWA.toast(T.t('pwh.notInPo','This item is not in the PO — adding it anyway'),'warn');
         }
       }
       var ex = S.cart.filter(function (l) { return l.itemId === i.id; })[0];
@@ -327,7 +327,7 @@
       PWA.el('button', { class:'btn ghost block', style:'flex:1', onclick:function(){ S.cart=[]; redraw(); } }, '🗑 Clear cart'),
       PWA.el('button', {
         class: 'btn ok block big', style:'flex:2', onclick: async function () {
-          if (!S.cart.length) return PWA.toast('Pehle PO load karein ya item scan karein', 'warn');
+          if (!S.cart.length) return PWA.toast(T.t('pwh.loadPoFirst','Load a PO first or scan an item'), 'warn');
           // validate against PO if selected
           if(S.selectedPoId){
             var po = getPoDetail(S.selectedPoId);
@@ -335,7 +335,7 @@
               // warn if any cart item not in PO
               var extra = S.cart.filter(function(l){ return !(po.items||[]).some(function(it){return it.itemId===l.itemId;}); });
               /* v2.30.3 (W9) — native confirm ki jagah shared PWA.confirm (danger) */
-              if(extra.length && !(await PWA.confirm(extra.length+' item(s) PO mein nahi — phir bhi GRN karein?', { danger: true }))) return;
+              if(extra.length && !(await PWA.confirm(extra.length+T.t('pwh.notInPoConfirm',' item(s) not in the PO — still post the GRN?'), { danger: true }))) return;
             }
           }
           try {
@@ -345,7 +345,7 @@
               invoiceNo: inv.value.trim(), lotNo: lot.value.trim(), expiry: exp.value,
               locationId: PWA.data.locationId
             }, { queueable: true });
-            if (r && r.queued) { PWA.toast('Offline — GRN queue mein save ho gaya', 'warn'); S.cart = []; S.selectedPoId=''; PWA.updateNet(); return redraw(); }
+            if (r && r.queued) { PWA.toast(T.t('pwh.grnQueued','Offline — GRN saved to the queue'), 'warn'); S.cart = []; S.selectedPoId=''; PWA.updateNet(); return redraw(); }
             PWA.toast('✅ GRN ' + r.grnNo + ' ban gayi', 'ok'); S.cart = []; S.selectedPoId=''; lot.value=''; exp.value=''; S.lotNo=''; S.expiry=''; redraw(); PWA.reload();
           } catch (e) { PWA.toast(e.message, 'err'); }
         }
@@ -374,7 +374,7 @@
   }
   function loadPoIntoCart(poId){
     var po = getPoDetail(poId);
-    if(!po){ PWA.toast('PO detail nahi mila','err'); fetchPoDetail(poId, function(p){ if(p) loadPoIntoCart(poId); }); return; }
+    if(!po){ PWA.toast(T.t('pwh.poDetailFail','PO details not found'),'err'); fetchPoDetail(poId, function(p){ if(p) loadPoIntoCart(poId); }); return; }
     var added=0;
     (po.items||[]).forEach(function(it){
       var pend = Math.max(0, Number(it.qty)-Number(it.receivedQty||0));
@@ -386,7 +386,7 @@
       }
       added++;
     });
-    PWA.toast('✅ '+added+' PO items cart mein — verify karke GRN save karein','ok');
+    PWA.toast('✅ '+added+T.t('pwh.poInCartTail',' PO items in the cart — verify and save the GRN'),'ok');
     redraw();
   }
 
@@ -396,7 +396,7 @@
     var sel = PWA.el('select', {
       onchange: function () { S.binId = sel.value; },
       'aria-label':'Destination bin'
-    }, [PWA.el('option', { value: '' }, 'Bin chunein… (e.g. A-01)')].concat(bins.map(function (b) {
+    }, [PWA.el('option', { value: '' }, T.t('pwh.binPh','Pick a bin… (e.g. A-01)'))].concat(bins.map(function (b) {
       return PWA.el('option', { value: b.id }, b.name + (b.code?' · '+b.code:''));
     })));
     if(S.binId) sel.value = S.binId;
@@ -407,20 +407,20 @@
     ]));
 
     body.appendChild(scannerBox(function (i) {
-      if (!S.binId) return PWA.toast('Pehle bin chunein', 'warn');
+      if (!S.binId) return PWA.toast(T.t('pwh.pickBinFirst','Pick a bin first'), 'warn');
       S.cart.push({ itemId: i.id, code: i.code, name: i.name, qty: 1, barcode:i.barcode }); redraw(); PWA.haptic(true);
     }));
     body.appendChild(cartView());
 
     body.appendChild(PWA.el('button', {
       class: 'btn primary block big', onclick: async function () {
-        if (!S.binId) return PWA.toast('Bin chunein', 'warn');
-        if (!S.cart.length) return PWA.toast('Item add karein', 'warn');
+        if (!S.binId) return PWA.toast(T.t('pwh.pickBin','Pick a bin'), 'warn');
+        if (!S.cart.length) return PWA.toast(T.t('pwh.addItem','Add an item'), 'warn');
         try {
           for (var k = 0; k < S.cart.length; k++) {
             await PWA.call('pwa.wh.putaway', { itemId: S.cart[k].itemId, binId: S.binId, qty: S.cart[k].qty });
           }
-          PWA.toast('✅ Put-away ho gaya', 'ok'); S.cart = []; redraw();
+          PWA.toast(T.t('pwh.putawayDone','✅ Put-away complete'), 'ok'); S.cart = []; redraw();
         } catch (e) { PWA.toast(e.message, 'err'); }
       }
     }, '📦 Bin mein dalen'));
@@ -430,7 +430,7 @@
   function viewCount(body) {
     var tasks = (PWA.data && PWA.data.tasks || []).filter(function (t) { return t.kind === 'COUNT'; });
     if (!tasks.length) {
-      body.appendChild(PWA.el('div', { class: 'card' }, [PWA.el('div', { class: 'empty' }, [PWA.el('span',{class:'big', text:'🔢'}), PWA.el('div',{text:'Koi open count sheet nahi'}), PWA.el('small',{text:'ERP ▸ Inventory ▸ Count sheet se sheet banayein'}) ])]));
+      body.appendChild(PWA.el('div', { class: 'card' }, [PWA.el('div', { class: 'empty' }, [PWA.el('span',{class:'big', text:'🔢'}), PWA.el('div',{text:T.t('pwh.noCountSheet','No open count sheet')}), PWA.el('small',{text:T.t('pwh.makeSheetHint','Create a sheet in ERP ▸ Inventory ▸ Count sheet')}) ])]));
       // show audit overview if exists
       var audit = PWA.data && PWA.data.audit;
       if(audit){
@@ -447,7 +447,7 @@
     var sel = PWA.el('select', {
       onchange: function () { S.sheetId = sel.value; S.countFilter=''; if(S.sheetId) loadSheet(S.sheetId, function(){ redraw(); }); else redraw(); },
       'aria-label':'Count sheet'
-    }, [PWA.el('option', { value: '' }, 'Sheet chunein…')].concat(tasks.map(function (t) {
+    }, [PWA.el('option', { value: '' }, T.t('pwh.sheetPh','Pick a sheet…'))].concat(tasks.map(function (t) {
       var prog = '';
       var m = getSheetFromCache(t.refId);
       if(m && m.progress) prog = ' — '+m.progress.counted+'/'+m.progress.total;
@@ -509,27 +509,27 @@
     head.appendChild(PWA.el('div',{style:'display:flex;gap:8px;margin-top:8px'},[
       PWA.el('button',{class:'btn sm ghost', onclick:function(){ S.sheetId=''; sel.value=''; clearLocalCounts(S.sheetId); redraw(); }}, 'Change sheet'),
       PWA.el('button',{class:'btn sm', onclick:function(){ loadSheet(S.sheetId, function(){ redraw(); }); PWA.toast('Refreshed','ok'); }}, '↻ Refresh'),
-      PWA.el('button',{class:'btn sm ghost', onclick:function(){ PWA.confirm('Local counted values clear karein? (server values rahenge)').then(function(ok){ if(ok){ clearLocalCounts(S.sheetId); loadSheet(S.sheetId, function(){ redraw(); }); } }); }}, 'Clear local')
+      PWA.el('button',{class:'btn sm ghost', onclick:function(){ PWA.confirm(T.t('pwh.clearCounted','Clear locally counted values? (server values remain)')).then(function(ok){ if(ok){ clearLocalCounts(S.sheetId); loadSheet(S.sheetId, function(){ redraw(); }); } }); }}, 'Clear local')
     ]));
     body.appendChild(head);
 
     // filter
     var filterInput = PWA.el('input',{type:'search', placeholder:'🔎 Sheet lines mein search (code / naam)…', value: S.countFilter, 'aria-label':'Filter count lines', oninput:function(){ S.countFilter=this.value; renderLines(); }});
-    body.appendChild(PWA.el('div',{class:'card'},[ PWA.el('div',{class:'f'},[PWA.el('label',{text:'Filter lines'}), filterInput]), PWA.el('div',{class:'muted', style:'font-size:11px'}, 'Scan se bhi line bhari ja sakti hai — neeche scanner use karein.') ]));
+    body.appendChild(PWA.el('div',{class:'card'},[ PWA.el('div',{class:'f'},[PWA.el('label',{text:'Filter lines'}), filterInput]), PWA.el('div',{class:'muted', style:'font-size:11px'}, T.t('pwh.scanLineHint','Lines can also be filled by scanning — use the scanner below.')) ]));
 
     // scanner for count — fills countedQty for that item
     body.appendChild(scannerBox(async function (i) {
-      if (!S.sheetId) return PWA.toast('Pehle sheet chunein', 'warn');
+      if (!S.sheetId) return PWA.toast(T.t('pwh.pickSheetFirst','Pick a sheet first'), 'warn');
       // find line for this item
       var sheet = getSheetFromCache(S.sheetId);
       var line = (sheet.lines||[]).filter(function(l){ return l.itemId===i.id; })[0];
-      if(!line){ return PWA.toast('Ye item is sheet mein nahi — filter check karein','warn'); }
+      if(!line){ return PWA.toast(T.t('pwh.notInSheet','This item is not in the sheet — check the filter'),'warn'); }
       var local = getLocalCounts(S.sheetId);
       var cur = local[i.id]!==undefined? local[i.id] : (line.countedQty!==''? Number(line.countedQty): 0);
       var q = prompt(i.name + ' — counted qty? (system: '+line.systemQty+')', String(cur));
       if (q === null) return;
       var qty = Number(q);
-      if(isNaN(qty)) return PWA.toast('Qty ghalat','warn');
+      if(isNaN(qty)) return PWA.toast(T.t('pwh.qtyBad','Invalid qty'),'warn');
       setLocalCount(S.sheetId, i.id, qty);
       // also try server save
       try{
@@ -555,7 +555,7 @@
       if(q) filtered = lines.filter(function(l){ return String(l.code||'').toLowerCase().indexOf(q)>-1 || String(l.name||'').toLowerCase().indexOf(q)>-1; });
       filtered = filtered.slice(0, 80);
       if(!filtered.length){
-        linesHost.appendChild(PWA.el('div',{class:'empty'}, 'Koi line nahi — search badlein'));
+        linesHost.appendChild(PWA.el('div',{class:'empty'}, T.t('pwh.noLines','No lines — change the search')));
         return;
       }
       var localMap = getLocalCounts(S.sheetId);
@@ -604,7 +604,7 @@
         // save all local that differ from server
         var m=getLocalCounts(S.sheetId);
         var keys=Object.keys(m);
-        if(!keys.length) return PWA.toast('Koi local counted nahi','warn');
+        if(!keys.length) return PWA.toast(T.t('pwh.noLocalCounted','No local counts'),'warn');
         var ok=0, fail=0;
         for(var i=0;i<keys.length;i++){
           var itemId=keys[i], qty=m[itemId];
@@ -721,18 +721,18 @@
 
     body.appendChild(PWA.el('button', {
       class: 'btn primary block big', onclick: async function () {
-        if (!S.fromBin || !S.toBin) return PWA.toast('Dono bins chunein', 'warn');
+        if (!S.fromBin || !S.toBin) return PWA.toast(T.t('pwh.pickBothBins2','Pick both bins'), 'warn');
         if (S.fromBin === S.toBin) return PWA.toast('From aur To alag hone chahiye', 'warn');
-        if (!S.cart.length) return PWA.toast('Item add karein', 'warn');
+        if (!S.cart.length) return PWA.toast(T.t('pwh.addItem','Add an item'), 'warn');
         try {
           for (var k = 0; k < S.cart.length; k++) {
             await PWA.call('pwa.wh.transfer',
               { itemId: S.cart[k].itemId, fromBinId: S.fromBin, toBinId: S.toBin, qty: S.cart[k].qty });
           }
-          PWA.toast('✅ Transfer ho gaya', 'ok'); S.cart = []; redraw();
+          PWA.toast(T.t('pwh.transferDone','✅ Transfer complete'), 'ok'); S.cart = []; redraw();
         } catch (e) { PWA.toast(e.message, 'err'); }
       }
-    }, '🔄 Transfer karein'));
+    }, T.t('pwh.transferBtn','🔄 Transfer')));
   }
 
   PWA.onSynced = function () { PWA.reload(); };

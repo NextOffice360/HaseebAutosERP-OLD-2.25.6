@@ -329,7 +329,7 @@ function showHeld() {
 
 async function clearCart(silent) {
   /* v2.25.0 (req 6) — native confirm() ki jagah shared dialog: sandboxed
-     preview/iframe mein native confirm block ho jata hai (button "kuch nahi karta"
+     preview/iframe mein native confirm block ho jata hai (button "kuch nahi k* preview/iframe mein native confirm block ho jata hai (button "kuch nahi karta"
      lagta hai) aur design system se bahar bhi hai. silent=true par koi await
      nahi hota, is liye baqi callers ka synchronous flow waisa hi rehta hai. */
   if (!silent && S.cart.length && !(await UI2.confirm('Cart clear karein? Ye bill ke saare items hata dega.', null, true))) return;

@@ -188,7 +188,7 @@ function uid(p) { return (p || 'id') + '_' + Date.now().toString(36) + Math.rand
 /* ================= GLOBAL DATE/TIME SYSTEM (v2.29.0 · spec §8) ==============
    Backend U.disp()/U.stamp() ka frontend mirror — WAHI settings, WAHI format.
    Boot par `system.dtconfig` se config aati hai (App.state.dt), warna defaults.
-   `fmt.date()` isi par delegate karta hai, is liye poore app ke 92 call-sites
+   `fmt.date()` isi par delegate karta hai, is liye poore app ke 92 call-si* `fmt.date()` isi par delegate karta hai, is liye poore app ke 92 call-sites
    apne aap naye system par aa jate hain (page-specific patch nahi).
    ========================================================================== */
 const DT = {
@@ -453,14 +453,14 @@ const API = {
   /* ==========================================================================
      v2.25.8 — API INSTRUMENTATION  (Performance audit W0.T2)
      --------------------------------------------------------------------------
-     User ki shikayat: "button dabane par ~1 minute tak kuch nahi hota". Bina
+     User ki shikayat: "button dabane par ~1 minute tak kuch nahi hota".* User ki shikayat: "button dabane par ~1 minute tak kuch nahi hota". Bina
      naape hue is ka ilaaj mumkin nahi. Ye block har call ka record rakhta hai:
        · duration (ms)        · action-wise count
        · in-flight peak       · DUPLICATE (same action + same payload jab
                                 pehli call abhi chal rahi ho)
        · slow calls           · p50 / p95
      Ye sirf NAAP hai — behaviour bilkul nahi badalta (koi call block/delay
-     nahi hoti). `window.__apiStats` (raw) ya `API.statsSummary()` (summary);
+     nahi hoti). `window.__apiStats` (raw) ya `API.statsSummary()` (summ* nahi hoti). `window.__apiStats` (raw) ya `API.statsSummary()` (summary);
      `API.statsReset()` se zero.
      ========================================================================== */
   stats: {
@@ -525,7 +525,7 @@ const API = {
 
   /* ------------------------------------------------------------------------
      v2.8.3 — PAYLOAD GUARD (Inventory "illegal value in property: locationId")
-     `google.script.run` FUNCTION serialize nahi kar sakta. Agar galti se
+     `google.script.run` FUNCTION serialize nahi kar sakta. Agar gal* `google.script.run` FUNCTION serialize nahi kar sakta. Agar galti se
      `{ locationId: loc }` bheja jaye (jahan `loc` ek function hai, `loc()`
      nahi), to Apps Script ye cryptic error deta hai:
          "Failed due to illegal value in property: locationId"
@@ -1000,7 +1000,7 @@ App.can = function (perm) {
 /* v2.28.0 (W5 · spec §9) — FIELD-LEVEL VISIBILITY (frontend half).
    Asal rok backend par hai (Fields.gs ▸ Code.gs api()) — ye helper sirf UI se
    wo column/label/field hata deta hai jahan user ko data milta hi nahi, taake
-   khali column ya "—" na dikhe. Ek hi jagah define, sab screens use karein. */
+   khali column ya "—" na dikhe. Ek hi jagah define, sab screens use karein.* khali column ya "—" na dikhe. Ek hi jagah define, sab screens use karein. */
 App.FIELD_PERMS = {
   cost: 'field.cost.view',
   margin: 'field.margin.view',
@@ -1028,8 +1028,8 @@ const UI = {
      --------------------------------------------------------------------------
      Audit: 150+ jagah `UI.toast(e.message, 'err')` tha — matlab backend ka
      technical text seedha user ko ("REQUEST_TIMEOUT", "SETTINGS_BUSY: another
-     save is running. Wait, reload settings, then retry."), koi action nahi, aur
-     validation ghalti par bhi "retry" ka kehna (jo ghalat guidance hai).
+     save is running. Wait, reload settings, then retry."), koi action nahi* save is running. Wait, reload settings, then retry."), koi action nahi, aur
+     validation ghalti par bhi "retry" ka kehna (jo ghalat guidance * validation ghalti par bhi "retry" ka kehna (jo ghalat guidance hai).
 
      Ab ek hi policy poori app ke liye:
        ① UI.errKind(err)      → { kind, retryable, title, hint, detail, icon }
@@ -1037,7 +1037,7 @@ const UI = {
                                 retry" jaise lafz hatta diye — kyunki retry ka
                                 button khud mojood hota hai)
        ③ UI.errBox(host, err, opts) → ACTION ke paas inline error box +
-                                "Dobara koshish karein" (sirf jab jaiz ho)
+                                "Dobara ko* "Dobara koshish karein" (sirf jab jaiz ho)
        ④ UI.fail(err, opts)   → toast (classified) + optional inline box
        ⑤ UI.toast(..., 'err') → khud-ba-khud classified text (150+ purane
                                 call-sites bina chhue behtar ho jate hain)
@@ -1147,7 +1147,7 @@ const UI = {
     const info = UI.errKind(err);
     /* machine-text kinds (conflict/auth/server/unknown) mein asli message aksar
        technical hota hai — wahan title+hint hi behtar guidance hai; raw text
-       neeche "Technical tafseel" mein milta hai. */
+       neeche "Technical tafseel" mein milta * neeche "Technical tafseel" mein milta hai. */
     const friendlyOnly = /conflict|auth|server|unknown/.test(info.kind);
     let d = String(info.detail || '').trim()
       .replace(/^[A-Z_]+:\s*/, '');                                     /* REQUEST_TIMEOUT: ... */
@@ -1520,7 +1520,7 @@ const UI = {
        Sync handlers (tab nav, print, quick-add) par koi asar nahi — wait
        karne ko kuch nahi hota.
 
-     `UI.run()` se handled buttons SKIP hote hain (double spinner nahi).
+     `UI.run()` se handled buttons SKIP hote hain (double spinner n* `UI.run()` se handled buttons SKIP hote hain (double spinner nahi).
      Opt-out: kisi element/container par `data-nobusy`.
      Kill-switch: `UI._features.autoBusy = false`.
      Stats: `UI.autoBusyStats()` → { attached, done, forced, elements }
@@ -1975,7 +1975,7 @@ const UI = {
     const refs = {};
     /* v2.30.0 (N1/N2 extension) — legacy form builder par bhi dirty tracking +
        per-field onChange hook. Pehle ye dono sirf UI2.form mein thay, is liye
-       GRN/PO jaise screens par "kya badla" pata nahi chalta tha aur f.onChange
+       GRN/PO jaise screens par "kya badla" pata nahi chalta tha aur f.o* GRN/PO jaise screens par "kya badla" pata nahi chalta tha aur f.onChange
        hook bilkul chalta hi nahi tha (supplier info card isi wajah se supplier
        badalne par update nahi hota tha). */
     const dirty = new Set();
@@ -2360,8 +2360,8 @@ App.renderView = function () {
    Har editable page par ek hi jagah, ek hi shakl: header ka "Save all".
    Screen apna page-level save `App.setSaveBridge({label, run})` se register
    karti hai; engine (UI2.saveAll) usi ko call karta hai — is liye jo page khud
-   save karta hai wohi cheez "Save all" se bhi save hoti hai (koi parallel
-   logic nahi). Bridge na ho to per-form `onSave` fallback chalta hai; dono na
+   save karta hai wohi cheez "Save all" se bhi save hoti hai (koi paral* save karta hai wohi cheez "Save all" se bhi save hoti hai (koi parallel
+   logic nahi). Bridge na ho to per-form `onSave` fallback chalta hai; dono* logic nahi). Bridge na ho to per-form `onSave` fallback chalta hai; dono na
    hon to button ZAHIR hi nahi hota (jhoota UI nahi).
    Bridge screen change par reset ho jata hai (App.go) aur render par dobara
    set hota hai — is liye purani screen ka save kabhi nayi screen par nahi chalega.
@@ -2453,7 +2453,7 @@ App.renderNav = function () {
       if (!meta) return;
       tb.appendChild(h('button', { dataset: { id }, onclick: () => App.go(id) },
         h('span', { class: 'ti', html: tabIcon(meta.icon || '\u25B8') }), /* v2.8.5 — label ko .tl class: chhota text, ellipsis, wrap nahi —
-           bottom bar kabhi "messy" nahi lagega */
+           bottom bar kabhi "messy" nah* bottom bar kabhi "messy" nahi lagega */
         h('span', { class: 'tl' }, (meta.label || id).split(' ')[0])));
     });
   };
@@ -2547,7 +2547,7 @@ window.downloadCsv = downloadCsv;
    Magar do jagah isay GLOBAL samajh kar call kiya gaya:
      · App_Config.html     → Settings → Data & tools → Export config
      · App_Dashboards.html → day-closing report → CSV
-   Natija: "downloadCsv is not defined" → EXPORT BUTTON KAAM NA KARTA THA
+   Natija: "downloadCsv is not defined" → EXPORT BUTTON KAAM NA KARTA * Natija: "downloadCsv is not defined" → EXPORT BUTTON KAAM NA KARTA THA
    (aur user ko khata bhi nazar nahi aata tha).
 
    YAHAN hona zaroori hai: App_Screens / App_Config / App_Dashboards IIFE ke
@@ -2590,7 +2590,7 @@ window.downloadCsv = downloadCsv;
    Reusable rules:
      · Har fetch `API.call` se jata hai (W2 ka shared core — timeout/busy/error policy).
      · `Deps.hardRefresh(key)` → cache clear (write ke baad, W2 write-policy ke sath).
-     · Events: `deps:change` (child options badlein/selection manage hui),
+     · Events: `deps:change` (child options badlein/selection manage * · Events: `deps:change` (child options badlein/selection manage hui),
        `deps:loaded` (data aaya) — tables/forms isse refresh ho sakte hain.
      · Kill-switch (tests/SENS): `Deps._features.on = false` → wiring bilkul na ho.
    ═══════════════════════════════════════════════════════════════════════════ */
@@ -2621,7 +2621,7 @@ var Deps = {
   /* ---------------- cache ---------------- */
   _ck(key, parentValue) { return String(key) + this._SEP + String(parentValue === undefined ? '' : parentValue); },
   /** Raw prefix se cache saaf — `shared:<action>|...` jaise keys ke liye
-      (hardRefresh `key + SEP` prefix match karta hai, jo `|` wali keys par nahi chalta). */
+      (hardRefresh `key + SEP` prefix match karta hai, jo `|` wali keys par nahi chalt* (hardRefresh `key + SEP` prefix match karta hai, jo `|` wali keys par nahi chalta). */
   clearPrefix(pfx) {
     var self = this, pre = String(pfx), n = 0;
     Object.keys(self._cache).forEach(function (k) { if (k.indexOf(pre) === 0) { delete self._cache[k]; n++; } });
@@ -2893,13 +2893,13 @@ var Shared = {
      v2.30.0 — SHARED PAGE STATES (loading / error / empty)
      --------------------------------------------------------------------------
      Aap ki shikayat: "Products/Items/Inventory ke safhe khali (blank) aa rahe
-     hain, koi error message bhi nahi."  Root cause tha har screen ka apna
+     hain, koi error message bhi nahi."  Root cause tha har screen ka* hain, koi error message bhi nahi."  Root cause tha har screen ka apna
      `catch (e) { rows = []; }` — error nigal jata tha, table khali dikhta tha.
 
      Ab ek hi jagah se teen states render hoti hain aur HAR list screen inhi ko
      use karti hai (page-specific patch nahi):
         ⏳ loading  ·  ⚠ error (message + Dobara koshish + Diagnostics copy)
-        📭 empty    (0 rows — "koi record nahi" + optional action button)
+        📭 empty    (0 rows — "koi record nahi" + optional action* 📭 empty    (0 rows — "koi record nahi" + optional action button)
      ========================================================================== */
   _h() { return (typeof h === 'function') ? h : function (t, a, ...k) { return document.createElement(t); }; },
 

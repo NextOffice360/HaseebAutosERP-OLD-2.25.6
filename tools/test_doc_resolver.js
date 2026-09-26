@@ -57,6 +57,12 @@
     ok(invDrawer, 'invoice drawer/detail foran khula');
     await reset();
 
+    /* v2.31.0 (r12) — DAYREP session-QR resolvable */
+    const rDay = await page.evaluate(() => App.resolveCode(JSON.stringify({ doc: 'DAYREP', session: 'S-R12', date: '2026-09-25' })));
+    await sleep(600);
+    ok(rDay && rDay.ok && rDay.screen === 'insights', 'DAYREP session-QR → insights/Dashboards (' + JSON.stringify(rDay && rDay.label) + ')');
+    await reset();
+
     const rCus = await page.evaluate((cid) => App.resolveCode('HA:CUS:' + cid), seed.cid);
     await sleep(1200);
     ok(rCus && rCus.ok && rCus.screen === 'parties', 'HA:CUS → parties screen');

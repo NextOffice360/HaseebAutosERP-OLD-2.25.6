@@ -321,6 +321,51 @@
    PWA CORE — API bridge · offline queue · toast · router — v2.19
    Industry polish: SW + install prompt + offline banner + a11y + haptics
    ========================================================================== */
+/* === v2.31.0 (r12) — PWA i18n micro-T =====================================
+   Desktop app ka T (App_Lang) PWA pages par load NAHI hota (sirf Pwa_Shell
+   include hai). Ye halka shim same contract deta hai: T.t(key, fallback).
+   - fallback = ENGLISH (App_Lang convention)
+   - dict: localStorage cache ('ha_pwa_dict') + backend 'lang.dict' se sync
+     (jab PWA.call tayyar ho jata hai; offline/localStorage par chalta rehta hai)
+   - T.set(lang) — language toggle; localStorage 'ha_lang' me save + dict reload
+   - Agar kabhi App_Lang bhi load ho to uska window.T jeetata hai (shim sirf
+     jab T mojood na ho install hota hai).
+   ========================================================================== */
+(function () {
+  if (window.T) return;                        /* App_Lang ka T mojood — shim nahi chahiye */
+  var T = {
+    lang: (function () { try { return localStorage.getItem('ha_lang') || 'en'; } catch (e) { return 'en'; } })(),
+    dict: (function () { try { return JSON.parse(localStorage.getItem('ha_pwa_dict') || '{}') || {}; } catch (e) { return {}; } })(),
+    t: function (key, fallback) {
+      var v = this.dict[key];
+      if (v) { if (typeof v === 'string') return v; var lv = v[this.lang] || v.en; if (lv) return lv; }
+      return fallback !== undefined ? fallback : key;
+    },
+    apply: function () { try { document.documentElement.setAttribute('lang', this.lang === 'ur' ? 'ur' : 'en'); } catch (e) { } },
+    set: function (lang) {
+      this.lang = lang || 'en';
+      try { localStorage.setItem('ha_lang', this.lang); } catch (e) { }
+      this.load(); this.apply();
+    },
+    load: function () {                          /* best-effort dict sync — offline me cached dict */
+      var self = this;
+      try {
+        var fetcher = (window.PWA && PWA.call) ? function () { return PWA.call('lang.dict', { lang: self.lang }); }
+          : (window.API && API.call) ? function () { return API.call('lang.dict', { lang: self.lang }); } : null;
+        if (!fetcher) return;
+        fetcher().then(function (d) {
+          self.dict = d || {};
+          try { localStorage.setItem('ha_pwa_dict', JSON.stringify(self.dict)); } catch (e) { }
+          self.apply();
+        }).catch(function () { });               /* offline: cached dict qayam */
+      } catch (e) { }
+    }
+  };
+  T.apply();
+  window.T = T;
+  window.addEventListener('ha:pwa-ready', function () { T.load(); });   /* PWA.call ke baad sync */
+  window.addEventListener('load', function () { setTimeout(function () { T.load(); }, 2500); });
+})();
 /* === PWA Backend for Netlify/Static/offline === 
   Owner can set GAS exec URL in Settings → Backend (localStorage), or window.API_URL.
   PWA call() will prefer that URL via JSONP/fetch when not inside GAS container.
@@ -512,7 +557,7 @@ var PWA = (function () {
     }
     var guard = 0;
     var tmo = opts.timeoutMs === undefined ? 120000 : opts.timeoutMs;
-    if (tmo > 0) guard = setTimeout(function () { if (!done) { _runStats.stale++; settle(false); toast('Jawab nahi aaya \u2014 dobara koshish kar sakte hain', 'warn'); } }, tmo);
+    if (tmo > 0) guard = setTimeout(function () { if (!done) { _runStats.stale++; settle(false); toast(T.t('pwa.noAnswerRetry','No response \u2014 you can try again'), 'warn'); } }, tmo);
     return p.then(function (r) { clearTimeout(guard); if (!done) settle(true); return r; },
       function (e) {
         clearTimeout(guard);
@@ -602,21 +647,21 @@ var PWA = (function () {
      ========================================================================== */
   var _errStats = { classified: 0, retryable: 0, blockedRetry: 0, retryClicked: 0, writeWarned: 0 };
   var _errKinds = [
-    { kind:'offline', retryable:true, icon:'📶', title:'Internet nahi hai',
-      hint:'Connection wapas aane par dobara koshish karein; offline queue khud istemal hogi.',
+    { kind:'offline', retryable:true, icon:'📶', title:T.t('pwa.noInternet','No internet'),
+      hint:T.t('pwa.connBackHint','Try again when the connection returns; the offline queue will be used automatically.'),
       re:/offline|internet nahi|network error|failed to fetch|load failed|net::/i },
-    { kind:'network', retryable:true, icon:'⏱', title:'Jawab nahi aaya',
-      hint:'Server se jawab waqt par nahi mila \u2014 dobara koshish karein.',
+    { kind:'network', retryable:true, icon:'⏱', title:T.t('pwa.noAnswer','No response'),
+      hint:T.t('pwa.serverTimeout','No timely response from the server \u2014 try again.'),
       re:/REQUEST_TIMEOUT|timeout|timed out|aborted|empty response|502|503|504/i },
-    { kind:'auth', retryable:false, icon:'🔒', title:'Session / ijazat ka masla',
-      hint:'Dobara login karein ya admin se poochein.', re:/login|session|token|permission|unauthor|forbidden|role/i },
-    { kind:'validation', retryable:false, icon:'✏', title:'Maloomat theek karein',
-      hint:'Retry se hal nahi hoga \u2014 fields durust karein.',
+    { kind:'auth', retryable:false, icon:'🔒', title:T.t('pwa.sessionIssue','Session / permission issue'),
+      hint:T.t('pwa.reloginHint','Log in again or ask the admin.'), re:/login|session|token|permission|unauthor|forbidden|role/i },
+    { kind:'validation', retryable:false, icon:'✏', title:T.t('pwa.fixInput','Fix the input'),
+      hint:T.t('pwa.retryWontHelp','Retrying will not help \u2014 correct the fields.'),
       re:/required|zaroori|invalid|ghalat|kam hai|select karein|chunein|qty|khaali|nahi mila|not found|duplicate/i },
     { kind:'conflict', retryable:true, icon:'⏳', title:'Doosra kaam chal raha hai',
-      hint:'2\u20133 second ruk kar dobara koshish karein.', re:/BUSY|already|conflict|locked|queue/i },
+      hint:T.t('pwa.wait2sRetry','Wait 2\u20133 seconds and try again.'), re:/BUSY|already|conflict|locked|queue/i },
     { kind:'server', retryable:true, icon:'🛠', title:'Server par masla',
-      hint:'Dobara koshish karein; masla rahe to system log dekhein.',
+      hint:T.t('pwa.retryCheckLog','Try again; if it persists, check the system log.'),
       re:/exception|internal|script error|quota|server error|500/i }
   ];
   function errKind(err) {
@@ -624,8 +669,8 @@ var PWA = (function () {
     var hit = null;
     if (navigator && navigator.onLine === false) hit = _errKinds[0];
     for (var i = 0; !hit && i < _errKinds.length; i++) if (_errKinds[i].re.test(msg)) hit = _errKinds[i];
-    var k = hit || { kind:'unknown', retryable:false, icon:'⚠', title:'Kaam mukammal nahi hua',
-      hint:'Dobara koshish karein; masla rahe to support ko batayein.' };
+    var k = hit || { kind:'unknown', retryable:false, icon:'⚠', title:T.t('pwa.opIncomplete','The operation did not complete'),
+      hint:T.t('pwa.retrySupport','Try again; if it persists, contact support.') };
     _errStats.classified++; if (k.retryable) _errStats.retryable++; else _errStats.blockedRetry++;
     return { kind:k.kind, retryable:k.retryable, icon:k.icon, title:k.title, hint:k.hint, detail:msg };
   }
@@ -648,7 +693,7 @@ var PWA = (function () {
     box.appendChild(el('div', { class:'eb-hint' }, info.hint));
     if (opts.write) {
       _errStats.writeWarned++;
-      box.appendChild(el('div', { class:'eb-warn' }, 'Ye ' + (opts.writeLabel || 'save') + ' ka kaam tha \u2014 pehle list refresh kar ke dekhein ke kaam ho chuka hai ya nahi, phir dobara karein.'));
+      box.appendChild(el('div', { class:'eb-warn' }, 'Ye ' + (opts.writeLabel || 'save') + T.t('pwa.writeStaleTail',' was done \u2014 refresh the list first to check whether it already went through, then retry.')));
     }
     var acts = el('div', { class:'eb-acts' });
     if (info.retryable && typeof opts.retry === 'function') {
@@ -658,12 +703,12 @@ var PWA = (function () {
           var rp = opts.retry();
           if (rp && rp.catch) rp.catch(function (e) { try { console.warn('[PWA.errBox] retry failed:', (e && e.message) || e); } catch (e2) { } });
         } catch (e) { try { console.warn('[PWA.errBox] retry threw:', (e && e.message) || e); } catch (e2) { } }
-      } }, '\u21BB Dobara koshish karein'));
+      } }, T.t('pwa.retryBtn','\u21BB Try again')));
     }
     if (opts.write && opts.refresh !== false) {
       acts.appendChild(el('button', { class:'btn sm sec', onclick: function () { box.remove(); try { if (window.PWA && PWA.reload) PWA.reload(); } catch (e) { } } }, '\u27F3 Refresh'));
     }
-    acts.appendChild(el('button', { class:'btn sm ghost', onclick: function () { box.remove(); } }, 'Band karein'));
+    acts.appendChild(el('button', { class:'btn sm ghost', onclick: function () { box.remove(); } }, T.t('pwa.close','Close')));
     box.appendChild(acts);
     host.insertBefore(box, host.firstChild);
     return { el: box, info: info };
@@ -755,7 +800,7 @@ var PWA = (function () {
   function enqueue(action, payload) {
     var q = queue();
     if (q.length >= ((state.data && state.data.config && state.data.config.offline.maxQueue) || 200)) {
-      toast('Offline queue bhar gayi — pehle sync karein', 'err'); return null;
+      toast(T.t('pwa.queueFull','Offline queue is full — sync first'), 'err'); return null;
     }
     var id = 'c' + Date.now() + Math.random().toString(36).slice(2, 7);
     q.push({ clientId: id, action: action, payload: payload, at: new Date().toISOString() });
@@ -765,8 +810,8 @@ var PWA = (function () {
 
   async function sync() {
     var q = queue();
-    if (!q.length) { toast('Sync ke liye kuch nahi', 'warn'); return; }
-    if (!navigator.onLine) { toast('Abhi net nahi hai', 'warn'); return; }
+    if (!q.length) { toast(T.t('pwa.nothingToSync','Nothing to sync'), 'warn'); return; }
+    if (!navigator.onLine) { toast(T.t('pwa.noNetYet','No network right now'), 'warn'); return; }
     try {
       var r = await api('pwa.sync', { queue: q });
       var failed = (r.results || []).filter(function (x) { return !x.ok; });
@@ -866,7 +911,7 @@ var PWA = (function () {
         var id = enqueue(action, payload);
         return { ok: true, queued: true, clientId: id, _offline: true };
       }
-      throw new Error('Offline — net aane par dobara koshish karein (' + action + ')');
+      throw new Error(T.t('pwa.offlineRetry','Offline — try again when the network returns (') + action + ')');
     }
     var token = get(TOKEN_KEY, '');
     // enrich with origin + integration key for external frontends (masked server-side)
@@ -901,7 +946,7 @@ var PWA = (function () {
         return new Promise(function(resolve, reject){
           var cb='__pwa_'+Date.now()+'_'+Math.floor(Math.random()*1e6);
           var sEl=document.createElement('script');
-          var timer=setTimeout(function(){ try{ delete window[cb]; document.body.removeChild(sEl);}catch(_e){} reject(new Error('Backend not reachable — Settings → Backend URL check karein / offline queue use karein')); }, 12000);
+          var timer=setTimeout(function(){ try{ delete window[cb]; document.body.removeChild(sEl);}catch(_e){} reject(new Error(T.t('pwa.backendUnreachable','Backend not reachable — check Settings → Backend URL / use the offline queue'))); }, 12000);
           window[cb]=function(resp){
             clearTimeout(timer);
             try{ delete window[cb]; document.body.removeChild(sEl);}catch(_e){}
@@ -911,7 +956,7 @@ var PWA = (function () {
           var ik2=''; try{ ik2=localStorage.getItem('ha_integrationKey')||''; }catch(_e){}
           var qs='action='+encodeURIComponent(action)+'&payload='+encodeURIComponent(JSON.stringify(payload||{}))+'&token='+encodeURIComponent(token||'')+'&_origin='+encodeURIComponent(location.origin)+(ik2?'&_integrationKey='+encodeURIComponent(ik2):'')+'&callback='+cb;
           sEl.src = extUrl + (extUrl.indexOf('?')>-1?'&':'?') + qs;
-          sEl.onerror=function(){ clearTimeout(timer); try{ delete window[cb]; document.body.removeChild(sEl);}catch(_e){} reject(new Error('Network error — backend URL ya net check karein')); };
+          sEl.onerror=function(){ clearTimeout(timer); try{ delete window[cb]; document.body.removeChild(sEl);}catch(_e){} reject(new Error(T.t('pwa.networkError','Network error — check the backend URL or your connection'))); };
           document.body.appendChild(sEl);
         });
       }
@@ -948,7 +993,7 @@ var PWA = (function () {
     if(!$('#pwaInstall')){
       var ins = el('div',{ id:'pwaInstall', class:'pwa-install' }, [
         el('div',{class:'ico', text:'⬇', style:'font-size:22px'} ),
-        el('div',{class:'tx'}, [ el('b',{text:'Install app'}), el('small',{text:'Home screen par add karein — tez aur offline'}) ] ),
+        el('div',{class:'tx'}, [ el('b',{text:'Install app'}), el('small',{text:T.t('pwa.installHint','Add to home screen — faster and offline')}) ] ),
         el('button',{class:'btn primary sm', onclick:install}, 'Install'),
         el('button',{class:'btn ghost sm', onclick:function(){ var b=$('#pwaInstall'); if(b) b.classList.remove('show'); }}, '✕')
       ]);
@@ -1111,7 +1156,7 @@ var PWA = (function () {
     else { prompt('Copy link', url); }
   }
   function requestNotif(){
-    if(!('Notification' in window)) return toast('Notifications supported nahi','warn');
+    if(!('Notification' in window)) return toast(T.t('pwa.noNotifSupport','Notifications not supported'),'warn');
     Notification.requestPermission().then(function(p){ toast(p==='granted' ? 'Notifications ON ✅' : 'Permission: '+p, p==='granted'?'ok':'warn'); });
   }
   function setupSW(){
@@ -1162,7 +1207,7 @@ var PWA = (function () {
         video.srcObject = stream;
         var bar = el('div',{style:'padding:12px;background:#0b1220;display:flex;gap:8px'}, [
           el('button',{class:'btn ghost block', onclick:close}, '✕ Cancel'),
-          el('div',{style:'color:#93a3c4;font-size:12px;flex:1;display:flex;align-items:center'}, 'Camera se barcode scan karein')
+          el('div',{style:'color:#93a3c4;font-size:12px;flex:1;display:flex;align-items:center'}, T.t('pwa.cameraScan','Scan barcode with camera'))
         ]);
         wrap.appendChild(video); wrap.appendChild(bar); document.body.appendChild(wrap); video.play();
         var stopped=false;
@@ -1203,15 +1248,15 @@ var PWA = (function () {
     }
     var overlay = PWA.el('div', { id:'scanFallbackOverlay', class:'bulk-picker', onclick:function(e){ if(e.target===overlay) close(); }, style:'z-index:70' });
     var box = PWA.el('div', { class:'bulk-box', style:'max-width:420px' });
-    var head = PWA.el('div', { class:'bulk-head' }, [ PWA.el('b',{text:'📷 Scan — Code enter karein'}), PWA.el('button',{class:'btn sm ghost', onclick:close}, '✕') ]);
+    var head = PWA.el('div', { class:'bulk-head' }, [ PWA.el('b',{text:T.t('pwa.scanEnterCode','📷 Scan — enter code')}), PWA.el('button',{class:'btn sm ghost', onclick:close}, '✕') ]);
     var body = PWA.el('div', { style:'padding:14px;display:grid;gap:12px' });
     var msg = PWA.el('div', { class:'muted', style:'font-size:12px;line-height:1.5' });
     var hasCam = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
     var live = (state.data && state.data.config && state.data.config.scannerLiveUrl) || '';
-    if(!hasCam) msg.textContent = 'Is device par camera scan available nahi — neeche code type karein ya photo upload karein.';
-    else msg.textContent = 'Camera permission blocked ya available nahi — manual code ya photo se scan karein.';
+    if(!hasCam) msg.textContent = T.t('pwa.noCamScan','Camera scan is not available on this device — type the code below or upload a photo.');
+    else msg.textContent = T.t('pwa.camBlocked','Camera permission is blocked or unavailable — use a manual code or a photo.');
     if(live) {
-      var liveBtn = PWA.el('button',{class:'btn sm primary', style:'width:100%'}, '↗ External scanner kholein');
+      var liveBtn = PWA.el('button',{class:'btn sm primary', style:'width:100%'}, T.t('pwa.openExtScanner','↗ Open external scanner'));
       liveBtn.onclick = function(){ close(); scanWithExternal(cb); };
       msg.appendChild(PWA.el('div',{style:'margin-top:8px'}, liveBtn));
       msg.appendChild(PWA.el('div',{class:'muted', style:'font-size:11px;margin-top:4px', text:'Settings ▸ Mobile apps (PWA) → Scanner URL se external live camera host hota hai.'}));
@@ -1241,12 +1286,12 @@ var PWA = (function () {
               close(); haptic(true); cb(String(codes[0].rawValue).trim()); return;
             }
           }catch(e){}
-          toast('Photo se code nahi mila — neeche manual likhein','warn');
+          toast(T.t('pwa.noCodeInPhoto','No code found in the photo — type it manually below'),'warn');
         };
-        img.onerror = function(){ toast('Photo load nahi hui','err'); };
+        img.onerror = function(){ toast(T.t('pwa.photoFail','Photo failed to load'),'err'); };
         img.src = URL.createObjectURL(f);
       } else {
-        toast('Is browser me photo decode nahi — manual code likhein','warn');
+        toast(T.t('pwa.photoDecodeFail','This browser cannot decode the photo — type the code manually'),'warn');
       }
     };
     photoBtn.onclick = function(){ fileIn.click(); };
@@ -1256,7 +1301,7 @@ var PWA = (function () {
     body.appendChild(msg);
     body.appendChild(input);
     body.appendChild(row);
-    body.appendChild(PWA.el('div',{class:'muted', style:'font-size:11px'}, 'Tip: Same scanner UI har PWA me — camera permission dena ho to browser Settings → Site → Camera Allow karein.'));
+    body.appendChild(PWA.el('div',{class:'muted', style:'font-size:11px'}, T.t('pwa.scannerTip','Tip: the same scanner UI in every PWA — to grant camera access, browser Settings → Site → Camera → Allow.')));
     box.appendChild(head); box.appendChild(body);
     overlay.appendChild(box); document.body.appendChild(overlay);
     document.body.style.overflow='hidden';
@@ -1305,7 +1350,7 @@ var PWA = (function () {
       }
       if(list.length > 1){
         if(cfg.onMulti) cfg.onMulti(list, clean);
-        else PWA.toast(list.length + ' matches — list se chunein', 'warn');
+        else PWA.toast(list.length + T.t('pwa.multiMatchesTail',' matches — pick from the list'), 'warn');
         try { input.focus(); } catch(e){}
         return false;
       }
@@ -1401,7 +1446,7 @@ var PWA = (function () {
     function handleScan(v){
       var r = findItem(v);
       if(r){ addOrBump(r); haptic(true); toast('Added to bulk: '+ (r.name||r.code) +' ×'+picked[String(r.id)].qty,'ok'); }
-      else toast('Code nahi mila: '+(v||'')+' — field clear, next scan ready','warn');
+      else toast(T.t('pwa.codeNotFound','Code not found: ')+(v||'')+' — field clear, next scan ready','warn');
       scanIn.value='';                       // ALWAYS clear → ready for next scan
       try{ scanIn.focus(); }catch(e){}
     }
@@ -1455,7 +1500,7 @@ var PWA = (function () {
           || String(it.barcode||'').toLowerCase().indexOf(q)>-1;
       });
       filtered = filtered.slice(0,120);
-      if(!filtered.length){ list.appendChild(el('div',{class:'empty', text:'Koi item nahi mila — search badlein'})); return; }
+      if(!filtered.length){ list.appendChild(el('div',{class:'empty', text:T.t('pwa.noItemFound','No item found — change the search')})); return; }
       filtered.forEach(function(it){
         var on = !!picked[String(it.id)];
         var row = el('div', { class:'bulk-item'+(on?' on':'') });
@@ -1482,7 +1527,7 @@ var PWA = (function () {
     }
     addBtn.addEventListener('click', function(){
       var keys = Object.keys(picked);
-      if(!keys.length){ toast('Koi item select nahi — scan ya tick karein','warn'); return; }
+      if(!keys.length){ toast(T.t('pwa.noItemSelected','No item selected — scan or tick'),'warn'); return; }
       var vals = keys.map(function(k){ return { item: picked[k].item, qty: Math.max(1, Number(picked[k].qty)||1) }; });
       close(); haptic(true);
       if(typeof onAdd==='function') onAdd(vals);
@@ -1550,7 +1595,7 @@ var PWA = (function () {
           addRow.onclick = function(){ setSelected(null); closeDd(); };
           dd.appendChild(addRow);
         } else {
-          dd.appendChild(el('div', {class:'empty', style:'padding:12px', text:'Koi customer nahi'}));
+          dd.appendChild(el('div', {class:'empty', style:'padding:12px', text:T.t('pwa.noCustomer','No customer')}));
         }
       } else {
         list.forEach(function(c){
@@ -1721,6 +1766,7 @@ var PWA = (function () {
     queuedCount: queuedCount, reload: function () { load(state.tabs || [], state.renderTab); }
   };
 })();
+try { window.PWA = PWA; } catch (e) { }   /* v2.31.0 (r12) — export: L709 reload + micro-T dict sync isi par depend karte the (pehle missing tha) */
 
 function HA_applyExtraMeta(obj) {
   try {

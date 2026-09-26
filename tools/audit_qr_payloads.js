@@ -45,7 +45,7 @@ function payloadResolves(s) {
   const p = s.payload.trim();
   if (/HA:(INV|ITM|CUS|SUP|DOC|PAY):/.test(p)) return 'HA';
   const lines = srcCache[s.file] || [];
-  if (p.indexOf('JSON.stringify') === 0 && lines.slice(s.line - 1, s.line + 4).join('\n').match(/\bdoc:\s*'DAYREP'/)) return 'DAYREP-INFO'; /* session QR — DOC-INTEL-PLAN remnant */
+  if (p.indexOf('JSON.stringify') === 0 && lines.slice(s.line - 1, s.line + 4).join('\n').match(/\bdoc:\s*'DAYREP'/)) return 'HA-VAR'; /* v2.31.0 (r12): DAYREP session-QR resolver me resolvable (App_QR JSON branch) */
   if (p === 'url' || p === 'link' || /^r\.qr$/.test(p)) return 'REGISTRY/LINK'; /* link QR ya registry row */
   if (/^[A-Za-z_$][\w$]*$/.test(p)) {                               /* variable → look-back */
     const lines = srcCache[s.file] || [];

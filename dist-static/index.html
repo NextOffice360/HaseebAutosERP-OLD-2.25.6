@@ -207,8 +207,8 @@ table.tbl td, table.tbl2 td{font-size:var(--fs-sm); font-weight:500; line-height
    Apps Script app ko sandboxed <iframe> mein serve karta hai. Mobile browsers
    (khaas kar iOS Safari) us iframe ki height collapse kar dete hain, aur
    `height:100%` us sookhe parent par 0px ban jata hai → SAFAID KHAALI PAGE.
-   `min-height:100vh` iframe ko majboor karta hai ke poori screen le.
-   (overflow:hidden jaan boojh kar hai — "koi bottom scroll nahi" requirement) */
+   `min-height:100vh` iframe ko majboor karta hai ke poori screen * `min-height:100vh` iframe ko majboor karta hai ke poori screen le.
+   (overflow:hidden jaan boojh kar hai — "koi bottom scroll nahi" requirement)* (overflow:hidden jaan boojh kar hai — "koi bottom scroll nahi" requirement) */
 html,body{height:100%; min-height:100vh; min-height:100dvh}
 body{
   margin:0; font-family:var(--font); background:var(--bg); color:var(--ink);
@@ -496,7 +496,7 @@ a{color:var(--brand-text); text-decoration:none}
 }
 @media (max-width:900px){
   /* v2.25.8 — off-canvas drawer HAMESHA poora (icon+text); desktop ka rail
-     state mobile par leak nahi karta (user req 14: "off-canvas behavior should
+     state mobile par leak nahi karta (user req 14: "off-canvas behavior s* state mobile par leak nahi karta (user req 14: "off-canvas behavior should
      not conflict with the desktop collapsed/expanded behavior") */
   .shell.collapsed{--sb-w:256px}
   .shell.collapsed .sb-name,.shell.collapsed .sb-user-meta,
@@ -661,7 +661,7 @@ table.tbl tbody tr.clickable{cursor:pointer}
    jab bhi switch kisi `.field` ke andar aata tha (GRN: "On credit", "Update item cost",
    PO form, Settings ke kuch switches) to wo toot jata tha:
      · display:block → `<i>` track inline ho jata tha → width 0 → knob (absolute)
-       label ke harf ke UPAR paint ho jata tha ("On [knob]edit (supplier udhaar)").
+       label ke harf ke UPAR paint ho jata tha ("On [knob]edit (supplier udh* label ke harf ke UPAR paint ho jata tha ("On [knob]edit (supplier udhaar)").
    Ab switch hamesha inline-flex rehta hai aur track block-level hai (fixed height). */
 .field label.switch{display:inline-flex; font-size:var(--fs-sm); font-weight:600; color:var(--ink);
   margin-bottom:0; letter-spacing:normal; max-width:100%; flex-wrap:nowrap}
@@ -1625,7 +1625,7 @@ table.tbl2 .num{text-align:right;font-variant-numeric:tabular-nums}
    Yahan `repeat(auto-fit, minmax(180px,1fr))` tha. `auto-fit` KHALI tracks hata
    deta hai — is liye jis section me jitne fields, utne COLUMNS ban jate the:
      4 fields → 4 columns (273px) | 3 → 3 (367px) | 2 → 2 (556px) | 1 → 1 (1122px)
-   Har section ki chaurai alag → fields kabhi line-up nahi hote (user: "zig-zag").
+   Har section ki chaurai alag → fields kabhi line-up nahi hote (user: "zig-zag* Har section ki chaurai alag → fields kabhi line-up nahi hote (user: "zig-zag").
    `auto-FILL` tracks barqarar rakhta hai: columns ab CONTAINER se bante hain,
    field-count se nahi — sab sections ek hi grid par align hote hain. */
 .f-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px 14px}
@@ -2057,7 +2057,7 @@ table.tbl2 .num{text-align:right;font-variant-numeric:tabular-nums}
 /* Section block — related information ek saath (card + heading + separator)
    ---------------------------------------------------------------------------
    v2.6 QA (root cause): ye `.sec` DEAD CSS tha — koi bhi element is class ko
-   use hi nahi karta (grep: 0 istemal). Magar `.btn.sec` (120 secondary buttons)
+   use hi nahi karta (grep: 0 istemal). Magar `.btn.sec` (120 secondary butto* use hi nahi karta (grep: 0 istemal). Magar `.btn.sec` (120 secondary buttons)
    is selector se MATCH kar jata tha → section ki `padding:16px` button par lag
    jati thi (measured: btn sec ki height 51px, text se 42–52px zyada background).
    Is liye isay HATAYA gaya. Asli section block ab `.ui2-block` hai (upar). */
@@ -2771,7 +2771,7 @@ window.CONFIG_DEFS_DEMO = [{"id":"business","label":"Business Profile","icon":"�
 
 <script>
     /* Injected by server template */
-    window.APP_BUILD   = '2.30.9-static';
+    window.APP_BUILD   = '2.31.0-static';
     window.SERVE_MODE  = 'static';   // 'apps-script' | 'static'
     window.API_URL     = 'https://script.google.com/macros/s/AKfycb_DEMO_TEST_EXAMPLE/exec';      // filled only for static hosting
   </script>
@@ -2781,7 +2781,7 @@ window.CONFIG_DEFS_DEMO = [{"id":"business","label":"Business Profile","icon":"�
    HASEEB AUTOS — ICON LIBRARY (v2.6 QA)
    --------------------------------------------------------------------------
    MASLA (user ki shikayat):
-     "icon realistic nahi hain, icons say idea nahi hota ke ye section
+     "icon realistic nahi hain, icons say idea nahi hota ke ye se* "icon realistic nahi hain, icons say idea nahi hota ke ye section
       field kis cheez k baray main hai"
 
    ASAL WAJAH (nap kar saboot ke sath):
@@ -3158,7 +3158,7 @@ window.CONFIG_DEFS_DEMO = [{"id":"business","label":"Business Profile","icon":"�
 
   /* v2.30.6 fix — watch() defined tha magar KABHI start nahi hota tha: is liye
      async render hone wala DOM (UI2.table API-load waghera) par upgrade pass
-     chalta hi nahi tha aur wahan emoji reh jate the (misal: demand '📬 Arrived').
+     chalta hi nahi tha aur wahan emoji reh jate the (misal: demand '📬 Arriv* chalta hi nahi tha aur wahan emoji reh jate the (misal: demand '📬 Arrived').
      Ab boot par hi poori body observe — debounce 120ms, icoDone guard se sasta. */
   /* head me load hota hai — body tab tak nahi hota; DOM-ready par observe karo */
   try {
@@ -3358,7 +3358,7 @@ function uid(p) { return (p || 'id') + '_' + Date.now().toString(36) + Math.rand
 /* ================= GLOBAL DATE/TIME SYSTEM (v2.29.0 · spec §8) ==============
    Backend U.disp()/U.stamp() ka frontend mirror — WAHI settings, WAHI format.
    Boot par `system.dtconfig` se config aati hai (App.state.dt), warna defaults.
-   `fmt.date()` isi par delegate karta hai, is liye poore app ke 92 call-sites
+   `fmt.date()` isi par delegate karta hai, is liye poore app ke 92 call-si* `fmt.date()` isi par delegate karta hai, is liye poore app ke 92 call-sites
    apne aap naye system par aa jate hain (page-specific patch nahi).
    ========================================================================== */
 const DT = {
@@ -3623,14 +3623,14 @@ const API = {
   /* ==========================================================================
      v2.25.8 — API INSTRUMENTATION  (Performance audit W0.T2)
      --------------------------------------------------------------------------
-     User ki shikayat: "button dabane par ~1 minute tak kuch nahi hota". Bina
+     User ki shikayat: "button dabane par ~1 minute tak kuch nahi hota".* User ki shikayat: "button dabane par ~1 minute tak kuch nahi hota". Bina
      naape hue is ka ilaaj mumkin nahi. Ye block har call ka record rakhta hai:
        · duration (ms)        · action-wise count
        · in-flight peak       · DUPLICATE (same action + same payload jab
                                 pehli call abhi chal rahi ho)
        · slow calls           · p50 / p95
      Ye sirf NAAP hai — behaviour bilkul nahi badalta (koi call block/delay
-     nahi hoti). `window.__apiStats` (raw) ya `API.statsSummary()` (summary);
+     nahi hoti). `window.__apiStats` (raw) ya `API.statsSummary()` (summ* nahi hoti). `window.__apiStats` (raw) ya `API.statsSummary()` (summary);
      `API.statsReset()` se zero.
      ========================================================================== */
   stats: {
@@ -3695,7 +3695,7 @@ const API = {
 
   /* ------------------------------------------------------------------------
      v2.8.3 — PAYLOAD GUARD (Inventory "illegal value in property: locationId")
-     `google.script.run` FUNCTION serialize nahi kar sakta. Agar galti se
+     `google.script.run` FUNCTION serialize nahi kar sakta. Agar gal* `google.script.run` FUNCTION serialize nahi kar sakta. Agar galti se
      `{ locationId: loc }` bheja jaye (jahan `loc` ek function hai, `loc()`
      nahi), to Apps Script ye cryptic error deta hai:
          "Failed due to illegal value in property: locationId"
@@ -4170,7 +4170,7 @@ App.can = function (perm) {
 /* v2.28.0 (W5 · spec §9) — FIELD-LEVEL VISIBILITY (frontend half).
    Asal rok backend par hai (Fields.gs ▸ Code.gs api()) — ye helper sirf UI se
    wo column/label/field hata deta hai jahan user ko data milta hi nahi, taake
-   khali column ya "—" na dikhe. Ek hi jagah define, sab screens use karein. */
+   khali column ya "—" na dikhe. Ek hi jagah define, sab screens use karein.* khali column ya "—" na dikhe. Ek hi jagah define, sab screens use karein. */
 App.FIELD_PERMS = {
   cost: 'field.cost.view',
   margin: 'field.margin.view',
@@ -4198,8 +4198,8 @@ const UI = {
      --------------------------------------------------------------------------
      Audit: 150+ jagah `UI.toast(e.message, 'err')` tha — matlab backend ka
      technical text seedha user ko ("REQUEST_TIMEOUT", "SETTINGS_BUSY: another
-     save is running. Wait, reload settings, then retry."), koi action nahi, aur
-     validation ghalti par bhi "retry" ka kehna (jo ghalat guidance hai).
+     save is running. Wait, reload settings, then retry."), koi action nahi* save is running. Wait, reload settings, then retry."), koi action nahi, aur
+     validation ghalti par bhi "retry" ka kehna (jo ghalat guidance * validation ghalti par bhi "retry" ka kehna (jo ghalat guidance hai).
 
      Ab ek hi policy poori app ke liye:
        ① UI.errKind(err)      → { kind, retryable, title, hint, detail, icon }
@@ -4207,7 +4207,7 @@ const UI = {
                                 retry" jaise lafz hatta diye — kyunki retry ka
                                 button khud mojood hota hai)
        ③ UI.errBox(host, err, opts) → ACTION ke paas inline error box +
-                                "Dobara koshish karein" (sirf jab jaiz ho)
+                                "Dobara ko* "Dobara koshish karein" (sirf jab jaiz ho)
        ④ UI.fail(err, opts)   → toast (classified) + optional inline box
        ⑤ UI.toast(..., 'err') → khud-ba-khud classified text (150+ purane
                                 call-sites bina chhue behtar ho jate hain)
@@ -4317,7 +4317,7 @@ const UI = {
     const info = UI.errKind(err);
     /* machine-text kinds (conflict/auth/server/unknown) mein asli message aksar
        technical hota hai — wahan title+hint hi behtar guidance hai; raw text
-       neeche "Technical tafseel" mein milta hai. */
+       neeche "Technical tafseel" mein milta * neeche "Technical tafseel" mein milta hai. */
     const friendlyOnly = /conflict|auth|server|unknown/.test(info.kind);
     let d = String(info.detail || '').trim()
       .replace(/^[A-Z_]+:\s*/, '');                                     /* REQUEST_TIMEOUT: ... */
@@ -4690,7 +4690,7 @@ const UI = {
        Sync handlers (tab nav, print, quick-add) par koi asar nahi — wait
        karne ko kuch nahi hota.
 
-     `UI.run()` se handled buttons SKIP hote hain (double spinner nahi).
+     `UI.run()` se handled buttons SKIP hote hain (double spinner n* `UI.run()` se handled buttons SKIP hote hain (double spinner nahi).
      Opt-out: kisi element/container par `data-nobusy`.
      Kill-switch: `UI._features.autoBusy = false`.
      Stats: `UI.autoBusyStats()` → { attached, done, forced, elements }
@@ -5145,7 +5145,7 @@ const UI = {
     const refs = {};
     /* v2.30.0 (N1/N2 extension) — legacy form builder par bhi dirty tracking +
        per-field onChange hook. Pehle ye dono sirf UI2.form mein thay, is liye
-       GRN/PO jaise screens par "kya badla" pata nahi chalta tha aur f.onChange
+       GRN/PO jaise screens par "kya badla" pata nahi chalta tha aur f.o* GRN/PO jaise screens par "kya badla" pata nahi chalta tha aur f.onChange
        hook bilkul chalta hi nahi tha (supplier info card isi wajah se supplier
        badalne par update nahi hota tha). */
     const dirty = new Set();
@@ -5530,8 +5530,8 @@ App.renderView = function () {
    Har editable page par ek hi jagah, ek hi shakl: header ka "Save all".
    Screen apna page-level save `App.setSaveBridge({label, run})` se register
    karti hai; engine (UI2.saveAll) usi ko call karta hai — is liye jo page khud
-   save karta hai wohi cheez "Save all" se bhi save hoti hai (koi parallel
-   logic nahi). Bridge na ho to per-form `onSave` fallback chalta hai; dono na
+   save karta hai wohi cheez "Save all" se bhi save hoti hai (koi paral* save karta hai wohi cheez "Save all" se bhi save hoti hai (koi parallel
+   logic nahi). Bridge na ho to per-form `onSave` fallback chalta hai; dono* logic nahi). Bridge na ho to per-form `onSave` fallback chalta hai; dono na
    hon to button ZAHIR hi nahi hota (jhoota UI nahi).
    Bridge screen change par reset ho jata hai (App.go) aur render par dobara
    set hota hai — is liye purani screen ka save kabhi nayi screen par nahi chalega.
@@ -5623,7 +5623,7 @@ App.renderNav = function () {
       if (!meta) return;
       tb.appendChild(h('button', { dataset: { id }, onclick: () => App.go(id) },
         h('span', { class: 'ti', html: tabIcon(meta.icon || '\u25B8') }), /* v2.8.5 — label ko .tl class: chhota text, ellipsis, wrap nahi —
-           bottom bar kabhi "messy" nahi lagega */
+           bottom bar kabhi "messy" nah* bottom bar kabhi "messy" nahi lagega */
         h('span', { class: 'tl' }, (meta.label || id).split(' ')[0])));
     });
   };
@@ -5717,7 +5717,7 @@ window.downloadCsv = downloadCsv;
    Magar do jagah isay GLOBAL samajh kar call kiya gaya:
      · App_Config.html     → Settings → Data & tools → Export config
      · App_Dashboards.html → day-closing report → CSV
-   Natija: "downloadCsv is not defined" → EXPORT BUTTON KAAM NA KARTA THA
+   Natija: "downloadCsv is not defined" → EXPORT BUTTON KAAM NA KARTA * Natija: "downloadCsv is not defined" → EXPORT BUTTON KAAM NA KARTA THA
    (aur user ko khata bhi nazar nahi aata tha).
 
    YAHAN hona zaroori hai: App_Screens / App_Config / App_Dashboards IIFE ke
@@ -5760,7 +5760,7 @@ window.downloadCsv = downloadCsv;
    Reusable rules:
      · Har fetch `API.call` se jata hai (W2 ka shared core — timeout/busy/error policy).
      · `Deps.hardRefresh(key)` → cache clear (write ke baad, W2 write-policy ke sath).
-     · Events: `deps:change` (child options badlein/selection manage hui),
+     · Events: `deps:change` (child options badlein/selection manage * · Events: `deps:change` (child options badlein/selection manage hui),
        `deps:loaded` (data aaya) — tables/forms isse refresh ho sakte hain.
      · Kill-switch (tests/SENS): `Deps._features.on = false` → wiring bilkul na ho.
    ═══════════════════════════════════════════════════════════════════════════ */
@@ -5791,7 +5791,7 @@ var Deps = {
   /* ---------------- cache ---------------- */
   _ck(key, parentValue) { return String(key) + this._SEP + String(parentValue === undefined ? '' : parentValue); },
   /** Raw prefix se cache saaf — `shared:<action>|...` jaise keys ke liye
-      (hardRefresh `key + SEP` prefix match karta hai, jo `|` wali keys par nahi chalta). */
+      (hardRefresh `key + SEP` prefix match karta hai, jo `|` wali keys par nahi chalt* (hardRefresh `key + SEP` prefix match karta hai, jo `|` wali keys par nahi chalta). */
   clearPrefix(pfx) {
     var self = this, pre = String(pfx), n = 0;
     Object.keys(self._cache).forEach(function (k) { if (k.indexOf(pre) === 0) { delete self._cache[k]; n++; } });
@@ -6063,13 +6063,13 @@ var Shared = {
      v2.30.0 — SHARED PAGE STATES (loading / error / empty)
      --------------------------------------------------------------------------
      Aap ki shikayat: "Products/Items/Inventory ke safhe khali (blank) aa rahe
-     hain, koi error message bhi nahi."  Root cause tha har screen ka apna
+     hain, koi error message bhi nahi."  Root cause tha har screen ka* hain, koi error message bhi nahi."  Root cause tha har screen ka apna
      `catch (e) { rows = []; }` — error nigal jata tha, table khali dikhta tha.
 
      Ab ek hi jagah se teen states render hoti hain aur HAR list screen inhi ko
      use karti hai (page-specific patch nahi):
         ⏳ loading  ·  ⚠ error (message + Dobara koshish + Diagnostics copy)
-        📭 empty    (0 rows — "koi record nahi" + optional action button)
+        📭 empty    (0 rows — "koi record nahi" + optional action* 📭 empty    (0 rows — "koi record nahi" + optional action button)
      ========================================================================== */
   _h() { return (typeof h === 'function') ? h : function (t, a, ...k) { return document.createElement(t); }; },
 
@@ -7026,7 +7026,7 @@ const Print = {
            hota tha (300dpi raster decode test ne pakra). Ab: agar aaj ka layout floor se
            neeche utarta ho to (a) QR apni alag row mein jaata hai (bars ko poori chaurai),
            (b) quiet zone spec minimum (>=10X) par aata hai, (c) module width kabhi floor
-           se neeche nahi jaati. Jo label tab bhi na fit ho uspar data-lw="1" mark hota
+           se neeche nahi jaati. Jo label tab bhi na fit ho uspar data-lw="1* se neeche nahi jaati. Jo label tab bhi na fit ho uspar data-lw="1" mark hota
            hai (designer preview warning dikhata hai) — chup-chaap unscannable label nahi. */
         const FLOOR_MM = 0.19, FLOOR_PX = FLOOR_MM * MM2PX;
         const quietMin = Math.max(10 * FLOOR_MM, 1.5).toFixed(1);   /* >=10X ya 1.5mm */
@@ -7690,7 +7690,7 @@ const P = {
       const html = (isLabel && window.Print && Print.labelsHtml) ? await labelDocHtml() : P.html(sample, cfg);
       /* v2.25.0 — label CSS print ke sath SHARED hai; preview mein inject karna
          zaroori hai warna preview be-styled hota hai aur user ko lagta hai ke
-         change "lagu nahi hua". */
+         change "lagu nahi* change "lagu nahi hua". */
       const doc = rawHtml(isLabel && window.Print && Print.LABEL_CSS
         ? ('<style>' + Print.LABEL_CSS + '</style>' + html)
         : html);
@@ -7711,7 +7711,7 @@ const P = {
     /* v2.25.0 — TRUE LIVE PREVIEW: in controls ka koi repaint nahi tha, is liye
        Title / Font size / Footer / Terms / Show-title / Tax-mode badalne par
        preview purana hi rehta tha (user ki shikayat: "refresh ke baghair update
-       nahi hota"). Ab har change foran paint() karta hai. */
+       nahi hota"). Ab har change foran paint() karta * nahi hota"). Ab har change foran paint() karta hai. */
     const copies = numberInput('Copies', cfg.copies || 1, v => { cfg.copies = v; paint(); });
     const fontSize = numberInput('Font size (px)', cfg.fontSize || 12, v => { cfg.fontSize = v; paint(); });
     const title = textInput('Title', cfg.title || 'SALE RECEIPT', v => { cfg.title = v; paint(); });
@@ -9133,7 +9133,7 @@ function fitOne(t, vb, opts) {
   if (!isFinite(size) || size <= 0) return;
   /* v2.8.5 — gauge jaisi jagah par sirf viewBox kaafi NAHI: text ko apni
      line par arc ke andar ki chaurai (data-maxw) mein bhi samaana hai, warna
-     wo curve se takrata hai ("Udhaar recovery Rs 2,500 / Rs 2,828"). */
+     wo curve se takrata hai ("Udhaar recovery Rs 2,500 / Rs 2,828"* wo curve se takrata hai ("Udhaar recovery Rs 2,500 / Rs 2,828"). */
   const maxw = parseFloat(t.getAttribute('data-maxw')) || Infinity;
   for (let guard = 0; guard < 14; guard++) {
     let bb;
@@ -11386,11 +11386,11 @@ function renderAssistant(c) {
 }
 
 /* ==========================================================================
-   v2.30.0 (N7) — "YE KYA KAR SAKTA HAI / KYA NAHI" (honest capability card)
+   v2.30.0 (N7) — "YE KYA KAR SAKTA HAI / KYA NAHI" (honest capability ca* v2.30.0 (N7) — "YE KYA KAR SAKTA HAI / KYA NAHI" (honest capability card)
    --------------------------------------------------------------------------
    Aap ki shart: capabilities/limits honestly document — LLM ka dawa hargiz nahi.
    Local engine (id MOCK) ke can/cannot lists backend ke adapter meta se aate hain
-   (`ai.agentConfig.providers`), is liye yahan koi string do jagah nahi likhi jati.
+   (`ai.agentConfig.providers`), is liye yahan koi string do jagah nahi likhi ja* (`ai.agentConfig.providers`), is liye yahan koi string do jagah nahi likhi jati.
    Bahar ke LLM provider par bhi saaf likha jata hai ke jawab model se aate hain,
    data tools ke through jata hai (RBAC) aur ghalat jawab mumkin hai.
    ========================================================================== */
@@ -12179,7 +12179,15 @@ App.resolveCode = function (raw) {
     return Promise.resolve({ ok: false, kind: kind });
   }
   if (v.charAt(0) === '{') {
-    try { var o = JSON.parse(v); if (o && o.inv) return App.resolveCode('HA:INV:' + o.inv); } catch (e) { }
+    try {
+      var o = JSON.parse(v);
+      if (o && o.inv) return App.resolveCode('HA:INV:' + o.inv);
+      /* v2.31.0 (r12) — DAYREP session-QR (Dashboards day-report) ab resolvable:
+         session no ke sath dashboards screen kholta hai (day report wahan hai) */
+      if (o && o.doc === 'DAYREP' && o.session) {
+        return Promise.resolve(go('insights', { dayrep: o.session }, 'Day report ' + o.session)); /* screen id 'insights' = Dashboards */
+      }
+    } catch (e) { }
   }
   /* D2 back-compat (round-9) — purane receipt QR (INV:..|TOTAL:..|DUE:..) bhi khulen */
   m = /^INV:([^|]+)(?:\|.*)?$/i.exec(v);
@@ -15236,7 +15244,7 @@ function showHeld() {
 
 async function clearCart(silent) {
   /* v2.25.0 (req 6) — native confirm() ki jagah shared dialog: sandboxed
-     preview/iframe mein native confirm block ho jata hai (button "kuch nahi karta"
+     preview/iframe mein native confirm block ho jata hai (button "kuch nahi k* preview/iframe mein native confirm block ho jata hai (button "kuch nahi karta"
      lagta hai) aur design system se bahar bhi hai. silent=true par koi await
      nahi hota, is liye baqi callers ka synchronous flow waisa hi rehta hai. */
   if (!silent && S.cart.length && !(await UI2.confirm('Cart clear karein? Ye bill ke saare items hata dega.', null, true))) return;
@@ -21822,7 +21830,7 @@ const locNameOf = id => { const l = (App.state.locations || []).find(x => x.id =
 
 /* v2.8.3 — `loc` screen se FUNCTION aata hai (`() => App.state.tmpLoc || ''`).
    Pehle wahi function seedha payload mein chala jata tha → google.script.run
-   serialize nahi kar pata tha → "illegal value in property: locationId".
+   serialize nahi kar pata tha → "illegal value in property: locationI* serialize nahi kar pata tha → "illegal value in property: locationId".
    Ab har jagah isi helper se value nikalte hain (function ho ya string). */
 const locId = v => (typeof v === 'function' ? v() : v) || '';
 
@@ -22939,7 +22947,7 @@ function defIcon(id, fallback) {
   return (g && g.icon) || fallback || '⚙';
 }
 /* v2.30.0 (N6) — har settings area ka apna halka rang (sirf icon par, tabs par nahi).
-   Rang backend se (Config.gs group ka `tint`) — yahan koi duplicate list nahi. */
+   Rang backend se (Config.gs group ka `tint`) — yahan koi duplicate list nahi.* Rang backend se (Config.gs group ka `tint`) — yahan koi duplicate list nahi. */
 function defTint(id, fallback) {
   const g = _defs().find(x => x.id === id);
   return (g && g.tint) || fallback || '';
@@ -22952,9 +22960,9 @@ function _titleCase(id) {
 
 
 /* ============================================================================
-   LOGO UPLOAD (v2.6 QA) — "shop ka Logo add karnay ki bhi option nahi hay"
+   LOGO UPLOAD (v2.6 QA) — "shop ka Logo add karnay ki bhi option nahi h* LOGO UPLOAD (v2.6 QA) — "shop ka Logo add karnay ki bhi option nahi hay"
    ----------------------------------------------------------------------------
-   Pehle sirf `logoUrl` text field tha (URL paste karna parta tha).
+   Pehle sirf `logoUrl` text field tha (URL paste karna parta th* Pehle sirf `logoUrl` text field tha (URL paste karna parta tha).
    Ab: 📁 File chunein ya 📷 Camera — Drive par save, URL setting mein.
    ========================================================================== */
 function businessLogoBar() {
@@ -23005,7 +23013,7 @@ function businessLogoBar() {
 
 
 /* fields → aik ya zyada UI2.form, har "sec" ke liye colour-coded block.
-   `sec` na ho to bilkul purana (pehle jaisa) behaviour — koi farq nahi. */
+   `sec` na ho to bilkul purana (pehle jaisa) behaviour — koi farq nahi.* `sec` na ho to bilkul purana (pehle jaisa) behaviour — koi farq nahi. */
 function buildSections(fields) {
   if (!fields.some(x => x.sec)) return UI2.form({ fields: fields, values: {} });
 
@@ -23075,7 +23083,7 @@ function buildSections(fields) {
     }
   }
   /* v2.30.0 (N1/N2) — ASLI ROOT CAUSE:
-     Pehle ye wrapper sirf {el, values} return karta tha. Us par `changed` na
+     Pehle ye wrapper sirf {el, values} return karta tha. Us par `change* Pehle ye wrapper sirf {el, values} return karta tha. Us par `changed` na
      hone ki wajah se sub-tab ka Save POORE sub-tab ki values bhej deta tha —
      aur jo setting UI mein render nahi hui / purani legacy value thi, wo
      default par RESET ho jati thi (user ka asli bug). Ab wrapper har child form
@@ -23167,12 +23175,12 @@ function renderSub(c, groupId, sub) {
      ----------------------------------------------------------------------
      Masla: bade sub-tabs (masalan "AI assistant") me 20+ fields aik flat
      lambi list thi — koi heading, koi separator, koi rang nahi. User ne
-     kaha: "properly structured nahi".
+     kaha: "properly structured n* kaha: "properly structured nahi".
 
      Hal (generic, sab sub-tabs ke liye): field definition me `sec` do —
        { key:'aiEnabled', sec:{title:'Agent', tone:'info'} }
      Rendering khud unhen colour-coded section blocks me baant degi.
-     Jis field par `sec` nahi, woh pehle se mutabiq block me rahegi.
+     Jis field par `sec` nahi, woh pehle se mutabiq block me ra* Jis field par `sec` nahi, woh pehle se mutabiq block me rahegi.
      ====================================================================== */
   const f = buildSections(fields);
 
@@ -23904,7 +23912,7 @@ function renderBackupRestore(c) {
             try {
               if (dump.settings) await API.call('config.save', { values: dump.settings });
               /* W7 (v2.26.0) — ASLI BUG + N+1: pehle `forEach(async …)` fire-and-forget tha, is liye
-                 import "mukammal" batata tha jab ke likhai abhi chal rahi hoti thi (aur fail bhi
+                 import "mukammal" batata tha jab ke likhai abhi chal rahi hoti * import "mukammal" batata tha jab ke likhai abhi chal rahi hoti thi (aur fail bhi
                  chup-chaap hoti thi). Ab: sab writes AWAIT hoti hain, 6 ke parallel batches mein,
                  aur natija (kamyab/fail) gina kar user ko batate hain. */
               const jobs = []
@@ -24001,7 +24009,7 @@ function renderAbout(c) {
   const box = h('div', { class: 'card' }, h('div', { class: 'card-body' },
     h('h4', { style: { margin: '0 0 8px' } }, 'ℹ Haseeb Autos ERP/POS'),
     h('div', { class: 'f-grid' },
-      kv2('Version', '…'),            /* asli value backend se aati hai — hardcode nahi */
+      kv2('Version', '…'),            /* asli value backend se aati hai — hardcode n* kv2('Version', '…'),            /* asli value backend se aati hai — hardcode nahi */
       kv2('Modules', Object.keys(App.screens).length + ' screens'),
       kv2('Backend', '…'),
       kv2('Database', 'Google Sheets (offline-first, queued sync)'),
@@ -27647,7 +27655,7 @@ App.registerScreen('salesman',{
         /* v2.24.0 — MODAL PEHLE KHULE, DATA BAAD MEIN.
            Pehle ye async API calls (routes/areas) modal se pehle await hoti thin;
            agar API slow/offline ho to button dabane par kuch bhi nahi hota tha
-           ("button kaam nahi karta"). Ab UI foran khulti hai, data fill hota rehta hai. */
+           ("button kaam nahi karta"). Ab UI foran khulti hai, data fill hota re* ("button kaam nahi karta"). Ab UI foran khulti hai, data fill hota rehta hai. */
         loadRoutesForSelect(selRoute);
         /* v2.24.0 — Stock Issue modal ab sections mein: details alag, scan+lines alag */
         var formEl=h('div',{class:'mod-stack'},
@@ -28879,7 +28887,7 @@ async function startApp() {
   // background loads
   API.pullCatalog().then(() => updateNotif());
   /* v2.8.4 — ai.config / ai.suggest ab boot call mein hi aa jate hain
-     (upar `include: 'ai'`). Sirf tab alag call karein jab boot se na mile
+     (upar `include: 'ai'`). Sirf tab alag call karein jab boot se na* (upar `include: 'ai'`). Sirf tab alag call karein jab boot se na mile
      (maslan purana cached bootstrap offline se aaya ho). */
   if (!boot.aiConfig) API.call('ai.config', {}).then(c => { App.state.aiConfig = c; }).catch(() => { });
   if (!boot.suggestions) API.call('ai.suggest', {}).then(s => { App.state.suggestions = s; }).catch(() => { });
@@ -29289,7 +29297,7 @@ function wireShell() {
   /* v2.24.0 — `gsr`/`gs` kisi bhi screen par mojood na ho to pehle yahan
      "Cannot set properties of null (setting 'hidden')" throw hoti thi, jo
      keyboard/Esc wale handler ko bhi gira deti thi (user ko lagta: "close
-     button kaam nahi karta"). Ab sab kuch null-safe hai. */
+     button kaam nahi karta"). Ab sab kuch null-safe ha* button kaam nahi karta"). Ab sab kuch null-safe hai. */
   const gs = $('#globalSearch'), gsr = $('#gsResults');
   if (gs && gsr) gs.addEventListener('input', debounce(async () => {
     const q = gs.value.trim();

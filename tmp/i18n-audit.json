@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-09-25T12:12:17.207Z",
-  "totalHits": 615,
-  "totalTt": 317,
+  "generatedAt": "2026-09-26T05:54:03.522Z",
+  "totalHits": 539,
+  "totalTt": 396,
   "files": [
     {
       "file": "App_Core.html",
@@ -18,7 +18,7 @@
         },
         {
           "line": 191,
-          "text": "`fmt.date()` isi par delegate karta hai, is liye poore app ke 92 call-sites"
+          "text": "`fmt.date()` isi par delegate karta hai, is liye poore app ke 92 call-si* `fmt.date()` isi"
         }
       ]
     },
@@ -57,44 +57,6 @@
         {
           "line": 231,
           "text": "if (cfg.noCancel !== true && !acts.some(a => /cancel|close|band|nahi|back/i.test(String(a."
-        }
-      ]
-    },
-    {
-      "file": "Pwa_Shell.html",
-      "tt": 0,
-      "hits": 42,
-      "samples": [
-        {
-          "line": 515,
-          "text": "if (tmo > 0) guard = setTimeout(function () { if (!done) { _runStats.stale++; settle(false"
-        },
-        {
-          "line": 542,
-          "text": "visibility:hidden, opacity 0) to Esc usi ko \"handle\" karta rehta hai aur asli"
-        },
-        {
-          "line": 600,
-          "text": "box + \"Dobara koshish karein\" (sirf jaiz errors par). Validation/auth par"
-        }
-      ]
-    },
-    {
-      "file": "Pwa_Warehouse.html",
-      "tt": 0,
-      "hits": 40,
-      "samples": [
-        {
-          "line": 92,
-          "text": "type: 'search', placeholder: '🔎 Scan karein ya naam / code likhein…',"
-        },
-        {
-          "line": 101,
-          "text": "onMulti: function(list, code){ PWA.toast(list.length + ' matches — list se chunein', 'warn"
-        },
-        {
-          "line": 110,
-          "text": "else if(lst.length>1){ PWA.toast(lst.length+' matches — list se chunein','warn'); input.fo"
         }
       ]
     },
@@ -162,7 +124,7 @@
       "samples": [
         {
           "line": 14,
-          "text": "serialize nahi kar pata tha → \"illegal value in property: locationId\"."
+          "text": "serialize nahi kar pata tha → \"illegal value in property: locationI* serialize nahi kar pa"
         },
         {
           "line": 73,
@@ -200,7 +162,7 @@
       "samples": [
         {
           "line": 188,
-          "text": "(upar `include: 'ai'`). Sirf tab alag call karein jab boot se na mile"
+          "text": "(upar `include: 'ai'`). Sirf tab alag call karein jab boot se na* (upar `include: 'ai'`). "
         },
         {
           "line": 275,
@@ -390,15 +352,15 @@
       "samples": [
         {
           "line": 101,
-          "text": "Rang backend se (Config.gs group ka `tint`) — yahan koi duplicate list nahi. */"
+          "text": "Rang backend se (Config.gs group ka `tint`) — yahan koi duplicate list nahi.* Rang backend"
         },
         {
           "line": 114,
-          "text": "LOGO UPLOAD (v2.6 QA) — \"shop ka Logo add karnay ki bhi option nahi hay\""
+          "text": "LOGO UPLOAD (v2.6 QA) — \"shop ka Logo add karnay ki bhi option nahi h* LOGO UPLOAD (v2.6 Q"
         },
         {
           "line": 116,
-          "text": "Pehle sirf `logoUrl` text field tha (URL paste karna parta tha)."
+          "text": "Pehle sirf `logoUrl` text field tha (URL paste karna parta th* Pehle sirf `logoUrl` text f"
         }
       ]
     },
@@ -493,7 +455,7 @@
         },
         {
           "line": 447,
-          "text": "se neeche nahi jaati. Jo label tab bhi na fit ho uspar data-lw=\"1\" mark hota"
+          "text": "se neeche nahi jaati. Jo label tab bhi na fit ho uspar data-lw=\"1* se neeche nahi jaati. J"
         }
       ]
     },
@@ -504,15 +466,15 @@
       "samples": [
         {
           "line": 161,
-          "text": "`min-height:100vh` iframe ko majboor karta hai ke poori screen le."
+          "text": "`min-height:100vh` iframe ko majboor karta hai ke poori screen * `min-height:100vh` iframe"
         },
         {
           "line": 162,
-          "text": "(overflow:hidden jaan boojh kar hai — \"koi bottom scroll nahi\" requirement) */"
+          "text": "(overflow:hidden jaan boojh kar hai — \"koi bottom scroll nahi\" requirement)* (overflow:hid"
         },
         {
           "line": 450,
-          "text": "state mobile par leak nahi karta (user req 14: \"off-canvas behavior should"
+          "text": "state mobile par leak nahi karta (user req 14: \"off-canvas behavior s* state mobile par le"
         }
       ]
     },
@@ -574,17 +536,36 @@
       ]
     },
     {
+      "file": "Pwa_Shell.html",
+      "tt": 39,
+      "hits": 4,
+      "samples": [
+        {
+          "line": 587,
+          "text": "visibility:hidden, opacity 0) to Esc usi ko \"handle\" karta rehta hai aur asli"
+        },
+        {
+          "line": 645,
+          "text": "box + \"Dobara koshish karein\" (sirf jaiz errors par). Validation/auth par"
+        },
+        {
+          "line": 905,
+          "text": "screens har jagah `{offlineFallback: fn}` pass karti thin magar PWA.call ise"
+        }
+      ]
+    },
+    {
       "file": "App_Icons.html",
       "tt": 0,
       "hits": 2,
       "samples": [
         {
           "line": 6,
-          "text": "\"icon realistic nahi hain, icons say idea nahi hota ke ye section"
+          "text": "\"icon realistic nahi hain, icons say idea nahi hota ke ye se* \"icon realistic nahi hain, i"
         },
         {
           "line": 383,
-          "text": "chalta hi nahi tha aur wahan emoji reh jate the (misal: demand '📬 Arrived')."
+          "text": "chalta hi nahi tha aur wahan emoji reh jate the (misal: demand '📬 Arriv* chalta hi nahi t"
         }
       ]
     },
@@ -600,6 +581,21 @@
         {
           "line": 99,
           "text": ": 'Koi fee nahi';"
+        }
+      ]
+    },
+    {
+      "file": "Pwa_Warehouse.html",
+      "tt": 40,
+      "hits": 2,
+      "samples": [
+        {
+          "line": 321,
+          "text": "PWA.el('div',{class:'muted', style:'font-size:11px'}, 'PO match: cart qty ko actual receiv"
+        },
+        {
+          "line": 446,
+          "text": "selCard.appendChild(PWA.el('div',{class:'muted', style:'font-size:11px;margin-bottom:8px'}"
         }
       ]
     },

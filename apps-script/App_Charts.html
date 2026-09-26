@@ -669,7 +669,7 @@ function fitOne(t, vb, opts) {
   if (!isFinite(size) || size <= 0) return;
   /* v2.8.5 — gauge jaisi jagah par sirf viewBox kaafi NAHI: text ko apni
      line par arc ke andar ki chaurai (data-maxw) mein bhi samaana hai, warna
-     wo curve se takrata hai ("Udhaar recovery Rs 2,500 / Rs 2,828"). */
+     wo curve se takrata hai ("Udhaar recovery Rs 2,500 / Rs 2,828"* wo curve se takrata hai ("Udhaar recovery Rs 2,500 / Rs 2,828"). */
   const maxw = parseFloat(t.getAttribute('data-maxw')) || Infinity;
   for (let guard = 0; guard < 14; guard++) {
     let bb;

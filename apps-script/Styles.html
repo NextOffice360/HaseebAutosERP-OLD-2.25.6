@@ -158,8 +158,8 @@ table.tbl td, table.tbl2 td{font-size:var(--fs-sm); font-weight:500; line-height
    Apps Script app ko sandboxed <iframe> mein serve karta hai. Mobile browsers
    (khaas kar iOS Safari) us iframe ki height collapse kar dete hain, aur
    `height:100%` us sookhe parent par 0px ban jata hai → SAFAID KHAALI PAGE.
-   `min-height:100vh` iframe ko majboor karta hai ke poori screen le.
-   (overflow:hidden jaan boojh kar hai — "koi bottom scroll nahi" requirement) */
+   `min-height:100vh` iframe ko majboor karta hai ke poori screen * `min-height:100vh` iframe ko majboor karta hai ke poori screen le.
+   (overflow:hidden jaan boojh kar hai — "koi bottom scroll nahi" requirement)* (overflow:hidden jaan boojh kar hai — "koi bottom scroll nahi" requirement) */
 html,body{height:100%; min-height:100vh; min-height:100dvh}
 body{
   margin:0; font-family:var(--font); background:var(--bg); color:var(--ink);
@@ -447,7 +447,7 @@ a{color:var(--brand-text); text-decoration:none}
 }
 @media (max-width:900px){
   /* v2.25.8 — off-canvas drawer HAMESHA poora (icon+text); desktop ka rail
-     state mobile par leak nahi karta (user req 14: "off-canvas behavior should
+     state mobile par leak nahi karta (user req 14: "off-canvas behavior s* state mobile par leak nahi karta (user req 14: "off-canvas behavior should
      not conflict with the desktop collapsed/expanded behavior") */
   .shell.collapsed{--sb-w:256px}
   .shell.collapsed .sb-name,.shell.collapsed .sb-user-meta,
@@ -612,7 +612,7 @@ table.tbl tbody tr.clickable{cursor:pointer}
    jab bhi switch kisi `.field` ke andar aata tha (GRN: "On credit", "Update item cost",
    PO form, Settings ke kuch switches) to wo toot jata tha:
      · display:block → `<i>` track inline ho jata tha → width 0 → knob (absolute)
-       label ke harf ke UPAR paint ho jata tha ("On [knob]edit (supplier udhaar)").
+       label ke harf ke UPAR paint ho jata tha ("On [knob]edit (supplier udh* label ke harf ke UPAR paint ho jata tha ("On [knob]edit (supplier udhaar)").
    Ab switch hamesha inline-flex rehta hai aur track block-level hai (fixed height). */
 .field label.switch{display:inline-flex; font-size:var(--fs-sm); font-weight:600; color:var(--ink);
   margin-bottom:0; letter-spacing:normal; max-width:100%; flex-wrap:nowrap}
@@ -1576,7 +1576,7 @@ table.tbl2 .num{text-align:right;font-variant-numeric:tabular-nums}
    Yahan `repeat(auto-fit, minmax(180px,1fr))` tha. `auto-fit` KHALI tracks hata
    deta hai — is liye jis section me jitne fields, utne COLUMNS ban jate the:
      4 fields → 4 columns (273px) | 3 → 3 (367px) | 2 → 2 (556px) | 1 → 1 (1122px)
-   Har section ki chaurai alag → fields kabhi line-up nahi hote (user: "zig-zag").
+   Har section ki chaurai alag → fields kabhi line-up nahi hote (user: "zig-zag* Har section ki chaurai alag → fields kabhi line-up nahi hote (user: "zig-zag").
    `auto-FILL` tracks barqarar rakhta hai: columns ab CONTAINER se bante hain,
    field-count se nahi — sab sections ek hi grid par align hote hain. */
 .f-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px 14px}
@@ -2008,7 +2008,7 @@ table.tbl2 .num{text-align:right;font-variant-numeric:tabular-nums}
 /* Section block — related information ek saath (card + heading + separator)
    ---------------------------------------------------------------------------
    v2.6 QA (root cause): ye `.sec` DEAD CSS tha — koi bhi element is class ko
-   use hi nahi karta (grep: 0 istemal). Magar `.btn.sec` (120 secondary buttons)
+   use hi nahi karta (grep: 0 istemal). Magar `.btn.sec` (120 secondary butto* use hi nahi karta (grep: 0 istemal). Magar `.btn.sec` (120 secondary buttons)
    is selector se MATCH kar jata tha → section ki `padding:16px` button par lag
    jati thi (measured: btn sec ki height 51px, text se 42–52px zyada background).
    Is liye isay HATAYA gaya. Asli section block ab `.ui2-block` hai (upar). */

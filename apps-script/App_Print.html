@@ -476,7 +476,7 @@ const P = {
       const html = (isLabel && window.Print && Print.labelsHtml) ? await labelDocHtml() : P.html(sample, cfg);
       /* v2.25.0 — label CSS print ke sath SHARED hai; preview mein inject karna
          zaroori hai warna preview be-styled hota hai aur user ko lagta hai ke
-         change "lagu nahi hua". */
+         change "lagu nahi* change "lagu nahi hua". */
       const doc = rawHtml(isLabel && window.Print && Print.LABEL_CSS
         ? ('<style>' + Print.LABEL_CSS + '</style>' + html)
         : html);
@@ -497,7 +497,7 @@ const P = {
     /* v2.25.0 — TRUE LIVE PREVIEW: in controls ka koi repaint nahi tha, is liye
        Title / Font size / Footer / Terms / Show-title / Tax-mode badalne par
        preview purana hi rehta tha (user ki shikayat: "refresh ke baghair update
-       nahi hota"). Ab har change foran paint() karta hai. */
+       nahi hota"). Ab har change foran paint() karta * nahi hota"). Ab har change foran paint() karta hai. */
     const copies = numberInput('Copies', cfg.copies || 1, v => { cfg.copies = v; paint(); });
     const fontSize = numberInput('Font size (px)', cfg.fontSize || 12, v => { cfg.fontSize = v; paint(); });
     const title = textInput('Title', cfg.title || 'SALE RECEIPT', v => { cfg.title = v; paint(); });

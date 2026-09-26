@@ -332,6 +332,51 @@
    PWA CORE — API bridge · offline queue · toast · router — v2.19
    Industry polish: SW + install prompt + offline banner + a11y + haptics
    ========================================================================== */
+/* === v2.31.0 (r12) — PWA i18n micro-T =====================================
+   Desktop app ka T (App_Lang) PWA pages par load NAHI hota (sirf Pwa_Shell
+   include hai). Ye halka shim same contract deta hai: T.t(key, fallback).
+   - fallback = ENGLISH (App_Lang convention)
+   - dict: localStorage cache ('ha_pwa_dict') + backend 'lang.dict' se sync
+     (jab PWA.call tayyar ho jata hai; offline/localStorage par chalta rehta hai)
+   - T.set(lang) — language toggle; localStorage 'ha_lang' me save + dict reload
+   - Agar kabhi App_Lang bhi load ho to uska window.T jeetata hai (shim sirf
+     jab T mojood na ho install hota hai).
+   ========================================================================== */
+(function () {
+  if (window.T) return;                        /* App_Lang ka T mojood — shim nahi chahiye */
+  var T = {
+    lang: (function () { try { return localStorage.getItem('ha_lang') || 'en'; } catch (e) { return 'en'; } })(),
+    dict: (function () { try { return JSON.parse(localStorage.getItem('ha_pwa_dict') || '{}') || {}; } catch (e) { return {}; } })(),
+    t: function (key, fallback) {
+      var v = this.dict[key];
+      if (v) { if (typeof v === 'string') return v; var lv = v[this.lang] || v.en; if (lv) return lv; }
+      return fallback !== undefined ? fallback : key;
+    },
+    apply: function () { try { document.documentElement.setAttribute('lang', this.lang === 'ur' ? 'ur' : 'en'); } catch (e) { } },
+    set: function (lang) {
+      this.lang = lang || 'en';
+      try { localStorage.setItem('ha_lang', this.lang); } catch (e) { }
+      this.load(); this.apply();
+    },
+    load: function () {                          /* best-effort dict sync — offline me cached dict */
+      var self = this;
+      try {
+        var fetcher = (window.PWA && PWA.call) ? function () { return PWA.call('lang.dict', { lang: self.lang }); }
+          : (window.API && API.call) ? function () { return API.call('lang.dict', { lang: self.lang }); } : null;
+        if (!fetcher) return;
+        fetcher().then(function (d) {
+          self.dict = d || {};
+          try { localStorage.setItem('ha_pwa_dict', JSON.stringify(self.dict)); } catch (e) { }
+          self.apply();
+        }).catch(function () { });               /* offline: cached dict qayam */
+      } catch (e) { }
+    }
+  };
+  T.apply();
+  window.T = T;
+  window.addEventListener('ha:pwa-ready', function () { T.load(); });   /* PWA.call ke baad sync */
+  window.addEventListener('load', function () { setTimeout(function () { T.load(); }, 2500); });
+})();
 /* === PWA Backend for Netlify/Static/offline === 
   Owner can set GAS exec URL in Settings → Backend (localStorage), or window.API_URL.
   PWA call() will prefer that URL via JSONP/fetch when not inside GAS container.
@@ -523,7 +568,7 @@ var PWA = (function () {
     }
     var guard = 0;
     var tmo = opts.timeoutMs === undefined ? 120000 : opts.timeoutMs;
-    if (tmo > 0) guard = setTimeout(function () { if (!done) { _runStats.stale++; settle(false); toast('Jawab nahi aaya \u2014 dobara koshish kar sakte hain', 'warn'); } }, tmo);
+    if (tmo > 0) guard = setTimeout(function () { if (!done) { _runStats.stale++; settle(false); toast(T.t('pwa.noAnswerRetry','No response \u2014 you can try again'), 'warn'); } }, tmo);
     return p.then(function (r) { clearTimeout(guard); if (!done) settle(true); return r; },
       function (e) {
         clearTimeout(guard);
@@ -613,21 +658,21 @@ var PWA = (function () {
      ========================================================================== */
   var _errStats = { classified: 0, retryable: 0, blockedRetry: 0, retryClicked: 0, writeWarned: 0 };
   var _errKinds = [
-    { kind:'offline', retryable:true, icon:'📶', title:'Internet nahi hai',
-      hint:'Connection wapas aane par dobara koshish karein; offline queue khud istemal hogi.',
+    { kind:'offline', retryable:true, icon:'📶', title:T.t('pwa.noInternet','No internet'),
+      hint:T.t('pwa.connBackHint','Try again when the connection returns; the offline queue will be used automatically.'),
       re:/offline|internet nahi|network error|failed to fetch|load failed|net::/i },
-    { kind:'network', retryable:true, icon:'⏱', title:'Jawab nahi aaya',
-      hint:'Server se jawab waqt par nahi mila \u2014 dobara koshish karein.',
+    { kind:'network', retryable:true, icon:'⏱', title:T.t('pwa.noAnswer','No response'),
+      hint:T.t('pwa.serverTimeout','No timely response from the server \u2014 try again.'),
       re:/REQUEST_TIMEOUT|timeout|timed out|aborted|empty response|502|503|504/i },
-    { kind:'auth', retryable:false, icon:'🔒', title:'Session / ijazat ka masla',
-      hint:'Dobara login karein ya admin se poochein.', re:/login|session|token|permission|unauthor|forbidden|role/i },
-    { kind:'validation', retryable:false, icon:'✏', title:'Maloomat theek karein',
-      hint:'Retry se hal nahi hoga \u2014 fields durust karein.',
+    { kind:'auth', retryable:false, icon:'🔒', title:T.t('pwa.sessionIssue','Session / permission issue'),
+      hint:T.t('pwa.reloginHint','Log in again or ask the admin.'), re:/login|session|token|permission|unauthor|forbidden|role/i },
+    { kind:'validation', retryable:false, icon:'✏', title:T.t('pwa.fixInput','Fix the input'),
+      hint:T.t('pwa.retryWontHelp','Retrying will not help \u2014 correct the fields.'),
       re:/required|zaroori|invalid|ghalat|kam hai|select karein|chunein|qty|khaali|nahi mila|not found|duplicate/i },
     { kind:'conflict', retryable:true, icon:'⏳', title:'Doosra kaam chal raha hai',
-      hint:'2\u20133 second ruk kar dobara koshish karein.', re:/BUSY|already|conflict|locked|queue/i },
+      hint:T.t('pwa.wait2sRetry','Wait 2\u20133 seconds and try again.'), re:/BUSY|already|conflict|locked|queue/i },
     { kind:'server', retryable:true, icon:'🛠', title:'Server par masla',
-      hint:'Dobara koshish karein; masla rahe to system log dekhein.',
+      hint:T.t('pwa.retryCheckLog','Try again; if it persists, check the system log.'),
       re:/exception|internal|script error|quota|server error|500/i }
   ];
   function errKind(err) {
@@ -635,8 +680,8 @@ var PWA = (function () {
     var hit = null;
     if (navigator && navigator.onLine === false) hit = _errKinds[0];
     for (var i = 0; !hit && i < _errKinds.length; i++) if (_errKinds[i].re.test(msg)) hit = _errKinds[i];
-    var k = hit || { kind:'unknown', retryable:false, icon:'⚠', title:'Kaam mukammal nahi hua',
-      hint:'Dobara koshish karein; masla rahe to support ko batayein.' };
+    var k = hit || { kind:'unknown', retryable:false, icon:'⚠', title:T.t('pwa.opIncomplete','The operation did not complete'),
+      hint:T.t('pwa.retrySupport','Try again; if it persists, contact support.') };
     _errStats.classified++; if (k.retryable) _errStats.retryable++; else _errStats.blockedRetry++;
     return { kind:k.kind, retryable:k.retryable, icon:k.icon, title:k.title, hint:k.hint, detail:msg };
   }
@@ -659,7 +704,7 @@ var PWA = (function () {
     box.appendChild(el('div', { class:'eb-hint' }, info.hint));
     if (opts.write) {
       _errStats.writeWarned++;
-      box.appendChild(el('div', { class:'eb-warn' }, 'Ye ' + (opts.writeLabel || 'save') + ' ka kaam tha \u2014 pehle list refresh kar ke dekhein ke kaam ho chuka hai ya nahi, phir dobara karein.'));
+      box.appendChild(el('div', { class:'eb-warn' }, 'Ye ' + (opts.writeLabel || 'save') + T.t('pwa.writeStaleTail',' was done \u2014 refresh the list first to check whether it already went through, then retry.')));
     }
     var acts = el('div', { class:'eb-acts' });
     if (info.retryable && typeof opts.retry === 'function') {
@@ -669,12 +714,12 @@ var PWA = (function () {
           var rp = opts.retry();
           if (rp && rp.catch) rp.catch(function (e) { try { console.warn('[PWA.errBox] retry failed:', (e && e.message) || e); } catch (e2) { } });
         } catch (e) { try { console.warn('[PWA.errBox] retry threw:', (e && e.message) || e); } catch (e2) { } }
-      } }, '\u21BB Dobara koshish karein'));
+      } }, T.t('pwa.retryBtn','\u21BB Try again')));
     }
     if (opts.write && opts.refresh !== false) {
       acts.appendChild(el('button', { class:'btn sm sec', onclick: function () { box.remove(); try { if (window.PWA && PWA.reload) PWA.reload(); } catch (e) { } } }, '\u27F3 Refresh'));
     }
-    acts.appendChild(el('button', { class:'btn sm ghost', onclick: function () { box.remove(); } }, 'Band karein'));
+    acts.appendChild(el('button', { class:'btn sm ghost', onclick: function () { box.remove(); } }, T.t('pwa.close','Close')));
     box.appendChild(acts);
     host.insertBefore(box, host.firstChild);
     return { el: box, info: info };
@@ -766,7 +811,7 @@ var PWA = (function () {
   function enqueue(action, payload) {
     var q = queue();
     if (q.length >= ((state.data && state.data.config && state.data.config.offline.maxQueue) || 200)) {
-      toast('Offline queue bhar gayi — pehle sync karein', 'err'); return null;
+      toast(T.t('pwa.queueFull','Offline queue is full — sync first'), 'err'); return null;
     }
     var id = 'c' + Date.now() + Math.random().toString(36).slice(2, 7);
     q.push({ clientId: id, action: action, payload: payload, at: new Date().toISOString() });
@@ -776,8 +821,8 @@ var PWA = (function () {
 
   async function sync() {
     var q = queue();
-    if (!q.length) { toast('Sync ke liye kuch nahi', 'warn'); return; }
-    if (!navigator.onLine) { toast('Abhi net nahi hai', 'warn'); return; }
+    if (!q.length) { toast(T.t('pwa.nothingToSync','Nothing to sync'), 'warn'); return; }
+    if (!navigator.onLine) { toast(T.t('pwa.noNetYet','No network right now'), 'warn'); return; }
     try {
       var r = await api('pwa.sync', { queue: q });
       var failed = (r.results || []).filter(function (x) { return !x.ok; });
@@ -877,7 +922,7 @@ var PWA = (function () {
         var id = enqueue(action, payload);
         return { ok: true, queued: true, clientId: id, _offline: true };
       }
-      throw new Error('Offline — net aane par dobara koshish karein (' + action + ')');
+      throw new Error(T.t('pwa.offlineRetry','Offline — try again when the network returns (') + action + ')');
     }
     var token = get(TOKEN_KEY, '');
     // enrich with origin + integration key for external frontends (masked server-side)
@@ -912,7 +957,7 @@ var PWA = (function () {
         return new Promise(function(resolve, reject){
           var cb='__pwa_'+Date.now()+'_'+Math.floor(Math.random()*1e6);
           var sEl=document.createElement('script');
-          var timer=setTimeout(function(){ try{ delete window[cb]; document.body.removeChild(sEl);}catch(_e){} reject(new Error('Backend not reachable — Settings → Backend URL check karein / offline queue use karein')); }, 12000);
+          var timer=setTimeout(function(){ try{ delete window[cb]; document.body.removeChild(sEl);}catch(_e){} reject(new Error(T.t('pwa.backendUnreachable','Backend not reachable — check Settings → Backend URL / use the offline queue'))); }, 12000);
           window[cb]=function(resp){
             clearTimeout(timer);
             try{ delete window[cb]; document.body.removeChild(sEl);}catch(_e){}
@@ -922,7 +967,7 @@ var PWA = (function () {
           var ik2=''; try{ ik2=localStorage.getItem('ha_integrationKey')||''; }catch(_e){}
           var qs='action='+encodeURIComponent(action)+'&payload='+encodeURIComponent(JSON.stringify(payload||{}))+'&token='+encodeURIComponent(token||'')+'&_origin='+encodeURIComponent(location.origin)+(ik2?'&_integrationKey='+encodeURIComponent(ik2):'')+'&callback='+cb;
           sEl.src = extUrl + (extUrl.indexOf('?')>-1?'&':'?') + qs;
-          sEl.onerror=function(){ clearTimeout(timer); try{ delete window[cb]; document.body.removeChild(sEl);}catch(_e){} reject(new Error('Network error — backend URL ya net check karein')); };
+          sEl.onerror=function(){ clearTimeout(timer); try{ delete window[cb]; document.body.removeChild(sEl);}catch(_e){} reject(new Error(T.t('pwa.networkError','Network error — check the backend URL or your connection'))); };
           document.body.appendChild(sEl);
         });
       }
@@ -959,7 +1004,7 @@ var PWA = (function () {
     if(!$('#pwaInstall')){
       var ins = el('div',{ id:'pwaInstall', class:'pwa-install' }, [
         el('div',{class:'ico', text:'⬇', style:'font-size:22px'} ),
-        el('div',{class:'tx'}, [ el('b',{text:'Install app'}), el('small',{text:'Home screen par add karein — tez aur offline'}) ] ),
+        el('div',{class:'tx'}, [ el('b',{text:'Install app'}), el('small',{text:T.t('pwa.installHint','Add to home screen — faster and offline')}) ] ),
         el('button',{class:'btn primary sm', onclick:install}, 'Install'),
         el('button',{class:'btn ghost sm', onclick:function(){ var b=$('#pwaInstall'); if(b) b.classList.remove('show'); }}, '✕')
       ]);
@@ -1122,7 +1167,7 @@ var PWA = (function () {
     else { prompt('Copy link', url); }
   }
   function requestNotif(){
-    if(!('Notification' in window)) return toast('Notifications supported nahi','warn');
+    if(!('Notification' in window)) return toast(T.t('pwa.noNotifSupport','Notifications not supported'),'warn');
     Notification.requestPermission().then(function(p){ toast(p==='granted' ? 'Notifications ON ✅' : 'Permission: '+p, p==='granted'?'ok':'warn'); });
   }
   function setupSW(){
@@ -1173,7 +1218,7 @@ var PWA = (function () {
         video.srcObject = stream;
         var bar = el('div',{style:'padding:12px;background:#0b1220;display:flex;gap:8px'}, [
           el('button',{class:'btn ghost block', onclick:close}, '✕ Cancel'),
-          el('div',{style:'color:#93a3c4;font-size:12px;flex:1;display:flex;align-items:center'}, 'Camera se barcode scan karein')
+          el('div',{style:'color:#93a3c4;font-size:12px;flex:1;display:flex;align-items:center'}, T.t('pwa.cameraScan','Scan barcode with camera'))
         ]);
         wrap.appendChild(video); wrap.appendChild(bar); document.body.appendChild(wrap); video.play();
         var stopped=false;
@@ -1214,15 +1259,15 @@ var PWA = (function () {
     }
     var overlay = PWA.el('div', { id:'scanFallbackOverlay', class:'bulk-picker', onclick:function(e){ if(e.target===overlay) close(); }, style:'z-index:70' });
     var box = PWA.el('div', { class:'bulk-box', style:'max-width:420px' });
-    var head = PWA.el('div', { class:'bulk-head' }, [ PWA.el('b',{text:'📷 Scan — Code enter karein'}), PWA.el('button',{class:'btn sm ghost', onclick:close}, '✕') ]);
+    var head = PWA.el('div', { class:'bulk-head' }, [ PWA.el('b',{text:T.t('pwa.scanEnterCode','📷 Scan — enter code')}), PWA.el('button',{class:'btn sm ghost', onclick:close}, '✕') ]);
     var body = PWA.el('div', { style:'padding:14px;display:grid;gap:12px' });
     var msg = PWA.el('div', { class:'muted', style:'font-size:12px;line-height:1.5' });
     var hasCam = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
     var live = (state.data && state.data.config && state.data.config.scannerLiveUrl) || '';
-    if(!hasCam) msg.textContent = 'Is device par camera scan available nahi — neeche code type karein ya photo upload karein.';
-    else msg.textContent = 'Camera permission blocked ya available nahi — manual code ya photo se scan karein.';
+    if(!hasCam) msg.textContent = T.t('pwa.noCamScan','Camera scan is not available on this device — type the code below or upload a photo.');
+    else msg.textContent = T.t('pwa.camBlocked','Camera permission is blocked or unavailable — use a manual code or a photo.');
     if(live) {
-      var liveBtn = PWA.el('button',{class:'btn sm primary', style:'width:100%'}, '↗ External scanner kholein');
+      var liveBtn = PWA.el('button',{class:'btn sm primary', style:'width:100%'}, T.t('pwa.openExtScanner','↗ Open external scanner'));
       liveBtn.onclick = function(){ close(); scanWithExternal(cb); };
       msg.appendChild(PWA.el('div',{style:'margin-top:8px'}, liveBtn));
       msg.appendChild(PWA.el('div',{class:'muted', style:'font-size:11px;margin-top:4px', text:'Settings ▸ Mobile apps (PWA) → Scanner URL se external live camera host hota hai.'}));
@@ -1252,12 +1297,12 @@ var PWA = (function () {
               close(); haptic(true); cb(String(codes[0].rawValue).trim()); return;
             }
           }catch(e){}
-          toast('Photo se code nahi mila — neeche manual likhein','warn');
+          toast(T.t('pwa.noCodeInPhoto','No code found in the photo — type it manually below'),'warn');
         };
-        img.onerror = function(){ toast('Photo load nahi hui','err'); };
+        img.onerror = function(){ toast(T.t('pwa.photoFail','Photo failed to load'),'err'); };
         img.src = URL.createObjectURL(f);
       } else {
-        toast('Is browser me photo decode nahi — manual code likhein','warn');
+        toast(T.t('pwa.photoDecodeFail','This browser cannot decode the photo — type the code manually'),'warn');
       }
     };
     photoBtn.onclick = function(){ fileIn.click(); };
@@ -1267,7 +1312,7 @@ var PWA = (function () {
     body.appendChild(msg);
     body.appendChild(input);
     body.appendChild(row);
-    body.appendChild(PWA.el('div',{class:'muted', style:'font-size:11px'}, 'Tip: Same scanner UI har PWA me — camera permission dena ho to browser Settings → Site → Camera Allow karein.'));
+    body.appendChild(PWA.el('div',{class:'muted', style:'font-size:11px'}, T.t('pwa.scannerTip','Tip: the same scanner UI in every PWA — to grant camera access, browser Settings → Site → Camera → Allow.')));
     box.appendChild(head); box.appendChild(body);
     overlay.appendChild(box); document.body.appendChild(overlay);
     document.body.style.overflow='hidden';
@@ -1316,7 +1361,7 @@ var PWA = (function () {
       }
       if(list.length > 1){
         if(cfg.onMulti) cfg.onMulti(list, clean);
-        else PWA.toast(list.length + ' matches — list se chunein', 'warn');
+        else PWA.toast(list.length + T.t('pwa.multiMatchesTail',' matches — pick from the list'), 'warn');
         try { input.focus(); } catch(e){}
         return false;
       }
@@ -1412,7 +1457,7 @@ var PWA = (function () {
     function handleScan(v){
       var r = findItem(v);
       if(r){ addOrBump(r); haptic(true); toast('Added to bulk: '+ (r.name||r.code) +' ×'+picked[String(r.id)].qty,'ok'); }
-      else toast('Code nahi mila: '+(v||'')+' — field clear, next scan ready','warn');
+      else toast(T.t('pwa.codeNotFound','Code not found: ')+(v||'')+' — field clear, next scan ready','warn');
       scanIn.value='';                       // ALWAYS clear → ready for next scan
       try{ scanIn.focus(); }catch(e){}
     }
@@ -1466,7 +1511,7 @@ var PWA = (function () {
           || String(it.barcode||'').toLowerCase().indexOf(q)>-1;
       });
       filtered = filtered.slice(0,120);
-      if(!filtered.length){ list.appendChild(el('div',{class:'empty', text:'Koi item nahi mila — search badlein'})); return; }
+      if(!filtered.length){ list.appendChild(el('div',{class:'empty', text:T.t('pwa.noItemFound','No item found — change the search')})); return; }
       filtered.forEach(function(it){
         var on = !!picked[String(it.id)];
         var row = el('div', { class:'bulk-item'+(on?' on':'') });
@@ -1493,7 +1538,7 @@ var PWA = (function () {
     }
     addBtn.addEventListener('click', function(){
       var keys = Object.keys(picked);
-      if(!keys.length){ toast('Koi item select nahi — scan ya tick karein','warn'); return; }
+      if(!keys.length){ toast(T.t('pwa.noItemSelected','No item selected — scan or tick'),'warn'); return; }
       var vals = keys.map(function(k){ return { item: picked[k].item, qty: Math.max(1, Number(picked[k].qty)||1) }; });
       close(); haptic(true);
       if(typeof onAdd==='function') onAdd(vals);
@@ -1561,7 +1606,7 @@ var PWA = (function () {
           addRow.onclick = function(){ setSelected(null); closeDd(); };
           dd.appendChild(addRow);
         } else {
-          dd.appendChild(el('div', {class:'empty', style:'padding:12px', text:'Koi customer nahi'}));
+          dd.appendChild(el('div', {class:'empty', style:'padding:12px', text:T.t('pwa.noCustomer','No customer')}));
         }
       } else {
         list.forEach(function(c){
@@ -1732,6 +1777,7 @@ var PWA = (function () {
     queuedCount: queuedCount, reload: function () { load(state.tabs || [], state.renderTab); }
   };
 })();
+try { window.PWA = PWA; } catch (e) { }   /* v2.31.0 (r12) — export: L709 reload + micro-T dict sync isi par depend karte the (pehle missing tha) */
 
 function HA_applyExtraMeta(obj) {
   try {
@@ -1947,7 +1993,7 @@ window.__PWA_BOOTSTRAP__ = {"wh": {"config": {"app": {"id": "wh", "slug": "wareh
   /* ----------------------------- shared pieces ---------------------------- */
   function scannerBox(onPick) {
     var input = PWA.el('input', {
-      type: 'search', placeholder: '🔎 Scan karein ya naam / code likhein…',
+      type: 'search', placeholder: T.t('pwh.scanPh','🔎 Scan or type name / code…'),
       'aria-label':'Item search',
       oninput: function () { S.q = input.value; renderHits(onPick); }
     });
@@ -1956,7 +2002,7 @@ window.__PWA_BOOTSTRAP__ = {"wh": {"config": {"app": {"id": "wh", "slug": "wareh
       label: 'Item',
       find: function(code){ return find(code); },
       onHit: function(it, code){ onPick(it); input.value=''; S.q=''; try{ hits.innerHTML=''; }catch(e){} input.focus(); PWA.toast('📷 ' + it.code + ' — ' + it.name, 'ok'); },
-      onMulti: function(list, code){ PWA.toast(list.length + ' matches — list se chunein', 'warn'); }
+      onMulti: function(list, code){ PWA.toast(list.length + T.t('pwh.multiMatchesTail',' matches — pick from the list'), 'warn'); }
     });
     var scanBtn = PWA.el('button', { class:'btn sm', type:'button', onclick:function(){
       if(PWA.scanWithCamera) PWA.scanWithCamera(function(code){
@@ -1965,17 +2011,17 @@ window.__PWA_BOOTSTRAP__ = {"wh": {"config": {"app": {"id": "wh", "slug": "wareh
         input.value=clean; S.q=clean; renderHits(onPick);
         var lst=find(clean);
         if(lst.length===1){ onPick(lst[0]); input.value=''; S.q=''; hits.innerHTML=''; input.focus(); }
-        else if(lst.length>1){ PWA.toast(lst.length+' matches — list se chunein','warn'); input.focus(); input.select(); }
+        else if(lst.length>1){ PWA.toast(lst.length+T.t('pwh.multiMatchesTail',' matches — pick from the list'),'warn'); input.focus(); input.select(); }
         else { PWA.toast('Code not found: '+clean,'warn'); input.value=''; S.q=''; hits.innerHTML=''; input.focus(); }
       });
       else {
-        var c=prompt('Barcode / code scan karein',''); if(c){ input.value=c; S.q=c; renderHits(onPick); }
+        var c=prompt(T.t('pwh.scanBarcode','Scan barcode / code'),''); if(c){ input.value=c; S.q=c; renderHits(onPick); }
       }
     }}, '📷 Scan');
     var bulkBtn = PWA.el('button', { class:'btn sm ghost', type:'button', onclick:function(){
       if(PWA.openBulkPicker) PWA.openBulkPicker({ items: items(), title:'Bulk add — Warehouse', onAdd:function(picks){
-        if(PWA.state.tab==='putaway' && !S.binId) return PWA.toast('Pehle bin chunein','warn');
-        if(PWA.state.tab==='transfer' && (!S.fromBin||!S.toBin)) return PWA.toast('Pehle dono bins chunein','warn');
+        if(PWA.state.tab==='putaway' && !S.binId) return PWA.toast(T.t('pwh.pickBinFirst','Pick a bin first'),'warn');
+        if(PWA.state.tab==='transfer' && (!S.fromBin||!S.toBin)) return PWA.toast(T.t('pwh.pickBothBins','Pick both bins first'),'warn');
         picks.forEach(function(p){
           var ex=S.cart.filter(function(l){return l.itemId===p.item.id;})[0];
           if(ex) ex.qty += p.qty; else S.cart.push({ itemId:p.item.id, code:p.item.code, name:p.item.name, qty:p.qty, cost:p.item.cost, barcode:p.item.barcode });
@@ -1988,7 +2034,7 @@ window.__PWA_BOOTSTRAP__ = {"wh": {"config": {"app": {"id": "wh", "slug": "wareh
       hits.innerHTML = '';
       var list = find(S.q);
       if (!S.q) return;
-      if (!list.length) { hits.appendChild(PWA.el('div', { class: 'empty' }, 'Koi item nahi mila — code ya naam check karein')); return; }
+      if (!list.length) { hits.appendChild(PWA.el('div', { class: 'empty' }, T.t('pwh.noItem','No item found — check the code or name'))); return; }
       list.forEach(function (i) {
         hits.appendChild(PWA.el('div', {
           class: 'task', onclick: function () { cb(i); input.value = ''; S.q = ''; hits.innerHTML = ''; }
@@ -2012,7 +2058,7 @@ window.__PWA_BOOTSTRAP__ = {"wh": {"config": {"app": {"id": "wh", "slug": "wareh
   function cartView(editableCost) {
     var host = PWA.el('div', { class: 'card' });
     host.appendChild(PWA.el('h3', { text: 'GRN Lines (' + S.cart.length + ')' }));
-    if (!S.cart.length) { host.appendChild(PWA.el('div', { class: 'empty' }, [PWA.el('span',{class:'big',text:'📭'}), PWA.el('div',{text:'Abhi kuch nahi — PO load karein ya scan karein'}) ])); return host; }
+    if (!S.cart.length) { host.appendChild(PWA.el('div', { class: 'empty' }, [PWA.el('span',{class:'big',text:'📭'}), PWA.el('div',{text:T.t('pwh.emptyYet','Nothing yet — load a PO or scan')}) ])); return host; }
     var totalQty=0, totalVal=0;
     S.cart.forEach(function (l, idx) {
       totalQty+=Number(l.qty||0); totalVal+=Number(l.qty||0)*Number(l.cost||0);
@@ -2024,9 +2070,9 @@ window.__PWA_BOOTSTRAP__ = {"wh": {"config": {"app": {"id": "wh", "slug": "wareh
           PWA.el('small', { text: l.code + (editableCost ? ' · cost ' + money(l.cost) : '') + poQty + pending + (l.barcode?' · '+l.barcode:'') })
         ]),
         PWA.el('div', { class: 'qty' }, [
-          PWA.el('button', { text: '−', 'aria-label':'Kam karein', onclick: function () { l.qty = Math.max(0, l.qty - 1); if (!l.qty) S.cart.splice(idx, 1); redraw(); } }),
+          PWA.el('button', { text: '−', 'aria-label':T.t('pwh.decrease','Decrease'), onclick: function () { l.qty = Math.max(0, l.qty - 1); if (!l.qty) S.cart.splice(idx, 1); redraw(); } }),
           PWA.el('span', { text: String(l.qty) }),
-          PWA.el('button', { text: '＋', 'aria-label':'Zyada karein', onclick: function () { l.qty += 1; redraw(); } }),
+          PWA.el('button', { text: '＋', 'aria-label':T.t('pwh.increase','Increase'), onclick: function () { l.qty += 1; redraw(); } }),
           PWA.el('button', { class:'btn sm ghost', text:'✕', onclick:function(){ S.cart.splice(idx,1); redraw(); } })
         ])
       ]));
@@ -2069,8 +2115,8 @@ window.__PWA_BOOTSTRAP__ = {"wh": {"config": {"app": {"id": "wh", "slug": "wareh
     // PO selector card
     if (tasks.length) {
       var c = PWA.el('div', { class: 'card' });
-      c.appendChild(PWA.el('h3', { text: 'PO select karein — auto-load for GRN' }));
-      c.appendChild(PWA.el('div',{class:'muted', style:'font-size:11px;margin-bottom:8px'}, 'PO chunein → expected items GRN cart mein auto-load. Phir actual counted qty match karke GRN confirm karein.'));
+      c.appendChild(PWA.el('h3', { text: T.t('pwh.pickPoAuto','Select PO — auto-load for GRN') }));
+      c.appendChild(PWA.el('div',{class:'muted', style:'font-size:11px;margin-bottom:8px'}, T.t('pwh.poAutoHint','Pick a PO → expected items auto-load into the GRN cart. Then match actual counted qty and confirm the GRN.')));
       tasks.slice(0, 8).forEach(function (t) {
         var isSel = S.selectedPoId===t.refId;
         var row = PWA.el('div', { class: 'task'+(isSel?' on':''), style: isSel? 'border-color:var(--accent);background:rgba(245,158,11,.10)':'' });
@@ -2095,7 +2141,7 @@ window.__PWA_BOOTSTRAP__ = {"wh": {"config": {"app": {"id": "wh", "slug": "wareh
       }
       body.appendChild(c);
     } else {
-      body.appendChild(PWA.el('div',{class:'card'},[PWA.el('div',{class:'empty'},[PWA.el('span',{class:'big',text:'📥'}),PWA.el('div',{text:'Koi pending PO nahi'}),PWA.el('small',{text:'ERP ▸ Purchase ▸ PO se naya PO banayein'})])]));
+      body.appendChild(PWA.el('div',{class:'card'},[PWA.el('div',{class:'empty'},[PWA.el('span',{class:'big',text:'📥'}),PWA.el('div',{text:T.t('pwh.noPendingPo','No pending POs')}),PWA.el('small',{text:T.t('pwh.makePoHint','Create a new PO in ERP ▸ Purchase ▸ PO')})])]));
     }
 
     // PO detail preview if selected
@@ -2124,7 +2170,7 @@ window.__PWA_BOOTSTRAP__ = {"wh": {"config": {"app": {"id": "wh", "slug": "wareh
           var addBtn = PWA.el('button',{class:'btn sm '+(isInCart?'ghost':'primary'), text: isInCart?'✓':'Add'});
           addBtn.onclick = function(){
             var q = Math.max(0, Number(qtyIn.value)||0);
-            if(q<=0) return PWA.toast('Qty >0 karein','warn');
+            if(q<=0) return PWA.toast(T.t('pwh.qtyPositive','Make qty >0'),'warn');
             var ex=S.cart.filter(function(l){return l.itemId===it.itemId;})[0];
             if(ex) ex.qty = q;
             else S.cart.push({ itemId:it.itemId, code:it.code, name:it.name, qty:q, cost:Number(it.rate||it.cost||0), poQty:Number(it.qty), pendingQty:pend, barcode: '' });
@@ -2152,7 +2198,7 @@ window.__PWA_BOOTSTRAP__ = {"wh": {"config": {"app": {"id": "wh", "slug": "wareh
         var po = getPoDetail(S.selectedPoId);
         var inPo = po && (po.items||[]).some(function(it){ return it.itemId===i.id; });
         if(!inPo){
-          PWA.toast('Ye item PO mein nahi — phir bhi add kar rahe hain','warn');
+          PWA.toast(T.t('pwh.notInPo','This item is not in the PO — adding it anyway'),'warn');
         }
       }
       var ex = S.cart.filter(function (l) { return l.itemId === i.id; })[0];
@@ -2185,7 +2231,7 @@ window.__PWA_BOOTSTRAP__ = {"wh": {"config": {"app": {"id": "wh", "slug": "wareh
       PWA.el('button', { class:'btn ghost block', style:'flex:1', onclick:function(){ S.cart=[]; redraw(); } }, '🗑 Clear cart'),
       PWA.el('button', {
         class: 'btn ok block big', style:'flex:2', onclick: async function () {
-          if (!S.cart.length) return PWA.toast('Pehle PO load karein ya item scan karein', 'warn');
+          if (!S.cart.length) return PWA.toast(T.t('pwh.loadPoFirst','Load a PO first or scan an item'), 'warn');
           // validate against PO if selected
           if(S.selectedPoId){
             var po = getPoDetail(S.selectedPoId);
@@ -2193,7 +2239,7 @@ window.__PWA_BOOTSTRAP__ = {"wh": {"config": {"app": {"id": "wh", "slug": "wareh
               // warn if any cart item not in PO
               var extra = S.cart.filter(function(l){ return !(po.items||[]).some(function(it){return it.itemId===l.itemId;}); });
               /* v2.30.3 (W9) — native confirm ki jagah shared PWA.confirm (danger) */
-              if(extra.length && !(await PWA.confirm(extra.length+' item(s) PO mein nahi — phir bhi GRN karein?', { danger: true }))) return;
+              if(extra.length && !(await PWA.confirm(extra.length+T.t('pwh.notInPoConfirm',' item(s) not in the PO — still post the GRN?'), { danger: true }))) return;
             }
           }
           try {
@@ -2203,7 +2249,7 @@ window.__PWA_BOOTSTRAP__ = {"wh": {"config": {"app": {"id": "wh", "slug": "wareh
               invoiceNo: inv.value.trim(), lotNo: lot.value.trim(), expiry: exp.value,
               locationId: PWA.data.locationId
             }, { queueable: true });
-            if (r && r.queued) { PWA.toast('Offline — GRN queue mein save ho gaya', 'warn'); S.cart = []; S.selectedPoId=''; PWA.updateNet(); return redraw(); }
+            if (r && r.queued) { PWA.toast(T.t('pwh.grnQueued','Offline — GRN saved to the queue'), 'warn'); S.cart = []; S.selectedPoId=''; PWA.updateNet(); return redraw(); }
             PWA.toast('✅ GRN ' + r.grnNo + ' ban gayi', 'ok'); S.cart = []; S.selectedPoId=''; lot.value=''; exp.value=''; S.lotNo=''; S.expiry=''; redraw(); PWA.reload();
           } catch (e) { PWA.toast(e.message, 'err'); }
         }
@@ -2232,7 +2278,7 @@ window.__PWA_BOOTSTRAP__ = {"wh": {"config": {"app": {"id": "wh", "slug": "wareh
   }
   function loadPoIntoCart(poId){
     var po = getPoDetail(poId);
-    if(!po){ PWA.toast('PO detail nahi mila','err'); fetchPoDetail(poId, function(p){ if(p) loadPoIntoCart(poId); }); return; }
+    if(!po){ PWA.toast(T.t('pwh.poDetailFail','PO details not found'),'err'); fetchPoDetail(poId, function(p){ if(p) loadPoIntoCart(poId); }); return; }
     var added=0;
     (po.items||[]).forEach(function(it){
       var pend = Math.max(0, Number(it.qty)-Number(it.receivedQty||0));
@@ -2244,7 +2290,7 @@ window.__PWA_BOOTSTRAP__ = {"wh": {"config": {"app": {"id": "wh", "slug": "wareh
       }
       added++;
     });
-    PWA.toast('✅ '+added+' PO items cart mein — verify karke GRN save karein','ok');
+    PWA.toast('✅ '+added+T.t('pwh.poInCartTail',' PO items in the cart — verify and save the GRN'),'ok');
     redraw();
   }
 
@@ -2254,7 +2300,7 @@ window.__PWA_BOOTSTRAP__ = {"wh": {"config": {"app": {"id": "wh", "slug": "wareh
     var sel = PWA.el('select', {
       onchange: function () { S.binId = sel.value; },
       'aria-label':'Destination bin'
-    }, [PWA.el('option', { value: '' }, 'Bin chunein… (e.g. A-01)')].concat(bins.map(function (b) {
+    }, [PWA.el('option', { value: '' }, T.t('pwh.binPh','Pick a bin… (e.g. A-01)'))].concat(bins.map(function (b) {
       return PWA.el('option', { value: b.id }, b.name + (b.code?' · '+b.code:''));
     })));
     if(S.binId) sel.value = S.binId;
@@ -2265,20 +2311,20 @@ window.__PWA_BOOTSTRAP__ = {"wh": {"config": {"app": {"id": "wh", "slug": "wareh
     ]));
 
     body.appendChild(scannerBox(function (i) {
-      if (!S.binId) return PWA.toast('Pehle bin chunein', 'warn');
+      if (!S.binId) return PWA.toast(T.t('pwh.pickBinFirst','Pick a bin first'), 'warn');
       S.cart.push({ itemId: i.id, code: i.code, name: i.name, qty: 1, barcode:i.barcode }); redraw(); PWA.haptic(true);
     }));
     body.appendChild(cartView());
 
     body.appendChild(PWA.el('button', {
       class: 'btn primary block big', onclick: async function () {
-        if (!S.binId) return PWA.toast('Bin chunein', 'warn');
-        if (!S.cart.length) return PWA.toast('Item add karein', 'warn');
+        if (!S.binId) return PWA.toast(T.t('pwh.pickBin','Pick a bin'), 'warn');
+        if (!S.cart.length) return PWA.toast(T.t('pwh.addItem','Add an item'), 'warn');
         try {
           for (var k = 0; k < S.cart.length; k++) {
             await PWA.call('pwa.wh.putaway', { itemId: S.cart[k].itemId, binId: S.binId, qty: S.cart[k].qty });
           }
-          PWA.toast('✅ Put-away ho gaya', 'ok'); S.cart = []; redraw();
+          PWA.toast(T.t('pwh.putawayDone','✅ Put-away complete'), 'ok'); S.cart = []; redraw();
         } catch (e) { PWA.toast(e.message, 'err'); }
       }
     }, '📦 Bin mein dalen'));
@@ -2288,7 +2334,7 @@ window.__PWA_BOOTSTRAP__ = {"wh": {"config": {"app": {"id": "wh", "slug": "wareh
   function viewCount(body) {
     var tasks = (PWA.data && PWA.data.tasks || []).filter(function (t) { return t.kind === 'COUNT'; });
     if (!tasks.length) {
-      body.appendChild(PWA.el('div', { class: 'card' }, [PWA.el('div', { class: 'empty' }, [PWA.el('span',{class:'big', text:'🔢'}), PWA.el('div',{text:'Koi open count sheet nahi'}), PWA.el('small',{text:'ERP ▸ Inventory ▸ Count sheet se sheet banayein'}) ])]));
+      body.appendChild(PWA.el('div', { class: 'card' }, [PWA.el('div', { class: 'empty' }, [PWA.el('span',{class:'big', text:'🔢'}), PWA.el('div',{text:T.t('pwh.noCountSheet','No open count sheet')}), PWA.el('small',{text:T.t('pwh.makeSheetHint','Create a sheet in ERP ▸ Inventory ▸ Count sheet')}) ])]));
       // show audit overview if exists
       var audit = PWA.data && PWA.data.audit;
       if(audit){
@@ -2305,7 +2351,7 @@ window.__PWA_BOOTSTRAP__ = {"wh": {"config": {"app": {"id": "wh", "slug": "wareh
     var sel = PWA.el('select', {
       onchange: function () { S.sheetId = sel.value; S.countFilter=''; if(S.sheetId) loadSheet(S.sheetId, function(){ redraw(); }); else redraw(); },
       'aria-label':'Count sheet'
-    }, [PWA.el('option', { value: '' }, 'Sheet chunein…')].concat(tasks.map(function (t) {
+    }, [PWA.el('option', { value: '' }, T.t('pwh.sheetPh','Pick a sheet…'))].concat(tasks.map(function (t) {
       var prog = '';
       var m = getSheetFromCache(t.refId);
       if(m && m.progress) prog = ' — '+m.progress.counted+'/'+m.progress.total;
@@ -2367,27 +2413,27 @@ window.__PWA_BOOTSTRAP__ = {"wh": {"config": {"app": {"id": "wh", "slug": "wareh
     head.appendChild(PWA.el('div',{style:'display:flex;gap:8px;margin-top:8px'},[
       PWA.el('button',{class:'btn sm ghost', onclick:function(){ S.sheetId=''; sel.value=''; clearLocalCounts(S.sheetId); redraw(); }}, 'Change sheet'),
       PWA.el('button',{class:'btn sm', onclick:function(){ loadSheet(S.sheetId, function(){ redraw(); }); PWA.toast('Refreshed','ok'); }}, '↻ Refresh'),
-      PWA.el('button',{class:'btn sm ghost', onclick:function(){ PWA.confirm('Local counted values clear karein? (server values rahenge)').then(function(ok){ if(ok){ clearLocalCounts(S.sheetId); loadSheet(S.sheetId, function(){ redraw(); }); } }); }}, 'Clear local')
+      PWA.el('button',{class:'btn sm ghost', onclick:function(){ PWA.confirm(T.t('pwh.clearCounted','Clear locally counted values? (server values remain)')).then(function(ok){ if(ok){ clearLocalCounts(S.sheetId); loadSheet(S.sheetId, function(){ redraw(); }); } }); }}, 'Clear local')
     ]));
     body.appendChild(head);
 
     // filter
     var filterInput = PWA.el('input',{type:'search', placeholder:'🔎 Sheet lines mein search (code / naam)…', value: S.countFilter, 'aria-label':'Filter count lines', oninput:function(){ S.countFilter=this.value; renderLines(); }});
-    body.appendChild(PWA.el('div',{class:'card'},[ PWA.el('div',{class:'f'},[PWA.el('label',{text:'Filter lines'}), filterInput]), PWA.el('div',{class:'muted', style:'font-size:11px'}, 'Scan se bhi line bhari ja sakti hai — neeche scanner use karein.') ]));
+    body.appendChild(PWA.el('div',{class:'card'},[ PWA.el('div',{class:'f'},[PWA.el('label',{text:'Filter lines'}), filterInput]), PWA.el('div',{class:'muted', style:'font-size:11px'}, T.t('pwh.scanLineHint','Lines can also be filled by scanning — use the scanner below.')) ]));
 
     // scanner for count — fills countedQty for that item
     body.appendChild(scannerBox(async function (i) {
-      if (!S.sheetId) return PWA.toast('Pehle sheet chunein', 'warn');
+      if (!S.sheetId) return PWA.toast(T.t('pwh.pickSheetFirst','Pick a sheet first'), 'warn');
       // find line for this item
       var sheet = getSheetFromCache(S.sheetId);
       var line = (sheet.lines||[]).filter(function(l){ return l.itemId===i.id; })[0];
-      if(!line){ return PWA.toast('Ye item is sheet mein nahi — filter check karein','warn'); }
+      if(!line){ return PWA.toast(T.t('pwh.notInSheet','This item is not in the sheet — check the filter'),'warn'); }
       var local = getLocalCounts(S.sheetId);
       var cur = local[i.id]!==undefined? local[i.id] : (line.countedQty!==''? Number(line.countedQty): 0);
       var q = prompt(i.name + ' — counted qty? (system: '+line.systemQty+')', String(cur));
       if (q === null) return;
       var qty = Number(q);
-      if(isNaN(qty)) return PWA.toast('Qty ghalat','warn');
+      if(isNaN(qty)) return PWA.toast(T.t('pwh.qtyBad','Invalid qty'),'warn');
       setLocalCount(S.sheetId, i.id, qty);
       // also try server save
       try{
@@ -2413,7 +2459,7 @@ window.__PWA_BOOTSTRAP__ = {"wh": {"config": {"app": {"id": "wh", "slug": "wareh
       if(q) filtered = lines.filter(function(l){ return String(l.code||'').toLowerCase().indexOf(q)>-1 || String(l.name||'').toLowerCase().indexOf(q)>-1; });
       filtered = filtered.slice(0, 80);
       if(!filtered.length){
-        linesHost.appendChild(PWA.el('div',{class:'empty'}, 'Koi line nahi — search badlein'));
+        linesHost.appendChild(PWA.el('div',{class:'empty'}, T.t('pwh.noLines','No lines — change the search')));
         return;
       }
       var localMap = getLocalCounts(S.sheetId);
@@ -2462,7 +2508,7 @@ window.__PWA_BOOTSTRAP__ = {"wh": {"config": {"app": {"id": "wh", "slug": "wareh
         // save all local that differ from server
         var m=getLocalCounts(S.sheetId);
         var keys=Object.keys(m);
-        if(!keys.length) return PWA.toast('Koi local counted nahi','warn');
+        if(!keys.length) return PWA.toast(T.t('pwh.noLocalCounted','No local counts'),'warn');
         var ok=0, fail=0;
         for(var i=0;i<keys.length;i++){
           var itemId=keys[i], qty=m[itemId];
@@ -2579,18 +2625,18 @@ window.__PWA_BOOTSTRAP__ = {"wh": {"config": {"app": {"id": "wh", "slug": "wareh
 
     body.appendChild(PWA.el('button', {
       class: 'btn primary block big', onclick: async function () {
-        if (!S.fromBin || !S.toBin) return PWA.toast('Dono bins chunein', 'warn');
+        if (!S.fromBin || !S.toBin) return PWA.toast(T.t('pwh.pickBothBins2','Pick both bins'), 'warn');
         if (S.fromBin === S.toBin) return PWA.toast('From aur To alag hone chahiye', 'warn');
-        if (!S.cart.length) return PWA.toast('Item add karein', 'warn');
+        if (!S.cart.length) return PWA.toast(T.t('pwh.addItem','Add an item'), 'warn');
         try {
           for (var k = 0; k < S.cart.length; k++) {
             await PWA.call('pwa.wh.transfer',
               { itemId: S.cart[k].itemId, fromBinId: S.fromBin, toBinId: S.toBin, qty: S.cart[k].qty });
           }
-          PWA.toast('✅ Transfer ho gaya', 'ok'); S.cart = []; redraw();
+          PWA.toast(T.t('pwh.transferDone','✅ Transfer complete'), 'ok'); S.cart = []; redraw();
         } catch (e) { PWA.toast(e.message, 'err'); }
       }
-    }, '🔄 Transfer karein'));
+    }, T.t('pwh.transferBtn','🔄 Transfer')));
   }
 
   PWA.onSynced = function () { PWA.reload(); };

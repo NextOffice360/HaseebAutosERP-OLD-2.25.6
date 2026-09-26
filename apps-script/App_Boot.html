@@ -185,7 +185,7 @@ async function startApp() {
   // background loads
   API.pullCatalog().then(() => updateNotif());
   /* v2.8.4 — ai.config / ai.suggest ab boot call mein hi aa jate hain
-     (upar `include: 'ai'`). Sirf tab alag call karein jab boot se na mile
+     (upar `include: 'ai'`). Sirf tab alag call karein jab boot se na* (upar `include: 'ai'`). Sirf tab alag call karein jab boot se na mile
      (maslan purana cached bootstrap offline se aaya ho). */
   if (!boot.aiConfig) API.call('ai.config', {}).then(c => { App.state.aiConfig = c; }).catch(() => { });
   if (!boot.suggestions) API.call('ai.suggest', {}).then(s => { App.state.suggestions = s; }).catch(() => { });
@@ -595,7 +595,7 @@ function wireShell() {
   /* v2.24.0 — `gsr`/`gs` kisi bhi screen par mojood na ho to pehle yahan
      "Cannot set properties of null (setting 'hidden')" throw hoti thi, jo
      keyboard/Esc wale handler ko bhi gira deti thi (user ko lagta: "close
-     button kaam nahi karta"). Ab sab kuch null-safe hai. */
+     button kaam nahi karta"). Ab sab kuch null-safe ha* button kaam nahi karta"). Ab sab kuch null-safe hai. */
   const gs = $('#globalSearch'), gsr = $('#gsResults');
   if (gs && gsr) gs.addEventListener('input', debounce(async () => {
     const q = gs.value.trim();

@@ -98,7 +98,7 @@ function defIcon(id, fallback) {
   return (g && g.icon) || fallback || '⚙';
 }
 /* v2.30.0 (N6) — har settings area ka apna halka rang (sirf icon par, tabs par nahi).
-   Rang backend se (Config.gs group ka `tint`) — yahan koi duplicate list nahi. */
+   Rang backend se (Config.gs group ka `tint`) — yahan koi duplicate list nahi.* Rang backend se (Config.gs group ka `tint`) — yahan koi duplicate list nahi. */
 function defTint(id, fallback) {
   const g = _defs().find(x => x.id === id);
   return (g && g.tint) || fallback || '';
@@ -111,9 +111,9 @@ function _titleCase(id) {
 
 
 /* ============================================================================
-   LOGO UPLOAD (v2.6 QA) — "shop ka Logo add karnay ki bhi option nahi hay"
+   LOGO UPLOAD (v2.6 QA) — "shop ka Logo add karnay ki bhi option nahi h* LOGO UPLOAD (v2.6 QA) — "shop ka Logo add karnay ki bhi option nahi hay"
    ----------------------------------------------------------------------------
-   Pehle sirf `logoUrl` text field tha (URL paste karna parta tha).
+   Pehle sirf `logoUrl` text field tha (URL paste karna parta th* Pehle sirf `logoUrl` text field tha (URL paste karna parta tha).
    Ab: 📁 File chunein ya 📷 Camera — Drive par save, URL setting mein.
    ========================================================================== */
 function businessLogoBar() {
@@ -164,7 +164,7 @@ function businessLogoBar() {
 
 
 /* fields → aik ya zyada UI2.form, har "sec" ke liye colour-coded block.
-   `sec` na ho to bilkul purana (pehle jaisa) behaviour — koi farq nahi. */
+   `sec` na ho to bilkul purana (pehle jaisa) behaviour — koi farq nahi.* `sec` na ho to bilkul purana (pehle jaisa) behaviour — koi farq nahi. */
 function buildSections(fields) {
   if (!fields.some(x => x.sec)) return UI2.form({ fields: fields, values: {} });
 
@@ -234,7 +234,7 @@ function buildSections(fields) {
     }
   }
   /* v2.30.0 (N1/N2) — ASLI ROOT CAUSE:
-     Pehle ye wrapper sirf {el, values} return karta tha. Us par `changed` na
+     Pehle ye wrapper sirf {el, values} return karta tha. Us par `change* Pehle ye wrapper sirf {el, values} return karta tha. Us par `changed` na
      hone ki wajah se sub-tab ka Save POORE sub-tab ki values bhej deta tha —
      aur jo setting UI mein render nahi hui / purani legacy value thi, wo
      default par RESET ho jati thi (user ka asli bug). Ab wrapper har child form
@@ -326,12 +326,12 @@ function renderSub(c, groupId, sub) {
      ----------------------------------------------------------------------
      Masla: bade sub-tabs (masalan "AI assistant") me 20+ fields aik flat
      lambi list thi — koi heading, koi separator, koi rang nahi. User ne
-     kaha: "properly structured nahi".
+     kaha: "properly structured n* kaha: "properly structured nahi".
 
      Hal (generic, sab sub-tabs ke liye): field definition me `sec` do —
        { key:'aiEnabled', sec:{title:'Agent', tone:'info'} }
      Rendering khud unhen colour-coded section blocks me baant degi.
-     Jis field par `sec` nahi, woh pehle se mutabiq block me rahegi.
+     Jis field par `sec` nahi, woh pehle se mutabiq block me ra* Jis field par `sec` nahi, woh pehle se mutabiq block me rahegi.
      ====================================================================== */
   const f = buildSections(fields);
 
@@ -1063,7 +1063,7 @@ function renderBackupRestore(c) {
             try {
               if (dump.settings) await API.call('config.save', { values: dump.settings });
               /* W7 (v2.26.0) — ASLI BUG + N+1: pehle `forEach(async …)` fire-and-forget tha, is liye
-                 import "mukammal" batata tha jab ke likhai abhi chal rahi hoti thi (aur fail bhi
+                 import "mukammal" batata tha jab ke likhai abhi chal rahi hoti * import "mukammal" batata tha jab ke likhai abhi chal rahi hoti thi (aur fail bhi
                  chup-chaap hoti thi). Ab: sab writes AWAIT hoti hain, 6 ke parallel batches mein,
                  aur natija (kamyab/fail) gina kar user ko batate hain. */
               const jobs = []
@@ -1160,7 +1160,7 @@ function renderAbout(c) {
   const box = h('div', { class: 'card' }, h('div', { class: 'card-body' },
     h('h4', { style: { margin: '0 0 8px' } }, 'ℹ Haseeb Autos ERP/POS'),
     h('div', { class: 'f-grid' },
-      kv2('Version', '…'),            /* asli value backend se aati hai — hardcode nahi */
+      kv2('Version', '…'),            /* asli value backend se aati hai — hardcode n* kv2('Version', '…'),            /* asli value backend se aati hai — hardcode nahi */
       kv2('Modules', Object.keys(App.screens).length + ' screens'),
       kv2('Backend', '…'),
       kv2('Database', 'Google Sheets (offline-first, queued sync)'),

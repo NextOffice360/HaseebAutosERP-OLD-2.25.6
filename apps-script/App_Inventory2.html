@@ -11,7 +11,7 @@ const locNameOf = id => { const l = (App.state.locations || []).find(x => x.id =
 
 /* v2.8.3 — `loc` screen se FUNCTION aata hai (`() => App.state.tmpLoc || ''`).
    Pehle wahi function seedha payload mein chala jata tha → google.script.run
-   serialize nahi kar pata tha → "illegal value in property: locationId".
+   serialize nahi kar pata tha → "illegal value in property: locationI* serialize nahi kar pata tha → "illegal value in property: locationId".
    Ab har jagah isi helper se value nikalte hain (function ho ya string). */
 const locId = v => (typeof v === 'function' ? v() : v) || '';
 
