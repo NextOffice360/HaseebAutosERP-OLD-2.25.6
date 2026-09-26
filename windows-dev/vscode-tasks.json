@@ -1,0 +1,60 @@
+{
+  "//": "HaseebAutosERP - VS Code tasks (Windows 10/11). Ise repo root ke .vscode/ folder mein copy karein: windows-dev\\use-vscode.cmd",
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "serve demo (8021)",
+      "type": "shell",
+      "command": "${workspaceFolder}\\windows-dev\\serve-demo.cmd",
+      "isBackground": true,
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated" }
+    },
+    {
+      "label": "run test (prompt)",
+      "type": "shell",
+      "command": "${workspaceFolder}\\windows-dev\\run-test.cmd",
+      "args": ["${input:testName}"],
+      "problemMatcher": []
+    },
+    {
+      "label": "syntax check (check.sh)",
+      "type": "shell",
+      "command": "${workspaceFolder}\\windows-dev\\check.cmd",
+      "problemMatcher": []
+    },
+    {
+      "label": "full verify (71 gates)",
+      "type": "shell",
+      "command": "${workspaceFolder}\\windows-dev\\run-verify.cmd",
+      "args": ["${input:verName}"],
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "shared" }
+    },
+    {
+      "label": "package release",
+      "type": "shell",
+      "command": "${workspaceFolder}\\windows-dev\\package.cmd",
+      "args": ["${input:verName}"],
+      "problemMatcher": []
+    },
+    {
+      "label": "i18n audit + floor",
+      "type": "shell",
+      "command": "${workspaceFolder}\\windows-dev\\i18n-audit.cmd",
+      "problemMatcher": []
+    }
+  ],
+  "inputs": [
+    {
+      "id": "testName",
+      "type": "promptString",
+      "description": "Test ka naam (bina .js), e.g. test_logic"
+    },
+    {
+      "id": "verName",
+      "type": "promptString",
+      "description": "Version, e.g. 2.31.4"
+    }
+  ]
+}
