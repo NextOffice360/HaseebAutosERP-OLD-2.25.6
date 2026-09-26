@@ -1,4 +1,37 @@
-  (chrome libs: /home/user/.cache/chrome-libs/usr/lib/x86_64-linux-gnu)
+Chrome libraries missing — root ke bagair fetch kar rahe hain (ek dafa)…
+Chrome libs → /home/user/.cache/chrome-libs/usr/lib/x86_64-linux-gnu   (suite: trixie)
+
+[1] starter packages download + extract
+    • libnspr4 ok
+    • libnss3 ok
+    • libatk1.0-0t64 ok
+    • libatk-bridge2.0-0t64 ok
+    • libcups2t64 ok
+    • libdrm2 ok
+    • libxkbcommon0 ok
+    • libxcomposite1 ok
+    • libxdamage1 ok
+    • libxfixes3 ok
+    • libxrandr2 ok
+    • libgbm1 ok
+    • libpango-1.0-0 ok
+    • libcairo2 ok
+    • libasound2t64 ok
+    • libatspi2.0-0t64 ok
+    • libavahi-common3 ok
+    • libavahi-client3 ok
+
+[2] iterative: missing sonames → package → download
+    ✔ round 1: koi missing library nahi
+
+[2b] symlinks (versioned .so → soname): 0 banaye
+
+[3] ab Chrome chala kar dekhte hain
+    chrome --version → Google Chrome for Testing 148.0.7778.97
+
+✔ CHROME TAIYAR HAI
+   export LD_LIBRARY_PATH=/home/user/.cache/chrome-libs/usr/lib/x86_64-linux-gnu/usr/lib/x86_64-linux-gnu
+  (chrome libs: /home/user/.cache/chrome-libs/usr/lib/x86_64-linux-gnu/usr/lib/x86_64-linux-gnu)
   (demo server 8021 pehle se chal raha hai)
 
 ==============================================================
@@ -12,7 +45,7 @@
 == Test harness: login-race lint ==
   checked 133 tools   (RULE 1 hits: 2, RULE 2 hits: 0)
   ✔ koi login-race pattern nahi (sab shared harness par)
-  [32m✔ gate passed: check[0m  [2m(3s)[0m
+  [32m✔ gate passed: check[0m  [2m(4s)[0m
 
 [1m▶ schema[0m  (node tools/audit_schema.js)
 
@@ -66,7 +99,7 @@ PASS: 825   FAIL: 0
 ══════════════════════════════════════════════════════════════════
   SETTINGS RENDER   PASS: 16   FAIL: 0
 ══════════════════════════════════════════════════════════════════
-  [32m✔ gate passed: settings-ui[0m  [2m(9s)[0m
+  [32m✔ gate passed: settings-ui[0m  [2m(8s)[0m
 
 [1m▶ settings-defs[0m  (node tools/audit_settings_defs.js)
   ✔ ⑦ datetime settings fields (dt.*) poore  → 6/6
@@ -84,7 +117,7 @@ PASS: 825   FAIL: 0
 ══════════════════════════════════════════════════════════════════
   UI POLISH (rendered)   PASS: 63   FAIL: 0
 ══════════════════════════════════════════════════════════════════
-  [32m✔ gate passed: ui-polish[0m  [2m(146s)[0m
+  [32m✔ gate passed: ui-polish[0m  [2m(140s)[0m
 
 [1m▶ typography[0m  (node tools/audit_typography.js 1440 900)
 ════════════════════════════════════════════════════════════
@@ -174,7 +207,7 @@ PASS demo render: zero console/jsdom errors across the whole flow
 ══════════════════════════════════════════════════════════════════
   POS MULTI-ADD + BULK   PASS: 24   FAIL: 0
 ══════════════════════════════════════════════════════════════════
-  [32m✔ gate passed: pos-multi[0m  [2m(8s)[0m
+  [32m✔ gate passed: pos-multi[0m  [2m(9s)[0m
 
 [1m▶ raw-writes[0m  (node tools/test_raw_writes.js)
   [32m✔[0m   ↳ Setup.gs:144 mehfooz  [2m→ DB.touch() maujood[0m
@@ -269,8 +302,8 @@ AI LOAD ORDER: 49 PASS, 0 FAIL
 [1m▶ static[0m  (node tools/test_static.js)
   ✔ App boot hua (UI.toast ya App.state)  → App ok
   ✔ app boot par JSONP call karta hai (backend se baat ho rahi hai)  → 2 call(s)
-  ✔ har JSONP URL sahi shape ka hai (?t=jsonp&cb=&a=&p=)  → https://script.google.com/macros/s/AKfycb_DEMO_TEST_EXAMPLE/exec?t=jsonp&cb=hacb_27r1w2as09s&a=system.loginCon
-  ✔ API.jsonp() se banaya gaya URL bhi maujood hai  → https://script.google.com/macros/s/AKfycb_DEMO_TEST_EXAMPLE/exec?t=jsonp&cb=hacb_akj6s2o07yf&a=items.list&p=%7
+  ✔ har JSONP URL sahi shape ka hai (?t=jsonp&cb=&a=&p=)  → https://script.google.com/macros/s/AKfycb_DEMO_TEST_EXAMPLE/exec?t=jsonp&cb=hacb_fkc8rq2uw6m&a=system.loginCon
+  ✔ API.jsonp() se banaya gaya URL bhi maujood hai  → https://script.google.com/macros/s/AKfycb_DEMO_TEST_EXAMPLE/exec?t=jsonp&cb=hacb_7acdnuaq29i&a=items.list&p=%7
 
   STATIC BUILD RENDER (dist-static): PASS 8  FAIL 0
   [32m✔ gate passed: static[0m  [2m(4s)[0m
@@ -291,7 +324,7 @@ AI LOAD ORDER: 49 PASS, 0 FAIL
 ══════════════════════════════════════════════════════════════════
   PASS: 66   FAIL: 0
 ══════════════════════════════════════════════════════════════════
-  [32m✔ gate passed: pwa-ui[0m  [2m(13s)[0m
+  [32m✔ gate passed: pwa-ui[0m  [2m(15s)[0m
 
 [1m▶ ui[0m  (node tools/ui_audit.js)
 
@@ -300,7 +333,7 @@ AI LOAD ORDER: 49 PASS, 0 FAIL
 -- empty/undefined content (0) --
 
 -- jsdom errors (0) --
-  [32m✔ gate passed: ui[0m  [2m(25s)[0m
+  [32m✔ gate passed: ui[0m  [2m(24s)[0m
 
 [1m▶ smoke[0m  (node tools/smoke.js)
   ✔ parties click → Customers
@@ -338,13 +371,13 @@ ALIGNMENT CHECKS: 35   FAILED: 0
   [32m✔ gate passed: punch[0m  [2m(53s)[0m
 
 [1m▶ scan-coverage[0m  (node tools/audit_scan_coverage.js)
+  ✔ PWA Warehouse — hardware scan → item pick + field clear  → {"v":"","detached":true,"has":true,"toast":"📷 FL00000 — FLAMINGO DASHBOARD POLISH 450ML"}
 
 ═══════════════════════════════════════════════════════════
-  SCAN COVERAGE   PASS: 2   FAIL: 1   SKIP: 0
-   ✖ FATAL Waiting failed: 15000ms exceeded
+  SCAN COVERAGE   PASS: 21   FAIL: 0   SKIP: 0
   Report: release/scan-coverage-report.html
 ═══════════════════════════════════════════════════════════
-  [31m✖ gate failed: scan-coverage[0m  [2m(17s)[0m
+  [32m✔ gate passed: scan-coverage[0m  [2m(84s)[0m
 
 [1m▶ api-instrument[0m  (node tools/test_api_instrument.js)
 ✔ fail path count hoti hai (unknown action → 1 fail)
@@ -362,7 +395,7 @@ ALIGNMENT CHECKS: 35   FAILED: 0
 ═══════════════════════════════════════════════════════════
   SIDEBAR STATES   PASS: 52   FAIL: 0
 ═══════════════════════════════════════════════════════════
-  [32m✔ gate passed: sidebar-states[0m  [2m(39s)[0m
+  [32m✔ gate passed: sidebar-states[0m  [2m(40s)[0m
 
 [1m▶ busy-coverage[0m  (node tools/test_busy_coverage.js)
 ✔ auto-busy stats: attach/done counters chal rahe hain
@@ -371,7 +404,7 @@ ALIGNMENT CHECKS: 35   FAILED: 0
 ═══════════════════════════════════════════════════════════
   BUSY COVERAGE   PASS: 17   FAIL: 0
 ═══════════════════════════════════════════════════════════
-  [32m✔ gate passed: busy-coverage[0m  [2m(39s)[0m
+  [32m✔ gate passed: busy-coverage[0m  [2m(40s)[0m
 
 [1m▶ api-core[0m  (node tools/test_api_core.js)
 ✔ API.parallel: sach mein parallel chala (inflight ≥ 2)
@@ -434,7 +467,7 @@ UI.ERR   →  PASS: 30   FAIL: 0
 ==============================================================
  PROBLEMS: 0
 ==============================================================
-  [32m✔ gate passed: layout-desktop[0m  [2m(27s)[0m
+  [32m✔ gate passed: layout-desktop[0m  [2m(28s)[0m
 
 [1m▶ layout-mobile[0m  (node tools/audit_layout.js 390 844)
 
@@ -488,7 +521,7 @@ UI.ERR   →  PASS: 30   FAIL: 0
 ==============================================================
  PROBLEMS: 0
 ==============================================================
-  [32m✔ gate passed: pwa-layout-dark[0m  [2m(16s)[0m
+  [32m✔ gate passed: pwa-layout-dark[0m  [2m(17s)[0m
 
 [1m▶ ai-ui[0m  (node tools/test_ai_ui.js)
   [32m✔[0m Credentials blocked from JSONP URLs and persistent offline queue
@@ -506,7 +539,7 @@ PASS logout clears personalized language and supplier cache
 PASS after logout no protected background loads resume
 PASS no uncaught browser errors
 AUTH STARTUP: 21 PASS, 0 FAIL
-  [32m✔ gate passed: auth-startup[0m  [2m(3s)[0m
+  [32m✔ gate passed: auth-startup[0m  [2m(4s)[0m
 
 [1m▶ labels-live[0m  (node tools/test_labels_live.js)
   ✔ raster cases: koi element frame se bahar nahi (bars + QR dono, 0 overflow)  → ["short-50x30:0/0","ean13-50x30:0/0","ean13+qr-50x30:0/0","price-40x25:0/0","long18-60x40:0/0","wh+qr-70x50:0/0","compact-30x20:0/0","price-50x25-ean13:0/0","inv-60x40-ean13:0/0","tiny-25x15-short:0/0","tiny-25x15-long:0/0"]
@@ -515,7 +548,7 @@ AUTH STARTUP: 21 PASS, 0 FAIL
 ═══════════════════════════════════════════════════════════
   LABELS (live preview)   PASS: 30   FAIL: 0
 ═══════════════════════════════════════════════════════════
-  [32m✔ gate passed: labels-live[0m  [2m(32s)[0m
+  [32m✔ gate passed: labels-live[0m  [2m(33s)[0m
 
 [1m▶ grn-drawer[0m  (node tools/test_grn_drawer.js)
   ✔ F9 = Post GRN → success + drawer band  → {"toasts":"GRN posted — stock updated | GRN posted — stock updated","drawerGone":true}
@@ -524,15 +557,16 @@ AUTH STARTUP: 21 PASS, 0 FAIL
 ═══════════════════════════════════════════════════════════
   GRN DRAWER   PASS: 23   FAIL: 0
 ═══════════════════════════════════════════════════════════
-  [32m✔ gate passed: grn-drawer[0m  [2m(24s)[0m
+  [32m✔ gate passed: grn-drawer[0m  [2m(25s)[0m
 
 [1m▶ doc-designer[0m  (node tools/test_doc_designer.js)
+  ✔ LABELS designer modal khula
+  ✔ Label preview me SAMPLE ITEM render (deep DOM)
+  ✔ Preset click ke baad preview zinda (paper render)  → {"open":true,"hasSample":true,"previewAlive":true,"paper":true}
+  ✔ zero page errors designer flows me
 
-[1mD14 · DESIGNER DEEP-DOM GATE (live-preview = rendered DOM)[0m
-  ✖ FATAL Waiting failed: 20000ms exceeded
-
-  D14 DESIGNER   PASS: 0   FAIL: 1
-  [31m✖ gate failed: doc-designer[0m  [2m(24s)[0m
+  D14 DESIGNER   PASS: 10   FAIL: 0
+  [32m✔ gate passed: doc-designer[0m  [2m(12s)[0m
 
 [1m▶ i18n-floor[0m  (node tools/test_i18n_floor.js)
 [1mI18N REGRESSION FLOOR (EN-purity D7)[0m
@@ -553,7 +587,7 @@ AUTH STARTUP: 21 PASS, 0 FAIL
   [32m✔ gate passed: qr-payloads[0m  [2m(0s)[0m
 
 [1m▶ demands[0m  (node tools/test_demand.js)
-  ✔ walk-in customer save — naya customer + catalog item pick kar ke demand save ho jati hai (list +1)  → {"before":6,"after":7,"icode":"FL00000","cname":"","toast":"New customer created: Walk-in Test 347 | Demand saved ✅","confirms":"","closed":true}
+  ✔ walk-in customer save — naya customer + catalog item pick kar ke demand save ho jati hai (list +1)  → {"before":6,"after":7,"icode":"FL00000","cname":"","toast":"New customer created: Walk-in Test 977 | Demand saved ✅","confirms":"","closed":true}
   ✔ is run mein zero page errors  → []
 
 ═══════════════════════════════════════════════════════════
@@ -571,22 +605,22 @@ AUTH STARTUP: 21 PASS, 0 FAIL
   [32m✔ gate passed: salesman-stock[0m  [2m(30s)[0m
 
 [1m▶ scan-parity[0m  (node tools/test_scan_parity.js)
-    at new WaitTask (/home/user/haseeb-autos/node_modules/puppeteer-core/lib/cjs/puppeteer/common/WaitTask.js:49:34)
-    at IsolatedWorld.waitForFunction (/home/user/haseeb-autos/node_modules/puppeteer-core/lib/cjs/puppeteer/api/Realm.js:52:26)
-    at CdpFrame.waitForFunction (/home/user/haseeb-autos/node_modules/puppeteer-core/lib/cjs/puppeteer/api/Frame.js:583:43)
-    at CdpFrame.<anonymous> (/home/user/haseeb-autos/node_modules/puppeteer-core/lib/cjs/puppeteer/util/decorators.js:109:27)
-    at CdpPage.waitForFunction (/home/user/haseeb-autos/node_modules/puppeteer-core/lib/cjs/puppeteer/api/Page.js:1451:37)
-    at /home/user/haseeb-autos/tools/test_scan_parity.js:259:16
-  [31m✖ gate failed: scan-parity[0m  [2m(22s)[0m
+  ✔ footer mein commit + Cancel — teenon mein (POS: Cancel/Add Selected to Cart · PO: Save PO/Cancel · GRN: Post GRN (F9)/Cancel)
+  ✔ is run mein zero page errors
+
+═══════════════════════════════════════════════════════════
+  SCAN PARITY (PO/GRN = POS)   PASS: 29   FAIL: 0
+═══════════════════════════════════════════════════════════
+  [32m✔ gate passed: scan-parity[0m  [2m(29s)[0m
 
 [1m▶ pay-ledger[0m  (node tools/test_pay_ledger.js)
-    at new WaitTask (/home/user/haseeb-autos/node_modules/puppeteer-core/lib/cjs/puppeteer/common/WaitTask.js:49:34)
-    at IsolatedWorld.waitForFunction (/home/user/haseeb-autos/node_modules/puppeteer-core/lib/cjs/puppeteer/api/Realm.js:52:26)
-    at CdpFrame.waitForFunction (/home/user/haseeb-autos/node_modules/puppeteer-core/lib/cjs/puppeteer/api/Frame.js:583:43)
-    at CdpFrame.<anonymous> (/home/user/haseeb-autos/node_modules/puppeteer-core/lib/cjs/puppeteer/util/decorators.js:109:27)
-    at CdpPage.waitForFunction (/home/user/haseeb-autos/node_modules/puppeteer-core/lib/cjs/puppeteer/api/Page.js:1451:37)
-    at /home/user/haseeb-autos/tools/test_pay_ledger.js:192:16
-  [31m✖ gate failed: pay-ledger[0m  [2m(22s)[0m
+  ✔ G8c Pwa_POS posTopLayer: stale (invisible-open) layer ko skip karta hai
+  ✔ G8d Pwa_POS: teeno layers ke open/close par sweepStale (10 call-sites)
+
+═══════════════════════════════════════════════════════════
+  PAY LEDGER   PASS: 49   FAIL: 0
+═══════════════════════════════════════════════════════════
+  [32m✔ gate passed: pay-ledger[0m  [2m(52s)[0m
 
 [1m▶ fields[0m  (node tools/test_field_visibility.js)
   ✔ fields.matrix route chalti hai (Users & Security tab ke liye)
@@ -595,7 +629,7 @@ AUTH STARTUP: 21 PASS, 0 FAIL
   ✔ har field family ka apna permission key (spec: role → field)
 
 [32mW5 FIELD-VISIBILITY GATE: 58 pass / 0 fail[0m
-  [32m✔ gate passed: fields[0m  [2m(5s)[0m
+  [32m✔ gate passed: fields[0m  [2m(4s)[0m
 
 [1m▶ datetime[0m  (node tools/test_datetime.js)
   ✔ stampRow App_UI2 mein define + 3 detail views mein adopt
@@ -604,34 +638,34 @@ AUTH STARTUP: 21 PASS, 0 FAIL
   ✔ zero page errors
 
 [32mW4 DATE/TIME GATE: 44 pass / 0 fail[0m
-  [32m✔ gate passed: datetime[0m  [2m(2s)[0m
+  [32m✔ gate passed: datetime[0m  [2m(3s)[0m
 
 [1m▶ pwa-shared[0m  (node tools/test_pwa_shared.js)
-    at #evaluate (/home/user/haseeb-autos/node_modules/puppeteer-core/lib/cjs/puppeteer/cdp/ExecutionContext.js:391:56)
-    at async ExecutionContext.evaluate (/home/user/haseeb-autos/node_modules/puppeteer-core/lib/cjs/puppeteer/cdp/ExecutionContext.js:277:16)
-    at async IsolatedWorld.evaluate (/home/user/haseeb-autos/node_modules/puppeteer-core/lib/cjs/puppeteer/cdp/IsolatedWorld.js:105:16)
-    at async CdpFrame.evaluate (/home/user/haseeb-autos/node_modules/puppeteer-core/lib/cjs/puppeteer/api/Frame.js:362:20)
-    at async CdpPage.evaluate (/home/user/haseeb-autos/node_modules/puppeteer-core/lib/cjs/puppeteer/api/Page.js:830:20)
-    at async /home/user/haseeb-autos/tools/test_pwa_shared.js:49:16
-  [31m✖ gate failed: pwa-shared[0m  [2m(4s)[0m
+  ✔ ⑥ pwa-fo.html boot + PWA.shared aa gaya  → []
+  ✔ ① zero page errors (poore run mein)  → []
+
+═══════════════════════════════════════════════════════════
+  PWA SHARED CACHE   PASS: 16   FAIL: 0
+═══════════════════════════════════════════════════════════
+  [32m✔ gate passed: pwa-shared[0m  [2m(11s)[0m
 
 [1m▶ pwa-overlays[0m  (node tools/test_pwa_overlays_close.js)
-  PWA OVERLAYS CLOSE   PASS: 3   FAIL: 4
-    ✖ pwa-pos.html — boot ho gaya (PWA data load)
-    ✖ pwa-sm.html — boot ho gaya (PWA data load)
-    ✖ pwa-fo.html — boot ho gaya (PWA data load)
-    ✖ pwa-wh.html — boot ho gaya (PWA data load)
+  ✔ pwa-wh.html ▸ Bulk Add modal → Scrim se band hua
+  ✔ pwa-wh.html — zero page errors
+
 ═══════════════════════════════════════════════════════════
-  [31m✖ gate failed: pwa-overlays[0m  [2m(14s)[0m
+  PWA OVERLAYS CLOSE   PASS: 124   FAIL: 0
+═══════════════════════════════════════════════════════════
+  [32m✔ gate passed: pwa-overlays[0m  [2m(66s)[0m
 
 [1m▶ modals-close[0m  (node tools/test_modals_close.js)
-    at new WaitTask (/home/user/haseeb-autos/node_modules/puppeteer-core/lib/cjs/puppeteer/common/WaitTask.js:49:34)
-    at IsolatedWorld.waitForFunction (/home/user/haseeb-autos/node_modules/puppeteer-core/lib/cjs/puppeteer/api/Realm.js:52:26)
-    at CdpFrame.waitForFunction (/home/user/haseeb-autos/node_modules/puppeteer-core/lib/cjs/puppeteer/api/Frame.js:583:43)
-    at CdpFrame.<anonymous> (/home/user/haseeb-autos/node_modules/puppeteer-core/lib/cjs/puppeteer/util/decorators.js:109:27)
-    at CdpPage.waitForFunction (/home/user/haseeb-autos/node_modules/puppeteer-core/lib/cjs/puppeteer/api/Page.js:1451:37)
-    at /home/user/haseeb-autos/tools/test_modals_close.js:180:16
-  [31m✖ gate failed: modals-close[0m  [2m(22s)[0m
+✔ stale entry (bina close hataya gaya scrim) Esc ko block nahi karti — visible modal band hua
+✔ regression setup: modal khula + DOM mein invisible .gs-results/.img-lightbox mojood
+✔ invisible/stale node hone par bhi Esc modal band karta hai (root-cause fix)
+✔ close-sweep: zero page errors
+
+MODALS-CLOSE PASS 91 / FAIL 0
+  [32m✔ gate passed: modals-close[0m  [2m(25s)[0m
 
 [1m▶ timeouts[0m  (node tools/test_timeouts.js)
 PASS no automatic write retry
@@ -640,123 +674,85 @@ PASS synchronous transport exception also cleans busy state
 PASS AI client timeout aligned above server budget, not old 25 seconds
 PASS rendered page no uncaught errors
 TIMEOUT + AMOUNTS: 32 PASS, 0 FAIL
-  [32m✔ gate passed: timeouts[0m  [2m(2s)[0m
+  [32m✔ gate passed: timeouts[0m  [2m(1s)[0m
 
 --- waqt (sab se dheema pehle) -----------------------------------------
-    146s  ui-polish
+    140s  ui-polish
     132s  smoke
+     84s  scan-coverage
      84s  tabs
-     56s  layout-overlays-m
+     66s  pwa-overlays
      56s  layout-overlays
+     56s  layout-overlays-m
      53s  punch
-     39s  busy-coverage
-     39s  sidebar-states
+     52s  pay-ledger
+     40s  busy-coverage
+     40s  sidebar-states
      33s  demands
-     32s  labels-live
+     33s  labels-live
      30s  salesman-stock
-     28s  layout-mobile
+     29s  scan-parity
      28s  layout-dark
-     27s  layout-desktop
-     25s  ui
+     28s  layout-mobile
+     28s  layout-desktop
+     25s  modals-close
+     25s  grn-drawer
      24s  scale
-     24s  grn-drawer
-     24s  doc-designer
-     22s  modals-close
-     22s  scan-parity
-     22s  pay-ledger
+     24s  ui
      20s  ai-ui
-     17s  scan-coverage
-     16s  pwa-layout-dark
+     17s  pwa-layout-dark
      16s  pwa-layout
      15s  align
-     14s  pwa-overlays
-     13s  pwa-ui
+     15s  pwa-ui
+     12s  doc-designer
      11s  dyn-deps
+     11s  pwa-shared
      10s  ui-run
-      9s  settings-ui
-      8s  pos-multi
+      9s  pos-multi
+      8s  settings-ui
       7s  perf-batch
       7s  charts-edge
       6s  ui-err
       6s  api-core
       5s  session-guard
-      5s  fields
-      4s  pwa-shared
+      4s  fields
       4s  api-instrument
       4s  static
-      3s  auth-startup
-      3s  check
-      2s  datetime
-      2s  logic
-      2s  timeouts
-      2s  report-actions
-      1s  qr-thermal
-      1s  routes
-      0s  e2e
-      0s  pwa
-      0s  ai-load-order
-      0s  seed-recovery
-      0s  route-audit
-      0s  cache
-      0s  i18n-floor
-      0s  ai
-      0s  report-dates
-      0s  ai-hub
-      0s  settings-defs
-      0s  metatags
-      0s  diagnose
-      0s  settings-perf
-      0s  session
-      0s  backend-perf
-      0s  cache-warm
-      0s  raw-writes
-      0s  icons
-      0s  qr-payloads
-      0s  schema
-      0s  typography
-  ----------------------------------------------------------------------
-   1164s  KUL (71 gate)
-  (ye waqt isi machine ke hain; --fast set isi tarah tune kiya gaya tha)
-
-==============================================================
- GATE FAILED: scan-coverage doc-designer scan-parity pay-ledger pwa-shared pwa-overlays modals-close
-==============================================================
-     4s  api-instrument
-      4s  static
+      4s  check
       4s  auth-startup
       3s  datetime
-      3s  check
       2s  logic
-      2s  timeouts
-      1s  report-actions
+      2s  report-actions
+      1s  timeouts
       1s  qr-thermal
-      0s  ai-load-order
-      0s  routes
+      1s  routes
       0s  pwa
       0s  e2e
+      0s  ai-load-order
       0s  seed-recovery
-      0s  cache
       0s  route-audit
-      0s  ai
-      0s  i18n-floor
       0s  ai-hub
-      0s  session
-      0s  metatags
-      0s  report-dates
+      0s  i18n-floor
+      0s  cache
+      0s  ai
       0s  cache-warm
-      0s  settings-perf
+      0s  settings-defs
+      0s  metatags
       0s  diagnose
       0s  backend-perf
-      0s  settings-defs
+      0s  report-dates
+      0s  settings-perf
+      0s  session
       0s  raw-writes
       0s  qr-payloads
       0s  icons
       0s  typography
       0s  schema
   ----------------------------------------------------------------------
-   1174s  KUL (71 gate)
+   1319s  KUL (71 gate)
   (ye waqt isi machine ke hain; --fast set isi tarah tune kiya gaya tha)
 
 ==============================================================
- GATE FAILED: scan-coverage doc-designer scan-parity pay-ledger pwa-shared pwa-overlays modals-close
+ ALL GATES GREEN ✔  (71 gate: full suite)
 ==============================================================
+VERIFY_EXIT=0

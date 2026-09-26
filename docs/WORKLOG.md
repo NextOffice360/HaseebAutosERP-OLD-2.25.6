@@ -222,3 +222,10 @@ integration + regression + UI/UX-check + error-handling + security-check pass ho
 - [x] Tests language-neutral: salesman-stock 10/0, demand 13/0, save-all 24/0, modals-close 91/0, busy 17/0, ui-err 30/0
 - [x] LESSON (dobara na ho): plain-string→T.t() swap mein +1 closing paren lagti hai (UI2 L2172, Demand L414/426 — check.sh ne pakra)
 - [x] v2.31.4 → verify → zip → push
+
+### r16 ship-note (2026-09-26)
+- [x] 71/71 GREEN (tmp/validate-v2.31.4.log) — v2.31.4.zip release/
+- [x] Windows dev-kit: windows-dev/ (cmd/ps1 wrappers, VS Code tasks, ftp-backup) — Windows 10/11 64-bit parity
+- [x] FTP backup-cycle (mandate): 21 files uploaded+size-verified (7 old zips, 8 old logs, archive/2.30.2+3, bundle v2.30.5, snapshot ws-snapshot-r16) → phir local delete (repo 178M→163M)
+- [x] Env-wedge root-cause (naya pattern): sandbox restart ke baad PURANA demo-server dead-inode par serve karta tha → sab UI-gates 404-timeout; recipe: readlink /proc/<pid>/cwd → "(deleted)" dikhe to server kill + fresh start
+- [x] windows-dev rules: FTP creds sirf %USERPROFILE%\_netrc, token sirf GITHUB_TOKEN env
