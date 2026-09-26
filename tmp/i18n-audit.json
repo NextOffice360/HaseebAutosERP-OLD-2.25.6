@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-09-26T11:37:39.772Z",
-  "totalHits": 358,
-  "totalTt": 604,
+  "generatedAt": "2026-09-26T11:39:19.359Z",
+  "totalHits": 334,
+  "totalTt": 629,
   "files": [
     {
       "file": "App_Core.html",
@@ -19,25 +19,6 @@
         {
           "line": 203,
           "text": "`fmt.date()` isi par delegate karta hai, is liye poore app ke 92 call-si* `fmt.date()` isi"
-        }
-      ]
-    },
-    {
-      "file": "App_Inventory2.html",
-      "tt": 6,
-      "hits": 24,
-      "samples": [
-        {
-          "line": 14,
-          "text": "serialize nahi kar pata tha → \"illegal value in property: locationI* serialize nahi kar pa"
-        },
-        {
-          "line": 73,
-          "text": "kind: 'empty', icon: '📦', title: 'Abhi koi item nahi',"
-        },
-        {
-          "line": 74,
-          "text": "hint: 'Items screen se products add karein — stock ke baghair bhi yahan nazar aayenge (0 s"
         }
       ]
     },
