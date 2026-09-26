@@ -169,7 +169,7 @@
     /* r14/F5 — my-customers chip: kitne assigned the vs dikh rahe */
     try {
       var _wrap = sellField.host || sellField.el || sellField.wrap || null;
-      var _chip = PWA.el('div', { class:'muted', style:'font-size:10.5px;margin-top:4px' },
+      var _chip = PWA.el('div', { class:'muted', style:'font-size:11px;margin-top:4px'  /* v2.31.2: typography floor 10.8 */ },
         _mine.length ? ('👤 Mere customers: ' + _mine.length + ' (assigned)') : ('👤 Mere customers: 0 — poora list dikh raha hai (' + _all.length + ')'));
       if (_wrap && _wrap.parentNode) _wrap.parentNode.insertBefore(_chip, _wrap.nextSibling);
       else if (body.firstChild) body.insertBefore(_chip, body.firstChild.nextSibling);

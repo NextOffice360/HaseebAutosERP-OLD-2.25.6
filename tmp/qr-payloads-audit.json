@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-26T07:17:41.587Z",
+  "generatedAt": "2026-09-26T07:56:36.154Z",
   "sites": [
     {
       "file": "App_Barcode.html",
@@ -17,14 +17,14 @@
     },
     {
       "file": "App_Core.html",
-      "line": 3327,
+      "line": 3339,
       "payload": "txt",
       "fmt": "raw",
       "resolvable": false
     },
     {
       "file": "App_Core.html",
-      "line": 3391,
+      "line": 3403,
       "payload": "r.qr",
       "fmt": "raw",
       "resolvable": false
@@ -45,7 +45,7 @@
     },
     {
       "file": "App_Print.html",
-      "line": 177,
+      "line": 178,
       "payload": "'HA:INV:' + sale.invoiceNo",
       "fmt": "kv",
       "resolvable": true

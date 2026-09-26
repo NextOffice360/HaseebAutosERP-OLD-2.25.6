@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-26T07:32:39.354Z",
+  "generatedAt": "2026-09-26T07:56:36.109Z",
   "totalHits": 486,
   "totalTt": 459,
   "files": [
@@ -9,15 +9,15 @@
       "hits": 57,
       "samples": [
         {
-          "line": 103,
+          "line": 115,
           "text": "const t = setTimeout(()=>{ cleanup(); reject(new Error('Timeout — URL reachable nahi ya GA"
         },
         {
-          "line": 107,
+          "line": 119,
           "text": "s.onerror=()=>{ cleanup(); reject(new Error('Network error — CORS / deploy check karein.')"
         },
         {
-          "line": 191,
+          "line": 203,
           "text": "`fmt.date()` isi par delegate karta hai, is liye poore app ke 92 call-si* `fmt.date()` isi"
         }
       ]
