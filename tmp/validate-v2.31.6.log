@@ -12,7 +12,7 @@
 == Test harness: login-race lint ==
   checked 133 tools   (RULE 1 hits: 2, RULE 2 hits: 0)
   ✔ koi login-race pattern nahi (sab shared harness par)
-  [32m✔ gate passed: check[0m  [2m(4s)[0m
+  [32m✔ gate passed: check[0m  [2m(3s)[0m
 
 [1m▶ schema[0m  (node tools/audit_schema.js)
 
@@ -48,7 +48,7 @@ PASS: 825   FAIL: 0
 ══════════════════════════════════════════════════════════════════
   UNTESTED-ROUTE SWEEP   PASS: 62   FAIL: 0
 ══════════════════════════════════════════════════════════════════
-  [32m✔ gate passed: routes[0m  [2m(1s)[0m
+  [32m✔ gate passed: routes[0m  [2m(0s)[0m
 
 [1m▶ route-audit[0m  (node tools/route_audit.js)
      · warehouse.lot.receive
@@ -66,7 +66,7 @@ PASS: 825   FAIL: 0
 ══════════════════════════════════════════════════════════════════
   SETTINGS RENDER   PASS: 16   FAIL: 0
 ══════════════════════════════════════════════════════════════════
-  [32m✔ gate passed: settings-ui[0m  [2m(9s)[0m
+  [32m✔ gate passed: settings-ui[0m  [2m(8s)[0m
 
 [1m▶ settings-defs[0m  (node tools/audit_settings_defs.js)
   ✔ ⑦ datetime settings fields (dt.*) poore  → 6/6
@@ -168,13 +168,13 @@ PASS no scanner URL + in-app disabled still shows manual path (never a dead end)
   [32m✔ gate passed: qr-thermal[0m  [2m(1s)[0m
 
 [1m▶ pos-multi[0m  (node tools/test_pos_multi.js)
-FAIL demo render: without liveUrl bulk degrades to in-app modal; Close ends cleanly
+PASS demo render: without liveUrl bulk degrades to in-app modal; Close ends cleanly
 PASS demo render: zero console/jsdom errors across the whole flow
 
 ══════════════════════════════════════════════════════════════════
-  POS MULTI-ADD + BULK   PASS: 23   FAIL: 1
+  POS MULTI-ADD + BULK   PASS: 24   FAIL: 0
 ══════════════════════════════════════════════════════════════════
-  [31m✖ gate failed: pos-multi[0m  [2m(8s)[0m
+  [32m✔ gate passed: pos-multi[0m  [2m(8s)[0m
 
 [1m▶ raw-writes[0m  (node tools/test_raw_writes.js)
   [32m✔[0m   ↳ Setup.gs:144 mehfooz  [2m→ DB.touch() maujood[0m
@@ -269,8 +269,8 @@ AI LOAD ORDER: 49 PASS, 0 FAIL
 [1m▶ static[0m  (node tools/test_static.js)
   ✔ App boot hua (UI.toast ya App.state)  → App ok
   ✔ app boot par JSONP call karta hai (backend se baat ho rahi hai)  → 2 call(s)
-  ✔ har JSONP URL sahi shape ka hai (?t=jsonp&cb=&a=&p=)  → https://script.google.com/macros/s/AKfycb_DEMO_TEST_EXAMPLE/exec?t=jsonp&cb=hacb_619gthnvzgp&a=system.loginCon
-  ✔ API.jsonp() se banaya gaya URL bhi maujood hai  → https://script.google.com/macros/s/AKfycb_DEMO_TEST_EXAMPLE/exec?t=jsonp&cb=hacb_143fs4n7xbli&a=items.list&p=%
+  ✔ har JSONP URL sahi shape ka hai (?t=jsonp&cb=&a=&p=)  → https://script.google.com/macros/s/AKfycb_DEMO_TEST_EXAMPLE/exec?t=jsonp&cb=hacb_wyw3m3ihyj&a=system.loginConf
+  ✔ API.jsonp() se banaya gaya URL bhi maujood hai  → https://script.google.com/macros/s/AKfycb_DEMO_TEST_EXAMPLE/exec?t=jsonp&cb=hacb_kwxrfr1v3jq&a=items.list&p=%7
 
   STATIC BUILD RENDER (dist-static): PASS 8  FAIL 0
   [32m✔ gate passed: static[0m  [2m(4s)[0m
@@ -281,17 +281,17 @@ AI LOAD ORDER: 49 PASS, 0 FAIL
   ✔ inputs 16px — iOS auto-zoom nahi hoga
   ✔ safe-area insets (notch wale phones)
 
-  ✖ 1 problem(s)
-  [31m✖ gate failed: pwa[0m  [2m(0s)[0m
+  ✔ PWA checks: sab theek
+  [32m✔ gate passed: pwa[0m  [2m(0s)[0m
 
 [1m▶ pwa-ui[0m  (bash tools/run_pwa_ui.sh)
-   ✖ Salesman: tab "Sell" maujood
-   ✖ Salesman: tab "Collect" maujood
-   ✖ Salesman: tab "Settle" maujood
-   ✖ Salesman: "Mera stock" mein asli items hain (khaali nahi)  → stock empty
-   ✖ Salesman: stock ki value nazar aa rahi hai  → no total value
+  ✔ Offline: queue count barh gaya  → count=1
+  ✔ Offline: net badge "Offline" dikhata hai  → ⌛ 1 queued
+
 ══════════════════════════════════════════════════════════════════
-  [31m✖ gate failed: pwa-ui[0m  [2m(13s)[0m
+  PASS: 66   FAIL: 0
+══════════════════════════════════════════════════════════════════
+  [32m✔ gate passed: pwa-ui[0m  [2m(13s)[0m
 
 [1m▶ ui[0m  (node tools/ui_audit.js)
 
@@ -307,18 +307,18 @@ AI LOAD ORDER: 49 PASS, 0 FAIL
   ✔ parties click → Suppliers
 
 ==============================================================
-CHECKS: 333   FAILED: 2
+CHECKS: 333   FAILED: 0
 ==============================================================
-  [31m✖ gate failed: smoke[0m  [2m(132s)[0m
+  [32m✔ gate passed: smoke[0m  [2m(131s)[0m
 
 [1m▶ tabs[0m  (node tools/audit_tabs.js)
-==============================================================
-AUDIT CHECKS: 664   FAILED: 1
-==============================================================
 
-Failures:
- -   reorder ▸ Rules & preview no NaN/undefined → NaNsuggestedQty  = CEILING(targetLevel - av
-  [31m✖ gate failed: tabs[0m  [2m(84s)[0m
+[1mDASHBOARD CHARTS[0m
+
+==============================================================
+AUDIT CHECKS: 664   FAILED: 0
+==============================================================
+  [32m✔ gate passed: tabs[0m  [2m(83s)[0m
 
 [1m▶ align[0m  (node tools/audit_align.js)
 [1mSTATIC CSS RULES[0m
@@ -326,7 +326,7 @@ Failures:
 ==============================================================
 ALIGNMENT CHECKS: 35   FAILED: 0
 ==============================================================
-  [32m✔ gate passed: align[0m  [2m(16s)[0m
+  [32m✔ gate passed: align[0m  [2m(15s)[0m
 
 [1m▶ punch[0m  (node tools/verify_punchlist.js)
   ✅ 16. 🔐 Users & Security — allow / disallow rules (checkboxes)  [6/6]
@@ -335,16 +335,16 @@ ALIGNMENT CHECKS: 35   FAILED: 0
  REQUIREMENTS: 16/16   CHECKS: 117/117   FAILED: 0
  Report: release/punchlist-report.html
 ==============================================================
-  [32m✔ gate passed: punch[0m  [2m(53s)[0m
+  [32m✔ gate passed: punch[0m  [2m(54s)[0m
 
 [1m▶ scan-coverage[0m  (node tools/audit_scan_coverage.js)
+  ✔ PWA Warehouse — hardware scan → item pick + field clear  → {"v":"","detached":true,"has":true,"toast":"📷 FL00000 — FLAMINGO DASHBOARD POLISH 450ML"}
 
 ═══════════════════════════════════════════════════════════
-  SCAN COVERAGE   PASS: 20   FAIL: 1   SKIP: 0
-   ✖ PWA Salesman — hardware scan → stock filter + field clear — PWA page par scan input nahi mila
+  SCAN COVERAGE   PASS: 21   FAIL: 0   SKIP: 0
   Report: release/scan-coverage-report.html
 ═══════════════════════════════════════════════════════════
-  [31m✖ gate failed: scan-coverage[0m  [2m(83s)[0m
+  [32m✔ gate passed: scan-coverage[0m  [2m(84s)[0m
 
 [1m▶ api-instrument[0m  (node tools/test_api_instrument.js)
 ✔ fail path count hoti hai (unknown action → 1 fail)
@@ -362,7 +362,7 @@ ALIGNMENT CHECKS: 35   FAILED: 0
 ═══════════════════════════════════════════════════════════
   SIDEBAR STATES   PASS: 52   FAIL: 0
 ═══════════════════════════════════════════════════════════
-  [32m✔ gate passed: sidebar-states[0m  [2m(40s)[0m
+  [32m✔ gate passed: sidebar-states[0m  [2m(41s)[0m
 
 [1m▶ busy-coverage[0m  (node tools/test_busy_coverage.js)
 ✔ auto-busy stats: attach/done counters chal rahe hain
@@ -371,7 +371,7 @@ ALIGNMENT CHECKS: 35   FAILED: 0
 ═══════════════════════════════════════════════════════════
   BUSY COVERAGE   PASS: 17   FAIL: 0
 ═══════════════════════════════════════════════════════════
-  [32m✔ gate passed: busy-coverage[0m  [2m(40s)[0m
+  [32m✔ gate passed: busy-coverage[0m  [2m(39s)[0m
 
 [1m▶ api-core[0m  (node tools/test_api_core.js)
 ✔ API.parallel: sach mein parallel chala (inflight ≥ 2)
@@ -389,7 +389,7 @@ ALIGNMENT CHECKS: 35   FAILED: 0
   ✔ account menu se page-error nahi aaya
 
 SESSION GUARD  →  PASS: 15   FAIL: 0
-  [32m✔ gate passed: session-guard[0m  [2m(5s)[0m
+  [32m✔ gate passed: session-guard[0m  [2m(6s)[0m
 
 [1m▶ ui-run[0m  (node tools/test_ui_run.js)
   ✔ ⑩ GRN post par shared busyLabel lagi hui hai
@@ -407,7 +407,7 @@ UI.RUN   →  PASS: 34   FAIL: 0
   ✔ ⑦ is run mein zero page errors
 
 UI.ERR   →  PASS: 30   FAIL: 0
-  [32m✔ gate passed: ui-err[0m  [2m(6s)[0m
+  [32m✔ gate passed: ui-err[0m  [2m(7s)[0m
 
 [1m▶ perf-batch[0m  (node tools/test_perf_batch.js)
   ✔ ④ backend: approveExpenseBatch ek hi DB.updateMany karta hai
@@ -416,7 +416,7 @@ UI.ERR   →  PASS: 30   FAIL: 0
   ✔ ⑥ zero page errors
 
 [32mW7 GATE: 39 pass / 0 fail[0m
-  [32m✔ gate passed: perf-batch[0m  [2m(6s)[0m
+  [32m✔ gate passed: perf-batch[0m  [2m(7s)[0m
 
 [1m▶ dyn-deps[0m  (node tools/test_dyn_deps.js)
   ✔ ⑤ Deps ke contract keys maujood (define/load/shared/bindSelect/when/wire/refresh/hardRefresh)
@@ -425,7 +425,7 @@ UI.ERR   →  PASS: 30   FAIL: 0
   ✔ ⑥ zero page errors
 
 [32mW3 DYN-DEPS GATE: 51 pass / 0 fail[0m
-  [32m✔ gate passed: dyn-deps[0m  [2m(11s)[0m
+  [32m✔ gate passed: dyn-deps[0m  [2m(12s)[0m
 
 [1m▶ layout-desktop[0m  (node tools/audit_layout.js 1440 900)
 
@@ -434,7 +434,7 @@ UI.ERR   →  PASS: 30   FAIL: 0
 ==============================================================
  PROBLEMS: 0
 ==============================================================
-  [32m✔ gate passed: layout-desktop[0m  [2m(27s)[0m
+  [32m✔ gate passed: layout-desktop[0m  [2m(28s)[0m
 
 [1m▶ layout-mobile[0m  (node tools/audit_layout.js 390 844)
 
@@ -474,21 +474,21 @@ UI.ERR   →  PASS: 30   FAIL: 0
 
 [1m▶ pwa-layout[0m  (node tools/audit_layout.js 390 844 --pwa)
 
-✖ SALESMAN PWA ▸ Settle  (tab nahi mila)
+✔ SALESMAN PWA ▸ Settle  (0 problems)
 
 ==============================================================
- PROBLEMS: 4
+ PROBLEMS: 0
 ==============================================================
-  [31m✖ gate failed: pwa-layout[0m  [2m(13s)[0m
+  [32m✔ gate passed: pwa-layout[0m  [2m(16s)[0m
 
 [1m▶ pwa-layout-dark[0m  (node tools/audit_layout.js 390 844 --pwa --dark)
 
-✖ SALESMAN PWA ▸ Settle  (tab nahi mila)
+✔ SALESMAN PWA ▸ Settle  (0 problems)
 
 ==============================================================
- PROBLEMS: 4
+ PROBLEMS: 0
 ==============================================================
-  [31m✖ gate failed: pwa-layout-dark[0m  [2m(14s)[0m
+  [32m✔ gate passed: pwa-layout-dark[0m  [2m(17s)[0m
 
 [1m▶ ai-ui[0m  (node tools/test_ai_ui.js)
   [32m✔[0m Credentials blocked from JSONP URLs and persistent offline queue
@@ -524,7 +524,7 @@ AUTH STARTUP: 21 PASS, 0 FAIL
 ═══════════════════════════════════════════════════════════
   GRN DRAWER   PASS: 23   FAIL: 0
 ═══════════════════════════════════════════════════════════
-  [32m✔ gate passed: grn-drawer[0m  [2m(25s)[0m
+  [32m✔ gate passed: grn-drawer[0m  [2m(24s)[0m
 
 [1m▶ doc-designer[0m  (node tools/test_doc_designer.js)
   ✔ LABELS designer modal khula
@@ -554,13 +554,13 @@ AUTH STARTUP: 21 PASS, 0 FAIL
   [32m✔ gate passed: qr-payloads[0m  [2m(0s)[0m
 
 [1m▶ demands[0m  (node tools/test_demand.js)
-  ✔ walk-in customer save — naya customer + catalog item pick kar ke demand save ho jati hai (list +1)  → {"before":6,"after":7,"icode":"FL00000","cname":"","toast":"New customer created: Walk-in Test 310 | Demand saved ✅","confirms":"","closed":true}
+  ✔ walk-in customer save — naya customer + catalog item pick kar ke demand save ho jati hai (list +1)  → {"before":6,"after":7,"icode":"FL00000","cname":"","toast":"New customer created: Walk-in Test 635 | Demand saved ✅","confirms":"","closed":true}
   ✔ is run mein zero page errors  → []
 
 ═══════════════════════════════════════════════════════════
   DEMANDS   PASS: 13   FAIL: 0
 ═══════════════════════════════════════════════════════════
-  [32m✔ gate passed: demands[0m  [2m(34s)[0m
+  [32m✔ gate passed: demands[0m  [2m(33s)[0m
 
 [1m▶ salesman-stock[0m  (node tools/test_salesman_stock.js)
   ✔ aathon Salesman tabs render hote hain (rows ya saaf empty-state, koi blank/broken tab nahi)  → {"missing":[],"broken":[],"noState":[],"perTab":["Stock Is=1","Current =4","Tours / =empty","Cust / A=empty","Sales / =empty","Returns=empty","Ledger=empty","Performa=empty"]}
@@ -608,22 +608,22 @@ AUTH STARTUP: 21 PASS, 0 FAIL
   [32m✔ gate passed: datetime[0m  [2m(3s)[0m
 
 [1m▶ pwa-shared[0m  (node tools/test_pwa_shared.js)
+  ✔ ⑥ pwa-fo.html boot + PWA.shared aa gaya  → []
   ✔ ① zero page errors (poore run mein)  → []
 
 ═══════════════════════════════════════════════════════════
-  PWA SHARED CACHE   PASS: 15   FAIL: 1
-  ⑥ pwa-sm.html boot + PWA.shared aa gaya — ["missing ) after argument list"]
+  PWA SHARED CACHE   PASS: 16   FAIL: 0
 ═══════════════════════════════════════════════════════════
-  [31m✖ gate failed: pwa-shared[0m  [2m(11s)[0m
+  [32m✔ gate passed: pwa-shared[0m  [2m(11s)[0m
 
 [1m▶ pwa-overlays[0m  (node tools/test_pwa_overlays_close.js)
+  ✔ pwa-wh.html ▸ Bulk Add modal → Scrim se band hua
   ✔ pwa-wh.html — zero page errors
 
 ═══════════════════════════════════════════════════════════
-  PWA OVERLAYS CLOSE   PASS: 103   FAIL: 1
-    ✖ pwa-sm.html — boot ho gaya (PWA data load)
+  PWA OVERLAYS CLOSE   PASS: 124   FAIL: 0
 ═══════════════════════════════════════════════════════════
-  [31m✖ gate failed: pwa-overlays[0m  [2m(61s)[0m
+  [32m✔ gate passed: pwa-overlays[0m  [2m(66s)[0m
 
 [1m▶ modals-close[0m  (node tools/test_modals_close.js)
 ✔ stale entry (bina close hataya gaya scrim) Esc ko block nahi karti — visible modal band hua
@@ -632,7 +632,7 @@ AUTH STARTUP: 21 PASS, 0 FAIL
 ✔ close-sweep: zero page errors
 
 MODALS-CLOSE PASS 91 / FAIL 0
-  [32m✔ gate passed: modals-close[0m  [2m(24s)[0m
+  [32m✔ gate passed: modals-close[0m  [2m(25s)[0m
 
 [1m▶ timeouts[0m  (node tools/test_timeouts.js)
 PASS no automatic write retry
@@ -641,85 +641,85 @@ PASS synchronous transport exception also cleans busy state
 PASS AI client timeout aligned above server budget, not old 25 seconds
 PASS rendered page no uncaught errors
 TIMEOUT + AMOUNTS: 32 PASS, 0 FAIL
-  [32m✔ gate passed: timeouts[0m  [2m(1s)[0m
+  [32m✔ gate passed: timeouts[0m  [2m(2s)[0m
 
 --- waqt (sab se dheema pehle) -----------------------------------------
     139s  ui-polish
-    132s  smoke
-     84s  tabs
-     83s  scan-coverage
-     61s  pwa-overlays
-     56s  layout-overlays-m
+    131s  smoke
+     84s  scan-coverage
+     83s  tabs
+     66s  pwa-overlays
      56s  layout-overlays
-     53s  punch
+     56s  layout-overlays-m
+     54s  punch
      51s  pay-ledger
-     40s  sidebar-states
-     40s  busy-coverage
-     34s  demands
+     41s  sidebar-states
+     39s  busy-coverage
+     33s  demands
      33s  labels-live
      30s  salesman-stock
      29s  scan-parity
      28s  layout-dark
-     27s  layout-desktop
+     28s  layout-desktop
      27s  layout-mobile
+     25s  modals-close
      25s  scale
-     25s  grn-drawer
+     24s  grn-drawer
      24s  ui
-     24s  modals-close
      20s  ai-ui
-     16s  align
-     14s  pwa-layout-dark
-     13s  pwa-layout
+     17s  pwa-layout-dark
+     16s  pwa-layout
+     15s  align
      13s  pwa-ui
      12s  doc-designer
-     11s  dyn-deps
+     12s  dyn-deps
      11s  pwa-shared
      10s  ui-run
-      9s  settings-ui
       8s  pos-multi
+      8s  settings-ui
+      7s  perf-batch
       7s  charts-edge
-      6s  perf-batch
+      7s  ui-err
       6s  api-core
-      6s  ui-err
-      5s  session-guard
-      4s  fields
+      6s  session-guard
       4s  api-instrument
+      4s  fields
       4s  static
-      4s  check
       4s  auth-startup
+      3s  check
       3s  datetime
       2s  logic
+      2s  timeouts
       2s  report-actions
-      1s  timeouts
       1s  qr-thermal
-      1s  routes
-      0s  e2e
+      0s  routes
       0s  pwa
-      0s  seed-recovery
       0s  ai-load-order
+      0s  e2e
+      0s  seed-recovery
       0s  route-audit
-      0s  i18n-floor
       0s  cache
-      0s  ai-hub
       0s  ai
-      0s  report-dates
+      0s  i18n-floor
+      0s  ai-hub
       0s  metatags
-      0s  backend-perf
-      0s  settings-perf
       0s  diagnose
-      0s  cache-warm
-      0s  settings-defs
+      0s  backend-perf
+      0s  report-dates
       0s  session
-      0s  qr-payloads
+      0s  cache-warm
+      0s  settings-perf
       0s  raw-writes
-      0s  typography
+      0s  settings-defs
       0s  icons
+      0s  qr-payloads
+      0s  typography
       0s  schema
   ----------------------------------------------------------------------
-   1300s  KUL (71 gate)
+   1315s  KUL (71 gate)
   (ye waqt isi machine ke hain; --fast set isi tarah tune kiya gaya tha)
 
 ==============================================================
- GATE FAILED: pos-multi pwa pwa-ui smoke tabs scan-coverage pwa-layout pwa-layout-dark pwa-shared pwa-overlays
+ ALL GATES GREEN ✔  (71 gate: full suite)
 ==============================================================
-VERIFY_EXIT=1
+VERIFY_EXIT=0

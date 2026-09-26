@@ -250,3 +250,9 @@ integration + regression + UI/UX-check + error-handling + security-check pass ho
 - [x] PWA T-shim confirm: Pwa_Shell ka shim lang.dict backend se sync hota hai — pws.* keys PWA par chalein ge
 - [x] tests: pay-ledger 49/0, ui_run 34/0, pwa_ui 66/0, scan_parity 29/0, ai_ui 55/0, logic 825/0, floor 3/0
 - [x] v2.31.6 → verify → zip → push → FTP
+
+### r18 verify-note (2026-09-26)
+- r1: 61/71 — 10 gates fail → ASLI BUGS milay: Pwa_Salesman 2 off-by-one parens (completeBtn/receiveBtn el-close — check_pwa ne pakra), build_pwa_demo.py ka pwa-sm rebuild miss (pwa-ui stale-page fails), reorder 'double-plus' NaN, smoke/pos_multi asserts Roman-specific — sab root-fixed (89a3732)
+- r2: 70/71 — sirf modals-close (esc events=0 = wedge, r14/r17 recipe) — solo 91/0 confirm
+- r3: **71/71 GREEN, VERIFY_EXIT=0** — record yahi hai
+- LESSON: multi-file string-swap batches me paren-count per-line verify zaroori; PWA demo alag builder (build_pwa_demo.py) se banta hai — build_demo ke baad wo bhi chalao
