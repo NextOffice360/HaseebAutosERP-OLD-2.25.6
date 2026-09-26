@@ -32,7 +32,9 @@ var OfflineSync = {
       });
     var customers = DB.all('Customers').map(function (c) {
       return { id: c.id, code: c.code, name: c.name, phone: c.phone, typeId: c.customerTypeId,
-        bal: U.round(Parties.balance('CUSTOMER', c.id), 2) };
+        bal: U.round(Parties.balance('CUSTOMER', c.id), 2),
+        /* v2.31.1 (r13) — credit terms + assigned salesman (POS prefill / PWA filter) */
+        cd: U.num(c.creditDays, 0), sm: c.salesmanId || '' };
     });
     return {
       items: items, customers: customers,

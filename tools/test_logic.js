@@ -3201,6 +3201,29 @@ ok('manifest standalone hai (phone par poori app lage)',
 ok('manifest mein icons hain (install ke liye)',
   (sandbox.Pwa.manifest('wh').icons || []).length >= 2, 'icons missing');
 
+/* ---------------- v2.31.1 (r13) — must-have gap audit tests --------------- */
+/* Customers.creditDays + salesmanId (schema column add = generic save path) */
+try {
+  const custTerms = call('customers.save', { customer: { name: 'Terms Customer R13', phone: '03121337000', creditDays: 21, salesmanId: 'USR3' } });
+  ok(custTerms && Number(custTerms.creditDays) === 21 && String(custTerms.salesmanId) === 'USR3',
+    'customers.save: creditDays + salesmanId save/read-back',
+    JSON.stringify({ cd: custTerms && custTerms.creditDays, sm: custTerms && custTerms.salesmanId }));
+  /* SaleItems.foc flag — line math UNCHANGED, flag recorded */
+  const saleFoc = call('sales.create', { sale: {
+    locationId: LOC, customerId: custTerms.id, customerName: custTerms.name,
+    items: [{ itemId: itemA.id, qty: 1, price: 500, foc: true }],
+    payments: [{ method: 'CASH', amount: 500 }] } });
+  const focRow = (saleFoc && saleFoc.items ? saleFoc.items : []).find(li => li.itemId === itemA.id);
+  ok(focRow && String(focRow.foc) === 'true' && Number(focRow.lineTotal) === Number(focRow.price),
+    'sales.create: FOC flag SaleItems me record (math unchanged)', focRow && ('foc=' + focRow.foc + ' lineTotal=' + focRow.lineTotal));
+  /* aging report — creditDays-aware detail */
+  const age = call('reports.run', { id: 'cus.ageing' });
+  ok(age && Array.isArray(age.detail) && age.detail.length > 0 && age.detail.every(d => d.creditDays !== undefined),
+    'aging report: creditDays/overdue detail rows', age && age.detail && (age.detail.length + ' rows'));
+} catch (e) {
+  ok(false, 'r13 gap-audit backend block (creditDays/foc/aging) — ' + e.message);
+}
+
 /* ------------------------------- summary ---------------------------------- */
 console.log('\n' + '='.repeat(62));
 console.log('PASS: ' + pass + '   FAIL: ' + fail);

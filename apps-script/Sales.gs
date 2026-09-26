@@ -154,7 +154,10 @@ var Sales = {
         qty: qty, price: U.num(price), cost: U.num(costMap[it.id], U.num(it.costPrice)),
         discount: U.round(lineDisc, 2),
         tax: 0, lineTotal: 0, salespersonId: line.salespersonId || payload.salespersonId || s.userId,
-        serial: line.serial || '', notes: line.notes || ''
+        serial: line.serial || '', notes: line.notes || '',
+        /* v2.31.1 (r13) — FOC flag (informational): line math UNCHANGED — aaj FOC
+           discount ke tor par handle hota hai; flag report/audit ke liye record hota hai */
+        foc: line.foc ? 'true' : ''
       });
       /* in-memory consume — consignment ho to salesman ka stock ghatao */
       if (smStock) smStock[line.itemId] = U.num(smStock[line.itemId], 0) - qty;

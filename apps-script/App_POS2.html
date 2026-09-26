@@ -1572,6 +1572,15 @@ async function pay(method) {
 
   const noteInput = h('input', { class: 'f-input', type: 'text', placeholder: 'Note (optional)', style: { marginTop: '10px', minHeight: '44px', height: '44px' } });
   const promisedInput = h('input', { class: 'f-input', type: 'date', placeholder: 'Select date', style: { marginTop: '6px', minHeight: '44px', height: '44px' } });
+  /* v2.31.1 (r13) — credit terms ka istemal: customer ke creditDays se promised
+     date ka DEFAULT (aaj + mohlat) — credit row par dueDate hamesha record ho */
+  try {
+    const _cc = S.customer || {};
+    const _cDays = Number(_cc.creditDays !== undefined ? _cc.creditDays : (_cc.cd || 0));
+    if (_cDays > 0 && !promisedInput.value) {
+      promisedInput.value = new Date(Date.now() + 86400000 * _cDays).toISOString().slice(0, 10);
+    }
+  } catch (e) { }
   const pointsInput = h('input', { class: 'f-input', type: 'number', min: '0', step: '1', value: '', placeholder: '0', style: { width: '110px', minHeight: '44px', height: '44px', textAlign: 'center' }, 'aria-label': 'Points' });
   const loyaltyRow = h('div', { class: 'loy-row' });
   // promised date and points row setup

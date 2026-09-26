@@ -85,6 +85,8 @@ var SCHEMA = {
   /* ---------------------------------- PARTIES --------------------------- */
   Customers: ['id', 'code', 'name', 'phone', 'email', 'address', 'cnic', 'ntn', 'customerTypeId',
     'openingBalance', 'creditLimit', 'membershipId', 'points', 'priceTier', 'notes', 'active',
+    /* v2.31.1 (r13) — must-have gap audit: credit terms + assigned salesman */
+    'creditDays', 'salesmanId',
     'customFields', 'createdAt',
     /* v2.30.0 — demo data flag */ 'isDemo'],
   Suppliers: ['id', 'code', 'name', 'phone', 'email', 'address', 'ntn', 'openingBalance', 'creditLimit',
@@ -100,7 +102,8 @@ var SCHEMA = {
     'notes', 'source', 'createdAt',
     /* v2.30.0 — demo data flag */ 'isDemo'],
   SaleItems: ['id', 'saleId', 'itemId', 'code', 'name', 'qty', 'price', 'cost', 'discount',
-    'tax', 'taxRate', 'lineBase', 'lineTotal', 'salespersonId', 'serial', 'notes'],
+    'tax', 'taxRate', 'lineBase', 'lineTotal', 'salespersonId', 'serial', 'notes',
+    /* v2.31.1 (r13) — free-of-cost flag (informational; totals unchanged — FOC engine baad) */ 'foc'],
   SaleReturns: ['id', 'returnNo', 'date', 'saleId', 'invoiceNo', 'locationId', 'customerId',
     'total', 'reason', 'refundMethod', 'createdBy', 'createdAt'],
   SaleReturnItems: ['id', 'returnId', 'itemId', 'code', 'name', 'qty', 'price', 'lineTotal', 'restock'],

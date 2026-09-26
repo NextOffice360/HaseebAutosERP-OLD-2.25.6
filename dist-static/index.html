@@ -2771,7 +2771,7 @@ window.CONFIG_DEFS_DEMO = [{"id":"business","label":"Business Profile","icon":"�
 
 <script>
     /* Injected by server template */
-    window.APP_BUILD   = '2.31.0-static';
+    window.APP_BUILD   = '2.31.1-static';
     window.SERVE_MODE  = 'static';   // 'apps-script' | 'static'
     window.API_URL     = 'https://script.google.com/macros/s/AKfycb_DEMO_TEST_EXAMPLE/exec';      // filled only for static hosting
   </script>
@@ -19778,6 +19778,15 @@ async function pay(method) {
 
   const noteInput = h('input', { class: 'f-input', type: 'text', placeholder: 'Note (optional)', style: { marginTop: '10px', minHeight: '44px', height: '44px' } });
   const promisedInput = h('input', { class: 'f-input', type: 'date', placeholder: 'Select date', style: { marginTop: '6px', minHeight: '44px', height: '44px' } });
+  /* v2.31.1 (r13) — credit terms ka istemal: customer ke creditDays se promised
+     date ka DEFAULT (aaj + mohlat) — credit row par dueDate hamesha record ho */
+  try {
+    const _cc = S.customer || {};
+    const _cDays = Number(_cc.creditDays !== undefined ? _cc.creditDays : (_cc.cd || 0));
+    if (_cDays > 0 && !promisedInput.value) {
+      promisedInput.value = new Date(Date.now() + 86400000 * _cDays).toISOString().slice(0, 10);
+    }
+  } catch (e) { }
   const pointsInput = h('input', { class: 'f-input', type: 'number', min: '0', step: '1', value: '', placeholder: '0', style: { width: '110px', minHeight: '44px', height: '44px', textAlign: 'center' }, 'aria-label': 'Points' });
   const loyaltyRow = h('div', { class: 'loy-row' });
   // promised date and points row setup
@@ -21729,6 +21738,11 @@ function partyForm(type, p, after) {
     { key: 'cnic', label: 'CNIC', family: 'contact' },
     { key: 'address', label: 'Address', full: true },
     { key: 'creditLimit', label: 'Credit limit', type: 'number' },
+    /* v2.31.1 (r13) — must-have gap: credit terms (din) + assigned salesman */
+    { key: 'creditDays', label: 'Credit days', type: 'number', hint: 'Udhaar ki mohlat (din) — POS promised-date default isi se banta hai' },
+    { key: 'salesmanId', label: 'Assigned salesman', type: 'select',
+      options: [{ value: '', label: '—' }].concat((App.state.users || []).filter(u => /sales/i.test(u.role || '')).map(u => ({ value: u.id, label: (u.fullName || u.username) }))),
+      hint: 'Salesman PWA "mere customers" isi se filter hota hai' },
     { key: 'openingBalance', label: 'Opening udhaar', type: 'number' },
     { key: 'notes', label: 'Notes', type: 'textarea', full: true }
   ] : [

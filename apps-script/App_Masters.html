@@ -891,6 +891,11 @@ function partyForm(type, p, after) {
     { key: 'cnic', label: 'CNIC', family: 'contact' },
     { key: 'address', label: 'Address', full: true },
     { key: 'creditLimit', label: 'Credit limit', type: 'number' },
+    /* v2.31.1 (r13) — must-have gap: credit terms (din) + assigned salesman */
+    { key: 'creditDays', label: 'Credit days', type: 'number', hint: 'Udhaar ki mohlat (din) — POS promised-date default isi se banta hai' },
+    { key: 'salesmanId', label: 'Assigned salesman', type: 'select',
+      options: [{ value: '', label: '—' }].concat((App.state.users || []).filter(u => /sales/i.test(u.role || '')).map(u => ({ value: u.id, label: (u.fullName || u.username) }))),
+      hint: 'Salesman PWA "mere customers" isi se filter hota hai' },
     { key: 'openingBalance', label: 'Opening udhaar', type: 'number' },
     { key: 'notes', label: 'Notes', type: 'textarea', full: true }
   ] : [

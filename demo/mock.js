@@ -187,6 +187,8 @@ const CUSTOMERS = NAMES.map((n, i) => ({
   phone: '0300' + String(1000000 + i * 137).slice(0, 7), email: '', address: 'Sadiqabad',
   cnic: '', ntn: '', customerTypeId: pick(TYPES).id, openingBalance: i % 5 === 0 ? 2000 : 0,
   creditLimit: 100000, membershipId: '', points: Math.floor(rnd() * 300), priceTier: 'RETAIL',
+  /* v2.31.1 (r13) — credit terms + assigned salesman (gap audit) */
+  creditDays: ['7', '15', '30'][i % 3], salesmanId: i % 4 === 0 ? 'USR3' : '',
   notes: '', active: 'true', createdAt: '2026-01-01T10:00:00',
   balance: i % 4 === 0 ? Math.floor(rnd() * 25000) : 0
 }));
@@ -253,7 +255,8 @@ for (let d = 44; d >= 0; d--) {
       paid: paidSeed, change: 0, due: Math.max(0, total - paidSeed),
       paymentMethod: rnd() > 0.3 ? 'CASH' : 'CARD', payments: JSON.stringify([{ method: 'CASH', amount: paidSeed }]),
       status, salespersonId: 'USR3', cashierId: 'USR2', sessionId: '', notes: '', source: 'POS',
-      createdAt: date.toISOString(), items, cost
+      createdAt: date.toISOString(), items, cost,
+      focLine: seq % 17 === 0   /* v2.31.1 — demo FOC line flag (informational) */
     });
     seq++;
   }
@@ -3131,7 +3134,7 @@ window.MockAPI = {
       brand: i.brand, unit: i.unit, bc: i.barcode, alt: '', cp: i.costPrice, rp: i.retailPrice, wp: i.wholesalePrice,
       mp: i.minPrice, tx: 0, qty: i.stock, rack: i.rack, img: i.imageUrl || '',
       sp: sup.id || '', sup: sup.name || '', reorder: Number(i.reorderLevel || i.minStock || 0) }; }),
-    customers: CUSTOMERS.map(c => ({ id: c.id, code: c.code, name: c.name, phone: c.phone, typeId: c.customerTypeId, bal: c.balance })),
+    customers: CUSTOMERS.map(c => ({ id: c.id, code: c.code, name: c.name, phone: c.phone, typeId: c.customerTypeId, bal: c.balance, cd: Number(c.creditDays || 0), sm: c.salesmanId || '' })),  /* v2.31.1 */
     settings: SETTINGS, locations: LOCATIONS, locationId: 'LOC-SDQ', ts: new Date().toISOString(), itemCount: ITEMS.length
   }),
   /* v2.30.0 (N9) — asli offline sync mirror (OfflineSync.gs jaisa): har entry

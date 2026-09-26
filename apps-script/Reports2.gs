@@ -725,9 +725,21 @@ var ReportEngine = {
           return { bucket: k, amount: U.round(buckets[k], 2) };
         });
         out.push({ bucket: 'TOTAL', amount: U.round(buckets.total, 2) });
+        /* v2.31.1 (r13) — credit-terms aware overdue (additive): har denaydar customer
+           ki creditDays + overdue din (age − creditDays) alag detail rows me */
+        var cmap = {}; DB.all('Customers').forEach(function (c) { cmap[c.id] = c; });
+        var detail = rows.filter(function (r) { return U.num(r.balance) > 0; }).map(function (r) {
+          var c = cmap[r.partyId] || {};
+          var age2 = 0, d2 = U.parseDate(r.lastDate || r.date);
+          if (d2) age2 = Math.floor((today - d2) / 86400000);
+          var cd = U.num(c.creditDays, 0);
+          return { customer: r.name, balance: U.round(U.num(r.balance), 2), creditDays: cd,
+            age: age2, overdue: Math.max(0, age2 - cd) };
+        }).sort(function (a, b) { return b.overdue - a.overdue; });
         return {
           rows: out, cols: [{ key: 'bucket', label: 'Age (days)' }, { key: 'amount', label: 'Receivable', money: true }],
-          totals: ['amount']
+          totals: ['amount'], detail: detail.slice(0, 50),
+          note: 'creditDays ke sath overdue din bhi detail me (v2.31.1)'
         };
       }
     },

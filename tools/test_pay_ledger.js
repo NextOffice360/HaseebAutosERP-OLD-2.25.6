@@ -284,6 +284,12 @@ async function pickFirstCustomer(page) {
     const s6 = await page.evaluate(PAY_SUMMARY);
     const ledName = String((s6 && s6.ledTitle) || '').replace(/^[^—]*—\s*/, '').trim();
     ok(!!custName && !!ledName, 'customer POS bar se select hua (' + (custName || '?') + ') · ledger: ' + ledName);
+    /* v2.31.1 (r13) — credit-terms default: customer ke creditDays se promised-date prefill */
+    const pref = await page.evaluate(() => {
+      const d = document.querySelector('.modal-scrim .modal2 input[type=date]');
+      return d ? d.value : '';
+    });
+    ok(!!pref, 'promised-date prefill (creditDays default) — ' + pref);
     const pv = pickRow(s6.led, 'Previous balance'), iv = pickRow(s6.led, 'This invoice'),
       cl = pickRow(s6.led, 'Closing balance'), li = pickRow(s6.led, 'Credit limit|Available');
     const T6 = iv ? iv.v : 0;
