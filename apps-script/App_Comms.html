@@ -41,14 +41,14 @@ const Share = {
     }
 
     const body = h('div', { class: 'share-box' },
-      h('label', { class: 'f-col' }, h('span', null, 'Bhejein (phone ya email)'), toInput),
+      h('label', { class: 'f-col' }, h('span', null, T.t('cm.sendTo','Send to (phone or email)')), toInput),
       h('label', { class: 'f-col' }, h('span', null, 'Message'), msgBox),
       h('div', { class: 'share-btns' },
         h('button', { class: 'btn ok', onclick: () => send('WHATSAPP') },
           freeMode ? '💬 WhatsApp (free link)' : '💬 WhatsApp'),
         h('button', { class: 'btn sec', onclick: () => send('SMS') }, '📱 SMS'),
         h('button', { class: 'btn sec', onclick: () => send('EMAIL') }, '✉ Email'),
-        h('button', { class: 'btn ghost', onclick: () => { navigator.clipboard && navigator.clipboard.writeText(msgBox.value); UI.toast('Message copy ho gaya', 'ok'); } }, '⧉ Copy'),
+        h('button', { class: 'btn ghost', onclick: () => { navigator.clipboard && navigator.clipboard.writeText(msgBox.value); UI.toast(T.t('cm.copied','Message copied'), 'ok'); } }, '⧉ Copy'),
         h('button', { class: 'btn ghost', onclick: async () => {
           try {
             if (window.Print2) { await Print2.dialog(sale); return; }
@@ -63,7 +63,7 @@ const Share = {
         } }, '📄 PDF')),
       statusEl,
       h('div', { class: 'share-note' },
-        freeMode ? 'Free mode: wa.me link khulta hai — WhatsApp app/web me message tayar mil jata hai. API key chahiye to Settings ▸ Automation ▸ WhatsApp & SMS me META ya TWILIO chunein.'
+        freeMode ? T.t('cm.freeMode','Free mode: opens a wa.me link — the message arrives pre-filled in WhatsApp app/web. For an API key choose META or TWILIO in Settings ▸ Automation ▸ WhatsApp & SMS.')
                  : 'Provider: ' + waProv + ' — Settings ▸ Automation ▸ WhatsApp & SMS se badla ja sakta hai.'));
 
     UI2.modal({ title: 'Share invoice — ' + (sale.invoiceNo || ''), size: 'md', body,
@@ -115,7 +115,7 @@ const Share = {
       const csv = '\uFEFF' + headers.map(esc2).join(',') + '\n' +
         rows.map(r => headers.map(x => esc2(r[x])).join(',')).join('\n');
       Share._download(new Blob([csv], { type: 'text/csv;charset=utf-8' }), filename + '.csv');
-      UI.toast('CSV download ho gaya (' + rows.length + ' rows)', 'ok');
+      UI.toast(T.t('cm.csvDone','CSV downloaded (') + rows.length + T.t('cm.rows',') rows)'), 'ok');
     }
 
     function xlsDownload() {                       /* Excel-compatible (no library) */
@@ -130,7 +130,7 @@ const Share = {
         '</x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--></head><body>' +
         '<table border="1"><thead><tr>' + th + '</tr></thead><tbody>' + tb + '</tbody></table></body></html>';
       Share._download(new Blob(['\uFEFF' + html], { type: 'application/vnd.ms-excel' }), filename + '.xls');
-      UI.toast('Excel file download ho gayi', 'ok');
+      UI.toast(T.t('cm.xlsDone','Excel file downloaded'), 'ok');
     }
 
     async function serverExcel() {
@@ -155,7 +155,7 @@ const Share = {
     }
 
     async function nativeShare() {
-      if (!navigator.share) return UI.toast('Is browser me Web Share nahi hai', 'warn');
+      if (!navigator.share) return UI.toast(T.t('cm.noShare','Web Share not available in this browser'), 'warn');
       try {
         await navigator.share({ title: title, text: rows.length + ' rows · ' + title });
       } catch (e) { }
@@ -195,7 +195,7 @@ const Share = {
         h('span', { class: 'chip2' }, 'Failed: ' + (d.counts ? d.counts.failed : 0))));
       const rows = d.rows || [];
       if (!rows.length) {
-        host.appendChild(h('div', { class: 'empty' }, 'Abhi koi message nahi bheja gaya'));
+        host.appendChild(h('div', { class: 'empty' }, T.t('cm.noneSent','No messages sent yet')));
         return;
       }
       rows.forEach(r => {
@@ -206,7 +206,7 @@ const Share = {
             h('div', { class: 'sub', style: { fontSize: 'var(--fs-xs)', color: 'var(--muted-2)' } },
               String(r.body || '').slice(0, 120))),
           r.status === 'FAILED' ? h('button', { class: 'btn sm', onclick: async () => {
-            try { await API.call('comms.retry', { id: r.id }); UI.toast('Dobara bheja', 'ok'); load(); }
+            try { await API.call('comms.retry', { id: r.id }); UI.toast(T.t('cm.resent','Sent again'), 'ok'); load(); }
             catch (e) { UI.toast(e.message, 'err'); }
           } }, '↻ Retry') : ''));
       });
@@ -234,7 +234,7 @@ const PriceList = {
       ...(App.state.suppliers || []).map(s => h('option', { value: s.id }, s.name)));
 
     const ta = h('textarea', { rows: 8, class: 'f-input', style: { width: '100%' },
-      placeholder: 'CSV paste karein — header: code,name,brand,cost,retail,wholesale,barcode' });
+      placeholder: T.t('cm.csvPh','Paste CSV — header: code,name,brand,cost,retail,wholesale,barcode') });
 
     const opts = h('div', { class: 'chips' },
       check('Update cost', true, v => optState.updateCost = v),
@@ -287,10 +287,10 @@ const PriceList = {
     }
 
     async function doApply() {
-      if (!preview) return UI.toast('Pehle preview banayein', 'warn');
+      if (!preview) return UI.toast(T.t('cm.needPreview','Generate a preview first'), 'warn');
       const rows = preview.rows.filter(r => r.action !== 'SKIP');
-      if (!rows.length) return UI.toast('Koi row select nahi', 'warn');
-      const okBtn = await UI2.confirm(rows.length + ' rows apply karein? (cost/price update hoga)');
+      if (!rows.length) return UI.toast(T.t('cm.noRowsSel','No rows selected'), 'warn');
+      const okBtn = await UI2.confirm(rows.length + ' ' + T.t('cm.applyAsk','rows — apply? (cost/price will update)'));
       if (!okBtn) return;
       try {
         const r = await API.call('priceimport.apply', Object.assign({ rows, supplierId: supplier, fileName: 'pasted.csv' }, optState));
@@ -308,12 +308,12 @@ const PriceList = {
       h('button', { class: 'btn sec', onclick: async () => {
         try {
           const r = await API.call('priceimport.gmail', { max: 5 });
-          if (!r.count) return UI.toast('Koi attachment nahi mila (Gmail search query Settings me badlein)', 'warn');
+          if (!r.count) return UI.toast(T.t('cm.noAttach','No attachments found (change the Gmail search query in Settings)'), 'warn');
           ta.value = r.attachments[0].text;
           UI.toast(r.count + ' attachment mile — pehla load kiya', 'ok');
         } catch (e) { UI.toast(e.message, 'err'); }
       } }, '📥 Gmail se layen'),
-      h('button', { class: 'btn ghost', onclick: () => filePick(text => { ta.value = text; }) }, '📁 File chunein (CSV)')));
+      h('button', { class: 'btn ghost', onclick: () => filePick(text => { ta.value = text; }) }, T.t('cm.filePick','📁 Choose file (CSV)'))));
     host.appendChild(opts);
     host.appendChild(statsEl);
     host.appendChild(tableHost);
@@ -384,7 +384,7 @@ const Migration2 = {
         h('span', null, st.projectId ? 'Project: ' + st.projectId : (st.dbUrl ? 'DB URL set' : 'Config missing')),
         h('span', null, 'Auto-sync: ' + (st.autoSync ? 'on' : 'off'))));
       host.appendChild(h('div', { class: 'sub' },
-        'Script Properties me FIREBASE_DB_URL + FIREBASE_DB_SECRET (Realtime DB) ya FIREBASE_PROJECT_ID + FIREBASE_ID_TOKEN (Firestore) set karein.'));
+        T.t('cm.fbHint','Set FIREBASE_DB_URL + FIREBASE_DB_SECRET (Realtime DB) or FIREBASE_PROJECT_ID + FIREBASE_ID_TOKEN (Firestore) in Script Properties.')));
 
       // actions
       host.appendChild(h('div', { class: 'share-btns', style: { marginTop: '10px' } },

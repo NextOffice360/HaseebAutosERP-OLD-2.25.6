@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-09-26T12:52:59.401Z",
-  "totalHits": 314,
-  "totalTt": 650,
+  "generatedAt": "2026-09-26T13:00:47.390Z",
+  "totalHits": 276,
+  "totalTt": 691,
   "files": [
     {
       "file": "App_Core.html",
@@ -23,25 +23,6 @@
       ]
     },
     {
-      "file": "App_QR.html",
-      "tt": 0,
-      "hits": 24,
-      "samples": [
-        {
-          "line": 331,
-          "text": "allow NAHI karti — isliye getUserMedia() \"Permissions policy violation\""
-        },
-        {
-          "line": 389,
-          "text": "var input = h('input', { class: 'f-input', type: 'text', placeholder: 'Code / QR value typ"
-        },
-        {
-          "line": 393,
-          "text": "opts.note || 'Scanner open nahi ho saka — code neeche type karein.'), input),"
-        }
-      ]
-    },
-    {
       "file": "App_AIConfig.html",
       "tt": 32,
       "hits": 20,
@@ -57,25 +38,6 @@
         {
           "line": 282,
           "text": "'Key sirf Script Properties mein mehfooz hoti hai — Sheets ya browser mein kahin nahi. Jaw"
-        }
-      ]
-    },
-    {
-      "file": "App_Comms.html",
-      "tt": 0,
-      "hits": 15,
-      "samples": [
-        {
-          "line": 44,
-          "text": "h('label', { class: 'f-col' }, h('span', null, 'Bhejein (phone ya email)'), toInput),"
-        },
-        {
-          "line": 51,
-          "text": "h('button', { class: 'btn ghost', onclick: () => { navigator.clipboard && navigator.clipbo"
-        },
-        {
-          "line": 66,
-          "text": "freeMode ? 'Free mode: wa.me link khulta hai — WhatsApp app/web me message tayar mil jata "
         }
       ]
     },
@@ -542,6 +504,17 @@
         {
           "line": 116,
           "text": "h('div',{style:{fontSize:'12px',color:'var(--muted)',marginTop:'4px'}}, 'PWAs mein camera "
+        }
+      ]
+    },
+    {
+      "file": "App_QR.html",
+      "tt": 25,
+      "hits": 1,
+      "samples": [
+        {
+          "line": 331,
+          "text": "allow NAHI karti — isliye getUserMedia() \"Permissions policy violation\""
         }
       ]
     },
