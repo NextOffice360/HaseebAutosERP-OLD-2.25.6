@@ -87,13 +87,13 @@ PASS: 819   FAIL: 0
   [32m✔ gate passed: ui-polish[0m  [2m(139s)[0m
 
 [1m▶ typography[0m  (node tools/audit_typography.js 1440 900)
- ok (>= floor)         : 449
+════════════════════════════════════════════════════════════
+ ok (>= floor)         : 450
  exempt (print/SVG)    : 49
- VIOLATIONS (< floor)  : 1
-   Pwa_Salesman.html:172  10.5px  var _chip = PWA.el('div', { class:'muted', style:'font-size:10.5px;margin-top:4px' },
+ VIOLATIONS (< floor)  : 0
 
  → tmp/typography-audit.json
-  [31m✖ gate failed: typography[0m  [2m(0s)[0m
+  [32m✔ gate passed: typography[0m  [2m(0s)[0m
 
 [1m▶ charts-edge[0m  (node tools/test_charts_edge.js 1440 900)
   ✔ progress · long label                   → 0 svg
@@ -269,8 +269,8 @@ AI LOAD ORDER: 49 PASS, 0 FAIL
 [1m▶ static[0m  (node tools/test_static.js)
   ✔ App boot hua (UI.toast ya App.state)  → App ok
   ✔ app boot par JSONP call karta hai (backend se baat ho rahi hai)  → 2 call(s)
-  ✔ har JSONP URL sahi shape ka hai (?t=jsonp&cb=&a=&p=)  → https://script.google.com/macros/s/AKfycb_DEMO_TEST_EXAMPLE/exec?t=jsonp&cb=hacb_2y39nahy5uy&a=system.loginCon
-  ✔ API.jsonp() se banaya gaya URL bhi maujood hai  → https://script.google.com/macros/s/AKfycb_DEMO_TEST_EXAMPLE/exec?t=jsonp&cb=hacb_2ru42maa9gt&a=items.list&p=%7
+  ✔ har JSONP URL sahi shape ka hai (?t=jsonp&cb=&a=&p=)  → https://script.google.com/macros/s/AKfycb_DEMO_TEST_EXAMPLE/exec?t=jsonp&cb=hacb_4d1c7v49g1a&a=system.loginCon
+  ✔ API.jsonp() se banaya gaya URL bhi maujood hai  → https://script.google.com/macros/s/AKfycb_DEMO_TEST_EXAMPLE/exec?t=jsonp&cb=hacb_39albogv37m&a=items.list&p=%7
 
   STATIC BUILD RENDER (dist-static): PASS 8  FAIL 0
   [32m✔ gate passed: static[0m  [2m(3s)[0m
@@ -300,7 +300,7 @@ AI LOAD ORDER: 49 PASS, 0 FAIL
 -- empty/undefined content (0) --
 
 -- jsdom errors (0) --
-  [32m✔ gate passed: ui[0m  [2m(23s)[0m
+  [32m✔ gate passed: ui[0m  [2m(24s)[0m
 
 [1m▶ smoke[0m  (node tools/smoke.js)
   ✔ parties click → Customers
@@ -362,7 +362,7 @@ ALIGNMENT CHECKS: 35   FAILED: 0
 ═══════════════════════════════════════════════════════════
   SIDEBAR STATES   PASS: 52   FAIL: 0
 ═══════════════════════════════════════════════════════════
-  [32m✔ gate passed: sidebar-states[0m  [2m(38s)[0m
+  [32m✔ gate passed: sidebar-states[0m  [2m(37s)[0m
 
 [1m▶ busy-coverage[0m  (node tools/test_busy_coverage.js)
 ✔ auto-busy stats: attach/done counters chal rahe hain
@@ -533,7 +533,7 @@ AUTH STARTUP: 21 PASS, 0 FAIL
   ✔ zero page errors designer flows me
 
   D14 DESIGNER   PASS: 10   FAIL: 0
-  [32m✔ gate passed: doc-designer[0m  [2m(11s)[0m
+  [32m✔ gate passed: doc-designer[0m  [2m(12s)[0m
 
 [1m▶ i18n-floor[0m  (node tools/test_i18n_floor.js)
 [1mI18N REGRESSION FLOOR (EN-purity D7)[0m
@@ -554,7 +554,7 @@ AUTH STARTUP: 21 PASS, 0 FAIL
   [32m✔ gate passed: qr-payloads[0m  [2m(0s)[0m
 
 [1m▶ demands[0m  (node tools/test_demand.js)
-  ✔ walk-in customer save — naya customer + catalog item pick kar ke demand save ho jati hai (list +1)  → {"before":6,"after":7,"icode":"FL00000","cname":"","toast":"New customer created: Walk-in Test 767 | Demand save ho gayi ✅","confirms":"","closed":true}
+  ✔ walk-in customer save — naya customer + catalog item pick kar ke demand save ho jati hai (list +1)  → {"before":6,"after":7,"icode":"FL00000","cname":"","toast":"New customer created: Walk-in Test 503 | Demand save ho gayi ✅","confirms":"","closed":true}
   ✔ is run mein zero page errors  → []
 
 ═══════════════════════════════════════════════════════════
@@ -623,16 +623,16 @@ AUTH STARTUP: 21 PASS, 0 FAIL
 ═══════════════════════════════════════════════════════════
   PWA OVERLAYS CLOSE   PASS: 124   FAIL: 0
 ═══════════════════════════════════════════════════════════
-  [32m✔ gate passed: pwa-overlays[0m  [2m(66s)[0m
+  [32m✔ gate passed: pwa-overlays[0m  [2m(65s)[0m
 
 [1m▶ modals-close[0m  (node tools/test_modals_close.js)
-  ✘ doosra Esc: legacy modal bhi band — {"scrims":2,"ui2":1,"drawers":0}
-  ✘ stack setup: drawer ke upar UI2 modal — {"scrims":3,"ui2":2,"drawers":1}
-  ✘ ek Esc: modal band, drawer khula (top-most contract) — {"scrims":3,"ui2":2,"drawers":1}
-  ✘ doosra Esc: drawer band — {"scrims":3,"ui2":2,"drawers":1}
-  ✘ stale entry (bina close hataya gaya scrim) Esc ko block nahi karti — visible modal band hua — {"scrims":4,"ui2":3,"drawers":1}
-  ✘ invisible/stale node hone par bhi Esc modal band karta hai (root-cause fix) — closed=false · esc events=0
-  [31m✖ gate failed: modals-close[0m  [2m(353s)[0m
+✔ stale entry (bina close hataya gaya scrim) Esc ko block nahi karti — visible modal band hua
+✔ regression setup: modal khula + DOM mein invisible .gs-results/.img-lightbox mojood
+✔ invisible/stale node hone par bhi Esc modal band karta hai (root-cause fix)
+✔ close-sweep: zero page errors
+
+MODALS-CLOSE PASS 91 / FAIL 0
+  [32m✔ gate passed: modals-close[0m  [2m(24s)[0m
 
 [1m▶ timeouts[0m  (node tools/test_timeouts.js)
 PASS no automatic write retry
@@ -644,18 +644,17 @@ TIMEOUT + AMOUNTS: 32 PASS, 0 FAIL
   [32m✔ gate passed: timeouts[0m  [2m(1s)[0m
 
 --- waqt (sab se dheema pehle) -----------------------------------------
-    353s  modals-close
     139s  ui-polish
     130s  smoke
      83s  scan-coverage
      82s  tabs
-     66s  pwa-overlays
+     65s  pwa-overlays
      56s  layout-overlays
      56s  layout-overlays-m
      52s  punch
      51s  pay-ledger
      39s  busy-coverage
-     38s  sidebar-states
+     37s  sidebar-states
      33s  demands
      32s  labels-live
      30s  salesman-stock
@@ -665,12 +664,13 @@ TIMEOUT + AMOUNTS: 32 PASS, 0 FAIL
      27s  layout-desktop
      24s  scale
      24s  grn-drawer
-     23s  ui
+     24s  modals-close
+     24s  ui
      19s  ai-ui
      16s  pwa-layout-dark
      16s  pwa-layout
      15s  align
-     11s  doc-designer
+     12s  doc-designer
      11s  pwa-shared
      11s  pwa-ui
      10s  dyn-deps
@@ -683,42 +683,42 @@ TIMEOUT + AMOUNTS: 32 PASS, 0 FAIL
       5s  ui-err
       5s  session-guard
       3s  api-instrument
-      3s  static
       3s  auth-startup
+      3s  static
       3s  fields
       2s  check
       2s  datetime
       1s  logic
-      1s  timeouts
       1s  report-actions
+      1s  timeouts
       1s  qr-thermal
-      0s  routes
       0s  pwa
+      0s  routes
       0s  e2e
       0s  seed-recovery
       0s  ai-load-order
       0s  route-audit
-      0s  ai
-      0s  i18n-floor
       0s  cache
+      0s  i18n-floor
       0s  report-dates
-      0s  ai-hub
-      0s  metatags
-      0s  diagnose
+      0s  ai
       0s  settings-perf
-      0s  backend-perf
+      0s  metatags
       0s  settings-defs
-      0s  session
+      0s  backend-perf
+      0s  ai-hub
+      0s  diagnose
       0s  cache-warm
+      0s  session
       0s  raw-writes
-      0s  icons
       0s  qr-payloads
+      0s  icons
       0s  typography
       0s  schema
   ----------------------------------------------------------------------
-   1607s  KUL (71 gate)
+   1277s  KUL (71 gate)
   (ye waqt isi machine ke hain; --fast set isi tarah tune kiya gaya tha)
 
 ==============================================================
- GATE FAILED: typography modals-close
+ ALL GATES GREEN ✔  (71 gate: full suite)
 ==============================================================

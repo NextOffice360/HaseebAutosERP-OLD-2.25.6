@@ -195,3 +195,13 @@ integration + regression + UI/UX-check + error-handling + security-check pass ho
 - [x] T12 GAP-AUDIT-2026-09.md (verdict + G1–G5 + future candidates F1–F5)
 - [x] T13 71/71 GREEN (validate-v2.31.1.log) → v2.31.1.zip → push
 **Future (F1–F5, DOC me):** FOC engine · fiscal lock · sale-side expiry capture · credit-limit override approval · PWA salesman my-customers filter
+
+## Round-14 — F5 my-customers + FOC badge + EN slice-4 (2026-09-25) — v2.31.2
+- [x] F5: Pwa.gs bootstrap → salesmanId + myCustomers (Customers.salesmanId se); _customers me sm field; Pwa_Salesman picker "mere customers" filter (khali → poora list, koi chhupta nahi) + count chip
+- [x] F1 (partial): FOC FREE badge receipt + A4 sheet (foc-badge CSS) — math/total UNCHANGED (flag informational; engine F1-full future)
+- [x] EN slice-4: App_Core _errKinds 7 titles/hints + offline-queue toasts + saveAll + chart-empty (~31) + AIConfig 29 → T.t — hits 539→486, T.t 396→459
+- [x] **EARLY T-STUB** App_Core top (r14 ka sabse ahem infra fix): App_Lang include Core ke BAAD hai — load-time T.t ReferenceError deta tha (ui-err/ai-ui gates CRASH) — stub fallback-EN deta hai, App_Lang asli window.T se overwrite karti hai
+- [x] Gates lang-agnostic: test_ai_ui (Unsaved), busy_coverage (No response), ui_err (EN titles), release_ui (STALE fix — 'Baad mein' v2.30.6 se '⏭ Skip' hai; release-ui verify-gate bhi nahi tha)
+- [x] modals-close r1 21-fail — deep diag: real-CDP-input transient wedge (synthetic OK, data:-URL OK, baseline 3/3 pass, solo 91/0) — ENV flake, code nahi
+- [x] typography: mera 10.5px chip → 11px (floor)
+- [x] 71/71 GREEN → v2.31.2.zip → push
