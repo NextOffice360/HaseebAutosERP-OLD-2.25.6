@@ -2771,7 +2771,7 @@ window.CONFIG_DEFS_DEMO = [{"id":"business","label":"Business Profile","icon":"�
 
 <script>
     /* Injected by server template */
-    window.APP_BUILD   = '2.31.3-static';
+    window.APP_BUILD   = '2.31.4-static';
     window.SERVE_MODE  = 'static';   // 'apps-script' | 'static'
     window.API_URL     = 'https://script.google.com/macros/s/AKfycb_DEMO_TEST_EXAMPLE/exec';      // filled only for static hosting
   </script>
@@ -25870,7 +25870,7 @@ function renderList(c) {
         });
       } catch (e) { }
       if (!DM.rows.length) {
-        host.appendChild(h('div', { class: 'empty' }, h('span', { class: 'big' }, '😕'), h('div', null, 'Koi demand nahi mili'),
+        host.appendChild(h('div', { class: 'empty' }, h('span', { class: 'big' }, '😕'), h('div', null, T.t('dm.none','No demands found')),
           App.can('demand.create') ? h('button', { class: 'btn sm ok', style: { marginTop: '10px' }, onclick: openCreate }, '➕ New Demand') : ''));
         return;
       }
@@ -25949,7 +25949,7 @@ async function openDetail(id) {
     h('div', { class: 'card-head' }, h('h4', null, '🚚 Linked Purchase Orders'), pos.length ? h('span', { class: 'badge' }, pos.length + ' PO') : ''),
     h('div', { class: 'card-body tight' }, pos.length
       ? pos.map(p => h('div', { class: 'list-item' }, h('div', { class: 'li-main' }, h('b', null, p.poNo || p.id), h('span', null, p.supplierName + ' · ' + p.status)), h('button', { class: 'btn sm sec', onclick: () => App.go('purchase', { open: p.id }) }, 'Open')))
-      : h('div', { class: 'empty', style: { padding: '12px' } }, 'Koi PO link nahi — sourcing pending'))));
+      : h('div', { class: 'empty', style: { padding: '12px' } }, T.t('dm.noPo','No PO linked — sourcing pending')))));
 
   // status history
   body.appendChild(h('div', { class: 'card' },
@@ -25976,7 +25976,7 @@ async function openDetail(id) {
     actions.push({ label: '✕ Cancel', cls: 'danger', onClick: c => {
       c();
       /* v2.25.0 — native confirm() ki jagah shared dialog (blocking popup nahi) */
-      UI2.confirm('Demand ' + (d.demandNo || '') + ' cancel karein? Stock/PO par asar nahi hoga, sirf demand band ho gi.', null, true)
+      UI2.confirm('Demand ' + (d.demandNo || '') + T.t('dm.cancelAsk',' — cancel it? Stock/PO are not affected; only the demand closes.'), null, true)
         .then(ok => { if (ok) changeStatus(d.id, 'CANCELLED'); });
     } });
   }
@@ -26001,7 +26001,7 @@ function changeStatus(id, status) {
       { label: 'Apply', cls: 'ok', onClick: c => {
         const note = (noteI.value || '').trim();
         API.call('demand.setStatus', { id: id, status: status, note: note }).then(() => {
-          UI.toast('Status ' + status + ' update ho gaya', 'ok');
+          UI.toast('Status ' + status + ' ' + T.t('dm.statusUp','updated'), 'ok');
           c(); App.refresh();
         }).catch(e => UI.toast(e.message, 'err'));
       } }
@@ -26066,16 +26066,16 @@ function demandForm(existing) {
   const custNote = h('div', { class: 'f-note brand' },
     h('span', { class: 'f-note-i' }, '👤'),
     h('div', { class: 'f-note-t' }, h('b', null, 'Customer intelligence'),
-      h('span', null, 'Customer list se select karein — balance, credit limit aur open demands foran yahan aa jayengi.')));
+      h('span', null, T.t('dm.pickCust','Pick from the customer list — balance, credit limit and open demands appear here instantly.'))));
   const itemNote = h('div', { class: 'f-note' },
     h('span', { class: 'f-note-i' }, '📦'),
     h('div', { class: 'f-note-t' }, h('b', null, 'Stock & price awareness'),
-      h('span', null, 'Product pick karein — current stock, price aur pichhli demands ka summary milega.')));
+      h('span', null, T.t('dm.pickProd','Pick a product — current stock, price and past-demand summary included.'))));
   const dupNote = h('div', { class: 'f-note warn', hidden: true });
   const walkNote = h('div', { class: 'f-note', hidden: true },
     h('span', { class: 'f-note-i' }, '➕'),
     h('div', { class: 'f-note-t' }, h('b', null, 'Naya / walk-in customer'),
-      h('span', null, 'Customer list se select nahi kiya — Save par naam + phone se naya customer record khud ban jayega.')));
+      h('span', null, T.t('dm.newCust','No customer selected — on Save, a new customer record is created from name + phone.'))));
 
   const advKeys = ['advNote', 'make', 'model', 'customerPo', 'budgetPrice', 'partialOk', 'substituteOk',
     'followUpDate', 'notifyChannel', 'assignedSupplierId', 'tags', 'internalNote'];
@@ -26120,7 +26120,7 @@ function demandForm(existing) {
     { type: 'sec', key: 'secItem', label: 'Product', icon: '📦', hint: 'Catalog se pick ya custom name (scan 📷 support)' },
     { key: 'itemId', label: 'Product (pick from catalog)', type: 'search', full: true, scan: true,
       value: d.itemId || '', displayValue: d.itemName || '',
-      placeholder: '🔍 Code / name / barcode — ya 📷 se scan karein',
+      placeholder: T.t('dm.scanPh','🔍 Code / name / barcode — or scan via 📷'),
       load: (q, cb) => {
         Shared.items({ q: q || '', limit: q ? 12 : 25 })
           .then(rows => cb((rows || []).map(r => ({
@@ -26134,7 +26134,7 @@ function demandForm(existing) {
       onPick: row => itemPick(row && row.data) },
     { type: 'el', el: itemNote },
     { key: 'itemName', label: 'Product name (custom allowed)', required: true, full: true,
-      placeholder: 'Catalog na ho to naam type karein — availability check ho jayega' },
+      placeholder: T.t('dm.noCatPh','No catalog? Type a name — availability will be checked') },
     { key: 'itemCode', label: 'Part code / SKU', placeholder: 'BP-1001' },
     { key: 'category', label: 'Category' },
     { key: 'brand', label: 'Brand' },
@@ -26156,7 +26156,7 @@ function demandForm(existing) {
       hint: 'Budget, follow-up, partial/substitute policy, notify channel, internal notes, tags',
       onChange: on => { if (F) advKeys.forEach(k => F.show(k, on)); } },
     { type: 'sec', key: 'advNote', label: 'Advanced — sourcing & policy', icon: '⚙', hidden: !advOn,
-      hint: 'Internal use — customer ko nahi dikhta' },
+      hint: T.t('dm.internalHint','Internal use — not visible to the customer') },
     { key: 'make', label: 'Make', hidden: !advOn },
     { key: 'model', label: 'Model / variant', hidden: !advOn },
     { key: 'customerPo', label: 'Customer PO / reference', placeholder: 'Customer ka apna number', hidden: !advOn },
@@ -26164,7 +26164,7 @@ function demandForm(existing) {
       hint: 'Is se zyada par customer ko batayein', hidden: !advOn },
     { key: 'partialOk', label: 'Partial delivery chalegi', type: 'switch', value: !!(d.partialOk === 'true' || d.partialOk === true), hidden: !advOn },
     { key: 'substituteOk', label: 'Substitute / alternate brand chale ga', type: 'switch', value: !!(d.substituteOk === 'true' || d.substituteOk === true), hidden: !advOn },
-    { key: 'followUpDate', label: 'Follow-up date', type: 'date', hint: 'Is din dobara customer se rabta karna hai', hidden: !advOn },
+    { key: 'followUpDate', label: 'Follow-up date', type: 'date', hint: T.t('dm.followHint','Day to contact the customer again'), hidden: !advOn },
     { key: 'notifyChannel', label: 'Arrival par notify', type: 'select', options: DEMAND_NOTIFY, hidden: !advOn },
     { key: 'assignedSupplierId', label: 'Preferred supplier', type: 'search', placeholder: '🔍 Supplier…',
       value: d.assignedSupplierId || '', hidden: !advOn,
@@ -26204,7 +26204,7 @@ function demandForm(existing) {
       dupNote.append(h('span', { class: 'f-note-i' }, '⚠'),
         h('div', { class: 'f-note-t' }, h('b', null, 'Duplicate open demand: ' + extraHit.demandNo),
           h('span', null, extraHit.status + ' · ' + extraHit.qty + ' pcs · ' + (extraHit.date ? fmt.date(extraHit.date) : '') +
-            ' — pehle us demand ko complete/cancel karein.')));
+            T.t('dm.dupTail',' — complete/cancel that demand first.'))));
       return;
     }
     if (!cust || !item || !openRows.length) { dupNote.hidden = true; return; }
@@ -26216,7 +26216,7 @@ function demandForm(existing) {
     dupNote.append(h('span', { class: 'f-note-i' }, '⚠'),
       h('div', { class: 'f-note-t' }, h('b', null, 'Duplicate open demand: ' + hit.demandNo),
         h('span', null, hit.status + ' · ' + hit.qty + ' pcs · ' + (hit.date ? fmt.date(hit.date) : '') +
-          ' — pehle us demand ko complete/cancel karein, warna save block hoga.')));
+          T.t('dm.dupSaveTail',' — complete/cancel that demand first, or save will be blocked.'))));
   }
 
   async function custPick(c) {
@@ -26226,7 +26226,7 @@ function demandForm(existing) {
     custNote.append(h('span', { class: 'f-note-i' }, '👤'),
       h('div', { class: 'f-note-t' },
         h('b', null, c.name + (c.code ? ' · ' + c.code : '')),
-        h('span', null, [c.phone || 'phone nahi', c.type || c.customerType || '',
+        h('span', null, [c.phone || T.t('dm.noPhone','no phone'), c.type || c.customerType || '',
           'Balance ' + fmt.money(c.balance || 0),
           (c.creditLimit ? 'Credit limit ' + fmt.money(c.creditLimit) : '')].filter(Boolean).join(' · '))));
     toggleWalkNote();
@@ -26235,9 +26235,9 @@ function demandForm(existing) {
         { offlineFallback: () => ({ rows: [] }) });
       openRows = r.rows || [];
       custNote.append(h('div', { class: 'f-note-t' },
-        h('b', null, openRows.length ? openRows.length + ' open demand' + (openRows.length > 1 ? 's' : '') : 'Koi open demand nahi'),
+        h('b', null, openRows.length ? openRows.length + ' open demand' + (openRows.length > 1 ? 's' : '') : T.t('dm.noOpen','No open demands')),
         h('span', null, openRows.slice(0, 3).map(x => x.itemName + ' (' + x.qty + ')').join('  ·  ')
-          || 'Naya demand safar shuru kar sakte hain')));
+          || T.t('dm.newJourney','A new demand journey can start'))));
       checkDup();
     } catch (e) { }
   }
@@ -26251,14 +26251,14 @@ function demandForm(existing) {
     itemNote.append(h('span', { class: 'f-note-i' }, '📦'),
       h('div', { class: 'f-note-t' },
         h('b', null, r.name + (r.code ? ' · ' + r.code : '')),
-        h('span', null, [isNaN(stk) ? 'Stock info nahi' : (stk > 0 ? 'Branch stock: ' + fmt.num(stk) : 'Out of stock — sourcing lagegi'),
+        h('span', null, [isNaN(stk) ? T.t('dm.noStockInfo','No stock info') : (stk > 0 ? 'Branch stock: ' + fmt.num(stk) : T.t('dm.oos','Out of stock — sourcing needed')),
           (r.retailPrice ? 'Retail ' + fmt.money(r.retailPrice) : ''),
           (r.wholesalePrice ? 'Wholesale ' + fmt.money(r.wholesalePrice) : ''),
           (r.costPrice ? 'Cost ' + fmt.money(r.costPrice) : '')].filter(Boolean).join(' · '))));
     if (!isNaN(stk) && stk <= 0) {
       itemNote.append(h('div', { class: 'f-note-t' },
         h('b', null, 'Sourcing suggestion'),
-        h('span', null, 'Ye item stock mein nahi — PO Suggestions tab is demand ko supplier ke sath jor sakta hai.')));
+        h('span', null, T.t('dm.notInStock','Item not in stock — the PO Suggestions tab can link this demand to a supplier.'))));
     }
     try {
       const hh = await API.call('demand.list', { itemId: r.id, limit: 6 }, { offlineFallback: () => ({ rows: [] }) });
@@ -26300,7 +26300,7 @@ function demandForm(existing) {
     if (!name) return UI.toast(T.t('dem.nameNeeded','Product name is required — pick from catalog or type'), 'err', 4000), false;
     const qty = Number(v.qty) || 0;
     if (qty <= 0) return UI.toast(T.t('dem.qtyMin','Quantity must be 1 or more'), 'err'), false;
-    if (dupHit) return UI.toast('Ye demand pehle se open hai (' + dupHit.demandNo + ') — pehle us ko complete/cancel karein', 'warn', 5200), false;
+    if (dupHit) return UI.toast(T.t('dm.dupOpen','This demand is already open (') + dupHit.demandNo + T.t('dm.saveAnywayTail',') — complete/cancel it first'), 'warn', 5200), false;
     const live = await findDupLive(v, name);
     if (live) {
       checkDup(live);
@@ -26311,9 +26311,9 @@ function demandForm(existing) {
        blocking browser popup nahi) aur ab ASLI intezar (pehle ye foran aage
        barh jata tha — user ko poochha hi nahi jata tha). */
     if (v.expectedDate && v.expectedDate < today
-      && !(await UI2.confirm('Expected date guzar chuki hai (' + v.expectedDate + ') — phir bhi save karein?', null, true))) return false;
+      && !(await UI2.confirm(T.t('dm.datePast','Expected date has passed (') + v.expectedDate + T.t('dm.saveAnyway',') — save anyway?'), null, true))) return false;
     if (Number(v.budgetPrice) > 0 && Number(v.budgetPrice) < Number(item && item.costPrice || 0)
-      && !(await UI2.confirm('Budget price cost se kam hai (cost ' + fmt.money(Number(item.costPrice)) + ') — phir bhi save karein?', null, true))) return false;
+      && !(await UI2.confirm(T.t('dm.budgetLow','Budget price is below cost (cost ') + fmt.money(Number(item.costPrice)) + T.t('dm.saveAnyway',') — save anyway?'), null, true))) return false;
 
     let custId = v.customerId;
     if (!custId) {
@@ -26321,9 +26321,9 @@ function demandForm(existing) {
       try {
         const saved = await API.call('customers.save', { customer: { name: cname, phone: v.customerPhone || '' } });
         custId = (saved && (saved.id || (saved.customer && saved.customer.id))) || '';
-        if (!custId) throw new Error('Customer id nahi mili');
+        if (!custId) throw new Error(T.t('dm.noCustId','Customer id not found'));
         UI.toast(T.t('dem.custCreated','New customer created: ') + cname, 'ok');
-      } catch (e) { return UI.toast('Customer add nahi ho saka: ' + e.message, 'err', 5200), false; }
+      } catch (e) { return UI.toast(T.t('dm.custFail','Could not add customer: ') + e.message, 'err', 5200), false; }
     }
     const patch = {
       customerId: custId, customerName: cname, itemId: v.itemId || '', itemName: name,
@@ -26338,7 +26338,7 @@ function demandForm(existing) {
     try {
       if (isEdit) await API.call('demand.update', { id: d.id, patch: patch });
       else await API.call('demand.create', { demand: patch });
-      UI.toast(isEdit ? 'Demand update ho gayi ✅' : 'Demand save ho gayi ✅', 'ok');
+      UI.toast(isEdit ? T.t('dm.updated','Demand updated ✅') : T.t('dm.saved','Demand saved ✅'), 'ok');
       return true;
     } catch (e) { UI.toast(e.message || 'Save fail', 'err', 6000); return false; }
   }
@@ -26372,7 +26372,7 @@ function openDemandModal(cfg, F) {
 }
 
 function openCreate() {
-  if (!App.can('demand.create')) return UI.toast('Permission nahi hai', 'err');
+  if (!App.can('demand.create')) return UI.toast(T.t('dm.noPerm','Permission denied'), 'err');
   const F = demandForm(null);
   openDemandModal({
     title: '➕ New Customer Demand',
@@ -26391,11 +26391,11 @@ function openEdit(d) {
 }
 
 function openRepeat(d) {
-  if (!App.can('demand.create')) return UI.toast('Permission nahi hai', 'err');
+  if (!App.can('demand.create')) return UI.toast(T.t('dm.noPerm','Permission denied'), 'err');
   const F = demandForm(Object.assign({}, d, { id: '' }));
   openDemandModal({
     title: '🔁 Repeat demand — ' + (d.demandNo || ''),
-    subtitle: 'Purani demand se copy — qty/date adjust kar ke naya demand banayein. (F9 = save)',
+    subtitle: T.t('dm.copySub','Copy from an old demand — adjust qty/date for the new one. (F9 = save)'),
     saveLabel: 'Create repeat'
   }, F);
 }
@@ -26403,7 +26403,7 @@ function openRepeat(d) {
 async function vendorSuggest(row) {
   const d = row.itemId ? row : row; // accept both
   const id = d.itemId || '';
-  if (!id && !d.itemName) return UI.toast('Item info nahi hai', 'warn');
+  if (!id && !d.itemName) return UI.toast(T.t('dm.noItemInfo','Item info missing'), 'warn');
   UI.toast('Best vendor dhoond rahe hain…', 'info');
   try {
     const res = await API.call('demand.vendorSuggest', { itemId: id, itemName: d.itemName || '', days: 180 });
@@ -26489,7 +26489,7 @@ function renderPOSuggest(c) {
       { icon: '💰', label: 'Est. value', value: fmt.money(s.estimatedValue || 0), cls: 'ok' }
     ]));
     if (!s.items || !s.items.length) {
-      host.appendChild(h('div', { class: 'empty' }, h('span', { class: 'big' }, '✅'), h('div', null, 'Koi outstanding demand nahi — PO ke liye kuch pending nahi')));
+      host.appendChild(h('div', { class: 'empty' }, h('span', { class: 'big' }, '✅'), h('div', null, T.t('dm.allClear','No outstanding demands — nothing pending for PO'))));
       return;
     }
     host.appendChild(h('div', { style: { margin: '10px 0', display: 'flex', gap: '6px', flexWrap: 'wrap' } },
@@ -26525,7 +26525,7 @@ function renderPOSuggest(c) {
 
     function createPOFROMSelected() {
       const chosen = s.items.filter(it => sel.has(it.key));
-      if (!chosen.length) return UI.toast('Koi item select nahi', 'warn');
+      if (!chosen.length) return UI.toast(T.t('dm.noneSel','No items selected'), 'warn');
       // group by supplier suggestion? For v1, ask supplier
       const supSel = h('select', { class: 'f-input' }, h('option', { value: '' }, '— Auto / primary —'));
       Shared.suppliers({ limit: 30 }).then(rows => {   /* v2.27.0 W3.T3 */

@@ -213,3 +213,12 @@ integration + regression + UI/UX-check + error-handling + security-check pass ho
 - [x] ⚠️ **Self-caught corruption**: r15 bump-script me fp/fp2 slip — GAP-doc content Utils.gs par likh gaya tha (verify check-gate ne pakra) → restore + note; LESSON: version-bump script me variable reuse khatarnaak — dobara na ho isliye check.sh pehle solo chalana hai
 - [x] pos.overrideAsk fallback EN (floor 486/460 restore)
 - [x] 71/71 GREEN → v2.31.3.zip → push
+
+## Round-16 — EN SLICE-5 COMPLETE + v2.31.4 (2026-09-26)
+- [x] r15 ship note: v2.31.3 (F1 FOC engine + F4 credit override) 71/71 GREEN, remote bcd6c1b, zip pushed
+- [x] mock typo 'میدیں'→'میچز' (2 cols) — pending since r13, DONE
+- [x] EN slice-5 (D7): App_UI2 39 sites (ui2.* 42 keys) + App_Salesman 33 sites (sm.* 35 keys) + App_Demand 30 sites (dm.* 33 keys) → T.t; mock rows en/roman/ur
+- [x] Audit: hits 486→386 (−100), T.t 459→573 (+114); floor 3/0
+- [x] Tests language-neutral: salesman-stock 10/0, demand 13/0, save-all 24/0, modals-close 91/0, busy 17/0, ui-err 30/0
+- [x] LESSON (dobara na ho): plain-string→T.t() swap mein +1 closing paren lagti hai (UI2 L2172, Demand L414/426 — check.sh ne pakra)
+- [x] v2.31.4 → verify → zip → push

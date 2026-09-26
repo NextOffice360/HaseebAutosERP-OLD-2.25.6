@@ -238,5 +238,5 @@ var CONFIG = {
   SESSION_TTL: 60 * 60 * 12,      // 12 hours
   CACHE_TTL: 60 * 15,             // 15 min sheet cache (v2.13.4: 15-min warm trigger keeps it continuously warm)
   MAX_ROWS_SCAN: 60000,
-  VERSION: '2.31.3'
+  VERSION: '2.31.4'
 };

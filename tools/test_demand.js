@@ -173,7 +173,7 @@ const ok = (n, c, d) => c ? (pass++, console.log('  ✔ ' + n + (d ? '  → ' + 
     return (window.__toasts || []).join(' | ');
   });
   ok('duplicate open demand server-side block (Ahmad Ali + wahi item)',
-    /Duplicate|pehle se open/i.test(dup), dup);
+    /Duplicate|pehle se open|already open/i.test(dup) /* v2.31.4 EN */, dup);
 
   /* 9) F9 save (alag item → success) */
   const saved = await page.evaluate(async () => {
@@ -190,7 +190,7 @@ const ok = (n, c, d) => c ? (pass++, console.log('  ✔ ' + n + (d ? '  → ' + 
     await new Promise(r => setTimeout(r, 1600));
     return { toasts: (window.__toasts || []).join(' | '), closed: !document.querySelector('.modal2') };
   });
-  ok('F9 = Save demand → save + modal band', /save ho gayi|update/i.test(saved.toasts) && saved.closed,
+  ok('F9 = Save demand → save + modal band', /save ho gayi|update|Demand saved/i.test(saved.toasts) && saved.closed,
     JSON.stringify(saved));
 
   /* 10) list mein naya demand */
@@ -293,7 +293,7 @@ const ok = (n, c, d) => c ? (pass++, console.log('  ✔ ' + n + (d ? '  → ' + 
   });
   ok('walk-in customer save — naya customer + catalog item pick kar ke demand save ho jati hai (list +1)',
     !wk.err && wk.closed === true && wk.after > wk.before
-      && wk.icode === 'FL00000' && /save ho gayi|update/i.test(wk.toast || ''),
+      && wk.icode === 'FL00000' && /save ho gayi|update|Demand saved/i.test(wk.toast || ''),
     JSON.stringify(wk));
 
   ok('is run mein zero page errors', errs.length === 0, JSON.stringify(errs).slice(0, 200));

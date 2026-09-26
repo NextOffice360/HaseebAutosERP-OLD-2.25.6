@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-09-26T10:02:58.272Z",
-  "totalHits": 416,
-  "totalTt": 538,
+  "generatedAt": "2026-09-26T10:07:25.366Z",
+  "totalHits": 386,
+  "totalTt": 573,
   "files": [
     {
       "file": "App_Core.html",
@@ -19,25 +19,6 @@
         {
           "line": 203,
           "text": "`fmt.date()` isi par delegate karta hai, is liye poore app ke 92 call-si* `fmt.date()` isi"
-        }
-      ]
-    },
-    {
-      "file": "App_Demand.html",
-      "tt": 5,
-      "hits": 30,
-      "samples": [
-        {
-          "line": 80,
-          "text": "host.appendChild(h('div', { class: 'empty' }, h('span', { class: 'big' }, '😕'), h('div', "
-        },
-        {
-          "line": 159,
-          "text": ": h('div', { class: 'empty', style: { padding: '12px' } }, 'Koi PO link nahi — sourcing pe"
-        },
-        {
-          "line": 186,
-          "text": "UI2.confirm('Demand ' + (d.demandNo || '') + ' cancel karein? Stock/PO par asar nahi hoga,"
         }
       ]
     },
