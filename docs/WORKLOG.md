@@ -172,3 +172,11 @@ integration + regression + UI/UX-check + error-handling + security-check pass ho
 - [x] T41 verify 71/71 GREEN (tmp/validate-v2.30.9.log) → package v2.30.9.zip → push 0d6798f
 
 **Remnants (r12+):** PWA i18n micro-T (Pwa_Shell me window.T fallback + dict plumbing) · comment-hygiene as a safe tool (naive counter Config toda tha) · DAYREP session-QR resolvable banana · App_Core 80 / AIConfig 50 / UI2 48 (zyada tar error-matcher regexes — sirf UI strings) · Phase-C Context_Aware UX items.
+
+## Round-12 — PWA micro-T + hygiene tool + DAYREP (2026-09-25) — SHIPPED v2.31.0
+- [x] Env reset recipe chala (bootstrap + chrome-libs) — server 8021 + libs wapas
+- [x] A: safe comment-hygiene tool (fix_comment_hygiene.js) — syntax-validate + auto-revert (4 files ne revert kiya = guard working); 47 lines fixed
+- [x] B: PWA i18n micro-T — Pwa_Shell window.T shim (fallback=EN, localStorage dict cache, lang.dict sync, T.set) + window.PWA export (L709 pehle se depend tha); Shell 37 + Warehouse 38 → T.t; hits 615→539, T.t 317→396
+- [x] C: DAYREP session-QR resolvable (App_QR JSON branch → 'insights' screen) + resolver gate case (14/0) + qr-gate HA-class
+- [x] 71/71 GREEN → v2.31.0.zip → push 20f675b
+**Lesson:** naive depth-counter Config JS tod sakta hai — hygiene ab tool+guard ke sath; PWA template-block ka 'Unexpected token <' PRE-EXISTING hai (HEAD bhi) — alag separator/style block, harmless.
