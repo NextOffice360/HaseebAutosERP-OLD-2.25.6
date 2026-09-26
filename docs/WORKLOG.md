@@ -242,3 +242,11 @@ integration + regression + UI/UX-check + error-handling + security-check pass ho
 - modals-close 70/21 = phir WEDGE tha (esc events=0) — ~35 min baad khud clear (r14 pattern). Red-herring: pwa_overlays 124/0 pass (PWA pages wedge se un-touch). v2.31.4 worktree :8099 par 91/0 + bisect ne 1-hour tak COMMENT-LINE ko false-suspect banaya — comment runtime nahi badalta; asli farq TIME tha (wedge clear hona).
 - LESSON: wedge ab main-app + PWA dono par alag-alag behave kar sakta hai; bisect se pehle hamesha purana build + naya build BACK-TO-BACK same port par test karo.
 - FINAL: v2.31.5 (EN slice-6: 69 sites, hits 314, T.t 650) — full verify r2 chal raha → green expected.
+
+## Round-18 — EN SLICE-7 + v2.31.6 (2026-09-26)
+- [x] slice-7a: App_QR 23 (qr.* 25) + App_Comms 15 (cm.* 16) · 7b: App_AIConfig 17 (aic.* 17) + App_Orders 13 (od.* 13) · 7c: App_Reorder 14 + App_POS 12 + Pwa_Salesman 13 (ro/pos/pws 41) = 107 sites → T.t
+- [x] Audit: hits 314→207 (r13 baseline 486 se −279), T.t 650→765
+- [x] Workspace recovery: git gc (.git 60M→6.2M), old zip FTP-verified-then-deleted, snapshot r17b (21.8M) FTP par → 92M→34M
+- [x] PWA T-shim confirm: Pwa_Shell ka shim lang.dict backend se sync hota hai — pws.* keys PWA par chalein ge
+- [x] tests: pay-ledger 49/0, ui_run 34/0, pwa_ui 66/0, scan_parity 29/0, ai_ui 55/0, logic 825/0, floor 3/0
+- [x] v2.31.6 → verify → zip → push → FTP
