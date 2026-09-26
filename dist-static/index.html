@@ -12359,7 +12359,7 @@ UI2.tabs = function (host, cfg) {
    accessibility (keyboard focus, aria), On/Off state text ke sath.
 
    NOTE: row-select / multi-select checkboxes JANA-BUJH kar checkbox hain
-   (wo "toggle" nahi, "selection" hain) — sirf on/off isi helper se.
+   (not "toggle" — these are "selection") — on/off isi helper se.
    ========================================================================== */
 UI2.toggle = function (cfg) {
   cfg = cfg || {};
@@ -12580,7 +12580,7 @@ UI2.entityLink = function (screen, params, label, extraCls) {
   const txt = String(label || 'Open');
   const b = h('button', {
     class: 'ent-link' + (extraCls ? ' ' + extraCls : ''), type: 'button',
-    title: txt + ' — record kholein (context save hota hai)', 'aria-label': txt + ' kholein'
+    title: txt + T.t('ui2.rowOpenTitle', ' — open record (context is saved)'), 'aria-label': txt + T.t('ui2.rowOpenAria', ' open')
   }, txt);
   b.onclick = () => { UI2.closeTop(); App.go(screen, params || {}); };
   return b;
@@ -12707,7 +12707,7 @@ UI2.itemPicker = function (cfg) {
       const cap = stk >= 0 ? Math.max(1, stk) : want;
       const next = stk >= 0 ? Math.min(want, cap) : want;
       if (next <= cur) {
-        UI.toast('Stock limit: ' + (r.name || r.code) + ' — ' + fmt.num(stk) + ' se zyada add nahi', 'warn', 3400);
+        UI.toast(T.t('ui2.stockLimit','Stock limit: ') + (r.name || r.code) + ' — ' + fmt.num(stk) + T.t('ui2.stockLimitTail',' — cannot add more'), 'warn', 3400);
         setLast('⚠ Stock limit — qty ' + fmt.num(cur), 'warn');
         return null;
       }
@@ -12782,8 +12782,8 @@ UI2.itemPicker = function (cfg) {
     if (!clean) { clearScanFields(); return false; }
     locate(clean, r => {
       if (!r) {
-        UI.toast('Code nahi mila: ' + clean + ' — field clear, next scan ready', 'warn', 3600);
-        setLast('⚠ ' + clean + ' → nahi mila', 'warn');
+        UI.toast(T.t('ui2.codeNotFound','Code not found: ') + clean + T.t('ui2.codeNotFoundTail',' — field cleared, next scan ready'), 'warn', 3600);
+        setLast('⚠ ' + clean + ' → ' + T.t('ui2.notFound','not found'), 'warn');
       } else if (st.multi) processBulkAdd(r, 1);
       else { addOne(r, 1); input.value = ''; hide(); }
       clearScanFields();
@@ -12823,7 +12823,7 @@ UI2.itemPicker = function (cfg) {
           h('b', { title: r.name || r.code }, r.name || r.code),
           h('span', null, (r.code || '') + ' · stock ' + (r.stock !== undefined && r.stock !== null ? fmt.num(r.stock) : '?') + ' · qty ' + fmt.num(qty))),
         h('div', { class: 'bsb-acts' },
-          h('button', { class: 'btn sm ghost', type: 'button', title: 'Kam karein', 'aria-label': 'Decrease', onclick: () => { const cur = Number(sel.get(id) || 1); if (cur <= 1) sel.delete(id); else sel.set(id, cur - 1); paintSelectedBox(); paintAddBar(); paintChips(); } }, '−'),
+          h('button', { class: 'btn sm ghost', type: 'button', title: T.t('ui2.dec','Decrease'), 'aria-label': 'Decrease', onclick: () => { const cur = Number(sel.get(id) || 1); if (cur <= 1) sel.delete(id); else sel.set(id, cur - 1); paintSelectedBox(); paintAddBar(); paintChips(); } }, '−'),
           h('input', { type: 'number', min: '1', value: String(qty), 'aria-label': 'Qty ' + (r.name || r.code),
             oninput: e => { const v = Math.max(1, Number(e.target.value) || 1); sel.set(id, v); paintAddBar(); paintChips(); },
             onchange: () => paintSelectedBox() }),
@@ -12876,7 +12876,7 @@ UI2.itemPicker = function (cfg) {
               style: { width: '58px' },
               oninput: e => { const k = String(r.id || r.itemId || r.code);
                 if (sel.has(k)) { sel.set(k, Math.max(1, Number(e.target.value) || 1)); paintAddBar(); paintChips(); } } }))
-          : h('span', { class: 'ipk-add', title: 'Add karne ke liye click karein' }, '+'));
+          : h('span', { class: 'ipk-add', title: T.t('ui2.addClick','Click to add') }, '+'));
       row.onclick = st.multi
         ? (e => { if (e.target.tagName === 'INPUT') return;
           const k = String(r.id || r.itemId || r.code);
@@ -12888,7 +12888,7 @@ UI2.itemPicker = function (cfg) {
     });
     if (!st.rows.length) {
       results.appendChild(st.busy ? h('div', { class: 'tbl-empty' }, '⏳ Load ho raha hai…')
-        : h('div', { class: 'tbl-empty' }, st.q ? 'Koi item nahi mila — code check karein ya naya scan karein' : 'Koi item nahi'));
+        : h('div', { class: 'tbl-empty' }, st.q ? T.t('ui2.ipkNoHit','No item found — check the code or scan again') : T.t('ui2.ipkNoItems','No items')));
     }
     paintAddBar();
     paintChips();
@@ -13157,7 +13157,7 @@ UI2.askCode = function (opts) {
       onClose: () => done(null),
       body: h('div', null,
         h('div', { style: { fontSize: 'var(--fs-sm)', color: 'var(--muted)', marginBottom: '8px', lineHeight: '1.5' } },
-          o.hint || 'Camera scan available nahi — code type ya paste karein (Enter = OK).'),
+          o.hint || T.t('ui2.scanNoCam','Camera scan not available — type or paste the code (Enter = OK).')),
         inp),
       actions: [
         { label: 'Cancel', cls: 'ghost', onClick: c => { done(null); c(); } },
@@ -13185,7 +13185,7 @@ UI2.copyText = function (text, label) {
       title: '🔗 ' + (label || 'Link'), size: 'sm',
       body: h('div', null,
         h('div', { style: { fontSize: 'var(--fs-sm)', color: 'var(--muted)', marginBottom: '8px' } },
-          'Automatic copy available nahi — neeche se select karke copy karein (Ctrl+C).'),
+          T.t('ui2.copyNoAuto','Automatic copy not available — select and copy below (Ctrl+C).')),
         inp),
       actions: [{ label: 'Close', cls: 'ghost', onClick: c => c() }]
     });
@@ -13194,7 +13194,7 @@ UI2.copyText = function (text, label) {
   try {
     if (navigator.clipboard && navigator.clipboard.writeText) {
       return navigator.clipboard.writeText(t).then(
-        () => { UI.toast((label || 'Link') + ' copy ho gaya', 'ok'); return true; },
+        () => { UI.toast((label || 'Link') + ' ' + T.t('ui2.copied','copied'), 'ok'); return true; },
         () => { fallback(); return false; });
     }
   } catch (e) { }
@@ -13292,7 +13292,7 @@ UI2.table = function (cfg) {
   right.appendChild(colBtn);
 
   if (cfg.savedViews !== false && cfg.screen) {
-    right.appendChild(h('button', { class: 'btn sm sec', title: 'Filter presets save/load karein',
+    right.appendChild(h('button', { class: 'btn sm sec', title: T.t('ui2.viewsBtn','Save/load filter presets'),
       onclick: () => viewsMenu() }, '⭐ Views'));
   }
   if (cfg.exportName !== false) {
@@ -13313,14 +13313,14 @@ UI2.table = function (cfg) {
       state.hidden = st.hidden || []; Store.set('cols_' + (cfg.screen || 'x'), state.hidden);
       paint();
       UI.toast('View applied: ' + v.name, 'ok');
-    } catch (e) { UI.toast('View load nahi hua', 'err'); }
+    } catch (e) { UI.toast(T.t('ui2.viewLoadFail','View failed to load'), 'err'); }
   }
   function viewsMenu() {
     const box = h('div');
     API.call('config.views.list', { screen: cfg.screen }, { offlineFallback: () => [] })
       .then(rows => {
         box.innerHTML = '';
-        if (!rows.length) box.appendChild(h('div', { class: 'tbl-empty' }, 'Abhi koi saved view nahi'));
+        if (!rows.length) box.appendChild(h('div', { class: 'tbl-empty' }, T.t('ui2.noViews','No saved views yet')));
         (rows || []).forEach(v => box.appendChild(h('div', { class: 'list-item' },
           h('div', { class: 'li-main' }, h('b', null, v.name),
             h('span', null, (v.scope === 'GLOBAL' ? 'Sab ke liye' : 'Sirf aap ke liye'))),
@@ -13337,7 +13337,7 @@ UI2.table = function (cfg) {
               state: JSON.stringify(viewState()), scope: 'USER' } });
             UI.toast('View saved ⭐', 'ok'); m.close();
           } }, '💾 Save current filter')));
-      }).catch(() => box.appendChild(h('div', { class: 'empty' }, 'Views load nahi hue')));
+      }).catch(() => box.appendChild(h('div', { class: 'empty' }, T.t('ui2.viewsLoadFail','Views failed to load'))));
     const m = UI2.modal({ title: '⭐ Saved views — ' + (cfg.screen || ''), size: 'sm', body: box,
       actions: [{ label: 'Close', onClick: c => c() }] });
   }
@@ -13407,7 +13407,7 @@ UI2.table = function (cfg) {
     if (loadErr) {
       body.innerHTML = '';
       body.appendChild(h('div', { class: 'empty err' }, h('span', { class: 'big' }, '⚠'),
-        h('div', null, 'Load nahi hua: ' + loadErr),
+        h('div', null, T.t('ui2.loadFail','Failed to load: ') + loadErr),
         h('button', { class: 'btn sm', style: { marginTop: '10px' }, onclick: () => reload() }, '↻ Retry')));
       foot.innerHTML = ''; foot.style.display = 'none';
       return;
@@ -13422,7 +13422,7 @@ UI2.table = function (cfg) {
     body.innerHTML = '';
     if (!total) {
       body.appendChild(h('div', { class: 'empty' }, h('span', { class: 'big' }, '📭'),
-        h('div', null, state.q || Object.keys(state.filters).length ? 'Is filter se kuch nahi mila' : 'Koi data nahi'),
+        h('div', null, state.q || Object.keys(state.filters).length ? T.t('ui2.filterNoHit','Nothing matches this filter') : T.t('ui2.noData','No data')),
         cfg.emptyAction ? h('button', { class: 'btn sm', style: { marginTop: '10px' }, onclick: cfg.emptyAction.onClick }, cfg.emptyAction.label) : ''));
       /* v2.8.5 — khaali footer (19px ki border line) chhupa dete hain, warna
          zero-row tables mein ek bekaar ki khali patti dikhti hai. */
@@ -13859,7 +13859,7 @@ UI2.form = function (cfg) {
       }
       function paintList() {
         listBox.innerHTML = '';
-        if (!rows.length) listBox.appendChild(h('div', { class: 'f-sr-empty' }, f.emptyText || 'Kuch nahi mila — dobara likh kar try karein'));
+        if (!rows.length) listBox.appendChild(h('div', { class: 'f-sr-empty' }, f.emptyText || T.t('ui2.srEmpty','Nothing found — type again to retry')));
         else rows.forEach((row, i) => {
           const el = h('div', { class: 'f-sr' + (i === idx ? ' on' : ''), role: 'option' },
             h('b', null, row.label || ''), row.sub ? h('span', null, row.sub) : '',
@@ -13905,8 +13905,8 @@ UI2.form = function (cfg) {
             const ex = list.filter(x => String(x.value).toLowerCase() === lc
               || String(x.sub || '').toLowerCase().indexOf(lc) > -1
               || String(x.label || '').toLowerCase().indexOf(lc) > -1)[0];
-            if (ex) { pick(ex); UI.toast('Scan mil gaya: ' + (ex.label || clean), 'ok'); }
-            else { input.value = clean; input.dataset.value = ''; rows = list; paintList(); UI.toast('Code ' + clean + ' — list se select karein', 'warn'); }
+            if (ex) { pick(ex); UI.toast(T.t('ui2.scanHit','Scan found: ') + (ex.label || clean), 'ok'); }
+            else { input.value = clean; input.dataset.value = ''; rows = list; paintList(); UI.toast('Code ' + clean + ' — ' + T.t('ui2.pickFromList','select from the list'), 'warn'); }
           });
         };
         if (window.HaScan && HaScan.scan) HaScan.scan({ onDetect: doCode });
@@ -13943,7 +13943,7 @@ UI2.form = function (cfg) {
         if (camera) fi.setAttribute('capture', 'environment');
         fi.onchange = async () => {
           const file = fi.files && fi.files[0]; if (!file) return;
-          if (file.size > 6 * 1024 * 1024) { UI.toast('Image 6MB se bari hai — chhoti kar ke try karein', 'warn', 3600); return; }
+          if (file.size > 6 * 1024 * 1024) { UI.toast(T.t('ui2.imgBig','Image is over 6MB — shrink it and try again'), 'warn', 3600); return; }
           hint.textContent = '⏳ Image process ho rahi hai…';
           try {
             const dataUrl = await UI2.shrinkImage(file, 900);
@@ -13958,7 +13958,7 @@ UI2.form = function (cfg) {
       const btns = h('div', { class: 'row', style: 'gap:6px;flex-wrap:wrap;margin-top:6px' },
         h('button', { type: 'button', class: 'btn sm sec', onclick: () => doPick(false) }, '📁 Upload image'),
         h('button', { type: 'button', class: 'btn sm sec', onclick: () => doPick(true) }, '📷 Camera / Photo'),
-        h('button', { type: 'button', class: 'btn sm ghost', onclick: () => { input.value = ''; input.__pendingData = null; prev.style.display = 'none'; hint.textContent = 'Image hata di — Save karein to remove ho jayegi'; } }, '✕ Hataein'));
+        h('button', { type: 'button', class: 'btn sm ghost', onclick: () => { input.value = ''; input.__pendingData = null; prev.style.display = 'none'; hint.textContent = T.t('ui2.imgRemoved','Image removed — Save to remove it permanently'); } }, T.t('ui2.imgRemoveBtn','✕ Remove')));
       refs[f.key] = input;
       return h('div', { class: 'f-col full' },
         h('label', { for: id }, f.label || 'Image'),
@@ -14087,7 +14087,7 @@ UI2.form = function (cfg) {
           } else {
             /* clear: khaali placeholder pehle (browser pehle option par jump
                nahi karega — chup-chap galat value chunwana nahi) */
-            el.insertBefore(h('option', { value: '' }, '— chunein —'), el.firstChild);
+            el.insertBefore(h('option', { value: '' }, T.t('ui2.choose','— choose —')), el.firstChild);
             el.value = '';
             try { markDirty(f.key); } catch (eD) { }
             if (f.depOn.invalidMsg) UI.toast(f.depOn.invalidMsg, 'warn', 3200);
@@ -14278,12 +14278,12 @@ UI2.saveAllReady = function (root) {
 UI2._saBusy = false;
 UI2.saveAll = async function (opts) {
   opts = opts || {};
-  if (UI2._saBusy) { UI.toast('SAVE ALL pehle se chal raha hai — intezar karein', 'warn'); return { skipped: true }; }
+  if (UI2._saBusy) { UI.toast(T.t('ui2.saBusy','SAVE ALL is already running — please wait'), 'warn'); return { skipped: true }; }
   const pack = UI2.dirtyPayload(opts.root);
   const r = UI2.runners(opts.root);
-  if (!pack.count) { UI.toast('Koi unsaved tabdeeli nahi — sab mehfooz hai', 'warn'); return { ok: true, count: 0 }; }
+  if (!pack.count) { UI.toast(T.t('ui2.saNone','No unsaved changes — everything is saved'), 'warn'); return { ok: true, count: 0 }; }
   if (!r.bridge && !r.groups.length) {
-    UI.toast('Is page par SAVE ALL available nahi — apne Save button se save karein', 'warn', 4200);
+    UI.toast(T.t('ui2.saNa','SAVE ALL is not available on this page — use the page Save button'), 'warn', 4200);
     return { ok: false, count: pack.count, noRunner: true };
   }
   UI2._saBusy = true;
@@ -14308,7 +14308,7 @@ UI2.saveAll = async function (opts) {
     }
   } finally { UI2._saBusy = false; }
   const left = UI2.dirtyPayload(opts.root);
-  if (!failed.length) UI.toast(saved + ' tabdeeli save ho gayi (' + total + ' section)', 'ok', 3200);
+  if (!failed.length) UI.toast(saved + ' ' + T.t('ui2.saDone','change(s) saved (') + total + ' ' + T.t('ui2.saDoneTail','section)'), 'ok', 3200);
   else UI.toast('SAVE ALL adhoora: ' + failed.length + '/' + total + ' section fail — ' +
     failed.map(f => f.label).join(', ') + ' baqi hai', 'err', 6000);
   if (failed.length && UI2.retryToast) {
@@ -14350,7 +14350,7 @@ UI2.validate = function (rules, opts) {
       const m = r.test(v);
       if (m) errors.push({ key: r.key || '', msg: String(m) });
     } else if (badField(r, v[r.key])) {
-      errors.push({ key: r.key, msg: r.msg || 'Ye field durust karein' });
+      errors.push({ key: r.key, msg: r.msg || T.t('ui2.fixField','Fix this field') });
     }
   });
   if (errors.length) {
@@ -14413,7 +14413,7 @@ UI2.palette = function () {
 
   function paint() {
     list.innerHTML = '';
-    if (!items.length) { list.appendChild(h('div', { class: 'tbl-empty' }, 'Kuch nahi mila')); return; }
+    if (!items.length) { list.appendChild(h('div', { class: 'tbl-empty' }, T.t('ui2.nothingFound','Nothing found'))); return; }
     items.slice(0, 12).forEach((it, i) => {
       list.appendChild(h('div', { class: 'pal-item' + (i === sel ? ' sel' : ''),
         onclick: () => pick(it), onmouseenter: () => { sel = i; paint(); } },
@@ -14459,7 +14459,7 @@ UI2.help = function () {
   const sec = (title, ...kids) => h('div', { class: 'hlp-sec' }, h('h4', { class: 'hlp-h' }, title), ...kids);
 
   const guides = h('div', { class: 'hlp-grid' }, [
-    A(docsBase + '/01-OVERVIEW.md', 'Overview', 'Ye app kya karta hai — modules ka jaiza'),
+    A(docsBase + '/01-OVERVIEW.md', 'Overview', T.t('ui2.docsOverview','What this app does — module tour')),
     A(docsBase + '/02-SETUP-GUIDE.md', 'Setup guide', 'Nayi sheets/script se shuruat — step by step'),
     A(docsBase + '/03-CONFIGURATION.md', 'Configuration', 'Settings, shop, invoice, tax'),
     A(docsBase + '/04-ENVIRONMENT.md', 'Environment', 'Clasp, editor, properties'),
@@ -14499,7 +14499,7 @@ UI2.help = function () {
       sec('App guides — repo docs/', guides),
       sec('Official documentation', official),
       sec('Keyboard shortcuts', keys)),
-    actions: [{ label: 'Band karein', onClick: c => c() }]
+    actions: [{ label: T.t('ui2.close','Close'), onClick: c => c() }]
   });
 };
 
@@ -14578,10 +14578,10 @@ UI2.shrinkImage = function (file, maxPx) {
   return new Promise((resolve, reject) => {
     if (!/^image\//.test(file.type || '')) return reject(new Error('Sirf image files (JPG/PNG) chalein gi'));
     const fr = new FileReader();
-    fr.onerror = () => reject(new Error('File nahi parh sake'));
+    fr.onerror = () => reject(new Error(T.t('ui2.fileReadFail','Could not read file')));
     fr.onload = () => {
       const img = new Image();
-      img.onerror = () => reject(new Error('Ye valid image nahi hai'));
+      img.onerror = () => reject(new Error(T.t('ui2.imgInvalid','Not a valid image')));
       img.onload = () => {
         try {
           let w = img.width || maxPx, hh = img.height || maxPx;
@@ -14611,13 +14611,13 @@ UI2.shrinkImage = function (file, maxPx) {
  */
 UI2.bulkAddModal = function (cfg) {
   cfg = cfg || {};
-  if (!UI2.itemPicker) { UI.toast('Product picker load nahi hua', 'err'); return null; }
+  if (!UI2.itemPicker) { UI.toast(T.t('ui2.pickerFail','Product picker failed to load'), 'err'); return null; }
   const added = [];
   const picker = UI2.itemPicker({
     mode: 'multi',
     icon: cfg.icon || '📦',
     title: cfg.title || 'Bulk add — multi select',
-    hint: cfg.hint || 'Scan → Bulk List → Add All · ya search/📋 list se tick karein',
+    hint: cfg.hint || T.t('ui2.bulkHint','Scan → Bulk List → Add All · or tick via search/📋 list'),
     commitLabel: cfg.commitLabel || 'Add selected',
     placeholder: cfg.placeholder || 'Search product — name / code / barcode…',
     sub: cfg.sub,
@@ -14627,7 +14627,7 @@ UI2.bulkAddModal = function (cfg) {
   });
   const m = UI2.modal({
     title: cfg.modalTitle || ('📦 ' + (cfg.title || 'Bulk add')),
-    subtitle: cfg.subtitle || 'Scan → Bulk List mein foran add → field khali · ya tick karein → Add All',
+    subtitle: cfg.subtitle || T.t('ui2.bulkSub','Scan → adds straight to Bulk List → field cleared · or tick → Add All'),
     size: 'lg', body: picker,
     actions: [{ label: 'Bulk add (' + added.length + ')', cls: 'ghost', onClick: c => c() }]
   });

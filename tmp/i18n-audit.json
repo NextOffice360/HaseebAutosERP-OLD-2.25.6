@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-09-26T09:46:33.918Z",
-  "totalHits": 486,
-  "totalTt": 460,
+  "generatedAt": "2026-09-26T09:59:00.818Z",
+  "totalHits": 450,
+  "totalTt": 502,
   "files": [
     {
       "file": "App_Core.html",
@@ -19,25 +19,6 @@
         {
           "line": 203,
           "text": "`fmt.date()` isi par delegate karta hai, is liye poore app ke 92 call-si* `fmt.date()` isi"
-        }
-      ]
-    },
-    {
-      "file": "App_UI2.html",
-      "tt": 0,
-      "hits": 48,
-      "samples": [
-        {
-          "line": 118,
-          "text": "(wo \"toggle\" nahi, \"selection\" hain) — sirf on/off isi helper se."
-        },
-        {
-          "line": 172,
-          "text": "node DOM mein reh jaye to Esc HAMESHA usi ko \"handle\" karta rehta tha aur modal"
-        },
-        {
-          "line": 231,
-          "text": "if (cfg.noCancel !== true && !acts.some(a => /cancel|close|band|nahi|back/i.test(String(a."
         }
       ]
     },
@@ -304,6 +285,25 @@
         {
           "line": 85,
           "text": "h('div', { class: 'f-hint', style: { marginBottom: '6px' } }, 'Message edit karke bhejein "
+        }
+      ]
+    },
+    {
+      "file": "App_UI2.html",
+      "tt": 42,
+      "hits": 12,
+      "samples": [
+        {
+          "line": 172,
+          "text": "node DOM mein reh jaye to Esc HAMESHA usi ko \"handle\" karta rehta tha aur modal"
+        },
+        {
+          "line": 231,
+          "text": "if (cfg.noCancel !== true && !acts.some(a => /cancel|close|band|nahi|back/i.test(String(a."
+        },
+        {
+          "line": 287,
+          "text": "&& !acts.some(a => /cancel|close|band|nahi|back/i.test(String(a.label || '')))) {"
         }
       ]
     },
