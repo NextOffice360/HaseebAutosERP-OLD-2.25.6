@@ -205,3 +205,11 @@ integration + regression + UI/UX-check + error-handling + security-check pass ho
 - [x] modals-close r1 21-fail — deep diag: real-CDP-input transient wedge (synthetic OK, data:-URL OK, baseline 3/3 pass, solo 91/0) — ENV flake, code nahi
 - [x] typography: mera 10.5px chip → 11px (floor)
 - [x] 71/71 GREEN → v2.31.2.zip → push
+
+## Round-15 — F1 FULL FOC ENGINE + F4 CREDIT OVERRIDE (2026-09-25) — v2.31.3
+- [x] F1: FOC engine complete — FOC line lineTotal 0 (price REFERENCE rehta hai), stock+cost normal katate hain (asli nuqsan profit me), min-price + bill-discount-guard FOC-aware, permission pos.discount; POS cart 🎁 FOC toggle + meta badge + payload foc; print FREE badge (r14)
+- [x] F4: credit-limit override — naya perm `pos.credit.override` (OWNER '*' + MANAGER defaults), POS confirm-flow (bina perm = purana block), backend guard + **Audit CREDIT_OVERRIDE** (byUserId + note)
+- [x] Tests: test_logic 825/0 (+6: FOC subtotal/total, flag+lineTotal+full-price-discount, stock probe, F4 block, override-allowed, audit record) · pos_multi 24/0 (+2 FOC chip/toggle) · pay-ledger 49/0
+- [x] ⚠️ **Self-caught corruption**: r15 bump-script me fp/fp2 slip — GAP-doc content Utils.gs par likh gaya tha (verify check-gate ne pakra) → restore + note; LESSON: version-bump script me variable reuse khatarnaak — dobara na ho isliye check.sh pehle solo chalana hai
+- [x] pos.overrideAsk fallback EN (floor 486/460 restore)
+- [x] 71/71 GREEN → v2.31.3.zip → push
