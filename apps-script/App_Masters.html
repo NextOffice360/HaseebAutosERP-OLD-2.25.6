@@ -892,10 +892,10 @@ function partyForm(type, p, after) {
     { key: 'address', label: 'Address', full: true },
     { key: 'creditLimit', label: 'Credit limit', type: 'number' },
     /* v2.31.1 (r13) — must-have gap: credit terms (din) + assigned salesman */
-    { key: 'creditDays', label: 'Credit days', type: 'number', hint: 'Udhaar ki mohlat (din) — POS promised-date default isi se banta hai' },
+    { key: 'creditDays', label: 'Credit days', type: 'number', hint: 'Credit period (days) \u2014 POS promised-date default comes from this' },
     { key: 'salesmanId', label: 'Assigned salesman', type: 'select',
       options: [{ value: '', label: '—' }].concat((App.state.users || []).filter(u => /sales/i.test(u.role || '')).map(u => ({ value: u.id, label: (u.fullName || u.username) }))),
-      hint: 'Salesman PWA "mere customers" isi se filter hota hai' },
+      hint: 'The salesman PWA "my customers" list filters on this' },
     { key: 'openingBalance', label: 'Opening udhaar', type: 'number' },
     { key: 'notes', label: 'Notes', type: 'textarea', full: true }
   ] : [
