@@ -191,7 +191,7 @@ const errors = [];
     POS2.bulkFlow();
     const scrim = [...document.querySelectorAll('.modal-scrim')].pop();
     const inAppBulk = !!scrim && /Bulk/i.test(scrim.textContent);
-    const cBtn = scrim ? [...scrim.querySelectorAll('button')].find(b => /Cancel|Close|Bulk band/i.test(b.textContent)) : null;
+    const cBtn = scrim ? [...scrim.querySelectorAll('button')].find(b => /Cancel|Close|Bulk band|Stop bulk/i.test(b.textContent) /* v2.31.6 EN */) : null;
     if (cBtn) cBtn.click();
     await new Promise(r => setTimeout(r, 150));
     return { inAppBulk, inAppBulkStopped: __UIH.bulkBadge.hidden && !__UIH.bulkHandle };`);
@@ -227,7 +227,7 @@ const errors = [];
     return { chip: true, amtBefore, amt: amt.trim(), chipOn,
       tot: (function(){ const t = [].slice.call(document.querySelectorAll('#posTotal2, .tot2')).map(x=>x.textContent).join('|'); return t.slice(0, 60); })() };`);
   ok('demo render: FOC chip render (owner) + toggle → amount 0 + chip active', k10.chip && k10.chipOn && /Rs\s*0(?![0-9])/.test(k10.amt || ''), JSON.stringify(k10).slice(0, 140));
-  ok('demo render: without liveUrl bulk degrades to in-app modal; Close ends cleanly', k9.inAppBulk && k9.inAppBulkStopped);
+  ok('demo render: without liveUrl bulk degrades to in-app modal; Close ends cleanly', k9.inAppBulk && k9.inAppBulkStopped, JSON.stringify(k9));
   ok('demo render: zero console/jsdom errors across the whole flow', errors.length === 0, errors.slice(0, 2).join(' | '));
   win.close();
   finish();

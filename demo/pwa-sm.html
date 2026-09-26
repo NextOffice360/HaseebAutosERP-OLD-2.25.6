@@ -2123,7 +2123,7 @@ window.__PWA_BOOTSTRAP__ = {"sm": {"config": {"app": {"id": "sm", "slug": "sales
       box.innerHTML = '';
       if (!S.q) return;
       var list = find(S.q);
-      if (!list.length) { box.appendChild(PWA.el('div', { class: 'empty' }, 'Koi item nahi mila')); return; }
+      if (!list.length) { box.appendChild(PWA.el('div', { class: 'empty' }, T.t('pws.noItemHit','No items found'))); return; }
       list.forEach(function (i) {
         box.appendChild(PWA.el('div', {
           class: 'task', onclick: function () { addItem(i); }
@@ -2147,7 +2147,7 @@ window.__PWA_BOOTSTRAP__ = {"sm": {"config": {"app": {"id": "sm", "slug": "sales
       cartHost.innerHTML='';
       var c = PWA.el('div', { class: 'card' });
       c.appendChild(PWA.el('h3', { text: 'Bill (' + S.cart.length + ')' }));
-      if (!S.cart.length) c.appendChild(PWA.el('div', { class: 'empty' }, [PWA.el('span',{class:'big',text:'🧾'}),PWA.el('div',{text:'Abhi kuch nahi'})]));
+      if (!S.cart.length) c.appendChild(PWA.el('div', { class: 'empty' }, [PWA.el('span',{class:'big',text:'🧾'}),PWA.el('div',{text:T.t('pws.emptyCart','Nothing here yet')})]));
       var tot = 0;
       S.cart.forEach(function (l, idx) {
         tot += l.qty * l.price;
@@ -2177,7 +2177,7 @@ window.__PWA_BOOTSTRAP__ = {"sm": {"config": {"app": {"id": "sm", "slug": "sales
     redrawCart();
 
     var methodSel = PWA.el('select', { onchange:function(){ S.method=this.value; } },
-      [PWA.el('option',{value:'CASH'},'Cash'), PWA.el('option',{value:'CREDIT'},'Credit / Udhaar'), PWA.el('option',{value:'JAZZCASH'},'JazzCash'), PWA.el('option',{value:'EASYPAISA'},'EasyPaisa')]);
+      [PWA.el('option',{value:'CASH'},'Cash'), PWA.el('option',{value:'CREDIT'},T.t('pws.creditOpt','Credit')), PWA.el('option',{value:'JAZZCASH'},'JazzCash'), PWA.el('option',{value:'EASYPAISA'},'EasyPaisa')]);
     var paid = PWA.el('input', { type: 'number', placeholder: 'Cash mila (optional)', value: S.payAmt, 'aria-label':'Paid amount', oninput:function(){ S.payAmt=this.value; } });
     if (S.cart.length) {
       body.appendChild(PWA.el('div', { class: 'card' }, [
@@ -2185,7 +2185,7 @@ window.__PWA_BOOTSTRAP__ = {"sm": {"config": {"app": {"id": "sm", "slug": "sales
           PWA.el('div',{class:'f'},[PWA.el('label',{text:'Payment method'}), methodSel]),
           PWA.el('div',{class:'f'},[PWA.el('label',{text:'Amount received'}), paid])
         ]),
-        PWA.el('div',{class:'muted', style:'font-size:11px'}, 'Credit ho to 0 rakh sakte hain — baqaya customer ke khaate mein jayega')
+        PWA.el('div',{class:'muted', style:'font-size:11px'}, T.t('pws.creditHint','For credit you can keep 0 — the balance goes to the customer\'s account'))
       ]));
     }
 
@@ -2193,7 +2193,7 @@ window.__PWA_BOOTSTRAP__ = {"sm": {"config": {"app": {"id": "sm", "slug": "sales
       PWA.el('button',{class:'btn ghost', style:'flex:1', onclick:function(){ S.cart=[]; S.payAmt=''; redrawCart(); redraw(); }}, '🗑 Clear'),
       PWA.el('button', {
         class: 'btn ok block big', style:'flex:2', onclick: async function () {
-          if (!S.cart.length) return PWA.toast('Pehle item add karein', 'warn');
+          if (!S.cart.length) return PWA.toast(T.t('pws.addFirst','Add items first'), 'warn');
           var tot = Number(cartHost.dataset.tot||0);
           var paidVal = Number(paid.value);
           if(!paid.value) paidVal = (S.method==='CREDIT' ? 0 : tot);
@@ -2205,14 +2205,14 @@ window.__PWA_BOOTSTRAP__ = {"sm": {"config": {"app": {"id": "sm", "slug": "sales
               items: S.cart.map(function (l) { return { itemId: l.itemId, qty: l.qty, price: l.price, discount: 0 }; })
             }, { queueable: true });
             if (r && r.queued) {
-              PWA.toast('Offline — sale queue mein save ho gayi', 'warn');
+              PWA.toast(T.t('pws.offlineQueued','Offline — sale saved to queue'), 'warn');
               S.cart = []; S.payAmt = ''; PWA.updateNet(); return redraw();
             }
             PWA.toast('✅ Bill ' + r.invoiceNo + ' ban gaya', 'ok');
             S.cart = []; S.payAmt = ''; redraw(); PWA.reload();
           } catch (e) { PWA.toast(e.message, 'err'); }
         }
-      }, '✅ Sale complete karein')
+      }, T.t('pws.completeBtn','✅ Complete sale'))
     ]));
   }
 
@@ -2259,7 +2259,7 @@ window.__PWA_BOOTSTRAP__ = {"sm": {"config": {"app": {"id": "sm", "slug": "sales
     var methodSel = PWA.el('select',{},[PWA.el('option',{value:'CASH'},'Cash'),PWA.el('option',{value:'BANK'},'Bank'),PWA.el('option',{value:'JAZZCASH'},'JazzCash')]);
 
     body.appendChild(PWA.el('div', { class: 'card' }, [
-      PWA.el('h3', { text: 'Udhaar wasooli' }),
+      PWA.el('h3', { text: T.t('pws.collectTitle','Credit collection') }),
       collectField.wrap,
       collectField.hint,
       collectDetail,
@@ -2279,18 +2279,18 @@ window.__PWA_BOOTSTRAP__ = {"sm": {"config": {"app": {"id": "sm", "slug": "sales
       class: 'btn primary block big', onclick: async function () {
         var v = Number(amt.value) || 0;
         if (v <= 0) return PWA.toast('Amount dalen', 'warn');
-        if(!S.customerId && !S.customerName) return PWA.toast('Customer chunein','warn');
+        if(!S.customerId && !S.customerName) return PWA.toast(T.t('pws.pickCust','Choose a customer'),'warn');
         try {
           var r = await PWA.call('pwa.sm.collect', {
             customerId: S.customerId, customerName: S.customerName, amount: v, method: methodSel.value||'CASH',
             notes: notes.value.trim(), locationId: PWA.data.locationId
           }, { queueable: true });
-          if (r && r.queued) { PWA.toast('Offline — queue mein save ho gaya', 'warn'); amt.value = ''; PWA.updateNet(); return; }
+          if (r && r.queued) { PWA.toast(T.t('pws.offlineQueued2','Offline — saved to queue'), 'warn'); amt.value = ''; PWA.updateNet(); return; }
           PWA.toast('✅ ' + PWA.money(v) + ' receive ho gaye', 'ok');
           amt.value = ''; notes.value = ''; redraw();
         } catch (e) { PWA.toast(e.message, 'err'); }
       }
-    }, '💰 Receive karein'));
+    }, T.t('pws.receiveBtn','💰 Receive')));
   }
 
   /* ----------------------------- 4) SETTLE ------------------------------- */
@@ -2311,7 +2311,7 @@ window.__PWA_BOOTSTRAP__ = {"sm": {"config": {"app": {"id": "sm", "slug": "sales
         : null
     ]));
     c.appendChild(PWA.el('div', { class: 'empty' },
-      [PWA.el('div',{text:'Hisab-kitab aur return ke liye ERP ▸ Salesman ▸ Settle use karein — yahan sirf jaldi check karne ka view hai.'}),
+      [PWA.el('div',{text:T.t('pws.settleHint','For accounts and returns use ERP ▸ Salesman ▸ Settle — this is only a quick-check view.')}),
        PWA.el('button',{class:'btn sm', style:'margin-top:8px', onclick:function(){ if(navigator.share) navigator.share({title:'Settlement', text:'Stock value '+PWA.money(val)}); else PWA.toast(PWA.money(val)); }}, '⤴ Share')]));
     body.appendChild(c);
 
@@ -2320,7 +2320,7 @@ window.__PWA_BOOTSTRAP__ = {"sm": {"config": {"app": {"id": "sm", "slug": "sales
       body.appendChild(PWA.el('div', { class: 'card' }, [
         PWA.el('h3', { text: 'Offline queue' }),
         PWA.el('div', { class: 'empty', text: q + ' entry sync hona baqi hai' }),
-        PWA.el('button', { class: 'btn primary block', onclick: PWA.sync }, '↻ Abhi sync karein')
+        PWA.el('button', { class: 'btn primary block', onclick: PWA.sync }, T.t('pws.syncNow','↻ Sync now'))
       ]));
     } else {
       body.appendChild(PWA.el('div',{class:'card'},[

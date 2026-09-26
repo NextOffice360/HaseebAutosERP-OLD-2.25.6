@@ -936,7 +936,7 @@ async function clickAll(view, label, selector, limit) {
     check('mobile order pad is full screen', view.classList.contains('m-full'), 'not full screen');
     check('order pad has a big item search', !!view.querySelector('.mo-search'), 'no search');
     check('order pad has a customer bar', !!view.querySelector('.mo-cust'), 'no customer bar');
-    check('order pad shows an empty cart message', /koi item nahi/i.test(view.textContent || ''),
+    check('order pad shows an empty cart message', /koi item nahi|No items yet/i.test(view.textContent || ''),
       (view.textContent || '').slice(0, 140));
 
     /* search + add an item */
@@ -977,7 +977,7 @@ async function clickAll(view, label, selector, limit) {
       check('order is saved from the mobile pad',
         (win.MockAPI['orders.list']({}) || []).length >= 1,
         'orders=' + (win.MockAPI['orders.list']({}) || []).length);
-      check('cart is cleared after submit', /koi item nahi/i.test(doc.querySelector('#view').textContent || ''),
+      check('cart is cleared after submit', /koi item nahi|No items yet/i.test(doc.querySelector('#view').textContent || ''),
         'cart not cleared');
     }
   }

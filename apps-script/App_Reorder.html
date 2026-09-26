@@ -183,7 +183,7 @@ function renderRules(c) {
       'avgDailySales = qty sold in last ' + (r.lookback || 30) + ' days / ' + (r.lookback || 30) + '\n' +
       'safetyStock   = avgDailySales x ' + (r.safetyDays || 7) + '\n' +
       'targetLevel   = avgDailySales x (' + (r.coverageDays || 30) + ' + ' + (r.leadTimeDays || 7) + ') + safetyStock\n' +
-      T.t('ro.neverBelow','              (never below the reorder point)\n') + +
+      T.t('ro.neverBelow','              (never below the reorder point)\n') +
       'available     = onHand + onOrder (open POs)\n' +
       'suggestedQty  = CEILING(targetLevel - available) → pack size tak round up\n' +
       'priority      = OUT_OF_STOCK | CRITICAL (cover < lead time) | BELOW_REORDER | LOW_COVER | REPLENISH'))));
