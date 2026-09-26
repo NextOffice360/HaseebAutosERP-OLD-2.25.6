@@ -248,7 +248,7 @@ async function pickFirstCustomer(page) {
     const l1 = await freshSale(page, baseline.map(s => s.id));
     const sale1 = l1.fresh[0];
     ok(done, '✅ Complete click hua');
-    ok(/Sale complete/.test(inv) && !!sale1 && inv.indexOf(sale1.invoiceNo) > -1,
+    ok(/Sale complete|Complete sale/.test(inv) /* v2.31.6 EN */ && !!sale1 && inv.indexOf(sale1.invoiceNo) > -1,
       'invoice confirmation modal + ledger mein wahi invoice (' + (sale1 && sale1.invoiceNo) + ')', inv.slice(0, 120));
     ok(!!sale1 && Math.abs(sale1.total - T) < 1 && Math.abs(sale1.paid - (T + OVER)) < 1 &&
       Math.abs(sale1.change - OVER) < 1 && sale1.due === 0 && sale1.status === 'PAID',

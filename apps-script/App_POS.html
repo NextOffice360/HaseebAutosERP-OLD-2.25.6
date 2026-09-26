@@ -93,7 +93,7 @@ function renderCart() {
     priceInput.addEventListener('change', () => {
       let v = Number(priceInput.value);
       if (l.minPrice && v < l.minPrice && !App.can('items.price.edit')) {
-        UI.toast('Min price ' + fmt.money(l.minPrice) + ' se kam nahi kar saktay', 'err'); v = l.minPrice;
+        UI.toast(T.t('pos.minPrice','Min price ') + fmt.money(l.minPrice) + T.t('pos.minPriceTail',' — cannot go lower'), 'err'); v = l.minPrice;
       }
       l.price = v; l.lineTotal = l.qty * l.price - l.discount;
       renderCart(); updateTotals();
@@ -140,7 +140,7 @@ function updateTotals() {
       h('button', { class: 'btn ok', onclick: () => pay('CASH') }, '💵 Cash (F9)'),
       h('button', { class: 'btn sec', onclick: () => pay('CARD') }, '💳 Card'),
       h('button', { class: 'btn sec', onclick: () => pay('SPLIT') }, '🔀 Split'),
-      h('button', { class: 'btn sec', onclick: () => pay('CREDIT') }, '📒 Udhaar'))));
+      h('button', { class: 'btn sec', onclick: () => pay('CREDIT') }, T.t('pos.creditBtn','📒 Credit')))));
 }
 
 function updateCustBar() {
@@ -171,7 +171,7 @@ function pickCustomer() {
     const rows = await Shared.customers({ q, withBalance: true, limit: 30,
       offline: () => ({ rows: (App.state.catalog.customers || []).filter(c => !q || (c.name + c.phone).toLowerCase().includes(q.toLowerCase())) }) });
     listEl.innerHTML = '';
-    if (!rows.length) listEl.appendChild(h('div', { class: 'tbl-empty' }, 'Koi customer nahi mila'));
+    if (!rows.length) listEl.appendChild(h('div', { class: 'tbl-empty' }, T.t('pos.noCustHit','No customer found')));
     rows.forEach(c => {
       listEl.appendChild(h('div', { class: 'list-item', style: { cursor: 'pointer' }, onclick: () => { S.customer = c; updateCustBar(); m.close(); } },
         h('div', { class: 'avatar' }, (c.name || '?').charAt(0).toUpperCase()),
@@ -181,7 +181,7 @@ function pickCustomer() {
   }
   search.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(() => run(search.value.trim()), 220); });
   const m = UI.modal({
-    title: 'Customer select karein',
+    title: T.t('pos.pickCust','Select customer'),
     body: h('div', null, search, listEl,
       h('button', { class: 'btn sec block', style: { marginTop: '12px' }, onclick: () => newCustomer(() => run('')) }, '➕ Naya customer')),
     actions: [{ label: 'Walk-in (no name)', onClick: c => { S.customer = null; updateCustBar(); c(); } }]
@@ -195,12 +195,12 @@ function newCustomer(after) {
     { key: 'phone', label: 'Phone', type: 'text' },
     { key: 'customerTypeId', label: 'Customer type', type: 'select', options: (App.state.customerTypes || []).map(c => ({ value: c.id, label: c.name })) },
     { key: 'address', label: 'Address', full: true },
-    { key: 'openingBalance', label: 'Opening udhaar (balance)', type: 'number' }
+    { key: 'openingBalance', label: T.t('pos.openBal','Opening balance'), type: 'number' }
   ]);
   UI.modal({
     title: 'Naya customer', body: f.el,
     actions: [{ label: 'Save', cls: '', onClick: async (c) => {
-      const v = f.values(); if (!v.name) { UI.toast('Name zaroori hai', 'err'); return; }
+      const v = f.values(); if (!v.name) { UI.toast(T.t('pos.nameReq','Name is required'), 'err'); return; }
       try { const saved = await API.call('customers.save', { customer: v });
         UI.toast('Customer saved ✅', 'ok'); c(); after && after(saved);
       } catch (e) { UI.toast(e.message, 'err'); }
@@ -247,7 +247,7 @@ function pay(method) {
     const paid = payments.reduce((a, p) => a + (Number(p.amount) || 0), 0);
     const due = Math.max(0, total - paid), chg = Math.max(0, paid - total);
     paidEl.innerHTML = '<span>Paid</span><span>' + fmt.money(paid) + '</span>';
-    dueEl.innerHTML = due > 0.5 ? '<span>Current Due (udhaar)</span><span>' + fmt.money(due) + '</span>' : '';
+    dueEl.innerHTML = due > 0.5 ? '<span>' + T.t('pos.curDue','Current due (credit)') + '</span><span>' + fmt.money(due) + '</span>' : '';
     chgEl.innerHTML = chg > 0.5 ? '<span>Change</span><span>' + fmt.money(chg) + '</span>' : '';
     return { paid, due, chg };
   }
@@ -264,7 +264,7 @@ function pay(method) {
       { label: 'Cancel', cls: 'ghost', onClick: c => c() },
       { label: '✅ Complete & Print', cls: 'ok', onClick: async (c) => {
         const { due } = calc();
-        if (due > 0.5 && !S.customer) { UI.toast('Udhaar ke liye customer select karein', 'err'); return; }
+        if (due > 0.5 && !S.customer) { UI.toast(T.t('pos.creditNeedCust','Select a customer for credit'), 'err'); return; }
         c();
         await submitSale(payments.filter(p => p.amount > 0), noteInput.value.trim());
       } }
@@ -287,7 +287,7 @@ async function submitSale(payments, note) {
   if (!navigator.onLine) payload.offlineId = uid('bill');
   try {
     const sale = await API.call('sales.create', { sale: payload });
-    if (sale && sale.queued) { UI.toast('Offline bill queue ho gaya', 'warn'); clearCart(true); return; }
+    if (sale && sale.queued) { UI.toast(T.t('pos.offlineQueued','Offline — bill queued'), 'warn'); clearCart(true); return; }
     UI.toast('Sale complete ✅ ' + sale.invoiceNo, 'ok');
     if (window.confirmPrint !== false) {
       try { if (window.Print2) { Print2.dialog(sale); return; } } catch (e) { }
@@ -303,7 +303,7 @@ async function holdBill() {
   if (!S.cart.length) { UI.toast('Cart khali hai', 'warn'); return; }
   try {
     await API.call('sales.hold', { ref: 'HOLD-' + Date.now().toString().slice(-5), cart: { items: S.cart, total: cartTotal(), discount: S.discount }, customerId: S.customer ? S.customer.id : '' });
-    UI.toast('Bill hold ho gaya ⏸', 'ok'); clearCart(true); loadHeld();
+    UI.toast(T.t('pos.held','Bill held ⏸'), 'ok'); clearCart(true); loadHeld();
   } catch (e) { UI.toast(e.message, 'err'); }
 }
 
@@ -315,7 +315,7 @@ async function loadHeld() {
 function showHeld() {
   loadHeld().then(() => {
     const list = h('div');
-    if (!S.held.length) list.appendChild(h('div', { class: 'empty' }, h('span', { class: 'big' }, '⏸'), h('div', null, 'Koi held bill nahi')));
+    if (!S.held.length) list.appendChild(h('div', { class: 'empty' }, h('span', { class: 'big' }, '⏸'), h('div', null, T.t('pos.noHeld','No held bills'))));
     S.held.forEach(hb => {
       list.appendChild(h('div', { class: 'list-item' },
         h('div', { class: 'li-main' }, h('b', null, hb.ref + (hb.note ? ' · ' + hb.note : '')),
@@ -332,7 +332,7 @@ async function clearCart(silent) {
      preview/iframe mein native confirm block ho jata hai (button "kuch nahi k* preview/iframe mein native confirm block ho jata hai (button "kuch nahi karta"
      lagta hai) aur design system se bahar bhi hai. silent=true par koi await
      nahi hota, is liye baqi callers ka synchronous flow waisa hi rehta hai. */
-  if (!silent && S.cart.length && !(await UI2.confirm('Cart clear karein? Ye bill ke saare items hata dega.', null, true))) return;
+  if (!silent && S.cart.length && !(await UI2.confirm(T.t('pos.clearAsk','Clear the cart? This removes all items from this bill.'), null, true))) return;
   S.cart = []; S.discount = 0; S.customer = null;
   renderCart(); updateTotals(); updateCustBar();
 }

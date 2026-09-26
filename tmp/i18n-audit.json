@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-09-26T13:06:21.364Z",
-  "totalHits": 246,
-  "totalTt": 724,
+  "generatedAt": "2026-09-26T13:11:19.415Z",
+  "totalHits": 207,
+  "totalTt": 765,
   "files": [
     {
       "file": "App_Core.html",
@@ -23,44 +23,6 @@
       ]
     },
     {
-      "file": "App_Reorder.html",
-      "tt": 0,
-      "hits": 14,
-      "samples": [
-        {
-          "line": 51,
-          "text": "'Auto-reorder review: ' + (sig.map(x => x.txt).join('; ') || 'koi signal nahi') +"
-        },
-        {
-          "line": 52,
-          "text": "' — kya ye quantities theek hain? Kon se items pehle order karein aur kyun?'"
-        },
-        {
-          "line": 56,
-          "text": ": h('div', { class: 'tbl-empty' }, 'Abhi koi khaas signal nahi — stock theek chal raha hai"
-        }
-      ]
-    },
-    {
-      "file": "App_POS.html",
-      "tt": 0,
-      "hits": 13,
-      "samples": [
-        {
-          "line": 96,
-          "text": "UI.toast('Min price ' + fmt.money(l.minPrice) + ' se kam nahi kar saktay', 'err'); v = l.m"
-        },
-        {
-          "line": 143,
-          "text": "h('button', { class: 'btn sec', onclick: () => pay('CREDIT') }, '📒 Udhaar'))));"
-        },
-        {
-          "line": 174,
-          "text": "if (!rows.length) listEl.appendChild(h('div', { class: 'tbl-empty' }, 'Koi customer nahi m"
-        }
-      ]
-    },
-    {
       "file": "App_Wallet.html",
       "tt": 0,
       "hits": 13,
@@ -76,25 +38,6 @@
         {
           "line": 63,
           "text": "REVERSED: ['err', 'Reverse ho gaya'],"
-        }
-      ]
-    },
-    {
-      "file": "Pwa_Salesman.html",
-      "tt": 0,
-      "hits": 13,
-      "samples": [
-        {
-          "line": 222,
-          "text": "if (!list.length) { box.appendChild(PWA.el('div', { class: 'empty' }, 'Koi item nahi mila'"
-        },
-        {
-          "line": 246,
-          "text": "if (!S.cart.length) c.appendChild(PWA.el('div', { class: 'empty' }, [PWA.el('span',{class:"
-        },
-        {
-          "line": 276,
-          "text": "[PWA.el('option',{value:'CASH'},'Cash'), PWA.el('option',{value:'CREDIT'},'Credit / Udhaar"
         }
       ]
     },
@@ -485,6 +428,17 @@
         {
           "line": 229,
           "text": "body.appendChild(UI.table({columns:[{key:'date',label:'Date',render:function(r){return fmt"
+        }
+      ]
+    },
+    {
+      "file": "App_POS.html",
+      "tt": 13,
+      "hits": 1,
+      "samples": [
+        {
+          "line": 332,
+          "text": "preview/iframe mein native confirm block ho jata hai (button \"kuch nahi k* preview/iframe "
         }
       ]
     },
