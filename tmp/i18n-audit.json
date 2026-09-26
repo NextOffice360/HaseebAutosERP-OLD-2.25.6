@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-09-26T11:39:19.359Z",
-  "totalHits": 334,
-  "totalTt": 629,
+  "generatedAt": "2026-09-26T11:40:14.098Z",
+  "totalHits": 314,
+  "totalTt": 650,
   "files": [
     {
       "file": "App_Core.html",
@@ -38,25 +38,6 @@
         {
           "line": 393,
           "text": "opts.note || 'Scanner open nahi ho saka — code neeche type karein.'), input),"
-        }
-      ]
-    },
-    {
-      "file": "App_Boot.html",
-      "tt": 8,
-      "hits": 22,
-      "samples": [
-        {
-          "line": 188,
-          "text": "(upar `include: 'ai'`). Sirf tab alag call karein jab boot se na* (upar `include: 'ai'`). "
-        },
-        {
-          "line": 275,
-          "text": "h('div', null, all.length ? 'Is filter me koi alert nahi — filter badlein' : 'All clear — "
-        },
-        {
-          "line": 283,
-          "text": "const row = h('div', { class: 'notif-row' + (r.readAt ? ' read' : ''), title: 'Mark as rea"
         }
       ]
     },
@@ -475,6 +456,21 @@
         {
           "line": 905,
           "text": "screens har jagah `{offlineFallback: fn}` pass karti thin magar PWA.call ise"
+        }
+      ]
+    },
+    {
+      "file": "App_Boot.html",
+      "tt": 29,
+      "hits": 2,
+      "samples": [
+        {
+          "line": 188,
+          "text": "(upar `include: 'ai'`). Only call separately when boot doesn't (upar `include: 'ai'`). Sir"
+        },
+        {
+          "line": 598,
+          "text": "button kaam nahi karta\"). Ab sab kuch null-safe ha* button kaam nahi karta\"). Ab sab kuch "
         }
       ]
     },
