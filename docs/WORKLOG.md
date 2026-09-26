@@ -180,3 +180,18 @@ integration + regression + UI/UX-check + error-handling + security-check pass ho
 - [x] C: DAYREP session-QR resolvable (App_QR JSON branch → 'insights' screen) + resolver gate case (14/0) + qr-gate HA-class
 - [x] 71/71 GREEN → v2.31.0.zip → push 20f675b
 **Lesson:** naive depth-counter Config JS tod sakta hai — hygiene ab tool+guard ke sath; PWA template-block ka 'Unexpected token <' PRE-EXISTING hai (HEAD bhi) — alag separator/style block, harmless.
+
+## Round-13 — MUST-HAVE GAP AUDIT (2026-09-25) — v2.31.1
+**User mandate:** missing must-have features/fields/columns systematically implement — no agnation, docs/plans/todos ke mutabiq.
+- [x] T1–T3 Schema scan: Schema.gs har sheet × trading-ERP must-haves — schema pehle se rich (hsn/warranty/lots/UoM/tiers/cheque-Raast/approvals/consignment) — misconceptions GAP-AUDIT doc me record
+- [x] T4 G1: Customers.creditDays (schema + App_Masters form + POS promised-date prefill)
+- [x] T5 G2: Customers.salesmanId (schema + form select Users role /sales/i + mock seeds USR3)
+- [x] T6 G3: SaleItems.foc flag (Sales.gs lineRows passthrough, math UNCHANGED, demo seed flag)
+- [x] T7 G4: aging report creditDays-aware overdue detail (Reports2 cus.ageing additive detail rows)
+- [x] T8 OfflineSync.pull customers map me cd/sm (POS catalog reduced-shape se prefill TABHI chalega — asli root: catalog shape)
+- [x] T9 mock offline.pull customers + creditDays seeds + demo foc line
+- [x] T10 tests: test_logic 819/0 (creditDays read-back, FOC flag, aging detail — 3 naye), test_pay_ledger 49/0 (promised prefill assertion naya)
+- [x] T11 i18n floor r1 RED (mere naye roman hints!) → EN hints → 539/396 restore — apna hi gate pakra = gate working
+- [x] T12 GAP-AUDIT-2026-09.md (verdict + G1–G5 + future candidates F1–F5)
+- [x] T13 71/71 GREEN (validate-v2.31.1.log) → v2.31.1.zip → push
+**Future (F1–F5, DOC me):** FOC engine · fiscal lock · sale-side expiry capture · credit-limit override approval · PWA salesman my-customers filter
