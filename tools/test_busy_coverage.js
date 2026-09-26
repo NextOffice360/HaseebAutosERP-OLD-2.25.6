@@ -224,7 +224,7 @@ function ok(cond, name, extra) {
     document.body.appendChild(b);
     b.click();
     await wait(600);
-    const toast = Array.from(document.querySelectorAll('#toastRoot .toast')).find(x => (x.textContent || '').indexOf('failed to fetch') > -1 || (x.textContent || '').indexOf('Jawab nahi aaya') > -1);
+    const toast = Array.from(document.querySelectorAll('#toastRoot .toast')).find(x => (x.textContent || '').indexOf('failed to fetch') > -1 || (x.textContent || '').indexOf('Jawab nahi aaya') > -1 || (x.textContent || '').indexOf('No response') > -1 /* v2.31.2 T.t */);
     const retryBtn = toast && Array.from(toast.querySelectorAll('button')).find(x => /koshish|retry/i.test(x.textContent || ''));
     const restoredAfterFail = !b.disabled && !b.classList.contains('is-busy-ab');
     willFail = false;

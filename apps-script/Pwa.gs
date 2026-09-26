@@ -233,6 +233,10 @@ var Pwa = {
       out.myStock = st.rows;
       out.stockSummary = st.summary;
       out.customers = Pwa._customers();
+      /* v2.31.2 (r14/F5) — "mere customers": assigned salesman (Customers.salesmanId)
+         ke mutabiq filter; khali ho to POORA list (backward-safe) + client ko hisaab */
+      out.salesmanId = (s && s.userId) || '';
+      out.myCustomers = out.customers.filter(function (c) { return c.sm && c.sm === out.salesmanId; });
     } else if (a.id === 'pos') {
       out.customers = Pwa._customers();
       out.cats = Pwa._cats();
@@ -269,7 +273,9 @@ var Pwa = {
         bal: U.num(c.balance||c.closingBalance), points: U.num(c.points||0),
         creditLimit: U.num(c.creditLimit||0),
         balance: U.num(c.balance||c.closingBalance),
-        priceTier: U.str(c.priceTier||'RETAIL') };
+        priceTier: U.str(c.priceTier||'RETAIL'),
+        /* v2.31.2 (r14/F5) — assigned salesman (my-customers filter) */
+        sm: U.str(c.salesmanId||'') };
     });
   },
 

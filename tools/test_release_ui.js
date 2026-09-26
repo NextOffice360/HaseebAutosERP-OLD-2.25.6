@@ -214,7 +214,7 @@ const PROBE_WIZARD = () => {
   ok(!!wz && wz.vis, 'wizard modal render hua', JSON.stringify(wz && { t: wz.title, inputs: wz.inputs }));
   ok(!!wz && /Setup Wizard/i.test(wz.title), 'wizard ka title "Setup Wizard"', wz && wz.title);
   ok(!!wz && wz.heads.length >= 4, 'wizard mein 4 qadam (business → password → shop open → demo data)', wz && JSON.stringify(wz.heads));
-  ok(!!wz && wz.foot.some(x => /Mukammal/.test(x)) && wz.foot.some(x => /Baad mein/.test(x)), 'wizard ke actions: Mukammal karein + Baad mein', wz && JSON.stringify(wz.foot));
+  ok(!!wz && wz.foot.some(x => /Mukammal/.test(x)) && wz.foot.some(x => /Skip|Baad mein/.test(x)), 'wizard ke actions: Mukammal karein + Skip (v2.30.6 se Skip label)', wz && JSON.stringify(wz.foot)); /* v2.31.2: stale fix — release-ui verify-gate nahi hai, v2.30.6 icon-upgrade ke baad se yahan label '⏭ Skip (abhi nahi)' hai */
   ok(!!wz && wz.inputs >= 5, 'wizard ke inputs mojood (business name, shop, phone, address, password, cash)', wz && String(wz.inputs));
   /* cancel kaam karta hai (purani shikayat: close/cancel nahi chalte) */
   await page.evaluate(() => { const x = document.querySelector('.modal2 .oc-x'); if (x) x.click(); });

@@ -124,7 +124,11 @@
 
   /* ------------------------------ 2) SELL — FIXED customer picker ---------------- */
   function viewSell(body) {
-    var custs = (PWA.data && PWA.data.customers) || [];
+    /* v2.31.2 (r14/F5) — "Mere customers" pehle (Customers.salesmanId assigned);
+       khali ho to poora list (pehle jaisa) — koi customer chhupta nahi */
+    var _all = (PWA.data && PWA.data.customers) || [];
+    var _mine = (PWA.data && PWA.data.myCustomers) || [];
+    var custs = _mine.length ? _mine : _all;
     var sellDetail = PWA.el('div', { id:'sellCustDetail', style:'margin-top:8px;display:none;padding:10px;border:1.5px solid var(--line);border-radius:12px;background:var(--card2);font-size:12px' });
     function updateSellCustDetail(m){
       var host=document.getElementById('sellCustDetail'); if(!host) return;
@@ -162,6 +166,14 @@
       }
     });
     (function(){ var m=custs.filter(function(c){return c.name.toLowerCase()===String(S.customerName).toLowerCase();})[0]; var h=sellField.hint; if(m&&h) h.textContent=(m.phone?m.phone+' · ':'')+(Number(m.bal)?'Due '+PWA.money(m.bal):'No dues'); })();
+    /* r14/F5 — my-customers chip: kitne assigned the vs dikh rahe */
+    try {
+      var _wrap = sellField.host || sellField.el || sellField.wrap || null;
+      var _chip = PWA.el('div', { class:'muted', style:'font-size:10.5px;margin-top:4px' },
+        _mine.length ? ('👤 Mere customers: ' + _mine.length + ' (assigned)') : ('👤 Mere customers: 0 — poora list dikh raha hai (' + _all.length + ')'));
+      if (_wrap && _wrap.parentNode) _wrap.parentNode.insertBefore(_chip, _wrap.nextSibling);
+      else if (body.firstChild) body.insertBefore(_chip, body.firstChild.nextSibling);
+    } catch (e) { }
     body.appendChild(PWA.el('div', { class: 'card' }, [
       PWA.el('h3', { text: 'Customer' }),
       sellField.wrap,

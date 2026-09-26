@@ -151,7 +151,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   });
   await wait(300);
   const dirtyTxt = await page.evaluate(() => (document.getElementById('aiDirty') || {}).textContent || '');
-  ok('dirty indicator: tabdeeli ke baad "Gair-mehfooz"', /Gair-mehfooz/.test(dirtyTxt), dirtyTxt);
+  ok('dirty indicator: tabdeeli ke baad "Gair-mehfooz"', /Gair-mehfooz|Unsaved changes/.test(dirtyTxt) /* v2.31.2: T.t EN/roman */, dirtyTxt);
   await page.evaluate(() => { [...document.querySelectorAll('.ai-foot .btn')].find(b => /Save settings/.test(b.textContent)).click(); });
   await wait(1400);
   const afterSave = await page.evaluate(async () => {
@@ -160,7 +160,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     return { style: r.values.aiStyle, dot };
   });
   ok('Save → backend persist (aiStyle=DETAILED re-read)', afterSave.style === 'DETAILED', 'style=' + afterSave.style);
-  ok('Save → dirty reset', /mehfooz hai/.test(afterSave.dot), afterSave.dot);
+  ok('Save → dirty reset', /mehfooz hai|Everything is saved/.test(afterSave.dot) /* v2.31.2 T.t */, afterSave.dot);
 
   /* ================= 6 · API key: masked, never raw ================= */
   const secRaw = await page.evaluate(() => {

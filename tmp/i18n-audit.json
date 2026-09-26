@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-09-26T07:17:41.527Z",
-  "totalHits": 539,
-  "totalTt": 396,
+  "generatedAt": "2026-09-26T07:32:39.354Z",
+  "totalHits": 486,
+  "totalTt": 459,
   "files": [
     {
       "file": "App_Core.html",
-      "tt": 1,
-      "hits": 80,
+      "tt": 32,
+      "hits": 57,
       "samples": [
         {
           "line": 103,
@@ -19,25 +19,6 @@
         {
           "line": 191,
           "text": "`fmt.date()` isi par delegate karta hai, is liye poore app ke 92 call-si* `fmt.date()` isi"
-        }
-      ]
-    },
-    {
-      "file": "App_AIConfig.html",
-      "tt": 0,
-      "hits": 50,
-      "samples": [
-        {
-          "line": 49,
-          "text": "if (dot) dot.textContent = 'Gair-mehfooz tabdeeliyan';"
-        },
-        {
-          "line": 132,
-          "text": "h('button', { class: 'btn sm', onclick: () => { ST.loaded = false; ST.err = ''; App.refres"
-        },
-        {
-          "line": 143,
-          "text": "if (!r) { ST.err = 'AI config nahi mil saka (backend offline?).'; return null; }"
         }
       ]
     },
@@ -175,6 +156,25 @@
       ]
     },
     {
+      "file": "App_AIConfig.html",
+      "tt": 32,
+      "hits": 20,
+      "samples": [
+        {
+          "line": 231,
+          "text": "'AI chalane ke liye ya to API key daalein, ya Local Data Assistant (bina LLM) chunein, ya "
+        },
+        {
+          "line": 272,
+          "text": "placeholder: cfg.hasKey ? ('Mehfooz: ' + (cfg.keyHint || '••••') + ' — naya daalne par bad"
+        },
+        {
+          "line": 282,
+          "text": "'Key sirf Script Properties mein mehfooz hoti hai — Sheets ya browser mein kahin nahi. Jaw"
+        }
+      ]
+    },
+    {
       "file": "App_Comms.html",
       "tt": 0,
       "hits": 15,
@@ -275,15 +275,15 @@
       "hits": 13,
       "samples": [
         {
-          "line": 210,
+          "line": 222,
           "text": "if (!list.length) { box.appendChild(PWA.el('div', { class: 'empty' }, 'Koi item nahi mila'"
         },
         {
-          "line": 234,
+          "line": 246,
           "text": "if (!S.cart.length) c.appendChild(PWA.el('div', { class: 'empty' }, [PWA.el('span',{class:"
         },
         {
-          "line": 264,
+          "line": 276,
           "text": "[PWA.el('option',{value:'CASH'},'Cash'), PWA.el('option',{value:'CREDIT'},'Credit / Udhaar"
         }
       ]
@@ -484,15 +484,15 @@
       "hits": 5,
       "samples": [
         {
-          "line": 276,
+          "line": 277,
           "text": "if (!w) { UI.toast('Popup block hai — browser setting allow karein', 'warn'); return; }"
         },
         {
-          "line": 289,
+          "line": 290,
           "text": "if (!r || !r.base64) throw new Error('ESC/POS generate nahi hua');"
         },
         {
-          "line": 296,
+          "line": 297,
           "text": "UI.toast('ESC/POS file download ho gayi (' + r.bytes + ' bytes) — thermal printer par bhej"
         }
       ]

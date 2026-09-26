@@ -4146,6 +4146,67 @@ Object.assign(TRANSLATIONS, {
   'sc2.defaultsRestored': { key: 'sc2.defaultsRestored', en: 'Defaults restored (save to keep)', roman: 'Defaults restore ho gaye (save karein)', ur: 'ڈیفالٹس بحال ہو گئے (محفوظ کریں)' },
   'sc2.noChanges': { key: 'sc2.noChanges', en: 'No changes', roman: 'Koi tabdeeli nahi', ur: 'کوئی تبدیلی نہیں' },
   'sc2.pendingLoaded': { key: 'sc2.pendingLoaded', en: ' pending lines loaded', roman: ' pending lines load ho gayin', ur: ' زیرِ التوا لائنیں لوڈ ہو گئیں' },
+
+  'core.errAuthHint': { key: 'core.errAuthHint', en: 'This action is not permitted for your role, or the session has expired. Log in again or ask the admin.', roman: 'Ye kaam aap ke role ke liye ijazat-yafta nahi, ya session expire ho gaya. Dobara login karein ya admin se poochein.', ur: 'یہ کام آپ کے رول کے لیے اجازت یافتہ نہیں، یا سیشن ایکسپائر ہو گیا۔ دوبارہ لاگ ان کریں یا ایڈمن سے پوچھیں۔' },
+  'core.errOfflineHint': { key: 'core.errOfflineHint', en: 'Try again when the connection returns. The offline queue will keep your work safe.', roman: 'Connection wapas aane par dobara koshish karein. Kaam mehfooz karne ke liye offline queue khud istemal hogi.', ur: 'کنکشن واپس آئے تو دوبارہ کوشش کریں۔ آف لائن قطار آپ کا کام محفوظ رکھے گی۔' },
+  'core.errTimeoutHint': { key: 'core.errTimeoutHint', en: 'No timely response from the server. Try again — a second attempt usually goes through.', roman: 'Server se jawab waqt par nahi mila. Dobara koshish karein — aam taur par doosri koshish chal jati hai.', ur: 'سرور سے جواب وقت پر نہیں ملا۔ دوبارہ کوشش کریں — دوسری کوشش عام طور پر چل جاتی ہے۔' },
+  'core.errServerHint': { key: 'core.errServerHint', en: 'The backend returned an error. Try again; if it persists, check the system log (Diagnose).', roman: 'Backend se error aya. Dobara koshish karein; masla rahe to system log (Diagnose) dekhein.', ur: 'بیک اینڈ سے ایرر آیا۔ دوبارہ کوشش کریں؛ مسئلہ رہے تو سسٹم لاگ (Diagnose) دیکھیں۔' },
+  'core.errConflictHint': { key: 'core.errConflictHint', en: 'Another save/process is running right now. Wait 2–3 seconds and try again.', roman: 'Koi aur save/process abhi chal raha hai. 2–3 second ruk kar dobara koshish karein.', ur: 'کوئی اور سیو/پروسیس ابھی چل رہی ہے۔ 2–3 سیکنڈ رک کر دوبارہ کوشش کریں۔' },
+  'core.errValidationHint': { key: 'core.errValidationHint', en: 'Retrying will not help — correct the fields/values and save again.', roman: 'Retry se hal nahi hoga — fields/values durust kar ke dobara save karein.', ur: 'دوبارہ کوشش سے حل نہیں ہوگا — فیلڈز/ویلیوز درست کر کے دوبارہ محفوظ کریں۔' },
+  'core.errUnknownHint': { key: 'core.errUnknownHint', en: 'Try again. If it persists, send a report via Support/Diagnose.', roman: 'Dobara koshish karein. Masla rahe to Support/Diagnose se report bhejein.', ur: 'دوبارہ کوشش کریں۔ مسئلہ رہے تو Support/Diagnose سے رپورٹ بھیجیں۔' },
+  'core.saveAllTitle': { key: 'core.saveAllTitle', en: 'Save all unsaved changes on this page at once', roman: 'Is page ki saari unsaved tabdeeliyan ek sath save karein', ur: 'اس صفحے کی تمام غیر محفوظ تبدیلیاں ایک ساتھ محفوظ کریں' },
+  'core.bootLoadFail': { key: 'core.bootLoadFail', en: 'Something did not load properly — try again', roman: 'Kuch theek se load nahi hua — dobara koshish karein', ur: 'کچھ ٹھیک سے لوڈ نہیں ہوا — دوبارہ کوشش کریں' },
+  'core.runTimeout': { key: 'core.runTimeout', en: 'No response — you can try again', roman: 'Jawab nahi aaya — dobara koshish kar sakte hain', ur: 'جواب نہیں آیا — دوبارہ کوشش کر سکتے ہیں' },
+  'core.dirtyTail': { key: 'core.dirtyTail', en: ' unsaved change(s) — save all at once', roman: ' unsaved tabdeeli — sab ek sath save karein', ur: ' غیر محفوظ تبدیلیاں — سب ایک ساتھ محفوظ کریں' },
+  'core.syncDone': { key: 'core.syncDone', en: ' queued items synced ✅', roman: ' queued kaam sync ho gaye ✅', ur: ' قطار میں کام سنک ہو گئے ✅' },
+  'core.chipAriaTail': { key: 'core.chipAriaTail', en: ' pending — sync now', roman: ' pending — abhi sync karein', ur: ' زیرِ التوا — ابھی سنک کریں' },
+  'core.errAuth': { key: 'core.errAuth', en: 'Session / permission issue', roman: 'Session / ijazat ka masla', ur: 'سیشن / اجازت کا مسئلہ' },
+  'core.errConflict': { key: 'core.errConflict', en: 'Another operation is running', roman: 'Doosra kaam chal raha hai', ur: 'کوئی اور کام چل رہا ہے' },
+  'core.qFullPre': { key: 'core.qFullPre', en: 'Offline queue is full (', roman: 'Offline queue bhar gayi (', ur: 'آف لائن قطار بھر گئی (' },
+  'core.noDirty': { key: 'core.noDirty', en: 'No unsaved changes', roman: 'Koi unsaved tabdeeli nahi', ur: 'کوئی غیر محفوظ تبدیلی نہیں' },
+  'core.retryBtn': { key: 'core.retryBtn', en: '↻ Try again', roman: '↻ Dobara koshish karein', ur: '↻ دوبارہ کوشش کریں' },
+  'core.errUnknown': { key: 'core.errUnknown', en: 'The operation did not complete', roman: 'Kaam mukammal nahi hua', ur: 'کام مکمل نہیں ہوا' },
+  'core.errValidation': { key: 'core.errValidation', en: 'Fix the input', roman: 'Maloomat theek karein', ur: 'معلومات درست کریں' },
+  'core.syncStatFail': { key: 'core.syncStatFail', en: ' failed (data mismatch)', roman: ' fail (data mismatch)', ur: ' ناکام (ڈیٹا مزمارچ)' },
+  'core.chipTitleTail': { key: 'core.chipTitleTail', en: ' items awaiting sync', roman: ' kaam sync ka intezar', ur: ' کام سنک کا انتظار' },
+  'core.qFullTail': { key: 'core.qFullTail', en: ') — sync required', roman: ') — sync zaroori hai', ur: ') — سنک ضروری ہے' },
+  'core.resync': { key: 'core.resync', en: 'Sync again', roman: 'Dobara sync karein', ur: 'دوبارہ سنک کریں' },
+  'core.errOffline': { key: 'core.errOffline', en: 'No internet', roman: 'Internet nahi hai', ur: 'انٹرنیٹ نہیں ہے' },
+  'core.saveAllDone': { key: 'core.saveAllDone', en: 'Save-all complete', roman: 'Save all mukammal', ur: 'سیو آل مکمل' },
+  'core.errServer': { key: 'core.errServer', en: 'Server problem', roman: 'Server par masla', ur: 'سرور پر مسئلہ' },
+  'core.errTimeout': { key: 'core.errTimeout', en: 'No response', roman: 'Jawab nahi aaya', ur: 'جواب نہیں آیا' },
+  'core.syncNow': { key: 'core.syncNow', en: 'Sync now', roman: 'Ab sync karein', ur: 'ابھی سنک کریں' },
+  'core.noDataChart': { key: 'core.noDataChart', en: 'No data', roman: 'Koi data nahi', ur: 'کوئی ڈیٹا نہیں' },
+  'core.syncStatMid': { key: 'core.syncStatMid', en: ' synced, ', roman: ' sync hue, ', ur: ' سنک ہوئے، ' },
+  'aic.keySafety': { key: 'aic.keySafety', en: 'API key lives only in Script Properties — never in spreadsheet cells or browser storage.', roman: 'API key sirf Script Properties mein — spreadsheet cells ya browser storage mein kabhi nahi.', ur: 'اے پی آئی کی صرف اسکرپٹ پراپرٹیز میں — اسپریڈشیٹ سیلز یا براؤزر اسٹوریج میں کبھی نہیں۔' },
+  'aic.localEngineTail': { key: 'aic.localEngineTail', en: ' — the app’s own LOCAL rules engine. No internet, no API key, no LLM.', roman: ' — app ka apna LOCAL rules engine. Koi internet, koi API key, koi LLM nahi.', ur: ' — ایپ کا اپنا لوکل رولز انجن۔ کوئی انٹرنیٹ، اے پی آئی کی یا ایل ایل ایم نہیں۔' },
+  'aic.needsNet': { key: 'aic.needsNet', en: 'Will not work without internet (use the Local Data Assistant then)', roman: 'Internet ke bagair kaam nahi karega (us waqt Local Data Assistant chunein)', ur: 'انٹرنیٹ کے بغیر کام نہیں کرے گا (اس وقت لوکل ڈیٹا اسسٹنٹ چنیں)' },
+  'aic.localEngine': { key: 'aic.localEngine', en: 'The app’s own LOCAL rules engine — no internet, no API key, no LLM.', roman: 'App ka apna LOCAL rules engine — koi internet, koi API key, koi LLM nahi.', ur: 'ایپ کا اپنا لوکل رولز انجن — کوئی انٹرنیٹ، اے پی آئی کی یا ایل ایل ایم نہیں۔' },
+  'aic.modelDisclaimer': { key: 'aic.modelDisclaimer', en: 'Answers come from a model — mistakes are possible; double-check numbers', roman: 'Jawab model se aata hai — galti mumkin hai, numbers dobara check karein', ur: 'جواب ماڈل سے آتا ہے — غلطی ممکن ہے، نمبر دوبارہ چیک کریں' },
+  'aic.demoHint': { key: 'aic.demoHint', en: 'Pick the Local Data Assistant for demo — Setup ▸ Provider.', roman: 'Demo ke liye Local Data Assistant chunein — Setup ▸ Provider.', ur: 'ڈیمو کے لیے لوکل ڈیٹا اسسٹنٹ چنیں — Setup ▸ Provider۔' },
+  'aic.noKeyNeeded': { key: 'aic.noKeyNeeded', en: 'This provider needs no API key — server/local mode.', roman: 'Is provider ko API key ki zaroorat nahi — server/local mode.', ur: 'اس پرووائیڈر کو اے پی آئی کی ضرورت نہیں — سرور/لوکل موڈ۔' },
+  'aic.noChat': { key: 'aic.noChat', en: 'No chat history yet (ask the first question).', roman: 'Abhi koi chat record nahi (pehla sawal poochein).', ur: 'ابھی کوئی چیٹ ریکارڈ نہیں (پہلا سوال پوچھیں)۔' },
+  'aic.capabilities': { key: 'aic.capabilities', en: 'What this assistant can do — and cannot', roman: 'Ye assistant kya kar sakta hai — aur kya nahi', ur: 'یہ اسسٹنٹ کیا کر سکتا ہے — اور کیا نہیں' },
+  'aic.canDraft': { key: 'aic.canDraft', en: 'Draft creation (posting/approval is done by a human)', roman: 'Draft banana (post/approve insaan karta hai)', ur: 'ڈرافٹ بنانا (پوسٹ/منظوری انسان کرتا ہے)' },
+  'aic.cfgFail': { key: 'aic.cfgFail', en: 'Could not load AI config (backend offline?).', roman: 'AI config nahi mil saka (backend offline?).', ur: 'اے آئی کنفیگ لوڈ نہیں ہو سکا (بیک اینڈ آف لائن؟)۔' },
+  'aic.questionChips': { key: 'aic.questionChips', en: 'Show question chips below the chat.', roman: 'Chat ke neeche sawal-chips dikhayein.', ur: 'چیٹ کے نیچے سوال چپس دکھائیں۔' },
+  'aic.noBackendQ': { key: 'aic.noBackendQ', en: 'The backend cannot respond (offline?)', roman: 'Backend jawab nahi de saka (offline?)', ur: 'بیک اینڈ جواب نہیں دے سکتا (آف لائن؟)' },
+  'aic.ollamaEndpoint': { key: 'aic.ollamaEndpoint', en: 'An endpoint is required for Ollama.', roman: 'Ollama ke liye endpoint lazmi hai.', ur: 'اولاما کے لیے اینڈ پوائنٹ لازمی ہے۔' },
+  'aic.askPh': { key: 'aic.askPh', en: 'Type a question… (Enter to send)', roman: 'Sawal likhein… (Enter se bhejein)', ur: 'سوال لکھیں… (Enter سے بھیجیں)' },
+  'aic.saved': { key: 'aic.saved', en: 'AI settings saved ✅', roman: 'AI settings mehfooz ho gayin ✅', ur: 'اے آئی سیٹنگز محفوظ ہو گئیں ✅' },
+  'aic.noBackend': { key: 'aic.noBackend', en: 'The backend cannot respond.', roman: 'Backend jawab nahi de saka.', ur: 'بیک اینڈ جواب نہیں دے سکتا۔' },
+  'aic.pasteKey': { key: 'aic.pasteKey', en: 'Paste the API key here', roman: 'API key yahan paste karein', ur: 'اے پی آئی کی یہاں پیسٹ کریں' },
+  'aic.unsaved': { key: 'aic.unsaved', en: 'Unsaved changes', roman: 'Gair-mehfooz tabdeeliyan', ur: 'غیر محفوظ تبدیلیاں' },
+  'aic.retry': { key: 'aic.retry', en: 'Try again', roman: 'Dobara koshish karein', ur: 'دوبارہ کوشش کریں' },
+  'aic.removeKey': { key: 'aic.removeKey', en: 'Remove stored key', roman: 'Mehfooz key hata dein', ur: 'محفوظ کی ہٹا دیں' },
+  'aic.allSaved': { key: 'aic.allSaved', en: 'Everything is saved', roman: 'Sab kuch mehfooz hai', ur: 'سب کچھ محفوظ ہے' },
+  'aic.approvalReq': { key: 'aic.approvalReq', en: 'Approval required', roman: 'Approval zaroori', ur: 'منظوری ضروری' },
+  'aic.openSetup': { key: 'aic.openSetup', en: 'Open AI Setup', roman: 'AI Setup kholein', ur: 'اے آئی سیٹ اپ کھولیں' },
+  'aic.cannot': { key: 'aic.cannot', en: '✖ Cannot', roman: '✖ Nahi kar sakta', ur: '✖ نہیں کر سکتا' },
+  'aic.pickFromList': { key: 'aic.pickFromList', en: 'Pick from the list', roman: 'List se chunein', ur: 'فہرست سے چنیں' },
+  'aic.readAgain': { key: 'aic.readAgain', en: 'Read again', roman: 'Dobara parein', ur: 'دوبارہ پڑھیں' },
+  'aic.setupReq': { key: 'aic.setupReq', en: 'Setup required', roman: 'Setup zaroori', ur: 'سیٹ اپ ضروری' },
+  'aic.send': { key: 'aic.send', en: 'Send', roman: 'Bhejein', ur: 'بھیجیں' },
   'cfg.repairNote': { key: 'cfg.repairNote', en: 'These columns are written by code but missing in the sheet — data may drop silently. Repair never deletes data; it only adds columns.', roman: 'Ye columns code likhta hai par sheet mein nahi — data silently drop ho sakta hai. Repair se data delete nahi hota, sirf columns judte hain.', ur: 'یہ کالم کوڈ لکھتا ہے مگر شیٹ میں نہیں — ڈیٹا خاموشی سے گر سکتا ہے۔ ریپئر سے ڈیٹا ڈیلیٹ نہیں ہوتا، صرف کالم جڑتے ہیں۔' },
   'cfg.idempotentNote': { key: 'cfg.idempotentNote', en: 'This is idempotent — re-running creates no duplicates and deletes no rows.', roman: 'Yeh idempotent hai — dobara chalane se duplicate nahi banta, koi row delete nahi hoti.', ur: 'یہ idempotent ہے — دوبارہ چلانے سے ڈپلیکیٹ نہیں بنتا، کوئی قطار ڈیلیٹ نہیں ہوتی۔' },
   'cfg.freeModeHint': { key: 'cfg.freeModeHint', en: 'Free mode (LINK): no API key — WhatsApp opens via a wa.me link. ', roman: 'Free mode (LINK): koi API key nahi — wa.me link se WhatsApp khul jata hai. ', ur: 'فری موڈ (LINK): کوئی API key نہیں — wa.me لنک سے واٹس ایپ کھلتا ہے۔ ' },
@@ -7014,7 +7075,9 @@ window.MockAPI = {
       base.drafts = [{id:'ORD1', orderNo:'ORD-00001', date:new Date().toISOString().slice(0,10), customerName: CUSTOMERS[0].name, total: 5200, status:'DRAFT'},{id:'ORD2', orderNo:'ORD-00002', date:new Date(Date.now()-864e5).toISOString().slice(0,10), customerName: CUSTOMERS[1].name, total: 8100, status:'CONFIRMED'}];
       base.cats = cats;
     } else if(app==='sm'){
-      base.customers = CUSTOMERS.slice(0,20).map(c=>({id:c.id, name:c.name, phone:c.phone, bal:c.balance}));
+      base.customers = CUSTOMERS.slice(0,20).map(c=>({id:c.id, name:c.name, phone:c.phone, bal:c.balance, sm:c.salesmanId||''}));  /* v2.31.2 */
+      base.salesmanId = 'USR3';   /* demo session = salesman USR3 */
+      base.myCustomers = base.customers.filter(c=>c.sm===base.salesmanId);   /* v2.31.2 (r14/F5) */
       base.myStock = [{itemId:ITEMS[0].id, code:ITEMS[0].code, name:ITEMS[0].name, qty:24, avgCost:Number(ITEMS[0].costPrice)}];
       base.stockSummary = {items:1, qty:24, value:24*Number(ITEMS[0].costPrice), retailValue:24*Number(ITEMS[0].retailPrice)};
     } else if(app==='pos'){
@@ -7307,7 +7370,7 @@ window.MockAPI = {
 
 <script>
     /* Injected by server template */
-    window.APP_BUILD   = '2.31.1-demo';
+    window.APP_BUILD   = '2.31.2-demo';
     window.SERVE_MODE  = 'demo';   // 'apps-script' | 'static'
     window.API_URL     = '';      // filled only for static hosting
   </script>
@@ -7712,6 +7775,18 @@ window.MockAPI = {
    ========================================================================== */
 (function () {
 'use strict';
+
+/* v2.31.2 (r14) — EARLY T STUB (load-order guard):
+   App_Lang include Core ke BAAD aati hai, magar Core/AIConfig ke load-time
+   literals (errKinds titles/hints waghaira) T.t chahte hain. Ye pasli stub
+   fallback english deta hai; App_Lang baad me asli window.T se replace kar
+   deti hai — dict-driven translations phir se sab jagah lagu. */
+if (!window.T) {
+  window.T = { lang: 'en', dict: {}, t: function (key, fallback) {
+    const v = this.dict[key];
+    return (v && (typeof v === 'string' ? v : (v[this.lang] || v.en))) || (fallback !== undefined ? fallback : key);
+  } };
+}
 
 /* ============================== STORAGE ============================== */
 const Store = {
@@ -8121,7 +8196,7 @@ const App = {
     shown++;
     try {
       if (window.UI && UI.toast) {
-        UI.toast('Kuch theek se load nahi hua — dobara koshish karein', 'err');
+        UI.toast(T.t('core.bootLoadFail','Something did not load properly — try again'), 'err');
       }
     } catch (e) { }
   }
@@ -8579,8 +8654,8 @@ const API = {
     const maxQ = Math.max(20, Number((App.state.settings || {})['pwa.offlineMaxQueue']) || 200);
     if (App.state.queue.length >= maxQ) {
       UI.notify({ key: 'offline.cap', tone: 'warn', sticky: true,
-        msg: 'Offline queue bhar gayi (' + App.state.queue.length + ') — sync zaroori hai',
-        action: navigator.onLine ? { label: 'Ab sync karein', onClick: () => API.flushQueue() } : null });
+        msg: T.t('core.qFullPre','Offline queue is full (') + App.state.queue.length + T.t('core.qFullTail',') — sync required'),
+        action: navigator.onLine ? { label: T.t('core.syncNow','Sync now'), onClick: () => API.flushQueue() } : null });
     }
     const entry = { clientId: uid('off'), action, payload, createdAt: new Date().toISOString() };
     App.state.queue.push(entry);
@@ -8620,9 +8695,9 @@ const API = {
         action: { label: 'Theek hai', onClick: () => { } } });
       /* v2.30.0 (N8) — sync fail ab STICKY hai (auto-gayab nahi) + Retry action */
       if (f) UI.notify({ key: 'sync.fail', tone: 'warn', sticky: true,
-        msg: n + ' sync hue, ' + f + ' fail (data mismatch)',
-        action: { label: 'Dobara sync karein', onClick: () => App.flushQueue() } });
-      else if (n && !cf) UI.toast(n + ' queued kaam sync ho gaye ✅', 'ok');
+        msg: n + T.t('core.syncStatMid',' synced, ') + f + T.t('core.syncStatFail',' failed (data mismatch)'),
+        action: { label: T.t('core.resync','Sync again'), onClick: () => App.flushQueue() } });
+      else if (n && !cf) UI.toast(n + T.t('core.syncDone',' queued items synced ✅'), 'ok');
       return n;
     } catch (e) {
       App.state.queue = queue.concat(App.state.queue); Store.set('queue', App.state.queue);
@@ -8646,8 +8721,8 @@ const API = {
     chip.classList.toggle('has-fail', !!App.state.syncFailed);
     const lbl = document.getElementById('syncChipN');
     if (lbl) lbl.textContent = String(n);
-    chip.setAttribute('aria-label', 'Offline queue: ' + n + ' pending — abhi sync karein');
-    chip.title = 'Offline queue: ' + n + ' kaam sync ka intezar' +
+    chip.setAttribute('aria-label', 'Offline queue: ' + n + T.t('core.chipAriaTail',' pending — sync now'));
+    chip.title = 'Offline queue: ' + n + T.t('core.chipTitleTail',' items awaiting sync') +
       (App.state.lastSync ? ' · aakhri sync: ' + App.state.lastSync : '') +
       (App.state.syncFailed ? ' · ' + App.state.syncFailed + ' fail' : '');
   },
@@ -8818,23 +8893,23 @@ const UI = {
   },
   /* kind → title/hint/icon. Pehla match jeet jata hai (order ahem hai). */
   _errKinds: [
-    { kind: 'offline', retryable: true, icon: '📶', title: 'Internet nahi hai',
-      hint: 'Connection wapas aane par dobara koshish karein. Kaam mehfooz karne ke liye offline queue khud istemal hogi.',
+    { kind: 'offline', retryable: true, icon: '📶', title: T.t('core.errOffline','No internet'),
+      hint: T.t('core.errOfflineHint','Try again when the connection returns. The offline queue will keep your work safe.'),
       re: /offline|internet nahi|network error|failed to fetch|load failed|ERR_INTERNET|net::/i },
-    { kind: 'network', retryable: true, icon: '⏱', title: 'Jawab nahi aaya',
-      hint: 'Server se jawab waqt par nahi mila. Dobara koshish karein — aam taur par doosri koshish chal jati hai.',
+    { kind: 'network', retryable: true, icon: '⏱', title: T.t('core.errTimeout','No response'),
+      hint: T.t('core.errTimeoutHint','No timely response from the server. Try again — a second attempt usually goes through.'),
       re: /REQUEST_TIMEOUT|timeout|timed out|aborted|empty response|koi backend connected nahi|GATEWAY|502|503|504/i },
-    { kind: 'auth', retryable: false, icon: '🔒', title: 'Session / ijazat ka masla',
-      hint: 'Ye kaam aap ke role ke liye ijazat-yafta nahi, ya session expire ho gaya. Dobara login karein ya admin se poochein.',
+    { kind: 'auth', retryable: false, icon: '🔒', title: T.t('core.errAuth','Session / permission issue'),
+      hint: T.t('core.errAuthHint','This action is not permitted for your role, or the session has expired. Log in again or ask the admin.'),
       re: /login|session|token expire|expired|unauthor|forbidden|permission|ijazat|not allowed|role/i },
-    { kind: 'validation', retryable: false, icon: '✏', title: 'Maloomat theek karein',
-      hint: 'Retry se hal nahi hoga — fields/values durust kar ke dobara save karein.',
+    { kind: 'validation', retryable: false, icon: '✏', title: T.t('core.errValidation','Fix the input'),
+      hint: T.t('core.errValidationHint','Retrying will not help — correct the fields/values and save again.'),
       re: /required|zaroori|invalid|ghalat|kam hai|zyada|select karein|chunein|pehle items|add karein|khaali|qty 0|mismatch|hisaab match|nahi mila|not found|duplicate stock|balance/i },
-    { kind: 'conflict', retryable: true, icon: '⏳', title: 'Doosra kaam chal raha hai',
-      hint: 'Koi aur save/process abhi chal raha hai. 2–3 second ruk kar dobara koshish karein.',
+    { kind: 'conflict', retryable: true, icon: '⏳', title: T.t('core.errConflict','Another operation is running'),
+      hint: T.t('core.errConflictHint','Another save/process is running right now. Wait 2–3 seconds and try again.'),
       re: /SETTINGS_BUSY|already running|already exists|busy|doosra save|conflict|locked/i },
-    { kind: 'server', retryable: true, icon: '🛠', title: 'Server par masla',
-      hint: 'Backend se error aya. Dobara koshish karein; masla rahe to system log (Diagnose) dekhein.',
+    { kind: 'server', retryable: true, icon: '🛠', title: T.t('core.errServer','Server problem'),
+      hint: T.t('core.errServerHint','The backend returned an error. Try again; if it persists, check the system log (Diagnose).'),
       re: /exception|internal|script error|spreadsheet|quota|server error|500|script function not found|cannot read/i }
   ],
   errKind(err) {
@@ -8842,8 +8917,8 @@ const UI = {
     let hit = null;
     if (!navigator.onLine) hit = UI._errKinds[0];
     for (let i = 0; !hit && i < UI._errKinds.length; i++) if (UI._errKinds[i].re.test(msg)) hit = UI._errKinds[i];
-    const k = hit || { kind: 'unknown', retryable: false, icon: '⚠', title: 'Kaam mukammal nahi hua',
-      hint: 'Dobara koshish karein. Masla rahe to Support/Diagnose se report bhejein.' };
+    const k = hit || { kind: 'unknown', retryable: false, icon: '⚠', title: T.t('core.errUnknown','The operation did not complete'),
+      hint: T.t('core.errUnknownHint','Try again. If it persists, send a report via Support/Diagnose.') };
     UI._errStats.classified++;
     if (k.retryable) UI._errStats.retryable++; else UI._errStats.blockedRetry++;
     return { kind: k.kind, retryable: k.retryable, icon: k.icon, title: k.title, hint: k.hint, detail: msg };
@@ -8903,7 +8978,7 @@ const UI = {
           const rp = opts.retry();
           if (rp && rp.catch) rp.catch(err => { try { console.warn('[UI.errBox] retry failed:', (err && err.message) || err); } catch (e) { } });
         } catch (e) { try { console.warn('[UI.errBox] retry threw:', (e && e.message) || e); } catch (e2) { } }
-      } }, '↻ Dobara koshish karein'));
+      } }, T.t('core.retryBtn','↻ Try again')));
     }
     if (opts.write) {
       UI._errStats.writeWarned++;
@@ -9491,7 +9566,7 @@ const UI = {
     if (tmo > 0) guard = setTimeout(() => {
       timedOut = true; UI._runStats.stale++;
       settle(false);
-      if (window.UI && UI.toast) UI.toast('Jawab nahi aaya — dobara koshish kar sakte hain', 'warn');
+      if (window.UI && UI.toast) UI.toast(T.t('core.runTimeout','No response — you can try again'), 'warn');
     }, tmo);
 
     return p.then(
@@ -9823,7 +9898,7 @@ const UI = {
   bars(data, opts) {
     opts = opts || {};
     data = (data || []).filter(d => d && !isNaN(Number(d.value)));
-    if (!data.length) return h('div', { class: 'chart-empty' }, 'Koi data nahi');
+    if (!data.length) return h('div', { class: 'chart-empty' }, T.t('core.noDataChart','No data'));
     try {
       if (window.Chart && typeof window.Chart.barsHTML === 'function') {
         return window.Chart.barsHTML(data.map(d => ({ label: d.label, value: d.value })),
@@ -10087,15 +10162,15 @@ App.syncSaveAll = function () {
   const n = btn.querySelector('.sa-n');
   if (n) n.textContent = count ? String(count) : '';
   btn.hidden = !(count > 0 && ready);
-  btn.title = count ? (count + ' unsaved tabdeeli — sab ek sath save karein') : 'Koi unsaved tabdeeli nahi';
+  btn.title = count ? (count + T.t('core.dirtyTail',' unsaved change(s) — save all at once')) : T.t('core.noDirty','No unsaved changes');
 };
 App.saveAllButton = function () {
   const btn = h('button', { class: 'btn ok sa-btn', id: 'saveAllBtn',
-    title: 'Is page ki saari unsaved tabdeeliyan ek sath save karein',
+    title: T.t('core.saveAllTitle','Save all unsaved changes on this page at once'),
     onclick: () => {
       if (UI2._saBusy) return;                        /* duplicate submit blocked */
       UI.run(btn, async () => {
-        const res = await UI2.saveAll({ then: r => { if (r && r.ok && r.saved) UI.toast('Save all mukammal', 'ok', 1800); } });
+        const res = await UI2.saveAll({ then: r => { if (r && r.ok && r.saved) UI.toast(T.t('core.saveAllDone','Save-all complete'), 'ok', 1800); } });
         if (res && res.ok && res.saved) {
           App._noDirtyGuard = true;
           try { App.refresh(); } finally { App._noDirtyGuard = false; }
@@ -11829,6 +11904,7 @@ const P = {
             (t.showCode !== false && it.code ? '<span>Code: ' + esc(it.code) + '</span>' : '') +
             (uom ? '<span>Unit: ' + esc(uom) + '</span>' : '') +
             (t.showHsn && it.hsn ? '<span>HSN: ' + esc(it.hsn) + '</span>' : '') +
+            (it.foc === 'true' || it.foc === true ? '<span class="foc-badge">FREE</span>' : '') +  /* v2.31.2 (r14/F1) — FOC badge (backend flag, math unchanged) */
             (it.notes ? '<span>' + esc(it.notes) + '</span>' : '') +
           '</div></td>' +
         (t.showQty !== false ? '<td class="c">' + fmt.num(it.qty) + '</td>' : '') +
@@ -11965,7 +12041,7 @@ const P = {
     const sheetRows = items.map((it, i) => {
       const uom = it.unit || it.uom || '';
       return '<tr><td class="c">' + (i + 1) + '</td>' +
-        '<td><div class="iname">' + esc(it.name) + '</div>' +
+        '<td><div class="iname">' + esc(it.name) + (it.foc === 'true' || it.foc === true ? ' <span class="foc-badge">FREE</span>' : '') + '</div>' +  /* v2.31.2 (r14/F1) */
           (t.showCode !== false && it.code ? '<div class="imeta">Part no. ' + esc(it.code) + (it.notes ? ' · ' + esc(it.notes) : '') + '</div>' : '') +
         '</td>' +
         (t.showHsn ? '<td class="c">' + esc(it.hsn || '—') + '</td>' : '') +
@@ -12497,6 +12573,7 @@ table.items .c{text-align:center}
 table.items .r{text-align:right;white-space:nowrap}
 table.items .iname{font-weight:600;color:#111}
 table.items .imeta{font-size:.82em;color:#6b7280;display:flex;gap:8px;flex-wrap:wrap;margin-top:1px}
+    .foc-badge{display:inline-block;padding:0 5px;border:1px solid #16a34a;color:#16a34a;border-radius:6px;font-size:8.5px;font-weight:800;letter-spacing:.5px;margin-left:4px}
 table.items tfoot td{font-weight:700;background:#f1f5f9}
 
 /* -------------------------------- WORDS ---------------------------------- */
@@ -15307,7 +15384,7 @@ function setv(k, v) {
   if (String(val(k)) === String(v)) return;
   ST.draft[k] = v; ST.dirty = true;
   const dot = document.getElementById('aiDirty');
-  if (dot) dot.textContent = 'Gair-mehfooz tabdeeliyan';
+  if (dot) dot.textContent = T.t('aic.unsaved','Unsaved changes');
 }
 function prov() { return String(ST.selectedProvider || (ST.cfg && ST.cfg.provider) || 'GEMINI').toUpperCase(); }
 
@@ -15390,7 +15467,7 @@ function paintErr(c, e) {
   c.appendChild(aiSection('AI Agent', [h('div', { class: 'empty' },
     String(e && e.message || e),
     h('div', { style: { marginTop: '8px' } },
-      h('button', { class: 'btn sm', onclick: () => { ST.loaded = false; ST.err = ''; App.refresh(); } }, 'Dobara koshish karein')))]));
+      h('button', { class: 'btn sm', onclick: () => { ST.loaded = false; ST.err = ''; App.refresh(); } }, T.t('aic.retry','Try again'))))]));
 }
 
 /* ------------------------------- data ops -------------------------------- */
@@ -15401,7 +15478,7 @@ async function loadCfg(force) {
   cfgInflight = (async function () {
   try {
     const r = await API.call('ai.agentConfig', {}, { offlineFallback: () => null });
-    if (!r) { ST.err = 'AI config nahi mil saka (backend offline?).'; return null; }
+    if (!r) { ST.err = T.t('aic.cfgFail','Could not load AI config (backend offline?).'); return null; }
     ST.cfg = r; ST.loaded = true; ST.err = '';
     ST.draft = {}; ST.dirty = false; ST.keyTouched = false; ST.keyVal = '';
     aiDeps();
@@ -15435,8 +15512,8 @@ async function saveAllInner() {
   try {
     const r = await API.call('ai.agentConfig.save', payload);
     if (r) { ST.cfg = r; ST.draft = {}; ST.dirty = false; ST.keyTouched = false; ST.keyVal = ''; if (window.Deps) Deps.hardRefresh('ai.models'); }
-    UI.toast('AI settings mehfooz ho gayin ✅', 'ok');
-    const dot = document.getElementById('aiDirty'); if (dot) dot.textContent = 'Sab kuch mehfooz hai';
+    UI.toast(T.t('aic.saved','AI settings saved ✅'), 'ok');
+    const dot = document.getElementById('aiDirty'); if (dot) dot.textContent = T.t('aic.allSaved','Everything is saved');
   } catch (e) { UI.toast(e.message, 'err', 5200); }
   ST.saving = false;
   App.refresh();
@@ -15449,8 +15526,8 @@ async function testConnInner(host) {
   ST.testBusy = true;
   try {
     const r = await API.call('ai.test', { provider: prov(), model: String(val('aiModel') || '') || undefined },
-      { offlineFallback: () => ({ ok: false, message: 'Demo ke liye Local Data Assistant chunein — Setup ▸ Provider.' }) });
-    ST.testRes = r || { ok: false, message: 'Backend jawab nahi de saka.' };
+      { offlineFallback: () => ({ ok: false, message: T.t('aic.demoHint','Pick the Local Data Assistant for demo — Setup ▸ Provider.') }) });
+    ST.testRes = r || { ok: false, message: T.t('aic.noBackend','The backend cannot respond.') };
     if (r) { const fresh=await API.call('ai.agentConfig',{}); if(fresh){ST.cfg=fresh; if (window.Deps) Deps.hardRefresh('ai.models');} }
   } catch (e) { ST.testRes = { ok: false, message: e.message }; }
   ST.testBusy = false;
@@ -15530,7 +15607,7 @@ function renderSetupControls(c) {
   {
     const keyInput = h('input', { class: 'f-input', type: ST.showKey ? 'text' : 'password',
       'aria-label': 'API key', autocomplete: 'off', spellcheck: 'false',
-      placeholder: cfg.hasKey ? ('Mehfooz: ' + (cfg.keyHint || '••••') + ' — naya daalne par badal jaye gi') : 'API key yahan paste karein',
+      placeholder: cfg.hasKey ? ('Mehfooz: ' + (cfg.keyHint || '••••') + ' — naya daalne par badal jaye gi') : T.t('aic.pasteKey','Paste the API key here'),
       value: ST.keyVal, oninput: e => { ST.keyVal = e.target.value; ST.keyTouched = true; } });
     const keyChildren = meta.needsKey ? [
       h('p', { class: 'f-hint', style: { margin: '0 0 8px' } }, meta.keyHelp || ''),
@@ -15544,9 +15621,9 @@ function renderSetupControls(c) {
       cfg.hasKey ? h('button', { class: 'link-btn', type: 'button', onclick: async () => {
         try { await API.call('ai.setKey', { key: '', provider: prov(), model: val('aiModel') });
           UI.toast('Key hata di gayi', 'ok'); ST.loaded = false; if (window.Deps) Deps.hardRefresh('ai.models'); App.refresh(); }
-        catch (e) { UI.toast(e.message, 'err'); } } }, 'Mehfooz key hata dein') : ''
+        catch (e) { UI.toast(e.message, 'err'); } } }, T.t('aic.removeKey','Remove stored key')) : ''
     ] : [
-      h('p', { class: 'f-hint', style: { margin: '0' } }, 'Is provider ko API key ki zaroorat nahi — server/local mode.')
+      h('p', { class: 'f-hint', style: { margin: '0' } }, T.t('aic.noKeyNeeded','This provider needs no API key — server/local mode.'))
     ];
     const keySec = aiSection('API key', keyChildren);
     keySec.setAttribute('data-when', '!aiProvider=MOCK');   /* shared conditional UI */
@@ -15562,7 +15639,7 @@ function renderSetupControls(c) {
         oninput: e => setv('aiEndpoint', e.target.value.trim()) });
       return h('div', null, ep,
         pmeta.endpointRequired && !String(val('aiEndpoint')).match(/^https?:\/\//)
-          ? h('div', { class: 'f-hint', style: { color: 'var(--err)' } }, 'Ollama ke liye endpoint lazmi hai.') : '',
+          ? h('div', { class: 'f-hint', style: { color: 'var(--err)' } }, T.t('aic.ollamaEndpoint','An endpoint is required for Ollama.')) : '',
         h('p', { class: 'f-hint', style: { marginTop: '6px' } },
           pmeta.endpointHelp || 'Sirf tab badlein jab aap proxy/khudi ka gateway use kar rahe hon. Aksar users ke liye khali chhor dein.'));
     })()]);
@@ -15598,7 +15675,7 @@ function renderSetupControls(c) {
     b.textContent = o; b.disabled = false;
   } }, 'Refresh models');
   const manualBtn = h('button', { class: 'link-btn', type: 'button', onclick: () => { ST.manualModel = !ST.manualModel; App.refresh(); } },
-    ST.manualModel ? 'List se chunein' : 'Model ID khud likhein');
+    ST.manualModel ? T.t('aic.pickFromList','Pick from the list') : 'Model ID khud likhein');
   left.appendChild(aiSection('Model', [
     ST.manualModel
       ? h('input', { class: 'f-input', type: 'text', 'aria-label': 'Model id', placeholder: 'provider ki list wala id',
@@ -15655,8 +15732,8 @@ function renderSetupControls(c) {
   right.appendChild(aiSection('Behavior', [
     tg('aiEnabled', 'AI enabled', 'Poora assistant on/off — off par chat aur signals ruk jayen ge.'),
     tg('aiCanWrite', 'Drafts banane dein (writes)', 'Default OFF. Sirf draft banta hai; publish/cancel aap khud karte hain.', 'ai-tg-warn'),
-    tg('aiRequireApproval', 'Approval zaroori', 'Draft par bhi confirmation talab ho.'),
-    tg('aiAutoSuggest', 'Smart suggestions', 'Chat ke neeche sawal-chips dikhayein.'),
+    tg('aiRequireApproval', T.t('aic.approvalReq','Approval required'), 'Draft par bhi confirmation talab ho.'),
+    tg('aiAutoSuggest', 'Smart suggestions', T.t('aic.questionChips','Show question chips below the chat.')),
     tg('aiFallbackMock', 'Local Data Assistant fallback',
       'Key na ho to ye LOCAL rules engine (koi LLM nahi) aap ke asli data par rule-based jawab deta hai — app ruke na ruke.'),
     tg('aiRedact', 'Naam/fon chhupayein', 'Provider ko bhejte waqt customer phone mask ho.'),
@@ -15732,9 +15809,9 @@ function renderSetupControls(c) {
   paintTest(testHost);
   c.appendChild(h('div', { class: 'ai-foot' },
     h('span', { id: 'aiDirty', class: 'ai-dirty' + (ST.dirty ? ' on' : '') },
-      ST.dirty ? 'Gair-mehfooz tabdeeliyan' : 'Sab kuch mehfooz hai'),
+      ST.dirty ? T.t('aic.unsaved','Unsaved changes') : T.t('aic.allSaved','Everything is saved')),
     h('div', { style: { display: 'flex', gap: '8px', flexWrap: 'wrap' } },
-      h('button', { class: 'btn sm sec', type: 'button', onclick: () => { ST.loaded = false; App.refresh(); } }, 'Dobara parein'),
+      h('button', { class: 'btn sm sec', type: 'button', onclick: () => { ST.loaded = false; App.refresh(); } }, T.t('aic.readAgain','Read again')),
       h('button', { class: 'btn sm', type: 'button', onclick: e => testConn(e.target, testHost) }, 'Test connection'),
       h('button', { class: 'btn ok', type: 'button', onclick: e => saveAll(e.target) }, 'Save settings'))));
 
@@ -15814,7 +15891,7 @@ function renderSetup(c) {
   connection.appendChild(h('div',{class:'ai-connect-action'},
     h('button',{class:'btn',type:'button',disabled:ST.connecting,'data-action':'auto-connect',onclick:e=>connectProvider(e.currentTarget)},
       ST.connecting ? 'Connecting…' : prov()==='MOCK' ? 'Set up Local Data Assistant' : 'Connect & auto-configure'),
-    h('p',{class:'f-hint'},prov()==='MOCK' ? 'App ka apna LOCAL rules engine — koi internet, koi API key, koi LLM nahi.' :
+    h('p',{class:'f-hint'},prov()==='MOCK' ? T.t('aic.localEngine','The app’s own LOCAL rules engine — no internet, no API key, no LLM.') :
       'Secure key check → discover models → choose & test → save. For cloud services, this uses the official endpoint.')));
   const testHost=legacy.querySelector('#aiTestHost'); if(testHost) connection.appendChild(testHost);
   if(modelCard)connection.appendChild(modelCard);
@@ -15863,7 +15940,7 @@ async function aiSend(text, host) {
     const res = await API.call('ai.chat', { message: text, history: ST.hist.slice(0, -1).slice(-10), threadId: ST.tid || undefined },
       { offlineFallback: () => null });
     typing.remove();
-    if (!res) throw new Error('Backend jawab nahi de saka (offline?)');
+    if (!res) throw new Error(T.t('aic.noBackendQ','The backend cannot respond (offline?)'));
     if (res.threadId) ST.tid = res.threadId;
     pushMsg(host, 'bot', res.reply || '(khaali jawab)', res.toolResults, res.config && Object.assign({}, res.config, {failover:res.routing && res.routing.failover}));
     ST.hist.push({ role: 'assistant', content: res.reply || '' });
@@ -15871,14 +15948,14 @@ async function aiSend(text, host) {
       host.appendChild(h('div', { class: 'ai-msg bot' },
         'Set up karne ke liye:',
         h('div', { style: { marginTop: '6px' } },
-          h('button', { class: 'btn sm', type: 'button', onclick: () => goTab('setup') }, 'AI Setup kholein'))));
+          h('button', { class: 'btn sm', type: 'button', onclick: () => goTab('setup') }, T.t('aic.openSetup','Open AI Setup')))));
     }
   } catch (e) {
     typing.remove();
     pushMsg(host, 'bot', 'Error: ' + e.message);
   }
   ST.chatBusy = false;
-  if (btn) { btn.disabled = false; btn.textContent = 'Bhejein'; }
+  if (btn) { btn.disabled = false; btn.textContent = T.t('aic.send','Send'); }
   const i0 = document.getElementById('aiAsk'); if (i0) i0.focus();
 }
 function renderAssistant(c) {
@@ -15890,7 +15967,7 @@ function renderAssistant(c) {
     h('h3', null, 'Haseeb Assistant'),
     h('div', { style: { display: 'flex', gap: '6px', flexWrap: 'wrap' } },
       h('span', { class: 'badge ' + (cfg.usable ? 'ok' : 'warn') },
-        cfg.provider === 'MOCK' ? provLabel('MOCK') : (cfg.usable ? 'Live · ' + (cfg.model || '') : 'Setup zaroori')),
+        cfg.provider === 'MOCK' ? provLabel('MOCK') : (cfg.usable ? 'Live · ' + (cfg.model || '') : T.t('aic.setupReq','Setup required'))),
       h('button', { class: 'btn sm sec', onclick: () => {
         ST.hist = []; ST.tid = ''; App.refresh(); } }, 'New chat'),
       h('button', { class: 'btn sm ghost', onclick: () => goTab('setup') }, 'Setup'))));
@@ -15909,11 +15986,11 @@ function renderAssistant(c) {
     wrap.appendChild(chips);
   }
   const input = h('input', { class: 'f-input', id: 'aiAsk', type: 'text', autocomplete: 'off',
-    placeholder: 'Sawal likhein… (Enter se bhejein)', 'aria-label': 'AI sawal',
+    placeholder: T.t('aic.askPh','Type a question… (Enter to send)'), 'aria-label': 'AI sawal',
     onkeydown: e => { if (e.key === 'Enter' && e.target.value.trim()) { const v = e.target.value.trim(); e.target.value = ''; aiSend(v, host); } } });
   wrap.appendChild(h('div', { class: 'ai-inputrow' }, input,
     h('button', { class: 'btn', id: 'aiSendBtn', type: 'button',
-      onclick: () => { if (input.value.trim()) { const v = input.value.trim(); input.value = ''; aiSend(v, host); } } }, 'Bhejein')));
+      onclick: () => { if (input.value.trim()) { const v = input.value.trim(); input.value = ''; aiSend(v, host); } } }, T.t('aic.send','Send'))));
   if (ST.threads.length)
     wrap.appendChild(h('div', { class: 'f-hint', style: { padding: '0 12px 8px' } },
       'History: ' + ST.threads.length + ' chat (Activity tab mein)'));
@@ -15940,24 +16017,24 @@ function capabilitiesCard() {
     h('div', { class: 'f-hint' },
       isLocal
         ? 'Abhi chal raha hai: ' + (meta.label || 'Local Data Assistant') +
-          ' — app ka apna LOCAL rules engine. Koi internet, koi API key, koi LLM nahi.'
+          T.t('aic.localEngineTail',' — the app’s own LOCAL rules engine. No internet, no API key, no LLM.')
         : 'Abhi chal raha hai: ' + (meta.label || prov) + ' (bahar ka LLM provider). Jawab model banata hai; ' +
           'aap ka data provider ko raw rows ki tarah nahi jata — assistant pehle apne tools (RBAC ke tehat) chalata hai aur sirf sawal/jawab ka text jata hai. LLM ghalat jawab bhi de sakta hai — ahem hisaab dekh kar confirm karein.'),
     isLocal
       ? h('div', null,
           h('b', { class: 'cap-h' }, '✔ Kar sakta hai'),
           list(meta.can, 'ok'),
-          h('b', { class: 'cap-h' }, '✖ Nahi kar sakta'),
+          h('b', { class: 'cap-h' }, T.t('aic.cannot','✖ Cannot')),
           list(meta.cannot, 'no'))
       : h('div', null,
           h('b', { class: 'cap-h' }, '✔ Aam taur par kar sakta hai'),
           list(['Aap ke data par tools chalana aur us ka khulasa (permissions ke tehat)',
-                'Roman Urdu / English mein jawab', 'Draft banana (post/approve insaan karta hai)'], 'ok'),
+                'Roman Urdu / English mein jawab', T.t('aic.canDraft','Draft creation (posting/approval is done by a human)')], 'ok'),
           h('b', { class: 'cap-h' }, '⚠ Dhyan rakhein'),
-          list(['Jawab model se aata hai — galti mumkin hai, numbers dobara check karein',
-                'Internet ke bagair kaam nahi karega (us waqt Local Data Assistant chunein)'], 'no')));
+          list([T.t('aic.modelDisclaimer','Answers come from a model — mistakes are possible; double-check numbers'),
+                T.t('aic.needsNet','Will not work without internet (use the Local Data Assistant then)')], 'no')));
   return h('div', { class: 'card', id: 'aiCapCard' },
-    h('div', { class: 'card-head' }, h('h3', null, 'Ye assistant kya kar sakta hai — aur kya nahi')),
+    h('div', { class: 'card-head' }, h('h3', null, T.t('aic.capabilities','What this assistant can do — and cannot'))),
     body);
 }
 
@@ -16006,7 +16083,7 @@ function renderActivity(c) {
     h('div', { class: 'ai-stat' }, h('span', null, 'Kul messages'), h('b', null, fmt.num(u.messages || 0))),
     h('div', { class: 'ai-stat' }, h('span', null, 'Chat threads'), h('b', null, fmt.num(u.threads || 0))),
     h('div', { class: 'ai-stat' }, h('span', null, 'Provider'), h('b', null, provMeta(cfg.provider).label || cfg.provider || '—'))));
-  let threadList = h('div', { class: 'empty', style: { padding: '14px' } }, 'Abhi koi chat record nahi (pehla sawal poochein).');
+  let threadList = h('div', { class: 'empty', style: { padding: '14px' } }, T.t('aic.noChat','No chat history yet (ask the first question).'));
   if (ST.threads.length) {
     threadList = h('div');
     ST.threads.forEach(th => threadList.appendChild(h('div', { class: 'list-item' },
@@ -16034,7 +16111,7 @@ function renderActivity(c) {
   c.appendChild(aiSection('Recent chats', [threadList, actBtns]));
   c.appendChild(aiSection('Data aur hifazat', [
     h('ul', { class: 'ai-safe' },
-      h('li', null, 'API key sirf Script Properties mein — spreadsheet cells ya browser storage mein kabhi nahi.'),
+      h('li', null, T.t('aic.keySafety','API key lives only in Script Properties — never in spreadsheet cells or browser storage.')),
       h('li', null, 'Jawab generate karne ke liye aapke hi data par AI apne tools chalata hai — provider ko raw rows nahi jaate; sirf sawal/jawab ka text jata hai (Redact on ho to phone naam masked).'),
       h('li', null, 'Har chat user-wise AIThreads sheet mein mehfooz — Admin Audit log mein AI_CHAT entries nazar aati hain.'),
       h('li', null, 'Writes default mein BAND hain; on karne par bhi sirf draft banta hai, post/approve insaan karta hai.'))

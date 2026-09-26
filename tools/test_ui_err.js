@@ -101,7 +101,7 @@ win.alert = () => { }; win.confirm = () => true;
     const t3 = UI.errText(new Error('PDF response has no file URL. Please retry.'));
     ok('② "Please retry." gaya', !/please retry/i.test(t3), t3);
     const t4 = UI.errText(new Error('TypeError: x is not a function at line 42'));
-    ok('② technical stack ki jagah friendly title+hint', /Kaam mukammal nahi hua|Server par masla|Maloomat theek karein/.test(t4), t4);
+    ok('② technical stack ki jagah friendly title+hint', /Kaam mukammal nahi hua|Server par masla|Maloomat theek karein|did not complete|Server problem|Fix the input/.test(t4) /* v2.31.2 T.t */, t4);
   }
 
   /* ---------------- ③ toast classification + action ---------------- */
@@ -135,7 +135,7 @@ win.alert = () => { }; win.confirm = () => true;
     ok('④ inline box render hua (host ke andar)', !!box && !!b1);
     ok('④ box mein title + hint + technical details', !!box.querySelector('.eb-head b') && !!box.querySelector('.eb-hint') && !!box.querySelector('details.eb-det'));
     const rbtn = box.querySelector('.eb-acts .btn.ok');
-    ok('④ retryable error par "Dobara koshish karein" button', !!rbtn && /Dobara koshish/.test(rbtn.textContent));
+    ok('④ retryable error par "Dobara koshish karein" button', !!rbtn && /Dobara koshish|Try again/.test(rbtn.textContent) /* v2.31.2 T.t */);
     if (rbtn) { rbtn.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true })); await sleep(40); }
     ok('④ retry click par kaam dobara chala + box hat gaya', retried === 1 && !host.querySelector('.err-box'), 'retried=' + retried);
 

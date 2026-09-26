@@ -79,6 +79,7 @@ const P = {
             (t.showCode !== false && it.code ? '<span>Code: ' + esc(it.code) + '</span>' : '') +
             (uom ? '<span>Unit: ' + esc(uom) + '</span>' : '') +
             (t.showHsn && it.hsn ? '<span>HSN: ' + esc(it.hsn) + '</span>' : '') +
+            (it.foc === 'true' || it.foc === true ? '<span class="foc-badge">FREE</span>' : '') +  /* v2.31.2 (r14/F1) — FOC badge (backend flag, math unchanged) */
             (it.notes ? '<span>' + esc(it.notes) + '</span>' : '') +
           '</div></td>' +
         (t.showQty !== false ? '<td class="c">' + fmt.num(it.qty) + '</td>' : '') +
@@ -215,7 +216,7 @@ const P = {
     const sheetRows = items.map((it, i) => {
       const uom = it.unit || it.uom || '';
       return '<tr><td class="c">' + (i + 1) + '</td>' +
-        '<td><div class="iname">' + esc(it.name) + '</div>' +
+        '<td><div class="iname">' + esc(it.name) + (it.foc === 'true' || it.foc === true ? ' <span class="foc-badge">FREE</span>' : '') + '</div>' +  /* v2.31.2 (r14/F1) */
           (t.showCode !== false && it.code ? '<div class="imeta">Part no. ' + esc(it.code) + (it.notes ? ' · ' + esc(it.notes) : '') + '</div>' : '') +
         '</td>' +
         (t.showHsn ? '<td class="c">' + esc(it.hsn || '—') + '</td>' : '') +
@@ -747,6 +748,7 @@ table.items .c{text-align:center}
 table.items .r{text-align:right;white-space:nowrap}
 table.items .iname{font-weight:600;color:#111}
 table.items .imeta{font-size:.82em;color:#6b7280;display:flex;gap:8px;flex-wrap:wrap;margin-top:1px}
+    .foc-badge{display:inline-block;padding:0 5px;border:1px solid #16a34a;color:#16a34a;border-radius:6px;font-size:8.5px;font-weight:800;letter-spacing:.5px;margin-left:4px}
 table.items tfoot td{font-weight:700;background:#f1f5f9}
 
 /* -------------------------------- WORDS ---------------------------------- */

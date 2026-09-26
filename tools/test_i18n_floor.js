@@ -10,8 +10,8 @@ const { execSync } = require('child_process');
 const ROOT = path.join(__dirname, '..');
 
 /* [totalHits, totalTt] — 2026-09-25 round-9 slice-1 ke baad naapa gaya */
-const BASELINE_HITS = 539; /* r12: Pwa_Shell+Pwa_Warehouse pure (micro-T) */
-const BASELINE_TT = 396; /* r12: PWA micro-T */
+const BASELINE_HITS = 486; /* r14: App_Core error-UI + AIConfig pure */
+const BASELINE_TT = 459; /* r14 */
 
 let pass = 0, fail = 0;
 const ok = (c, n, d) => { if (c) { pass++; console.log('  \u2714 ' + n + (d ? '  \u2192 ' + d : '')); } else { fail++; console.log('  \u2716 ' + n + (d ? '  \u2192 ' + d : '')); } };
