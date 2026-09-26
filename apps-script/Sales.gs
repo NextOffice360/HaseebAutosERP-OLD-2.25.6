@@ -11,7 +11,7 @@ function discBeforeTaxGuard(lineRows, lineBases, headerDisc, subtotal, itemCache
     var lr = lineRows[i];
     var it = itemCache[lr.itemId] || {};
     var minP = U.num(it.minPrice);
-    if (!minP) continue;
+    if (!minP || lr.foc === 'true') continue;   /* v2.31.3: FOC line free — guard n/a */
     var share = subtotal ? U.num(lineBases[i]) / subtotal : 0;
     var net = U.num(lineBases[i]) - (headerDisc * share);
     var unit = lr.qty ? net / lr.qty : net;
@@ -129,6 +129,16 @@ var Sales = {
       var lineDisc = U.num(line.discount);
       if (U.num(line.discountPct)) lineDisc += (price * qty) * U.num(line.discountPct) / 100;
 
+      /* v2.31.3 (r15/F1) — FOC ENGINE: poora line free. price REFERENCE rehta hai
+         (reports/print par dikhta hai), lineTotal 0 banta hai (taxable 0). Stock +
+         cost aam lines ki tarah katate hain (asli nuqsan profit me nazar aata hai).
+         Permission: pos.discount (FOC = 100% discount). */
+      var isFoc = line.foc === true || String(line.foc) === 'true';
+      if (isFoc) {
+        if (!Auth.can(s, 'pos.discount')) throw new Error('FOC line ke liye discount permission zaroori hai.');
+        lineDisc = U.round(price * qty, 2);
+      }
+
       // ---- discount limit check ----
       var pctOfLine = (price * qty) ? (lineDisc / (price * qty) * 100) : 0;
       if (pctOfLine > U.num(s.discountLimit, 0) && !Auth.can(s, 'pos.discount')) {
@@ -136,7 +146,7 @@ var Sales = {
       }
       // ---- min price guard ----
       var effUnit = qty ? (price * qty - lineDisc) / qty : price;
-      if (U.num(it.minPrice) && effUnit < U.num(it.minPrice) && !Auth.can(s, 'items.price.edit')) {
+      if (U.num(it.minPrice) && effUnit < U.num(it.minPrice) && !Auth.can(s, 'items.price.edit') && !isFoc) {  /* v2.31.3: FOC free hai — min-price par lagu nahi */
         throw new Error('Minimum price se neechay nahi ja saktay: ' + it.name);
       }
       // ---- stock guard (consignment ho to SALESMAN ka stock, warna branch) ----
@@ -247,10 +257,17 @@ var Sales = {
         var bal = Parties.balance('CUSTOMER', cust.id);
         var limit = U.num((DB.byId('CustomerTypes', cust.customerTypeId) || {}).creditLimit, U.num(cust.creditLimit, 0));
         if (limit && (bal + due) > limit) {
-          /* v2.9 §5 — error mein poora hisab: prev + due vs limit */
-          throw new Error('Sale blocked: closing balance Rs ' + U.round(bal + due, 2) +
-            ' (previous Rs ' + U.round(bal, 2) + ' + this udhaar Rs ' + U.round(due, 2) +
-            ') exceeds credit limit Rs ' + U.num(limit, 0) + '. Cash Paid barhayein ya customer ka limit barhayein.');
+          /* v2.31.3 (r15/F4) — CREDIT-LIMIT OVERRIDE: pos.credit.override wala user
+             jaan-boojh kar override kar sakta hai (Audit me record — kabhi chupchap nahi) */
+          var ov = payload.creditOverride;
+          if (ov && Auth.can(s, 'pos.credit.override')) {
+            /* allowed — niche sale insert ke baad audit */
+          } else {
+            /* v2.9 §5 — error mein poora hisab: prev + due vs limit */
+            throw new Error('Sale blocked: closing balance Rs ' + U.round(bal + due, 2) +
+              ' (previous Rs ' + U.round(bal, 2) + ' + this udhaar Rs ' + U.round(due, 2) +
+              ') exceeds credit limit Rs ' + U.num(limit, 0) + '. Cash Paid barhayein ya customer ka limit barhayein.');
+          }
         }
       }
     }
@@ -272,6 +289,11 @@ var Sales = {
       notes: (payload.notes || '') + (payload.offlineId ? ' OFFLINE:' + payload.offlineId : ''),
       source: payload.source || 'POS', createdAt: U.iso()
     }, s);
+    if (payload.creditOverride) {
+      Audit.log('CREDIT_OVERRIDE', 'Sales', saleId,
+        { due: due, note: U.str(payload.creditOverride.note || ''), byUserId: U.str(payload.creditOverride.byUserId || '') },
+        { invoiceNo: U.str(invoiceNo) }, s);
+    }
 
     // ---- line items + stock out ----
     lineRows.forEach(function (lr) {

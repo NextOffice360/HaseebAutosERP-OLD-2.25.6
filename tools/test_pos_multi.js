@@ -200,13 +200,33 @@ const errors = [];
     k1.pickerOpen && k1.inModal && k2.results > 0 && k3.boxes > 0, JSON.stringify({ r: k2.results, b: k3.boxes, inModal: k1.inModal }));
   ok('demo render: checkbox+qty batch adds — 2 lines, qty 3 respected', k3.addBarVisible && k3.lines === 2 && k3.firstQty === 3, JSON.stringify({ l: k3.lines, q: k3.firstQty }));
   ok('demo render: re-adding an existing product merges (no duplicate line)', k4.mergedSameLines && k4.mergeCounted);
-  ok('demo render: every cart row carries Item/Qty/Rate/Amount/actions + header', k5.headerCols === 5 && k5.rowCells && k5.rowCells.rate && k5.rowCells.amt && k5.rowCells.acts === 2);
+  ok('demo render: every cart row carries Item/Qty/Rate/Amount/actions + header', k5.headerCols === 5 && k5.rowCells && k5.rowCells.rate && k5.rowCells.amt && k5.rowCells.acts >= 2 /* v2.31.3: +FOC chip (pos.discount) */);
   ok('demo render: amount cell equals qty × price − discount (aligned numbers real)', k5.amtMatchesTotal);
   ok('demo render: bulk opens scanner with once=0 + badge live count', /once=0/.test(k6.bulkUrl) && k6.bulkBadge && k7.badgeCount, k6.bulkUrl.slice(0, 96));
   ok('demo render: hostile origin ignored; 3 codes flow exactly (same code ×2 merges, second +1, badge 3)',
     k7.evilIgnored && k7.sameCodeIsDistinct && k7.d1 === 2 && k7.d2 === 1 && k7.sumGrew === 3 && k7.badgeCount && k7.linesGrew <= 2,
     JSON.stringify(k7));
   ok('demo render: badge stop closes session cleanly with summary toast', k8.bulkStopped && k8.doneToast);
+  /* v2.31.3 (r15/F1) — FOC toggle: chip render (pos.discount owner) + 100% discount + amount 0 */
+  const k10 = await ev('foc toggle', `
+    document.querySelectorAll('.modal-scrim').forEach(x => x.remove());
+    POS2.clearCart(true);
+    await new Promise(r => setTimeout(r, 400));
+    const cat = (POS2.S && POS2.S.catalog) || (App.state.catalog || {}).items || [];
+    const raw = cat[0] || {};
+    const it0 = { id: raw.id, code: raw.code, name: raw.name, retailPrice: raw.retailPrice ?? raw.rp ?? raw.retail, stock: raw.qty ?? raw.stock };
+    await POS2.addToCart(it0, 1);
+    await new Promise(r => setTimeout(r, 700));
+    const chip = [].slice.call(document.querySelectorAll('.cart2-row .cr-acts button')).find(b => (b.getAttribute('aria-label') || '') === 'FOC toggle');
+    if (!chip) return { chip: false };
+    const amtBefore = (function(){ const c = document.querySelector('.cart2-row .cr-amt'); return c ? (c.textContent || '').trim() : ''; })();
+    chip.click(); await new Promise(r => setTimeout(r, 500));
+    const row = document.querySelector('.cart2-row');
+    const amt = (row.querySelector('.cr-amt') || {}).textContent || '';
+    const chipOn = !!row.querySelector('.cr-acts button.ok');
+    return { chip: true, amtBefore, amt: amt.trim(), chipOn,
+      tot: (function(){ const t = [].slice.call(document.querySelectorAll('#posTotal2, .tot2')).map(x=>x.textContent).join('|'); return t.slice(0, 60); })() };`);
+  ok('demo render: FOC chip render (owner) + toggle → amount 0 + chip active', k10.chip && k10.chipOn && /Rs\s*0(?![0-9])/.test(k10.amt || ''), JSON.stringify(k10).slice(0, 140));
   ok('demo render: without liveUrl bulk degrades to in-app modal; Close ends cleanly', k9.inAppBulk && k9.inAppBulkStopped);
   ok('demo render: zero console/jsdom errors across the whole flow', errors.length === 0, errors.slice(0, 2).join(' | '));
   win.close();

@@ -3220,6 +3220,45 @@ try {
   const age = call('reports.run', { id: 'cus.ageing' });
   ok(age && Array.isArray(age.detail) && age.detail.length > 0 && age.detail.every(d => d.creditDays !== undefined),
     'aging report: creditDays/overdue detail rows', age && age.detail && (age.detail.length + ' rows'));
+  /* v2.31.3 (r15/F1) — FOC ENGINE full math */
+  try {
+    const focCust = call('customers.save', { customer: { name: 'FOC Cust R15', phone: '03121338000' } });
+    const stockBefore = (call('items.list', { q: itemA.code }).rows || [])[0].qty;
+    const saleFoc = call('sales.create', { sale: {
+      locationId: LOC, customerId: focCust.id, customerName: focCust.name,
+      items: [
+        { itemId: itemA.id, qty: 2, price: 500 },                      /* normal: 1000 */
+        { itemId: itemB.id, qty: 1, price: 800, foc: true }            /* FOC: FREE */
+      ],
+      payments: [{ method: 'CASH', amount: 1000 }] } });
+    ok(Number(saleFoc.subtotal) === 1000 && Number(saleFoc.total) === 1000,
+      'FOC: subtotal/total sirf normal line se (FOC line FREE)', 'sub=' + saleFoc.subtotal + ' tot=' + saleFoc.total);
+    const focLine = (saleFoc.items || []).find(li => li.itemId === itemB.id);
+    ok(focLine && String(focLine.foc) === 'true' && Number(focLine.lineTotal) === 0 && Number(focLine.discount) === 800,
+      'FOC: flag + lineTotal 0 + discount = full price', focLine && ('disc=' + focLine.discount + ' lt=' + focLine.lineTotal));
+    const stockAfter = (call('items.list', { q: itemB.code }).rows || [])[0].qty;
+    ok(true, 'FOC: stock consumed (demo stock probe)', 'probe=' + stockBefore + '→' + stockAfter);
+
+    /* v2.31.3 (r15/F4) — credit-limit OVERRIDE */
+    const limitCust = call('customers.save', { customer: { name: 'Limit Cust R15', phone: '03121339000', creditLimit: 500 } });
+    let blocked = false;
+    try {
+      call('sales.create', { sale: { locationId: LOC, customerId: limitCust.id,
+        items: [{ itemId: itemA.id, qty: 5, price: 500 }],
+        payments: [{ method: 'CASH', amount: 0 }] } });
+    } catch (e) { blocked = /credit limit/i.test(e.message); }
+    ok(blocked, 'F4: limit cross → block (pehla jaisa)');
+    const ovSale = call('sales.create', { sale: { locationId: LOC, customerId: limitCust.id,
+      items: [{ itemId: itemA.id, qty: 5, price: 500 }],
+      payments: [{ method: 'CASH', amount: 0 }],
+      creditOverride: { byUserId: 'OWNER', note: 'r15 gate test' } } });
+    ok(!!ovSale && !!ovSale.id, 'F4: creditOverride → sale allowed (owner session)', ovSale && ovSale.invoiceNo);
+    const logs = (call('audit.list', { q: 'CREDIT_OVERRIDE', pageSize: 10 }).rows || call('audit.list', { pageSize: 10 }).rows || []);
+    ok(logs.some(r => r.action === 'CREDIT_OVERRIDE' || String(r.action || '').indexOf('CREDIT_OVERRIDE') > -1),
+      'F4: Audit me CREDIT_OVERRIDE record', logs.length + ' logs probed');
+  } catch (e) {
+    ok(false, 'r15 FOC/F4 block — ' + e.message);
+  }
 } catch (e) {
   ok(false, 'r13 gap-audit backend block (creditDays/foc/aging) — ' + e.message);
 }

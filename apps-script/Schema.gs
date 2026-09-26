@@ -374,6 +374,8 @@ var PERMISSION_CATALOG = [
   { id: 'pos.sell', group: 'pos', en: 'Create sale / invoice', ur: 'سیل / انوائس بنائیں', desc: 'Naya bill' },
   { id: 'pos.return', group: 'pos', en: 'Process sale return', ur: 'سیل ریٹرن', desc: 'Exchange / refund' },
   { id: 'pos.discount', group: 'pos', en: 'Give discount', ur: 'ڈسکاؤنٹ دینا', desc: 'Line aur bill discount' },
+  /* v2.31.3 (r15/F4) — credit-limit override (owner-approval power) */
+  { id: 'pos.credit.override', group: 'pos', en: 'Override credit limit', ur: 'کریڈٹ حد اووررائیڈ', desc: 'Limit cross par bhi udhaar sale (audit-recorded)' },
   { id: 'pos.hold', group: 'pos', en: 'Hold / park bill', ur: 'بل ہولڈ کرنا', desc: 'Parked bills' },
   { id: 'pos.cash.manage', group: 'pos', en: 'Cash drawer open / close', ur: 'کیش دراز', desc: 'Opening/closing cash, drops' },
   { id: 'pos.price.override', group: 'pos', en: 'Override sale price', ur: 'ریٹ تبدیل کرنا', desc: 'Rate edit at billing' },
@@ -444,7 +446,7 @@ function permissionMeta(id) {
 var ROLE_PERMISSIONS = {
   OWNER: ['*'],
   MANAGER: [
-    'dashboard.view', 'pos.access', 'pos.sell', 'pos.return', 'pos.discount', 'pos.hold',
+    'dashboard.view', 'pos.access', 'pos.sell', 'pos.return', 'pos.discount', 'pos.hold', 'pos.credit.override',
     'pos.cash.manage', 'items.view', 'items.create', 'items.edit', 'items.delete', 'items.price.edit',
     'items.import', 'stock.view', 'stock.adjust', 'stock.transfer', 'stock.audit.post',
     'purchase.view', 'purchase.po.create', 'purchase.po.approve', 'purchase.grn', 'purchase.return',
