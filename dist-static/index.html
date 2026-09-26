@@ -10967,7 +10967,7 @@ function renderSetupControls(c) {
         : okUsable ? chip('Local mode · no LLM', 'info') : chip('Key chahiye', 'err'),
       String(val('aiCanWrite')) === 'true' ? chip('Data par writes ON', 'warn') : chip('Read-only', 'ok')),
     (!okUsable) ? h('div', { class: 'f-hint', style: { color: 'var(--warn)' } },
-      'AI chalane ke liye ya to API key daalein, ya Local Data Assistant (bina LLM) chunein, ya uska fallback on karein.') : '')));
+      T.t('aic.needKey','To run AI, either enter an API key, choose the Local Data Assistant (no LLM), or turn on its fallback.')) : '')));
 
   /* ── provider cards ── */
   const pCards = h('div', { class: 'ai-prov' });
@@ -11008,7 +11008,7 @@ function renderSetupControls(c) {
   {
     const keyInput = h('input', { class: 'f-input', type: ST.showKey ? 'text' : 'password',
       'aria-label': 'API key', autocomplete: 'off', spellcheck: 'false',
-      placeholder: cfg.hasKey ? ('Mehfooz: ' + (cfg.keyHint || '••••') + ' — naya daalne par badal jaye gi') : T.t('aic.pasteKey','Paste the API key here'),
+      placeholder: cfg.hasKey ? (T.t('aic.stored','Stored: ') + (cfg.keyHint || '••••') + T.t('aic.storedTail',' — changes when you enter a new one')) : T.t('aic.pasteKey','Paste the API key here'),
       value: ST.keyVal, oninput: e => { ST.keyVal = e.target.value; ST.keyTouched = true; } });
     const keyChildren = meta.needsKey ? [
       h('p', { class: 'f-hint', style: { margin: '0 0 8px' } }, meta.keyHelp || ''),
@@ -11018,7 +11018,7 @@ function renderSetupControls(c) {
           onclick: () => { ST.showKey = !ST.showKey; App.refresh(); } }, ST.showKey ? 'Hide' : 'Show'),
         meta.keyUrl ? h('a', { class: 'btn sm sec', href: meta.keyUrl, target: '_blank', rel: 'noopener' }, 'Get a key') : ''),
       h('p', { class: 'f-hint', style: { marginTop: '6px' } },
-        'Key sirf Script Properties mein mehfooz hoti hai — Sheets ya browser mein kahin nahi. Jawab mein kabhi poori key wapas nahi aati (sirf ' + (cfg.keyHint || 'pehle 4…aakhir 3') + ' jaisa hint).'),
+        T.t('aic.keySafe','The key is stored only in Script Properties — never in Sheets or the browser. Replies never return the full key (just a hint like ') + (cfg.keyHint || T.t('aic.keyHintDflt','first 4…last 3')) + T.t('aic.keyEnd',').')),
       cfg.hasKey ? h('button', { class: 'link-btn', type: 'button', onclick: async () => {
         try { await API.call('ai.setKey', { key: '', provider: prov(), model: val('aiModel') });
           UI.toast('Key hata di gayi', 'ok'); ST.loaded = false; if (window.Deps) Deps.hardRefresh('ai.models'); App.refresh(); }
@@ -11042,7 +11042,7 @@ function renderSetupControls(c) {
         pmeta.endpointRequired && !String(val('aiEndpoint')).match(/^https?:\/\//)
           ? h('div', { class: 'f-hint', style: { color: 'var(--err)' } }, T.t('aic.ollamaEndpoint','An endpoint is required for Ollama.')) : '',
         h('p', { class: 'f-hint', style: { marginTop: '6px' } },
-          pmeta.endpointHelp || 'Sirf tab badlein jab aap proxy/khudi ka gateway use kar rahe hon. Aksar users ke liye khali chhor dein.'));
+          pmeta.endpointHelp || T.t('aic.endpointHelp','Change only if you use a proxy or your own gateway. Most users should leave it empty.')));
     })()]);
   if (pmeta.endpointRequired) left.appendChild(epCard);
   else {
@@ -11100,8 +11100,8 @@ function renderSetupControls(c) {
     left.appendChild(aiSection('API mode', [ms,
       h('p', { class: 'f-hint', style: { marginTop: '6px' } },
         prov() === 'GEMINI'
-          ? 'Interactions API Google ka naya standard hai (function-calling steps ke sath) — Auto mode pehle isi ko try karta hai, phir legacy generateContent. Hamara engine store=false (stateless) chalta hai: app conversation storage request nahi karta; provider ki security/retention policy phir bhi lagu hoti hai.'
-          : 'Responses API OpenAI ka naya standard hai (tools + reasoning items) — Auto pehle Responses, phir Chat Completions. Reasoning models par temperature nahi bheja jata (API 400 deti hai — engine khud strip kar ke dobara bhej deta hai).')]));
+          ? T.t('aic.interactions','Interactions API is Google\'s newer standard (with function-calling steps) — Auto mode tries it first, then legacy generateContent. Our engine runs store=false (stateless): the app never asks for conversation storage; the provider\'s security/retention policy still applies.')
+          : T.t('aic.responses','Responses API is OpenAI\'s newer standard (tools + reasoning items) — Auto tries Responses first, then Chat Completions. Temperature is not sent to reasoning models (the API returns 400 — the engine strips and retries).'))]));
   }
 
   /* ── presets ── */
@@ -11113,7 +11113,7 @@ function renderSetupControls(c) {
       App.refresh();
     } }, pr.name)));
   left.appendChild(aiSection('Tez shuruat (presets)', [prEl,
-    h('p', { class: 'f-hint', style: { marginTop: '6px' } }, 'Preset sirf draft badalta hai — Save ke baad lagoo hoga. Detail ke liye har chip par hover/tap karein.')]));
+    h('p', { class: 'f-hint', style: { marginTop: '6px' } }, T.t('aic.presetHint','A preset only changes the draft — it applies after Save. Hover/tap each chip for details.'))]));
 
   /* ── RIGHT: behavior ── */
   function tg(key, label, hint, tone) {
@@ -11127,7 +11127,7 @@ function renderSetupControls(c) {
     warnBox.innerHTML = '';
     if (String(val('aiCanWrite')) === 'true')
       warnBox.appendChild(h('div', { class: 'ai-warn' },
-        'Writes ON: assistant drafts bana sakta hai. "Approval zaroori" on rakhein — post phir bhi insaan karega.'));
+        T.t('aic.writesOn','Writes ON: the assistant can create drafts. Keep "approval required" on — a human still posts.')));
   }
   paintWarn();
   right.appendChild(aiSection('Behavior', [
@@ -11136,7 +11136,7 @@ function renderSetupControls(c) {
     tg('aiRequireApproval', T.t('aic.approvalReq','Approval required'), 'Draft par bhi confirmation talab ho.'),
     tg('aiAutoSuggest', 'Smart suggestions', T.t('aic.questionChips','Show question chips below the chat.')),
     tg('aiFallbackMock', 'Local Data Assistant fallback',
-      'Key na ho to ye LOCAL rules engine (koi LLM nahi) aap ke asli data par rule-based jawab deta hai — app ruke na ruke.'),
+      T.t('aic.localEngine','Without a key this LOCAL rules engine (no LLM) answers rule-based over your real data — so the app never blocks.')),
     tg('aiRedact', 'Naam/fon chhupayein', 'Provider ko bhejte waqt customer phone mask ho.'),
     warnBox]));
 
@@ -11375,7 +11375,7 @@ function renderAssistant(c) {
   const host = h('div', { class: 'ai-msgs', id: 'aiMsgs' });
   if (!ST.hist.length)
     pushMsg(host, 'bot', 'Assalam-o-Alaikum! Main aapka business agent hoon — ' +
-      (cfg.provider === 'MOCK' ? 'Main Local Data Assistant hoon — app ka LOCAL rules engine (koi LLM nahi). Aapke LIVE data par tools chala kar jawab deta hoon.' :
+      (cfg.provider === 'MOCK' ? T.t('aic.mockIntro','I am the Local Data Assistant — the app\'s LOCAL rules engine (no LLM). I answer by running tools over your LIVE data.') :
         meta.label + ' (' + (cfg.model || 'model') + ') se munsalik.') +
       '\nNeeche diye sawal aazmaayein, ya jo poochna ho likhein.');
   else ST.hist.forEach(mm => pushMsg(host, mm.role === 'user' ? 'user' : 'bot', mm.content));
@@ -11420,7 +11420,7 @@ function capabilitiesCard() {
         ? 'Abhi chal raha hai: ' + (meta.label || 'Local Data Assistant') +
           T.t('aic.localEngineTail',' — the app’s own LOCAL rules engine. No internet, no API key, no LLM.')
         : 'Abhi chal raha hai: ' + (meta.label || prov) + ' (bahar ka LLM provider). Jawab model banata hai; ' +
-          'aap ka data provider ko raw rows ki tarah nahi jata — assistant pehle apne tools (RBAC ke tehat) chalata hai aur sirf sawal/jawab ka text jata hai. LLM ghalat jawab bhi de sakta hai — ahem hisaab dekh kar confirm karein.'),
+          T.t('aic.privNote','your data never reaches the provider as raw rows — the assistant runs its own tools (under RBAC) and only question/answer text is sent. An LLM can still be wrong — verify important figures.')),
     isLocal
       ? h('div', null,
           h('b', { class: 'cap-h' }, '✔ Kar sakta hai'),
@@ -11446,7 +11446,7 @@ function renderTools(c) {
   const groups = {};
   (cfg.tools || []).forEach(t => { const g = t.group || 'Other'; (groups[g] = groups[g] || []).push(t); });
   c.appendChild(h('p', { class: 'f-hint', style: { marginBottom: '10px' } },
-    'Jo tool ON hai, model wahi istemal kar sakta hai. READ tools sirf parhte hain; WRITE drafts banate hain (post phir bhi insaan karta hai). Kuch bhatka hua lage to tools tab se band kar dein.'));
+    T.t('aic.toolsNote','The model can only use tools that are ON. READ tools just read; WRITE tools create drafts (a human still posts). If anything looks off, switch tools off in this tab.')));
   Object.keys(groups).forEach(g => {
     const rows = h('div');
     groups[g].forEach(t => {
@@ -11513,9 +11513,9 @@ function renderActivity(c) {
   c.appendChild(aiSection('Data aur hifazat', [
     h('ul', { class: 'ai-safe' },
       h('li', null, T.t('aic.keySafety','API key lives only in Script Properties — never in spreadsheet cells or browser storage.')),
-      h('li', null, 'Jawab generate karne ke liye aapke hi data par AI apne tools chalata hai — provider ko raw rows nahi jaate; sirf sawal/jawab ka text jata hai (Redact on ho to phone naam masked).'),
-      h('li', null, 'Har chat user-wise AIThreads sheet mein mehfooz — Admin Audit log mein AI_CHAT entries nazar aati hain.'),
-      h('li', null, 'Writes default mein BAND hain; on karne par bhi sirf draft banta hai, post/approve insaan karta hai.'))
+      h('li', null, 'AI runs its tools over your own data to answer — raw rows never reach the provider; only question/answer text is sent (with Redact on, phones/names are masked).'),
+      h('li', null, 'Every chat is stored per-user in the AIThreads sheet — AI_CHAT entries appear in the Admin Audit log.'),
+      h('li', null, 'Writes are OFF by default; even when on, only a draft is created — a human posts/approves.'))
   ]));
 }
 
@@ -11523,7 +11523,7 @@ function renderActivity(c) {
 App.registerScreen('ai', {
   title: 'AI Agent', icon: '✨', perm: 'ai.use',
   subtitle: () => ST.cfg ? (provMeta(ST.cfg.provider).label || ST.cfg.provider) + ' · ' +
-    (ST.cfg.model || 'model') + ' · ' + (ST.cfg.hasKey ? 'key set' : (ST.cfg.usable ? 'local mode · no LLM' : 'setup zaroori')) : 'AI assistant',
+    (ST.cfg.model || 'model') + ' · ' + (ST.cfg.hasKey ? 'key set' : (ST.cfg.usable ? T.t('aic.localMode','local mode · no LLM') : T.t('aic.setupNeeded','setup needed'))) : 'AI assistant',
   render(body) {
     const paint = function () {
       if (!body.isConnected) return;
@@ -11564,7 +11564,7 @@ const AIC = {
     host.appendChild(h('div', { class: 'ai-banner' },
       h('div', null, h('b', null, 'AI Agent ka apna tab hai'),
         h('div', { class: 'f-hint' }, 'Setup, assistant chat, tools aur usage — sab #AI Agent screen par (Settings se bahar, taake sab roles ko mile).')),
-      h('button', { class: 'btn sm', type: 'button', onclick: () => AIC.openModal() }, 'AI Agent kholein')));
+      h('button', { class: 'btn sm', type: 'button', onclick: () => AIC.openModal() }, T.t('aic.openAgent','Open AI Agent'))));
     return host;
   }
 };
@@ -20447,7 +20447,7 @@ window.POS2 = { S, addToCart, pay, clearCart, pickCustomer, togglePicker, bulkFl
   /* ============================== ORDER BOOK =============================== */
   App.registerScreen('orders', {
     title: 'Order Book', icon: '📝', perm: 'pos.sell',
-    subtitle: () => 'Field orders · status · invoice mein badlein',
+    subtitle: () => T.t('od.sub','Field orders · status · convert to invoice'),
     actions() {
       const a = [{ label: 'Refresh', icon: '↻', onClick: () => App.refresh() }];
       a.unshift({ label: '📱 Take order', icon: '📱', cls: 'ok', onClick: () => App.go('takeorder') });
@@ -20567,7 +20567,7 @@ window.POS2 = { S, addToCart, pay, clearCart, pickCustomer, togglePicker, bulkFl
           { label: 'Close', cls: 'ghost', onClick: c => c() },
           res.actions.canConvert ? { label: '🧾 Convert to invoice', cls: 'ok', onClick: c => { c(); convertOrder(o, after); } } : null,
           res.actions.canCancel ? { label: 'Cancel order', cls: 'danger', onClick: c => {
-            UI2.confirm('Order cancel karein?', ok => {
+            UI2.confirm(T.t('od.cancelAsk','Cancel this order?'), ok => {
               if (!ok) return;
               API.call('orders.status', { id: o.id, status: 'CANCELLED' })
                 .then(() => { UI.toast(T.t('ord.cancelled','Cancelled'), 'ok'); c(); if (after) after(); })
@@ -20585,7 +20585,7 @@ window.POS2 = { S, addToCart, pay, clearCart, pickCustomer, togglePicker, bulkFl
       ...['CASH', 'BANK', 'JAZZCASH', 'EASYPAISA', 'RAAST', 'CARD'].map(m => h('option', { value: m }, m)));
     UI2.modal({
       title: '🧾 Order → Invoice', size: 'sm',
-      subtitle: 'Total ' + fmt.money(order.total) + ' · baqi udhaar ban jayega',
+      subtitle: T.t('od.totalTail','Total ') + fmt.money(order.total) + T.t('od.udhaarNote',' · remaining becomes credit'),
       body: h('div', { class: 'f-grid' },
         h('div', { class: 'f-col' }, h('label', null, 'Advance liya gaya'), adv),
         h('div', { class: 'f-col' }, h('label', null, 'Method'), method)),
@@ -20654,7 +20654,7 @@ window.POS2 = { S, addToCart, pay, clearCart, pickCustomer, togglePicker, bulkFl
               if(res.rows && res.rows.length){
                 body.appendChild(UI.table({columns:[{key:'date',label:'Date',render:function(r){return fmt.date(r.date);}},{key:'refType',label:'Type'}, {key:'description',label:'Description'}, {key:'debit',label:'Debit',num:true,render:function(r){return r.debit? fmt.money(r.debit):'—';}}, {key:'credit',label:'Credit',num:true,render:function(r){return r.credit? fmt.money(r.credit):'—';}}, {key:'balance',label:'Balance',num:true,render:function(r){return h('b',null,fmt.money(r.balance));}}], rows: res.rows.slice(0,20), emptyText:'Koi entry nahi'}));
               } else {
-                body.appendChild(h('div',{class:'empty'}, 'Koi ledger entry nahi — naya customer'));
+                body.appendChild(h('div',{class:'empty'}, T.t('od.noLedger','No ledger entries — new customer')));
               }
               UI.drawer({title:'📒 Ledger — '+c.name, body:body});
             }).catch(function(e){ UI.toast(e.message,'err'); });
@@ -20682,7 +20682,7 @@ window.POS2 = { S, addToCart, pay, clearCart, pickCustomer, togglePicker, bulkFl
       const bulkBtn = h('button',{class:'btn sm', title:'Bulk Add — Multi Select Mode (scan + search + tick)', 'aria-label':'Bulk', onclick: function(){
         if(typeof UI2!=='undefined' && UI2.itemPicker){
           var picker=UI2.itemPicker({ mode:'multi', icon:'🛒', title:'Bulk Add — Take Order',
-            hint:'Scan → Bulk List → Add All · ya search/📋 list se tick karein', commitLabel:'Add Selected to Order',
+            hint: T.t('od.scanHint','Scan → Bulk List → Add All · or tick via search/📋 list'), commitLabel:'Add Selected to Order',
             placeholder:'Search product — name / code / barcode…', map:function(r,q){return {r:r,q:q}}, sub:function(r){ return [r.code, r.barcode? 'barcode '+r.barcode : '', r.category, r.stock!==undefined? 'stock '+fmt.num(r.stock):'', (r.retailPrice||r.price? fmt.money(r.retailPrice||r.price):'')].filter(Boolean).join(' · '); }, onAdd:function(line){ var r=line.r; var f=S.lines.find(function(l){return l.itemId===r.id}); if(f) f.qty+=Number(line.q||1); else S.lines.push({itemId:r.id, code:r.code, name:r.name, qty:Number(line.q||1), price:Number(r.retailPrice||r.price||0), discount:0, taxRate:Number(r.taxRate||0), stock:r.stock}); paint(); UI.toast('Added: '+r.name+' ×'+(line.q||1)+' — order updated','ok'); }, lines: [] });
           UI2.modal({title:'📦 Bulk Add — Take Order', subtitle:'Scan → auto-add to Bulk List → field clears → next scan ready · or search + tick', size:'lg', body:picker,
             actions:[ {label:'Cancel', cls:'ghost', onClick:function(c){c();}},
@@ -20710,7 +20710,7 @@ window.POS2 = { S, addToCart, pay, clearCart, pickCustomer, togglePicker, bulkFl
           } else if((rows||[]).length===1){
             var r=rows[0]; var f=S.lines.find(function(l){return l.itemId===r.id;}); if(f) f.qty+=1; else S.lines.push({itemId:r.id, code:r.code, name:r.name, qty:1, price:Number(r.retailPrice||0), discount:0, taxRate:Number(r.taxRate||0)}); search.value=''; results.innerHTML=''; paint(); search.focus();
           } else if((rows||[]).length>1){
-            UI.toast(rows.length+' matches — list se chunein','warn');
+            UI.toast(rows.length + ' ' + T.t('od.matches','matches — pick from the list'),'warn');
             search.dispatchEvent(new Event('input',{bubbles:true}));  // render matches in dropdown
             search.value=''; search.focus();                            // clear field → next scan never appends
           } else {
@@ -20734,7 +20734,7 @@ window.POS2 = { S, addToCart, pay, clearCart, pickCustomer, togglePicker, bulkFl
             h('b', null, r.name),
             h('span', { class: 'muted' }, (r.code || '') + ' · ' + fmt.money(r.retailPrice) +
               (r.stock !== undefined ? ' · stock ' + fmt.num(r.stock) : '')))));
-          if (!(rows || []).length) results.appendChild(h('div', { class: 'empty' }, 'Koi item nahi mila'));
+          if (!(rows || []).length) results.appendChild(h('div', { class: 'empty' }, T.t('od.noItemHit','No item found')));
         }, 200);
       };
 
@@ -20753,7 +20753,7 @@ window.POS2 = { S, addToCart, pay, clearCart, pickCustomer, togglePicker, bulkFl
 
       /* ---- totals + action bar ---- */
       const totals = h('div', { class: 'mo-totals' });
-      const submit = h('button', { class: 'mo-submit' }, '✅ Order save karein');
+      const submit = h('button', { class: 'mo-submit' }, T.t('od.saveBtn','✅ Save order'));
       const advanceInput = h('input', { class: 'f-input', type: 'number', value: '', placeholder: '0.00', style: { flex:'1', minWidth:'90px' }, 'aria-label': 'Advance received' });
       const dateInput = h('input', { class: 'f-input', type: 'date', 'aria-label': 'Delivery date', style:{flex:'1', minWidth:'110px'} });
       const notesInput = h('input', { class: 'f-input', type: 'text', placeholder: 'Note (optional)', 'aria-label': 'Order note', style:{flex:'1.2', minWidth:'120px'} });
@@ -20773,7 +20773,7 @@ window.POS2 = { S, addToCart, pay, clearCart, pickCustomer, togglePicker, bulkFl
         cart.innerHTML = '';
         if (!S.lines.length) {
           cart.appendChild(h('div', { class: 'empty' }, h('span', { class: 'big' }, '🛒'),
-            h('div', null, 'Abhi koi item nahi — upar search karein')));
+            h('div', null, T.t('od.noItemsYet','No items yet — search above'))));
         }
         S.lines.forEach((l, i) => {
           cart.appendChild(h('div', { class: 'mo-line' },
@@ -20804,7 +20804,7 @@ window.POS2 = { S, addToCart, pay, clearCart, pickCustomer, togglePicker, bulkFl
       advanceInput.oninput = paint;
 
       submit.onclick = async () => {
-        if (!S.lines.length) return UI.toast('Koi item nahi', 'warn');
+        if (!S.lines.length) return UI.toast(T.t('od.noItems','No items'), 'warn');
         try {
           const payload = {
             id: S.editingId || null,
@@ -20821,7 +20821,7 @@ window.POS2 = { S, addToCart, pay, clearCart, pickCustomer, togglePicker, bulkFl
               discount: Number(l.discount || 0), taxRate: l.taxRate, note: '' }))
           };
           const res = await API.call('orders.save', { order: payload });
-          UI.toast('Order ' + res.order.orderNo + ' save ho gayi ✅', 'ok');
+          UI.toast(T.t('od.saved','Order ') + res.order.orderNo + T.t('od.savedTail',' saved ✅'), 'ok');
           S.lines = []; S.customer = null; S.editingId = '';
           advanceInput.value = '0'; notesInput.value = ''; dateInput.value = '';
           paint();
@@ -20854,11 +20854,11 @@ window.POS2 = { S, addToCart, pay, clearCart, pickCustomer, togglePicker, bulkFl
       rows.forEach(c => list.appendChild(h('div', { class: 'gs-item', onclick: () => { cb(c); close(); } },
         h('b', null, c.name), h('span', { class: 'muted' }, (c.phone || '') +
           ' · balance ' + fmt.money(c.balance ?? c.bal ?? 0)))));
-      if (!rows.length) list.appendChild(h('div', { class: 'empty' }, 'Koi customer nahi mila'));
+      if (!rows.length) list.appendChild(h('div', { class: 'empty' }, T.t('od.noCustHit','No customer found')));
     }, 220);
     let close = () => { };
     UI2.modal({
-      title: 'Customer chunein', size: 'sm',
+      title: T.t('od.pickCust','Choose customer'), size: 'sm',
       body: h('div', null, q, list),
       actions: [{ label: 'Walk-in', cls: 'sec', onClick: c => { c(); cb(null); } },
         { label: 'Close', cls: 'ghost', onClick: c => c() }]

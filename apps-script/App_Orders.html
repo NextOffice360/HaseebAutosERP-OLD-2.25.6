@@ -21,7 +21,7 @@
   /* ============================== ORDER BOOK =============================== */
   App.registerScreen('orders', {
     title: 'Order Book', icon: '📝', perm: 'pos.sell',
-    subtitle: () => 'Field orders · status · invoice mein badlein',
+    subtitle: () => T.t('od.sub','Field orders · status · convert to invoice'),
     actions() {
       const a = [{ label: 'Refresh', icon: '↻', onClick: () => App.refresh() }];
       a.unshift({ label: '📱 Take order', icon: '📱', cls: 'ok', onClick: () => App.go('takeorder') });
@@ -141,7 +141,7 @@
           { label: 'Close', cls: 'ghost', onClick: c => c() },
           res.actions.canConvert ? { label: '🧾 Convert to invoice', cls: 'ok', onClick: c => { c(); convertOrder(o, after); } } : null,
           res.actions.canCancel ? { label: 'Cancel order', cls: 'danger', onClick: c => {
-            UI2.confirm('Order cancel karein?', ok => {
+            UI2.confirm(T.t('od.cancelAsk','Cancel this order?'), ok => {
               if (!ok) return;
               API.call('orders.status', { id: o.id, status: 'CANCELLED' })
                 .then(() => { UI.toast(T.t('ord.cancelled','Cancelled'), 'ok'); c(); if (after) after(); })
@@ -159,7 +159,7 @@
       ...['CASH', 'BANK', 'JAZZCASH', 'EASYPAISA', 'RAAST', 'CARD'].map(m => h('option', { value: m }, m)));
     UI2.modal({
       title: '🧾 Order → Invoice', size: 'sm',
-      subtitle: 'Total ' + fmt.money(order.total) + ' · baqi udhaar ban jayega',
+      subtitle: T.t('od.totalTail','Total ') + fmt.money(order.total) + T.t('od.udhaarNote',' · remaining becomes credit'),
       body: h('div', { class: 'f-grid' },
         h('div', { class: 'f-col' }, h('label', null, 'Advance liya gaya'), adv),
         h('div', { class: 'f-col' }, h('label', null, 'Method'), method)),
@@ -228,7 +228,7 @@
               if(res.rows && res.rows.length){
                 body.appendChild(UI.table({columns:[{key:'date',label:'Date',render:function(r){return fmt.date(r.date);}},{key:'refType',label:'Type'}, {key:'description',label:'Description'}, {key:'debit',label:'Debit',num:true,render:function(r){return r.debit? fmt.money(r.debit):'—';}}, {key:'credit',label:'Credit',num:true,render:function(r){return r.credit? fmt.money(r.credit):'—';}}, {key:'balance',label:'Balance',num:true,render:function(r){return h('b',null,fmt.money(r.balance));}}], rows: res.rows.slice(0,20), emptyText:'Koi entry nahi'}));
               } else {
-                body.appendChild(h('div',{class:'empty'}, 'Koi ledger entry nahi — naya customer'));
+                body.appendChild(h('div',{class:'empty'}, T.t('od.noLedger','No ledger entries — new customer')));
               }
               UI.drawer({title:'📒 Ledger — '+c.name, body:body});
             }).catch(function(e){ UI.toast(e.message,'err'); });
@@ -256,7 +256,7 @@
       const bulkBtn = h('button',{class:'btn sm', title:'Bulk Add — Multi Select Mode (scan + search + tick)', 'aria-label':'Bulk', onclick: function(){
         if(typeof UI2!=='undefined' && UI2.itemPicker){
           var picker=UI2.itemPicker({ mode:'multi', icon:'🛒', title:'Bulk Add — Take Order',
-            hint:'Scan → Bulk List → Add All · ya search/📋 list se tick karein', commitLabel:'Add Selected to Order',
+            hint: T.t('od.scanHint','Scan → Bulk List → Add All · or tick via search/📋 list'), commitLabel:'Add Selected to Order',
             placeholder:'Search product — name / code / barcode…', map:function(r,q){return {r:r,q:q}}, sub:function(r){ return [r.code, r.barcode? 'barcode '+r.barcode : '', r.category, r.stock!==undefined? 'stock '+fmt.num(r.stock):'', (r.retailPrice||r.price? fmt.money(r.retailPrice||r.price):'')].filter(Boolean).join(' · '); }, onAdd:function(line){ var r=line.r; var f=S.lines.find(function(l){return l.itemId===r.id}); if(f) f.qty+=Number(line.q||1); else S.lines.push({itemId:r.id, code:r.code, name:r.name, qty:Number(line.q||1), price:Number(r.retailPrice||r.price||0), discount:0, taxRate:Number(r.taxRate||0), stock:r.stock}); paint(); UI.toast('Added: '+r.name+' ×'+(line.q||1)+' — order updated','ok'); }, lines: [] });
           UI2.modal({title:'📦 Bulk Add — Take Order', subtitle:'Scan → auto-add to Bulk List → field clears → next scan ready · or search + tick', size:'lg', body:picker,
             actions:[ {label:'Cancel', cls:'ghost', onClick:function(c){c();}},
@@ -284,7 +284,7 @@
           } else if((rows||[]).length===1){
             var r=rows[0]; var f=S.lines.find(function(l){return l.itemId===r.id;}); if(f) f.qty+=1; else S.lines.push({itemId:r.id, code:r.code, name:r.name, qty:1, price:Number(r.retailPrice||0), discount:0, taxRate:Number(r.taxRate||0)}); search.value=''; results.innerHTML=''; paint(); search.focus();
           } else if((rows||[]).length>1){
-            UI.toast(rows.length+' matches — list se chunein','warn');
+            UI.toast(rows.length + ' ' + T.t('od.matches','matches — pick from the list'),'warn');
             search.dispatchEvent(new Event('input',{bubbles:true}));  // render matches in dropdown
             search.value=''; search.focus();                            // clear field → next scan never appends
           } else {
@@ -308,7 +308,7 @@
             h('b', null, r.name),
             h('span', { class: 'muted' }, (r.code || '') + ' · ' + fmt.money(r.retailPrice) +
               (r.stock !== undefined ? ' · stock ' + fmt.num(r.stock) : '')))));
-          if (!(rows || []).length) results.appendChild(h('div', { class: 'empty' }, 'Koi item nahi mila'));
+          if (!(rows || []).length) results.appendChild(h('div', { class: 'empty' }, T.t('od.noItemHit','No item found')));
         }, 200);
       };
 
@@ -327,7 +327,7 @@
 
       /* ---- totals + action bar ---- */
       const totals = h('div', { class: 'mo-totals' });
-      const submit = h('button', { class: 'mo-submit' }, '✅ Order save karein');
+      const submit = h('button', { class: 'mo-submit' }, T.t('od.saveBtn','✅ Save order'));
       const advanceInput = h('input', { class: 'f-input', type: 'number', value: '', placeholder: '0.00', style: { flex:'1', minWidth:'90px' }, 'aria-label': 'Advance received' });
       const dateInput = h('input', { class: 'f-input', type: 'date', 'aria-label': 'Delivery date', style:{flex:'1', minWidth:'110px'} });
       const notesInput = h('input', { class: 'f-input', type: 'text', placeholder: 'Note (optional)', 'aria-label': 'Order note', style:{flex:'1.2', minWidth:'120px'} });
@@ -347,7 +347,7 @@
         cart.innerHTML = '';
         if (!S.lines.length) {
           cart.appendChild(h('div', { class: 'empty' }, h('span', { class: 'big' }, '🛒'),
-            h('div', null, 'Abhi koi item nahi — upar search karein')));
+            h('div', null, T.t('od.noItemsYet','No items yet — search above'))));
         }
         S.lines.forEach((l, i) => {
           cart.appendChild(h('div', { class: 'mo-line' },
@@ -378,7 +378,7 @@
       advanceInput.oninput = paint;
 
       submit.onclick = async () => {
-        if (!S.lines.length) return UI.toast('Koi item nahi', 'warn');
+        if (!S.lines.length) return UI.toast(T.t('od.noItems','No items'), 'warn');
         try {
           const payload = {
             id: S.editingId || null,
@@ -395,7 +395,7 @@
               discount: Number(l.discount || 0), taxRate: l.taxRate, note: '' }))
           };
           const res = await API.call('orders.save', { order: payload });
-          UI.toast('Order ' + res.order.orderNo + ' save ho gayi ✅', 'ok');
+          UI.toast(T.t('od.saved','Order ') + res.order.orderNo + T.t('od.savedTail',' saved ✅'), 'ok');
           S.lines = []; S.customer = null; S.editingId = '';
           advanceInput.value = '0'; notesInput.value = ''; dateInput.value = '';
           paint();
@@ -428,11 +428,11 @@
       rows.forEach(c => list.appendChild(h('div', { class: 'gs-item', onclick: () => { cb(c); close(); } },
         h('b', null, c.name), h('span', { class: 'muted' }, (c.phone || '') +
           ' · balance ' + fmt.money(c.balance ?? c.bal ?? 0)))));
-      if (!rows.length) list.appendChild(h('div', { class: 'empty' }, 'Koi customer nahi mila'));
+      if (!rows.length) list.appendChild(h('div', { class: 'empty' }, T.t('od.noCustHit','No customer found')));
     }, 220);
     let close = () => { };
     UI2.modal({
-      title: 'Customer chunein', size: 'sm',
+      title: T.t('od.pickCust','Choose customer'), size: 'sm',
       body: h('div', null, q, list),
       actions: [{ label: 'Walk-in', cls: 'sec', onClick: c => { c(); cb(null); } },
         { label: 'Close', cls: 'ghost', onClick: c => c() }]

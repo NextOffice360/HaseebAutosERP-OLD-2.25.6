@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-09-26T13:00:47.390Z",
-  "totalHits": 276,
-  "totalTt": 691,
+  "generatedAt": "2026-09-26T13:06:21.364Z",
+  "totalHits": 246,
+  "totalTt": 724,
   "files": [
     {
       "file": "App_Core.html",
@@ -19,44 +19,6 @@
         {
           "line": 203,
           "text": "`fmt.date()` isi par delegate karta hai, is liye poore app ke 92 call-si* `fmt.date()` isi"
-        }
-      ]
-    },
-    {
-      "file": "App_AIConfig.html",
-      "tt": 32,
-      "hits": 20,
-      "samples": [
-        {
-          "line": 231,
-          "text": "'AI chalane ke liye ya to API key daalein, ya Local Data Assistant (bina LLM) chunein, ya "
-        },
-        {
-          "line": 272,
-          "text": "placeholder: cfg.hasKey ? ('Mehfooz: ' + (cfg.keyHint || '••••') + ' — naya daalne par bad"
-        },
-        {
-          "line": 282,
-          "text": "'Key sirf Script Properties mein mehfooz hoti hai — Sheets ya browser mein kahin nahi. Jaw"
-        }
-      ]
-    },
-    {
-      "file": "App_Orders.html",
-      "tt": 5,
-      "hits": 14,
-      "samples": [
-        {
-          "line": 24,
-          "text": "subtitle: () => 'Field orders · status · invoice mein badlein',"
-        },
-        {
-          "line": 144,
-          "text": "UI2.confirm('Order cancel karein?', ok => {"
-        },
-        {
-          "line": 162,
-          "text": "subtitle: 'Total ' + fmt.money(order.total) + ' · baqi udhaar ban jayega',"
         }
       ]
     },
@@ -422,6 +384,25 @@
       ]
     },
     {
+      "file": "App_AIConfig.html",
+      "tt": 50,
+      "hits": 3,
+      "samples": [
+        {
+          "line": 373,
+          "text": "UI.toast('Preset \"' + pr.name + '\" apply ho gaya — Save dabayein', 'info');"
+        },
+        {
+          "line": 664,
+          "text": "v2.30.0 (N7) — \"YE KYA KAR SAKTA HAI / KYA NAHI\" (honest capability ca* v2.30.0 (N7) — \"YE"
+        },
+        {
+          "line": 668,
+          "text": "(`ai.agentConfig.providers`), is liye yahan koi string do jagah nahi likhi ja* (`ai.agentC"
+        }
+      ]
+    },
+    {
       "file": "App_Boot.html",
       "tt": 29,
       "hits": 2,
@@ -493,6 +474,17 @@
         {
           "line": 446,
           "text": "selCard.appendChild(PWA.el('div',{class:'muted', style:'font-size:11px;margin-bottom:8px'}"
+        }
+      ]
+    },
+    {
+      "file": "App_Orders.html",
+      "tt": 20,
+      "hits": 1,
+      "samples": [
+        {
+          "line": 229,
+          "text": "body.appendChild(UI.table({columns:[{key:'date',label:'Date',render:function(r){return fmt"
         }
       ]
     },

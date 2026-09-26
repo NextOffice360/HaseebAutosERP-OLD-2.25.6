@@ -228,7 +228,7 @@ function renderSetupControls(c) {
         : okUsable ? chip('Local mode · no LLM', 'info') : chip('Key chahiye', 'err'),
       String(val('aiCanWrite')) === 'true' ? chip('Data par writes ON', 'warn') : chip('Read-only', 'ok')),
     (!okUsable) ? h('div', { class: 'f-hint', style: { color: 'var(--warn)' } },
-      'AI chalane ke liye ya to API key daalein, ya Local Data Assistant (bina LLM) chunein, ya uska fallback on karein.') : '')));
+      T.t('aic.needKey','To run AI, either enter an API key, choose the Local Data Assistant (no LLM), or turn on its fallback.')) : '')));
 
   /* ── provider cards ── */
   const pCards = h('div', { class: 'ai-prov' });
@@ -269,7 +269,7 @@ function renderSetupControls(c) {
   {
     const keyInput = h('input', { class: 'f-input', type: ST.showKey ? 'text' : 'password',
       'aria-label': 'API key', autocomplete: 'off', spellcheck: 'false',
-      placeholder: cfg.hasKey ? ('Mehfooz: ' + (cfg.keyHint || '••••') + ' — naya daalne par badal jaye gi') : T.t('aic.pasteKey','Paste the API key here'),
+      placeholder: cfg.hasKey ? (T.t('aic.stored','Stored: ') + (cfg.keyHint || '••••') + T.t('aic.storedTail',' — changes when you enter a new one')) : T.t('aic.pasteKey','Paste the API key here'),
       value: ST.keyVal, oninput: e => { ST.keyVal = e.target.value; ST.keyTouched = true; } });
     const keyChildren = meta.needsKey ? [
       h('p', { class: 'f-hint', style: { margin: '0 0 8px' } }, meta.keyHelp || ''),
@@ -279,7 +279,7 @@ function renderSetupControls(c) {
           onclick: () => { ST.showKey = !ST.showKey; App.refresh(); } }, ST.showKey ? 'Hide' : 'Show'),
         meta.keyUrl ? h('a', { class: 'btn sm sec', href: meta.keyUrl, target: '_blank', rel: 'noopener' }, 'Get a key') : ''),
       h('p', { class: 'f-hint', style: { marginTop: '6px' } },
-        'Key sirf Script Properties mein mehfooz hoti hai — Sheets ya browser mein kahin nahi. Jawab mein kabhi poori key wapas nahi aati (sirf ' + (cfg.keyHint || 'pehle 4…aakhir 3') + ' jaisa hint).'),
+        T.t('aic.keySafe','The key is stored only in Script Properties — never in Sheets or the browser. Replies never return the full key (just a hint like ') + (cfg.keyHint || T.t('aic.keyHintDflt','first 4…last 3')) + T.t('aic.keyEnd',').')),
       cfg.hasKey ? h('button', { class: 'link-btn', type: 'button', onclick: async () => {
         try { await API.call('ai.setKey', { key: '', provider: prov(), model: val('aiModel') });
           UI.toast('Key hata di gayi', 'ok'); ST.loaded = false; if (window.Deps) Deps.hardRefresh('ai.models'); App.refresh(); }
@@ -303,7 +303,7 @@ function renderSetupControls(c) {
         pmeta.endpointRequired && !String(val('aiEndpoint')).match(/^https?:\/\//)
           ? h('div', { class: 'f-hint', style: { color: 'var(--err)' } }, T.t('aic.ollamaEndpoint','An endpoint is required for Ollama.')) : '',
         h('p', { class: 'f-hint', style: { marginTop: '6px' } },
-          pmeta.endpointHelp || 'Sirf tab badlein jab aap proxy/khudi ka gateway use kar rahe hon. Aksar users ke liye khali chhor dein.'));
+          pmeta.endpointHelp || T.t('aic.endpointHelp','Change only if you use a proxy or your own gateway. Most users should leave it empty.')));
     })()]);
   if (pmeta.endpointRequired) left.appendChild(epCard);
   else {
@@ -361,8 +361,8 @@ function renderSetupControls(c) {
     left.appendChild(aiSection('API mode', [ms,
       h('p', { class: 'f-hint', style: { marginTop: '6px' } },
         prov() === 'GEMINI'
-          ? 'Interactions API Google ka naya standard hai (function-calling steps ke sath) — Auto mode pehle isi ko try karta hai, phir legacy generateContent. Hamara engine store=false (stateless) chalta hai: app conversation storage request nahi karta; provider ki security/retention policy phir bhi lagu hoti hai.'
-          : 'Responses API OpenAI ka naya standard hai (tools + reasoning items) — Auto pehle Responses, phir Chat Completions. Reasoning models par temperature nahi bheja jata (API 400 deti hai — engine khud strip kar ke dobara bhej deta hai).')]));
+          ? T.t('aic.interactions','Interactions API is Google\'s newer standard (with function-calling steps) — Auto mode tries it first, then legacy generateContent. Our engine runs store=false (stateless): the app never asks for conversation storage; the provider\'s security/retention policy still applies.')
+          : T.t('aic.responses','Responses API is OpenAI\'s newer standard (tools + reasoning items) — Auto tries Responses first, then Chat Completions. Temperature is not sent to reasoning models (the API returns 400 — the engine strips and retries).'))]));
   }
 
   /* ── presets ── */
@@ -374,7 +374,7 @@ function renderSetupControls(c) {
       App.refresh();
     } }, pr.name)));
   left.appendChild(aiSection('Tez shuruat (presets)', [prEl,
-    h('p', { class: 'f-hint', style: { marginTop: '6px' } }, 'Preset sirf draft badalta hai — Save ke baad lagoo hoga. Detail ke liye har chip par hover/tap karein.')]));
+    h('p', { class: 'f-hint', style: { marginTop: '6px' } }, T.t('aic.presetHint','A preset only changes the draft — it applies after Save. Hover/tap each chip for details.'))]));
 
   /* ── RIGHT: behavior ── */
   function tg(key, label, hint, tone) {
@@ -388,7 +388,7 @@ function renderSetupControls(c) {
     warnBox.innerHTML = '';
     if (String(val('aiCanWrite')) === 'true')
       warnBox.appendChild(h('div', { class: 'ai-warn' },
-        'Writes ON: assistant drafts bana sakta hai. "Approval zaroori" on rakhein — post phir bhi insaan karega.'));
+        T.t('aic.writesOn','Writes ON: the assistant can create drafts. Keep "approval required" on — a human still posts.')));
   }
   paintWarn();
   right.appendChild(aiSection('Behavior', [
@@ -397,7 +397,7 @@ function renderSetupControls(c) {
     tg('aiRequireApproval', T.t('aic.approvalReq','Approval required'), 'Draft par bhi confirmation talab ho.'),
     tg('aiAutoSuggest', 'Smart suggestions', T.t('aic.questionChips','Show question chips below the chat.')),
     tg('aiFallbackMock', 'Local Data Assistant fallback',
-      'Key na ho to ye LOCAL rules engine (koi LLM nahi) aap ke asli data par rule-based jawab deta hai — app ruke na ruke.'),
+      T.t('aic.localEngine','Without a key this LOCAL rules engine (no LLM) answers rule-based over your real data — so the app never blocks.')),
     tg('aiRedact', 'Naam/fon chhupayein', 'Provider ko bhejte waqt customer phone mask ho.'),
     warnBox]));
 
@@ -636,7 +636,7 @@ function renderAssistant(c) {
   const host = h('div', { class: 'ai-msgs', id: 'aiMsgs' });
   if (!ST.hist.length)
     pushMsg(host, 'bot', 'Assalam-o-Alaikum! Main aapka business agent hoon — ' +
-      (cfg.provider === 'MOCK' ? 'Main Local Data Assistant hoon — app ka LOCAL rules engine (koi LLM nahi). Aapke LIVE data par tools chala kar jawab deta hoon.' :
+      (cfg.provider === 'MOCK' ? T.t('aic.mockIntro','I am the Local Data Assistant — the app\'s LOCAL rules engine (no LLM). I answer by running tools over your LIVE data.') :
         meta.label + ' (' + (cfg.model || 'model') + ') se munsalik.') +
       '\nNeeche diye sawal aazmaayein, ya jo poochna ho likhein.');
   else ST.hist.forEach(mm => pushMsg(host, mm.role === 'user' ? 'user' : 'bot', mm.content));
@@ -681,7 +681,7 @@ function capabilitiesCard() {
         ? 'Abhi chal raha hai: ' + (meta.label || 'Local Data Assistant') +
           T.t('aic.localEngineTail',' — the app’s own LOCAL rules engine. No internet, no API key, no LLM.')
         : 'Abhi chal raha hai: ' + (meta.label || prov) + ' (bahar ka LLM provider). Jawab model banata hai; ' +
-          'aap ka data provider ko raw rows ki tarah nahi jata — assistant pehle apne tools (RBAC ke tehat) chalata hai aur sirf sawal/jawab ka text jata hai. LLM ghalat jawab bhi de sakta hai — ahem hisaab dekh kar confirm karein.'),
+          T.t('aic.privNote','your data never reaches the provider as raw rows — the assistant runs its own tools (under RBAC) and only question/answer text is sent. An LLM can still be wrong — verify important figures.')),
     isLocal
       ? h('div', null,
           h('b', { class: 'cap-h' }, '✔ Kar sakta hai'),
@@ -707,7 +707,7 @@ function renderTools(c) {
   const groups = {};
   (cfg.tools || []).forEach(t => { const g = t.group || 'Other'; (groups[g] = groups[g] || []).push(t); });
   c.appendChild(h('p', { class: 'f-hint', style: { marginBottom: '10px' } },
-    'Jo tool ON hai, model wahi istemal kar sakta hai. READ tools sirf parhte hain; WRITE drafts banate hain (post phir bhi insaan karta hai). Kuch bhatka hua lage to tools tab se band kar dein.'));
+    T.t('aic.toolsNote','The model can only use tools that are ON. READ tools just read; WRITE tools create drafts (a human still posts). If anything looks off, switch tools off in this tab.')));
   Object.keys(groups).forEach(g => {
     const rows = h('div');
     groups[g].forEach(t => {
@@ -774,9 +774,9 @@ function renderActivity(c) {
   c.appendChild(aiSection('Data aur hifazat', [
     h('ul', { class: 'ai-safe' },
       h('li', null, T.t('aic.keySafety','API key lives only in Script Properties — never in spreadsheet cells or browser storage.')),
-      h('li', null, 'Jawab generate karne ke liye aapke hi data par AI apne tools chalata hai — provider ko raw rows nahi jaate; sirf sawal/jawab ka text jata hai (Redact on ho to phone naam masked).'),
-      h('li', null, 'Har chat user-wise AIThreads sheet mein mehfooz — Admin Audit log mein AI_CHAT entries nazar aati hain.'),
-      h('li', null, 'Writes default mein BAND hain; on karne par bhi sirf draft banta hai, post/approve insaan karta hai.'))
+      h('li', null, 'AI runs its tools over your own data to answer — raw rows never reach the provider; only question/answer text is sent (with Redact on, phones/names are masked).'),
+      h('li', null, 'Every chat is stored per-user in the AIThreads sheet — AI_CHAT entries appear in the Admin Audit log.'),
+      h('li', null, 'Writes are OFF by default; even when on, only a draft is created — a human posts/approves.'))
   ]));
 }
 
@@ -784,7 +784,7 @@ function renderActivity(c) {
 App.registerScreen('ai', {
   title: 'AI Agent', icon: '✨', perm: 'ai.use',
   subtitle: () => ST.cfg ? (provMeta(ST.cfg.provider).label || ST.cfg.provider) + ' · ' +
-    (ST.cfg.model || 'model') + ' · ' + (ST.cfg.hasKey ? 'key set' : (ST.cfg.usable ? 'local mode · no LLM' : 'setup zaroori')) : 'AI assistant',
+    (ST.cfg.model || 'model') + ' · ' + (ST.cfg.hasKey ? 'key set' : (ST.cfg.usable ? T.t('aic.localMode','local mode · no LLM') : T.t('aic.setupNeeded','setup needed'))) : 'AI assistant',
   render(body) {
     const paint = function () {
       if (!body.isConnected) return;
@@ -825,7 +825,7 @@ const AIC = {
     host.appendChild(h('div', { class: 'ai-banner' },
       h('div', null, h('b', null, 'AI Agent ka apna tab hai'),
         h('div', { class: 'f-hint' }, 'Setup, assistant chat, tools aur usage — sab #AI Agent screen par (Settings se bahar, taake sab roles ko mile).')),
-      h('button', { class: 'btn sm', type: 'button', onclick: () => AIC.openModal() }, 'AI Agent kholein')));
+      h('button', { class: 'btn sm', type: 'button', onclick: () => AIC.openModal() }, T.t('aic.openAgent','Open AI Agent'))));
     return host;
   }
 };

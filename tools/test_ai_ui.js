@@ -246,7 +246,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     const s = document.querySelector('select[aria-label="API mode"]');
     const body = document.body.innerText || '';
     return { caps, modeOpts: s ? Array.from(s.options).map(o => o.value) : null,
-      hint: /Interactions API Google ka naya standard/.test(body) && /store=false/.test(body) };
+      hint: /Interactions API (Google ka naya standard|is Google's newer standard)/.test(body) && /store=false/.test(body) /* v2.31.6 EN */ };
   });
   ok('Provider cards par capability row (function-tools ✓ etc.)', ui9b.caps.length >= 5 && /function-tools/.test(ui9b.caps.join('|')), (ui9b.caps[0] || '').slice(0, 70));
   ok('Gemini: API mode select = AUTO/INTERACTIONS/GENERATE_CONTENT', ui9b.modeOpts && ui9b.modeOpts.join(',') === 'AUTO,INTERACTIONS,GENERATE_CONTENT', JSON.stringify(ui9b.modeOpts));
